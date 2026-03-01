@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Control Forms</title>
+    <!-- ใช้ Tailwind CSS สำหรับ Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* ========================================== */
+        /* GLOBAL PRINT STYLES */
+        /* ========================================== */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0 !important; 
+            }
+            html, body {
+                width: 210mm !important; 
+                height: 296mm !important; /* ลดความสูงลง 1mm เพื่อตัดปัญหากระดาษหน้า 2 โผล่ใน iPad */
+                max-height: 296mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important; 
+                box-sizing: border-box !important;
+                background-color: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .app-container.hidden { display: none !important; }
+            .page-break-avoid { page-break-inside: avoid; break-inside: avoid; }
+            .print-border { border: 1px solid #1f2937 !important; }
+            .print-padding { padding: 0.5cm 1.5cm 1cm !important; }
+
+            /* 1. Missing Item Print Size */
+            #missingReportView {
+                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
+                padding: 0 !important; margin: 0 !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 2. Equipment Claim Print Size */
+            #claimReportView {
+                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
+                padding: 5mm 0 0 0 !important; margin: 0 !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 3. Trip Unit Factory Print Size */
+            #tf_reportView {
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
+                padding: 3mm 5mm 5mm 5mm !important; margin: 0 auto !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 4. Trip Unit Trading Print Size */
+            #ts_reportView {
+                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
+                padding: 5mm !important; margin: 0 auto !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+        }
+
+        @media screen {
+            .print-only { display: none !important; }
+        }
+        
+        .custom-file-upload { display: inline-block; cursor: pointer; }
+        
+        /* สไตล์ตาราง Trip Unit */
+        .ts-report-table th, .ts-report-table td {
+            border: 1px solid #1f2937; padding: 2px 4px;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- ========================================== -->
+    <!-- NAVIGATION BAR -->
+    <!-- ========================================== -->
+    <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- โลโก้ / ชื่อแอป -->
+                <div class="flex-shrink-0 flex items-center cursor-pointer hover:text-blue-400 transition" onclick="switchApp('home')">
+                    <img src="https://drive.google.com/thumbnail?id=1_sBAn175MQD6LAveXgV1r2O0xmjvIZ3q&sz=w800" alt="Logo" class="w-10 h-10 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
+                    <span class="font-bold text-xl hidden sm:block">Quality Control Forms</span>
+                </div>
+                <!-- ลิงก์เมนู Desktop -->
+                <div class="hidden md:block">
+                    <div class="ml-4 flex items-baseline space-x-2">
+                        <button onclick="switchApp('home')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="home">หน้าแรก</button>
+                        <button onclick="switchApp('missing-item')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="missing-item">Missing Item</button>
+                        <button onclick="switchApp('claim-item')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="claim-item">Eq. Claim</button>
+                        <button onclick="switchApp('trip-fac')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-fac">Trip (Fac)</button>
+                        <button onclick="switchApp('trip-site')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-site">Trip (Trading)</button>
+                    </div>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobileMenuBtn" class="outline-none mobile-menu-button p-2 rounded-md hover:bg-gray-700 focus:outline-none" onclick="toggleMobileMenu()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu Panel -->
+        <div id="mobileMenuPanel" class="hidden md:hidden bg-gray-700 pb-3 pt-2">
+            <button onclick="switchApp('home'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="home">หน้าแรก (Home)</button>
+            <button onclick="switchApp('missing-item'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="missing-item">Missing Item Form</button>
+            <button onclick="switchApp('claim-item'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="claim-item">Equipment Claim</button>
+            <button onclick="switchApp('trip-fac'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="trip-fac">Trip Unit Test (Factory)</button>
+            <button onclick="switchApp('trip-site'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="trip-site">Trip Unit Test (Trading)</button>
+        </div>
+    </nav>
+
+    <!-- พื้นที่แสดงผลหลัก -->
+    <div class="flex-grow w-full">
+        
+        <!-- ========================================== -->
+        <!-- APP 0: DASHBOARD (หน้าแรก) -->
+        <!-- ========================================== -->
+        <div id="app-home" class="app-container max-w-7xl mx-auto p-6 lg:p-12 no-print">
+            <div class="text-center mb-12 mt-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-4">ฟอร์มบันทึกผลการตรวจสอบแผนก Qc</h1>
+                <p class="text-gray-500 text-lg">เลือกระบบหรือแบบฟอร์มที่คุณต้องการใช้งานจากเมนูด้านล่าง</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                <!-- Card 1: Missing Item -->
+                <div onclick="switchApp('missing-item')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-blue-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Missing Item Form</h3>
+                        <p class="text-gray-500 text-sm">แบบฟอร์มบันทึกรายการอุปกรณ์ที่ขาดหรือต้องดำเนินการเพิ่มเติม</p>
+                    </div>
+                </div>
+
+                <!-- Card 2: Equipment Claim -->
+                <div onclick="switchApp('claim-item')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-red-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Equipment Claim Form</h3>
+                        <p class="text-gray-500 text-sm">แบบฟอร์มตรวจสอบอุปกรณ์ก่อนการเคลม บันทึกรายละเอียดปัญหา</p>
+                    </div>
+                </div>
+
+                <!-- Card 3: Trip Unit (Factory) -->
+                <div onclick="switchApp('trip-fac')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-orange-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Trip Unit Test (Factory)</h3>
+                        <p class="text-gray-500 text-sm">แบบฟอร์มบันทึกผลการทดสอบ Trip Unit (ฉบับโรงงาน)</p>
+                    </div>
+                </div>
+
+                <!-- Card 4: Trip Unit (Trading) -->
+                <div onclick="switchApp('trip-site')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-green-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Trip Unit Test (Trading)</h3>
+                        <p class="text-gray-500 text-sm">แบบฟอร์มบันทึกผลการทดสอบ Trip Unit (ฉบับ Trading)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- APP 1: MISSING ITEM FORM -->
+        <!-- ========================================== -->
+        <div id="app-missing-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
+                <div class="border-b pb-4 mb-6">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
+                    <p class="text-gray-500 mt-1">Missing Item Form</p>
+                </div>
+
+                <form id="missingInspectionForm" onsubmit="generateMissingReport(event)">
+                    <!-- 1. ข้อมูลทั่วไป -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3 mb-4">1. ข้อมูลทั่วไป</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อโครงการ / SO <span class="text-red-500">*</span></label>
+                                <input type="text" id="projectName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ระบุชื่อโครงการ หรือ SO">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อตู้ <span class="text-red-500">*</span></label>
+                                <input type="text" id="cabinetId" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="เช่น MDB-01, DB-02">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label>
+                                <input type="date" id="inspectionDate" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ตรวจสอบ <span class="text-red-500">*</span></label>
+                                <input type="text" id="inspectorName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. รายการของที่ขาด -->
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">2. รายการอุปกรณ์ที่ขาด</h2>
+                                <span id="itemLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 10 รายการ</span>
+                            </div>
+                            <button type="button" onclick="addMissingItem()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> เพิ่มรายการ
+                            </button>
+                        </div>
+                        <div id="missingItemsContainer" class="space-y-4"></div>
+                    </div>
+
+                    <!-- 3. รูปภาพประกอบ -->
+                    <div class="mb-10">
+                        <div class="flex items-center gap-3 mb-4">
+                            <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">3. รูปภาพประกอบ</h2>
+                            <span id="imgLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 3 รูป</span>
+                        </div>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative" onclick="document.getElementById('imageUpload').click()">
+                             <div id="loadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 hidden flex flex-col items-center justify-center rounded-xl z-10">
+                                <svg class="animate-spin h-8 w-8 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span class="text-sm font-medium text-blue-700">กำลังบีบอัดรูปภาพ...</span>
+                            </div>
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ หรือถ่ายภาพ</p>
+                            <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews)">
+                        </div>
+                        <div id="imagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
+                    </div>
+
+                    <!-- ปุ่ม Submit -->
+                    <div class="border-t pt-6">
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            สร้างรายงาน (Generate Report)
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- View 2: หน้ารายงาน (Report View) -->
+            <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
+                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
+                </div>
+
+                <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[285mm] overflow-hidden report-print-view">
+                    <div class="relative w-full pt-0 pb-2">
+                        <div class="w-full flex h-[14px]">
+                            <div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div>
+                        </div>
+                        <div class="flex justify-between items-center mt-5 w-full">
+                            <div class="pl-8 h-[75px] z-10 flex-shrink-0"><img src="https://drive.google.com/thumbnail?id=1_sBAn175MQD6LAveXgV1r2O0xmjvIZ3q&sz=w800" class="h-full object-contain"></div>
+                            <div class="flex items-stretch h-[80px] w-[55%] max-w-[420px]">
+                                <div class="w-2 bg-[#f4902a] rounded-full mr-2.5 my-1 shadow-sm"></div>
+                                <div class="bg-[#333333] flex-grow rounded-l-[2.5rem] flex flex-col justify-center pl-8 pr-4 shadow-md">
+                                    <div class="text-white font-bold text-[22px] tracking-wide">เอกสารบันทึกการตรวจสอบ</div>
+                                    <div class="text-white text-[14.5px] tracking-wide mt-0.5">รายการอุปกรณ์ที่ขาด (Missing Item Report)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 mx-6 sm:mx-10 grid grid-cols-2 gap-4 mb-2 text-sm sm:text-base">
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ชื่อโครงการ / SO:</span> <span id="repProjectName" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ชื่อตู้:</span> <span id="repCabinetId" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">วันที่ตรวจสอบ:</span> <span id="repInspectionDate" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ผู้ตรวจสอบ:</span> <span id="repInspectorName" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                    </div>
+
+                    <div class="px-6 sm:px-10 pt-2 pb-8 flex-grow print-padding flex flex-col">
+                        <div class="mb-6 mt-2">
+                            <h3 class="font-bold text-base mb-2">ตารางรายการอุปกรณ์ที่ต้องดำเนินการเพิ่มเติม</h3>
+                            <table class="w-full border-collapse border border-gray-800 text-xs sm:text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100"><th class="border border-gray-800 px-2 py-1.5 text-center w-12">ลำดับ</th><th class="border border-gray-800 px-2 py-1.5 text-left">รายการ/ชื่ออุปกรณ์</th><th class="border border-gray-800 px-2 py-1.5 text-center w-24">จำนวน</th><th class="border border-gray-800 px-2 py-1.5 text-left w-1/3">หมายเหตุ</th></tr>
+                                </thead>
+                                <tbody id="repMissingItemsBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="mb-6 page-break-avoid" id="repImagesSection">
+                            <h3 class="font-bold text-base mb-4 border-b border-gray-800 pb-1">รูปภาพประกอบการตรวจสอบ</h3>
+                            <div id="repImagesGrid" class="grid grid-cols-3 gap-4 mt-4"></div>
+                        </div>
+                        <div class="mt-auto mb-4 grid grid-cols-2 gap-8 text-center page-break-avoid">
+                            <div><div class="border-b border-gray-800 w-3/4 mx-auto mb-2"></div><p class="text-sm">(<span id="repSignInspectorName" class="inline-block min-w-[100px]"></span>)</p><p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p></div>
+                            <div><div class="border-b border-gray-800 w-3/4 mx-auto mb-2"></div><p class="text-sm">(<span class="inline-block min-w-[100px] text-transparent">_</span>)</p><p class="text-sm font-bold mt-1">ผู้รับทราบ</p></div>
+                        </div>
+                    </div>
+
+                    <div class="w-full mt-auto h-[45px] relative page-break-avoid overflow-hidden">
+                        <div class="absolute left-0 bottom-0 w-[30%] h-full bg-[#333333]"></div>
+                        <div class="absolute right-0 bottom-0 w-[75%] h-full bg-[#f4902a] rounded-tl-[2rem] flex items-center justify-end pr-10"><span class="text-white font-medium text-lg tracking-widest">www.avatar-electric.com</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- APP 2: EQUIPMENT CLAIM FORM -->
+        <!-- ========================================== -->
+        <div id="app-claim-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="claimFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
+                <div class="border-b pb-4 mb-6 flex justify-between items-start sm:items-center">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-red-700">ตรวจสอบอุปกรณ์ก่อนเคลม</h1>
+                        <p class="text-gray-500 mt-1">Equipment Inspection Form</p>
+                    </div>
+                    <div class="flex-shrink-0 ml-4 hidden sm:block"><img src="https://drive.google.com/thumbnail?id=1_sBAn175MQD6LAveXgV1r2O0xmjvIZ3q&sz=w800" class="h-12 sm:h-14 object-contain"></div>
+                </div>
+
+                <form id="claimInspectionForm" onsubmit="generateClaimReport(event)">
+                    <!-- 1. ข้อมูลเอกสาร -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">1. ข้อมูลเอกสาร (Document Info)</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 px-3">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขที่เอกสาร</label><input type="text" id="claimDocNo" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น EQ-2023-001"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label><input type="date" id="claimInspectionDate" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">ตรวจสอบโดย <span class="text-red-500">*</span></label><input type="text" id="claimInspectorName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="ชื่อผู้ตรวจสอบ"></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. รายละเอียดอุปกรณ์ -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">2. รายละเอียดอุปกรณ์ (Equipment Details)</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-3">
+                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">ชื่ออุปกรณ์ <span class="text-red-500">*</span></label><input type="text" id="claimEqName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น Circuit Breaker"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">ยี่ห้อ/รุ่น <span class="text-red-500">*</span></label><input type="text" id="claimEqBrand" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น Schneider / NSX100N"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">จำนวน <span class="text-red-500">*</span></label><input type="number" id="claimEqQty" min="1" value="1" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
+                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">หมายเลขซีเรียล</label><input type="text" id="claimEqSerial" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="ระบุ S/N (ถ้ามี)"></div>
+                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดเพิ่มเติม</label><input type="text" id="claimEqDesc" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="พิกัดกระแส, แรงดัน หรืออื่นๆ"></div>
+                        </div>
+                    </div>
+
+                    <!-- 3. ปัญหาที่พบ -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-red-50 py-1">3. ปัญหาที่พบ (Found Issues)</h2>
+                        <div class="px-3"><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดปัญหา <span class="text-red-500">*</span></label><textarea id="claimIssueDesc" rows="4" required class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="อธิบายลักษณะอาการเสีย..."></textarea></div>
+                    </div>
+
+                    <!-- 4. รูปภาพประกอบ -->
+                    <div class="mb-10">
+                        <div class="flex items-center gap-3 mb-4 bg-gray-50 py-1 border-l-4 border-red-500 pl-3">
+                            <h2 class="text-lg font-semibold text-gray-700">4. ภาพประกอบ (Images)</h2>
+                            <span id="claimImgLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-100 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 3 รูป</span>
+                        </div>
+                        <div class="px-3">
+                            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 cursor-pointer relative" onclick="document.getElementById('claimImageUpload').click()">
+                                <div id="claimLoadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 hidden flex flex-col items-center justify-center rounded-xl z-10">
+                                    <svg class="animate-spin h-8 w-8 text-red-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-sm font-medium text-red-700">กำลังบีบอัดรูปภาพ...</span>
+                                </div>
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                                <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ</p>
+                                <input type="file" id="claimImageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, claimUploadedImages, 3, 'claimImgLimitWarning', 'claimLoadingOverlay', renderClaimImagePreviews)">
+                            </div>
+                            <div id="claimImagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-6">
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> สร้างรายงาน (Generate Report)
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- View 2: หน้ารายงาน (Report View) -->
+            <div id="claimReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="editClaimForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
+                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
+                </div>
+
+                <div id="claimReportView" class="bg-white shadow-lg mx-auto flex flex-col relative overflow-hidden pt-[5mm] w-full max-w-[210mm] h-[285mm] report-print-view">
+                    <div class="relative w-full pt-0 pb-2 shrink-0">
+                        <div class="w-full flex h-[14px]"><div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div></div>
+                        <div class="flex justify-between items-center mt-5 w-full">
+                            <div class="pl-8 h-[75px] z-10 flex-shrink-0"><img src="https://drive.google.com/thumbnail?id=1_sBAn175MQD6LAveXgV1r2O0xmjvIZ3q&sz=w800" class="h-full object-contain"></div>
+                            <div class="flex items-stretch h-[80px] w-[55%] max-w-[420px]">
+                                <div class="w-2 bg-[#f4902a] rounded-full mr-2.5 my-1 shadow-sm"></div>
+                                <div class="bg-[#333333] flex-grow rounded-l-[2.5rem] flex flex-col justify-center pl-8 pr-4 shadow-md">
+                                    <div class="text-white font-bold text-[22px] tracking-wide">เอกสารตรวจสอบอุปกรณ์</div>
+                                    <div class="text-white text-[14.5px] tracking-wide mt-0.5">Equipment Inspection Report</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 mx-6 sm:mx-10 flex justify-between text-sm shrink-0">
+                        <div><span class="font-bold">วันที่ตรวจสอบ:</span> <span id="rClaimInspDate" class="ml-1 text-gray-700"></span></div>
+                        <div><span class="font-bold">เลขที่เอกสาร:</span> <span id="rClaimDocNo" class="ml-1 text-gray-700"></span></div>
+                    </div>
+
+                    <div class="px-6 sm:px-10 pt-4 pb-4 flex-grow print-padding flex flex-col">
+                        <div class="mb-6 shrink-0">
+                            <h3 class="font-bold text-base mb-2 border-b-2 border-gray-800 pb-1 inline-block">รายละเอียดอุปกรณ์</h3>
+                            <div class="border border-gray-300 rounded-lg p-4 bg-gray-50 text-sm">
+                                <div class="grid grid-cols-12 gap-y-3 gap-x-4">
+                                    <div class="col-span-12 sm:col-span-7 flex"><span class="font-semibold w-24 shrink-0">ชื่ออุปกรณ์:</span><span id="rClaimEqName" class="border-b border-dotted flex-grow pl-2"></span></div>
+                                    <div class="col-span-12 sm:col-span-5 flex"><span class="font-semibold w-28 shrink-0">จำนวน:</span><span id="rClaimEqQty" class="border-b border-dotted flex-grow text-center"></span></div>
+                                    <div class="col-span-12 sm:col-span-7 flex"><span class="font-semibold w-24 shrink-0">ยี่ห้อ/รุ่น:</span><span id="rClaimEqBrand" class="border-b border-dotted flex-grow pl-2"></span></div>
+                                    <div class="col-span-12 sm:col-span-5 flex"><span class="font-semibold w-28 shrink-0">หมายเลขซีเรียล:</span><span id="rClaimEqSerial" class="border-b border-dotted flex-grow pl-2"></span></div>
+                                    <div class="col-span-12 flex"><span class="font-semibold w-24 shrink-0">รายละเอียด:</span><span id="rClaimEqDesc" class="border-b border-dotted flex-grow pl-2"></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6 shrink-0">
+                            <h3 class="font-bold text-base mb-2 border-b-2 border-gray-800 pb-1 inline-block text-red-700">ปัญหาที่พบ</h3>
+                            <div class="border border-gray-300 rounded-lg p-4 text-sm min-h-[100px] bg-white"><p id="rClaimIssueDesc" class="whitespace-pre-wrap leading-relaxed"></p></div>
+                        </div>
+
+                        <div class="mb-4 page-break-avoid flex-grow" id="repClaimImagesSection">
+                            <h3 class="font-bold text-base mb-2 border-b-2 border-gray-800 pb-1 inline-block">ภาพประกอบ</h3>
+                            <div id="repClaimImagesGrid" class="grid grid-cols-3 gap-4 mt-2"></div>
+                        </div>
+
+                        <div class="mt-auto shrink-0 mb-4 grid grid-cols-1 gap-8 text-center page-break-avoid">
+                            <div class="w-64 ml-auto mr-10"><div class="border-b border-gray-800 w-full mx-auto mb-2 mt-10"></div><p class="text-sm">(<span id="rClaimSignInspectorName" class="inline-block min-w-[150px]"></span>)</p><p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p></div>
+                        </div>
+                    </div>
+
+                    <div class="w-full mt-auto h-[45px] relative page-break-avoid overflow-hidden shrink-0">
+                        <div class="absolute left-0 bottom-0 w-[30%] h-full bg-[#333333]"></div>
+                        <div class="absolute right-0 bottom-0 w-[75%] h-full bg-[#f4902a] rounded-tl-[2rem] flex items-center justify-end pr-10"><span class="text-white font-medium text-lg tracking-widest">www.avatar-electric.com</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- APP 3: TRIP UNIT TEST (FACTORY) -->
+        <!-- ========================================== -->
+        <div id="app-trip-fac" class="app-container hidden max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="tf_formView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
+                <div class="border-b-[6px] border-orange-500 pb-4 mb-6 flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">TRIP UNIT TEST</h1>
+                        <p class="text-gray-500 font-medium">Routine Verification Test Report</p>
+                    </div>
+                    <div class="text-right"><img src="https://drive.google.com/thumbnail?id=1MS6SJgo_3tchpb_d9oRWtoj7PwRbY0ov&sz=w400" class="h-12 object-contain inline-block"></div>
+                </div>
+
+                <form onsubmit="tf_generateReport(event)">
+                    <!-- 0. PROJECT INFO -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">Project Information</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Project</label><input type="text" id="tf_infoProject" class="w-full px-3 py-2 border rounded"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Job No.</label><input type="text" id="tf_infoJob" class="w-full px-3 py-2 border rounded"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Customer</label><input type="text" id="tf_infoCustomer" class="w-full px-3 py-2 border rounded"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Cubicle name / Feeder Name</label><input type="text" id="tf_infoCubicle" class="w-full px-3 py-2 border rounded"></div>
+                        </div>
+                    </div>
+
+                    <!-- 1. DETAILS -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">1. DETAILS</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.1 Manufacturer</label><input type="text" id="tf_detManufacturer" value="Schneider" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.2 Circuit Breaker</label><input type="text" id="tf_detBreaker" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.3 Rate Current</label><input type="text" id="tf_detRateCurrent" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.4 Trip Unit Type</label><input type="text" id="tf_detTripType" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label><input type="text" id="tf_detSerial" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.6 Feeder Name</label><input type="text" id="tf_detFeeder" class="w-full px-3 py-2 border rounded text-center"></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. INSPECTION -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">2. INSPECTION</h2>
+                        <div class="flex flex-col gap-3">
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.1 Body and Frame</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="tf_insBody" value="Good" checked class="mr-1 text-orange-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insBody" value="Fair" class="mr-1 text-orange-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insBody" value="Poor" class="mr-1 text-orange-600"> Poor</label>
+                                </div>
+                            </div>
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.2 Trip Indicator</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="tf_insIndicator" value="Good" checked class="mr-1 text-orange-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insIndicator" value="Fair" class="mr-1 text-orange-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insIndicator" value="Poor" class="mr-1 text-orange-600"> Poor</label>
+                                </div>
+                            </div>
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.3 Test trip mode</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="tf_insTestMode" value="Good" checked class="mr-1 text-orange-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insTestMode" value="Fair" class="mr-1 text-orange-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="tf_insTestMode" value="Poor" class="mr-1 text-orange-600"> Poor</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. TEST SETTING -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">3. TEST SETTING</h2>
+                        <div class="space-y-3">
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.1 Long-Time Pick Up Current:</span><span class="font-semibold w-8">Ir</span>= <input type="text" id="tf_setLtMult" class="w-16 px-2 py-1 border text-center" placeholder="x"> x In (Pri = <input type="text" id="tf_setLtPri" class="w-20 px-2 py-1 border text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Long-Time Tripping Time</span><span class="font-semibold w-8">tr</span>= <input type="text" id="tf_setLtTime" class="w-20 px-2 py-1 border text-center" placeholder="sec."> sec.</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.2 Short-Time Delay Pick Up:</span><span class="font-semibold w-8">Isd</span>= <input type="text" id="tf_setStMult" class="w-16 px-2 py-1 border text-center" placeholder="x"> x Ir (Pri = <input type="text" id="tf_setStPri" class="w-20 px-2 py-1 border text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Short-Time Tripping Time</span><span class="font-semibold w-8">tsd</span>= <input type="text" id="tf_setStTime" class="w-20 px-2 py-1 border text-center" placeholder="sec."> sec.</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.3 Instanteneous Pick Up Current:</span><span class="font-semibold w-8">Ii</span>= <input type="text" id="tf_setInstMult" class="w-16 px-2 py-1 border text-center" placeholder="x"> x In (Pri = <input type="text" id="tf_setInstPri" class="w-20 px-2 py-1 border text-center" placeholder="A"> A)</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.4 Ground Fault Pick Up Current:</span><span class="font-semibold w-8">Ig</span>= <input type="text" id="tf_setGfMult" class="w-16 px-2 py-1 border text-center" placeholder="x"> x In (Pri = <input type="text" id="tf_setGfPri" class="w-20 px-2 py-1 border text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Ground Fault Tripping Time</span><span class="font-semibold w-8">tg</span>= <input type="text" id="tf_setGfTime" class="w-20 px-2 py-1 border text-center" placeholder="sec."> sec.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. FUNCTION TRIP UNIT TEST -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">4. FUNCTION TRIP UNIT TEST: FULL-FUNCTION TEST KIT</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm border-collapse border border-gray-300 text-center">
+                                <thead class="bg-gray-100">
+                                    <tr><th class="border py-2">Function Test</th><th class="border py-2">Injected Current (A)</th><th class="border py-2">Tripping Time (s)</th><th class="border py-2">Result</th><th class="border py-2">Remark</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="border py-2 font-semibold bg-gray-50 text-left px-3">Long-time</td>
+                                        <td class="border p-1"><input type="text" id="tf_fnLtInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="tf_fnLtTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="tf_fnLtResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="tf_fnLtRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 font-semibold bg-gray-50 text-left px-3">Short-time</td>
+                                        <td class="border p-1"><input type="text" id="tf_fnStInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="tf_fnStTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="tf_fnStResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="tf_fnStRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 font-semibold bg-gray-50 text-left px-3">Instantaneous</td>
+                                        <td class="border p-1"><input type="text" id="tf_fnInstInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="tf_fnInstTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="tf_fnInstResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="tf_fnInstRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 font-semibold bg-gray-50 text-left px-3">Ground-fault</td>
+                                        <td class="border p-1"><input type="text" id="tf_fnGfInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="tf_fnGfTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="tf_fnGfResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option><option value="N/A">N/A</option></select></td>
+                                        <td class="border p-1"><input type="text" id="tf_fnGfRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 5. TRIPPING CURVE -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">5. TRIPPING CURVE STANDARD</h2>
+                        <select id="tf_curveSelect" class="w-full px-3 py-2 border rounded text-sm mb-3" onchange="tf_handleCurveSelection()">
+                            <option value="">-- ไม่ใส่รูปภาพ --</option><option value="upload">📁 อัปโหลดรูปจากคอมพิวเตอร์...</option>
+                            <optgroup label="เลือก Curve มาตรฐาน">
+                                <option value="https://drive.google.com/thumbnail?id=12cW-bjarcVavxH940k6kxVkbnjM8ADOq&sz=w800">Curve 800A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=18ecj3BDajjFgT6y7KhoUasLlNBzZcJak&sz=w800">Curve 800A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uo-uDa-w_stxv7WMipW4aQfJRKk4jQCX&sz=w800">Curve 1000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1qBImpPDsJZ3G2jiRp4oJm-tg42p0JKnh&sz=w800">Curve 1000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=19mtwP7eTEqoxn6bw1ne4ov65m8Q37Bjz&sz=w800">Curve 1250A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1tPLatQEowhWCH-R0tXWko3Hu8Yp_r5Dh&sz=w800">Curve 1250A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1PFsT5J9ONXejKNFWJt-XHw-Ka-zdjXLO&sz=w800">Curve 1600A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uqF5gh2QBdOoHezgM4CyIcg-AL4hLyuZ&sz=w800">Curve 1600A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=17fWXAzvd0ATbjP7lbaWDy2NjDw0fLFVS&sz=w800">Curve 2000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1IaZQDp7TACOSYMCgQ36X1L8QytpM9h7I&sz=w800">Curve 2000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uoVeDma50iVng6TJLedR1nUuBJ9XmhM6&sz=w800">Curve 2500A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1dsxuHM3--txPfAk_uTq2sohFdYL3YFlD&sz=w800">Curve 2500A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=122Dy0Hv2PvJRPRDeSWCqQUjqi6zPy6-X&sz=w800">Curve 3200A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1BOgk_FiIk84K7-Hpw4OPm5TRv4nKICBn&sz=w800">Curve 3200A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1dEsKGYkH4isLMLYtBL8gftkkRxqto7f8&sz=w800">Curve 4000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1hqmVnW8Npd-7Yl6JL0SJuSU3qfNI-a3c&sz=w800">Curve 4000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1yGIGvPRYwo7q8lFAmkKX02VodqLhXzTe&sz=w800">Curve 5000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1ios3a0RTL9N4swekwhzD0_hSpMUf3LW1&sz=w800">Curve 5000A 6.0</option>
+                            </optgroup>
+                        </select>
+                        <div id="tf_uploadArea" class="hidden border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('tf_curveImage').click()">
+                            <p class="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูปกราฟ</p>
+                            <input type="file" id="tf_curveImage" class="hidden" accept="image/*" onchange="tf_handleCurveImage(event)">
+                        </div>
+                        <div id="tf_previewArea" class="mt-2 hidden text-center border p-2 rounded bg-gray-50"><img id="tf_curveImagePreview" class="max-h-32 mx-auto object-contain rounded"></div>
+                    </div>
+
+                    <!-- Signatures -->
+                    <div class="mb-10">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
+                            <div><label class="block text-sm font-semibold mb-1">Quality Control</label><input type="text" id="tf_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ตรวจสอบ"><input type="date" id="tf_signTestDate" class="w-full px-3 py-2 border rounded text-sm"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Customer Witnessed</label><input type="text" id="tf_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer"><input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                            <div><label class="block text-sm font-semibold mb-1">User Witnessed</label><input type="text" id="tf_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User"><input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-[#f4902a] hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 text-lg">สร้างรายงาน (Generate Report)</button>
+                </form>
+            </div>
+
+            <!-- View 2: หน้ารายงาน (Report View / PDF Layout) -->
+            <div id="tf_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="tf_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
+                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
+                </div>
+
+                <!-- คืนค่า Original: ความสูง 297mm และคืนค่า Padding/Margin ดั้งเดิมทั้งหมดให้ Factory -->
+                <div id="tf_reportView" class="bg-white mx-auto relative flex flex-col text-sm text-black shadow-lg w-full max-w-[210mm] h-[297mm] pt-[3mm] px-[5mm] pb-[5mm] print:shadow-none">
+                    <div class="w-full bg-[#D2D3D4] text-center font-medium text-[15px] py-1 mb-[1mm] shrink-0">ROUTINE VERIFICATION TEST REPORT - TRIP UNIT TEST</div>
+
+                    <div class="flex justify-between items-start mb-[1mm] shrink-0">
+                        <div class="w-[40%] flex justify-start items-start"><img src="https://drive.google.com/thumbnail?id=1MS6SJgo_3tchpb_d9oRWtoj7PwRbY0ov&sz=w800" class="max-h-[110px] object-contain object-left-top"></div>
+                        <div class="w-[55%] flex flex-col gap-y-[1mm] text-[12px]">
+                            <div class="flex items-stretch gap-x-[1mm]"><span class="w-28 font-medium shrink-0 bg-[#D2D3D4] pl-2 py-0.5">Project:</span> <span id="tf_rProject" class="flex-grow bg-[#F1F2F2] px-1 py-0.5 text-center"></span></div>
+                            <div class="flex items-stretch gap-x-[1mm]"><span class="w-28 font-medium shrink-0 bg-[#D2D3D4] pl-2 py-0.5">Job No.:</span> <span id="tf_rJobNo" class="flex-grow bg-[#F1F2F2] px-1 py-0.5 text-center"></span></div>
+                            <div class="flex items-stretch gap-x-[1mm]"><span class="w-28 font-medium shrink-0 bg-[#D2D3D4] pl-2 py-0.5">Customer:</span> <span id="tf_rCustomer" class="flex-grow bg-[#F1F2F2] px-1 py-0.5 text-center"></span></div>
+                            <div class="flex items-stretch gap-x-[1mm]"><span class="w-28 font-medium shrink-0 bg-[#D2D3D4] pl-2 py-0.5">Cubicle name:</span> <span id="tf_rCubicle" class="flex-grow bg-[#F1F2F2] px-1 py-0.5 text-center"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-[1mm] shrink-0">
+                        <h3 class="font-medium bg-[#D2D3D4] py-1 px-2 mb-[1mm]">1. DETAILS</h3>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] bg-[#F1F2F2] py-[1.5mm] px-3">
+                            <div class="flex"><span class="w-32">1.1 Manufacturer</span> <span id="tf_rDetMfg" class="border-b border-dotted border-black flex-grow text-center"></span></div><div class="flex"><span class="w-36">1.4 Trip Unit Type</span> <span id="tf_rDetType" class="border-b border-dotted border-black flex-grow text-center"></span></div>
+                            <div class="flex"><span class="w-32">1.2 Circuit Breaker</span> <span id="tf_rDetCB" class="border-b border-dotted border-black flex-grow text-center"></span></div><div class="flex"><span class="w-36">1.5 Serial No.</span> <span id="tf_rDetSerial" class="border-b border-dotted border-black flex-grow text-center"></span></div>
+                            <div class="flex"><span class="w-32">1.3 Rate Current</span> <span id="tf_rDetRate" class="border-b border-dotted border-black flex-grow text-center"></span></div><div class="flex"><span class="w-36">1.6 Feeder Name</span> <span id="tf_rDetFeeder" class="border-b border-dotted border-black flex-grow text-center"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-[1mm] shrink-0">
+                        <h3 class="font-medium bg-[#D2D3D4] py-1 px-2 mb-[1mm]">2. INSPECTION</h3>
+                        <div class="flex flex-col gap-1 text-[12px] bg-[#F1F2F2] py-[1.5mm] px-3">
+                            <div class="flex items-center"><span class="inline-block w-48">2.1 Body and Frame</span> <span id="tf_rInsBodyContainer" class="flex items-center"></span></div>
+                            <div class="flex items-center"><span class="inline-block w-48">2.2 Trip Indicator</span> <span id="tf_rInsIndicatorContainer" class="flex items-center"></span></div>
+                            <div class="flex items-center"><span class="inline-block w-48">2.3 Test trip mode</span> <span id="tf_rInsModeContainer" class="flex items-center"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-[1mm] shrink-0">
+                        <h3 class="font-medium bg-[#D2D3D4] py-1 px-2 mb-[1mm]">3. TEST SETTING</h3>
+                        <div class="flex flex-col gap-y-1 text-[12px] bg-[#F1F2F2] py-[1.5mm] px-3">
+                            <div class="flex items-end"><span class="w-[195px] shrink-0">3.1 Long-Time Pick Up Current:</span><span class="w-6">Ir</span><span class="w-[145px]">= <span id="tf_rLtMult" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> x In (Pri = <span id="tf_rLtPri" class="inline-block min-w-[30px] border-b border-dotted border-black text-center"></span> A)</span><span class="ml-auto w-[150px]">Long-Time Tripping Time</span><span class="w-6">tr</span><span>= <span id="tf_rLtTime" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> sec.</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0">3.2 Short-Time Delay Pick Up:</span><span class="w-6">Isd</span><span class="w-[145px]">= <span id="tf_rStMult" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> x Ir (Pri = <span id="tf_rStPri" class="inline-block min-w-[30px] border-b border-dotted border-black text-center"></span> A)</span><span class="ml-auto w-[150px]">Short-Time Tripping Time</span><span class="w-6">tsd</span><span>= <span id="tf_rStTime" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> sec.</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0">3.3 Instanteneous Pick Up Current:</span><span class="w-6">Ii</span><span class="w-[145px]">= <span id="tf_rInstMult" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> x In (Pri = <span id="tf_rInstPri" class="inline-block min-w-[30px] border-b border-dotted border-black text-center"></span> A)</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0">3.4 Ground Fault Pick Up Current:</span><span class="w-6">Ig</span><span class="w-[145px]">= <span id="tf_rGfMult" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> x In (Pri = <span id="tf_rGfPri" class="inline-block min-w-[30px] border-b border-dotted border-black text-center"></span> A)</span><span class="ml-auto w-[150px]">Ground Fault Tripping Time</span><span class="w-6">tg</span><span>= <span id="tf_rGfTime" class="inline-block min-w-[25px] border-b border-dotted border-black text-center"></span> sec.</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-[1mm] shrink-0">
+                        <h3 class="font-medium bg-[#D2D3D4] py-1 px-2 mb-[1mm]">4. FUNCTION TRIP UNIT TEST: FULL-FUNCTION TEST KIT</h3>
+                        <div class="flex flex-col gap-y-[1mm] text-[12px]">
+                            <div class="flex gap-x-[1mm] font-medium text-center">
+                                <div class="w-1/5 bg-[#D2D3D4] py-0.5">Function Test</div><div class="w-1/5 bg-[#D2D3D4] py-0.5">Injected Current (A)</div><div class="w-1/5 bg-[#D2D3D4] py-0.5">Tripping Time (s)</div><div class="w-1/5 bg-[#D2D3D4] py-0.5">Result</div><div class="w-1/5 bg-[#D2D3D4] py-0.5">Remark</div>
+                            </div>
+                            <div class="flex gap-x-[1mm] items-stretch text-center">
+                                <div class="w-1/5 bg-[#D2D3D4] py-0.5 font-medium text-left pl-2">Long-time</div><div id="tf_rFnLtInj" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnLtTime" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnLtResult" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnLtRemark" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] text-xs flex justify-center items-center"></div>
+                            </div>
+                            <div class="flex gap-x-[1mm] items-stretch text-center">
+                                <div class="w-1/5 bg-[#D2D3D4] py-0.5 font-medium text-left pl-2">Short-time</div><div id="tf_rFnStInj" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnStTime" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnStResult" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnStRemark" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] text-xs flex justify-center items-center"></div>
+                            </div>
+                            <div class="flex gap-x-[1mm] items-stretch text-center">
+                                <div class="w-1/5 bg-[#D2D3D4] py-0.5 font-medium text-left pl-2">Instantaneous</div><div id="tf_rFnInstInj" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnInstTime" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnInstResult" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnInstRemark" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] text-xs flex justify-center items-center"></div>
+                            </div>
+                            <div class="flex gap-x-[1mm] items-stretch text-center">
+                                <div class="w-1/5 bg-[#D2D3D4] py-0.5 font-medium text-left pl-2">Ground-fault</div><div id="tf_rFnGfInj" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnGfTime" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnGfResult" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] flex justify-center items-center"></div><div id="tf_rFnGfRemark" class="w-1/5 bg-[#F1F2F2] py-0.5 min-h-[20px] text-xs flex justify-center items-center"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col w-full flex-grow mb-[1mm]">
+                        <h3 class="font-medium bg-[#D2D3D4] py-1 px-2 mb-[1mm] shrink-0">5. TRIPPING CURVE STANDARD</h3>
+                        <div class="flex w-full flex-grow items-center justify-center bg-[#F1F2F2] py-[1.5mm] min-h-[60mm]">
+                            <img id="tf_rCurveImage" class="w-[56mm] h-[56mm] object-contain hidden border border-gray-300 p-1 bg-white shadow-sm" src="">
+                            <span id="tf_rCurveEmpty" class="text-gray-400 italic text-[12px] my-2">ไม่มีรูปภาพประกอบ</span>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 w-full mt-auto">
+                        <div class="grid grid-cols-3 gap-x-[3mm] text-center bg-[#D2D3D4] border-[3mm] border-[#D2D3D4]">
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
+                                <p id="tf_rSignTestLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                                <p class="font-medium mb-1 text-[13px]">Quality Control</p><p class="text-[13px]">Date: <span id="tf_rSignTestDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
+                            </div>
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
+                                <p id="tf_rSignCustLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                                <p class="font-medium mb-1 text-[13px]">Customer Witnessed</p><p class="text-[13px]">Date: <span id="tf_rSignCustDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
+                            </div>
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
+                                <p id="tf_rSignUserLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                                <p class="font-medium mb-1 text-[13px]">User Witnessed</p><p class="text-[13px]">Date: <span id="tf_rSignUserDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
+                            </div>
+                        </div>
+                        <div class="text-right mt-1 text-xs">Sheet 1/1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- APP 4: TRIP UNIT TEST (TRADING) -->
+        <!-- ========================================== -->
+        <div id="app-trip-site" class="app-container hidden max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="ts_formView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
+                <div class="border-b-[6px] border-green-600 pb-4 mb-6 flex justify-end items-end">
+                    <div class="text-right"><img src="https://drive.google.com/thumbnail?id=1cr3wdYO7hoRBv-7XR-2FSTnUoB16lWKO&sz=w400" class="w-[35mm] h-[35mm] object-contain inline-block"></div>
+                </div>
+
+                <form onsubmit="ts_generateReport(event)">
+                    <!-- 1. DETAILS -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">1. DETAILS</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.1 Manufacturer</label><input type="text" id="ts_detManufacturer" value="Schneider" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.2 Circuit Breaker</label><input type="text" id="ts_detBreaker" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.3 Rate Current</label><input type="text" id="ts_detRateCurrent" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.4 Micrologic Trip Unit</label><input type="text" id="ts_detTripType" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label><input type="text" id="ts_detSerial" class="w-full px-3 py-2 border rounded text-center"></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. INSPECTION -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">2. INSPECTION</h2>
+                        <div class="flex flex-col gap-3">
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.1 Body and Frame</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="ts_insBody" value="Good" checked class="mr-1 text-green-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insBody" value="Fair" class="mr-1 text-green-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insBody" value="Poor" class="mr-1 text-green-600"> Poor</label>
+                                </div>
+                            </div>
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.2 Trip Indicator</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="ts_insIndicator" value="Good" checked class="mr-1 text-green-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insIndicator" value="Fair" class="mr-1 text-green-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insIndicator" value="Poor" class="mr-1 text-green-600"> Poor</label>
+                                </div>
+                            </div>
+                            <div class="border p-3 rounded flex flex-col sm:flex-row sm:items-center bg-gray-50">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 sm:mb-0 w-48 shrink-0">2.3 Test trip mode</label>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center"><input type="radio" name="ts_insTestMode" value="Good" checked class="mr-1 text-green-600"> Good</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insTestMode" value="Fair" class="mr-1 text-green-600"> Fair</label>
+                                    <label class="flex items-center"><input type="radio" name="ts_insTestMode" value="Poor" class="mr-1 text-green-600"> Poor</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. BEFORE TEST SETTING -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">3. BEFORE TEST SETTING</h2>
+                        <div class="space-y-3">
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.1 Long-Time Pick Up Current:</span><span class="font-semibold w-8">Ir</span>= <input type="text" id="ts_setLtMult" class="w-16 px-2 py-1 border rounded text-center" placeholder="x"> x In (Pri = <input type="text" id="ts_setLtPri" class="w-20 px-2 py-1 border rounded text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Long-Time Tripping Time</span><span class="font-semibold w-8">Tr</span>= <input type="text" id="ts_setLtTime" class="w-20 px-2 py-1 border rounded text-center" placeholder="S"> S</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.2 Short-Time Delay Pick Up:</span><span class="font-semibold w-8">Isd</span>= <input type="text" id="ts_setStMult" class="w-16 px-2 py-1 border rounded text-center" placeholder="x"> x Ir (Pri = <input type="text" id="ts_setStPri" class="w-20 px-2 py-1 border rounded text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Short-Time Tripping Time</span><span class="font-semibold w-8">Tsd</span>= <input type="text" id="ts_setStTime" class="w-20 px-2 py-1 border rounded text-center" placeholder="S"> S</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.3 Instanteneous Pick Up Current:</span><span class="font-semibold w-8">Ii</span>= <input type="text" id="ts_setInstMult" class="w-16 px-2 py-1 border rounded text-center" placeholder="x"> x In (Pri = <input type="text" id="ts_setInstPri" class="w-20 px-2 py-1 border rounded text-center" placeholder="A"> A)</div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-3 rounded border gap-3 text-sm">
+                                <div class="flex flex-wrap items-center gap-2"><span class="font-semibold w-[230px]">3.4 Ground Fault Pick Up Current:</span><span class="font-semibold w-8">Ig</span>= <input type="text" id="ts_setGfMult" class="w-16 px-2 py-1 border rounded text-center" placeholder="x"> x In (Pri = <input type="text" id="ts_setGfPri" class="w-20 px-2 py-1 border rounded text-center" placeholder="A"> A)</div>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end"><span class="font-semibold w-[180px]">Ground Fault Tripping Time</span><span class="font-semibold w-8">Tg</span>= <input type="text" id="ts_setGfTime" class="w-20 px-2 py-1 border rounded text-center" placeholder="S"> S</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. FUNCTION TRIP UNIT TEST -->
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">4. FUNCTION TRIP UNIT TEST: FULL-FUNCTION TEST KIT</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm border-collapse border border-gray-300">
+                                <thead class="bg-gray-100 text-center">
+                                    <tr><th class="border py-2 px-2">Function Test</th><th class="border py-2 px-2">Injected Current (A)</th><th class="border py-2 px-2">Trip Time (s)</th><th class="border py-2 px-2">Result</th><th class="border py-2 px-2">Remark</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="border py-2 px-3 font-semibold bg-gray-50">Long-Time</td>
+                                        <td class="border p-1"><input type="text" id="ts_fnLtInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="ts_fnLtTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="ts_fnLtResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="ts_fnLtRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 px-3 font-semibold bg-gray-50">Short-Time</td>
+                                        <td class="border p-1"><input type="text" id="ts_fnStInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="ts_fnStTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="ts_fnStResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="ts_fnStRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 px-3 font-semibold bg-gray-50">Instanteneous</td>
+                                        <td class="border p-1"><input type="text" id="ts_fnInstInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="ts_fnInstTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="ts_fnInstResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option></select></td>
+                                        <td class="border p-1"><input type="text" id="ts_fnInstRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border py-2 px-3 font-semibold bg-gray-50">Ground Fault</td>
+                                        <td class="border p-1"><input type="text" id="ts_fnGfInj" class="w-full text-center p-1 border rounded"></td><td class="border p-1"><input type="text" id="ts_fnGfTime" class="w-full text-center p-1 border rounded"></td>
+                                        <td class="border p-1"><select id="ts_fnGfResult" class="w-full text-center p-1 border rounded"><option value="-">-</option><option value="Pass" selected>Pass</option><option value="Fail">Fail</option><option value="N/A">N/A</option></select></td>
+                                        <td class="border p-1"><input type="text" id="ts_fnGfRemark" class="w-full p-1 border rounded"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 5. TRIPPING CURVE -->
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center bg-gray-100 py-1 mb-2 border-l-4 border-green-500 pl-3">
+                            <h2 class="text-lg font-bold text-gray-800">5. TRIPPING CURVE STANDARD</h2>
+                        </div>
+                        <select id="ts_curveSelect" class="w-full px-3 py-2 border rounded text-sm mb-3 font-medium" onchange="ts_handleCurveSelection()">
+                            <option value="">-- ไม่ใส่รูปภาพ --</option><option value="upload">📁 อัปโหลดรูปจากคอมพิวเตอร์...</option>
+                            <optgroup label="เลือก Curve มาตรฐาน">
+                                <option value="https://drive.google.com/thumbnail?id=12cW-bjarcVavxH940k6kxVkbnjM8ADOq&sz=w800">Curve 800A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=18ecj3BDajjFgT6y7KhoUasLlNBzZcJak&sz=w800">Curve 800A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uo-uDa-w_stxv7WMipW4aQfJRKk4jQCX&sz=w800">Curve 1000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1qBImpPDsJZ3G2jiRp4oJm-tg42p0JKnh&sz=w800">Curve 1000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=19mtwP7eTEqoxn6bw1ne4ov65m8Q37Bjz&sz=w800">Curve 1250A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1tPLatQEowhWCH-R0tXWko3Hu8Yp_r5Dh&sz=w800">Curve 1250A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1PFsT5J9ONXejKNFWJt-XHw-Ka-zdjXLO&sz=w800">Curve 1600A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uqF5gh2QBdOoHezgM4CyIcg-AL4hLyuZ&sz=w800">Curve 1600A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=17fWXAzvd0ATbjP7lbaWDy2NjDw0fLFVS&sz=w800">Curve 2000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1IaZQDp7TACOSYMCgQ36X1L8QytpM9h7I&sz=w800">Curve 2000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1uoVeDma50iVng6TJLedR1nUuBJ9XmhM6&sz=w800">Curve 2500A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1dsxuHM3--txPfAk_uTq2sohFdYL3YFlD&sz=w800">Curve 2500A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=122Dy0Hv2PvJRPRDeSWCqQUjqi6zPy6-X&sz=w800">Curve 3200A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1BOgk_FiIk84K7-Hpw4OPm5TRv4nKICBn&sz=w800">Curve 3200A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1dEsKGYkH4isLMLYtBL8gftkkRxqto7f8&sz=w800">Curve 4000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1hqmVnW8Npd-7Yl6JL0SJuSU3qfNI-a3c&sz=w800">Curve 4000A 6.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1yGIGvPRYwo7q8lFAmkKX02VodqLhXzTe&sz=w800">Curve 5000A 2.0</option>
+                                <option value="https://drive.google.com/thumbnail?id=1ios3a0RTL9N4swekwhzD0_hSpMUf3LW1&sz=w800">Curve 5000A 6.0</option>
+                            </optgroup>
+                        </select>
+                        <div id="ts_uploadArea" class="hidden border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('ts_curveImage').click()">
+                            <p class="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูปกราฟ (ถ้ามี)</p>
+                            <input type="file" id="ts_curveImage" class="hidden" accept="image/*" onchange="ts_handleCurveImage(event)">
+                        </div>
+                        <div id="ts_previewArea" class="mt-2 hidden text-center border p-2 rounded bg-gray-50"><img id="ts_curveImagePreview" class="max-h-32 mx-auto object-contain rounded"></div>
+                    </div>
+
+                    <!-- Signatures -->
+                    <div class="mb-10">
+                        <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
+                            <div><label class="block text-sm font-semibold mb-1">Test By</label><input type="text" id="ts_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ทดสอบ"><input type="date" id="ts_signTestDate" class="w-full px-3 py-2 border rounded text-sm"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Customer Witnessed</label><input type="text" id="ts_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer"><input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                            <div><label class="block text-sm font-semibold mb-1">User Witnessed</label><input type="text" id="ts_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User"><input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-[#35b558] hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 text-lg">สร้างรายงาน (Generate Report)</button>
+                </form>
+            </div>
+
+            <!-- View 2: หน้ารายงาน (Report View / PDF) -->
+            <div id="ts_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="ts_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
+                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
+                </div>
+
+                <div id="ts_reportView" class="bg-white shadow-lg mx-auto w-full max-w-[210mm] h-[285mm] relative overflow-hidden text-sm p-[5mm] flex flex-col report-print-view">
+                    <div class="flex justify-end items-end mb-4 border-b-[6px] border-green-600 pb-2 shrink-0">
+                        <div class="text-right"><img src="https://drive.google.com/thumbnail?id=1cr3wdYO7hoRBv-7XR-2FSTnUoB16lWKO&sz=w400" class="w-[35mm] h-[35mm] object-contain inline-block"></div>
+                    </div>
+
+                    <div class="mb-2 shrink-0">
+                        <h3 class="font-bold mb-1">1. Details</h3>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 ml-4 text-[12px]">
+                            <div class="flex"><span class="w-32">1.1 Manufacturer:</span> <span id="ts_rDetMfg" class="border-b border-dotted border-gray-500 flex-grow px-1 text-center"></span></div><div class="flex"><span class="w-36">1.4 Micrologic Trip Unit:</span> <span id="ts_rDetType" class="border-b border-dotted border-gray-500 flex-grow px-1 text-center"></span></div>
+                            <div class="flex"><span class="w-32">1.2 Circuit Breaker:</span> <span id="ts_rDetCB" class="border-b border-dotted border-gray-500 flex-grow px-1 text-center"></span></div><div class="flex"><span class="w-36">1.5 Serial No.:</span> <span id="ts_rDetSerial" class="border-b border-dotted border-gray-500 flex-grow px-1 text-center"></span></div>
+                            <div class="flex"><span class="w-32">1.3 Rate Current:</span> <span id="ts_rDetRate" class="border-b border-dotted border-gray-500 flex-grow px-1 text-center"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2 shrink-0">
+                        <h3 class="font-bold mb-1">2. Inspection</h3>
+                        <div class="flex flex-col gap-1.5 ml-4 text-[12px]">
+                            <div class="flex items-center" id="ts_rInsBodyContainer"></div>
+                            <div class="flex items-center" id="ts_rInsIndicatorContainer"></div>
+                            <div class="flex items-center" id="ts_rInsModeContainer"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2 shrink-0">
+                        <h3 class="font-bold mb-1">3. Before Test Setting</h3>
+                        <div class="ml-4 space-y-2 text-[12px]">
+                            <div class="flex items-end"><span class="w-[195px] shrink-0 font-medium">3.1 Long-Time Pick Up Current:</span><span class="w-6 shrink-0 font-medium">Ir</span><span class="w-[145px] shrink-0">= <span id="ts_rLtMult" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> x In (Pri = <span id="ts_rLtPri" class="inline-block min-w-[30px] border-b border-dotted border-gray-500 text-center"></span> A)</span><span class="ml-auto w-[150px] shrink-0 font-medium">Long-Time Tripping Time</span><span class="w-6 shrink-0 font-medium">Tr</span><span class="shrink-0">= <span id="ts_rLtTime" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> S</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0 font-medium">3.2 Short-Time Delay Pick Up:</span><span class="w-6 shrink-0 font-medium">Isd</span><span class="w-[145px] shrink-0">= <span id="ts_rStMult" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> x Ir (Pri = <span id="ts_rStPri" class="inline-block min-w-[30px] border-b border-dotted border-gray-500 text-center"></span> A)</span><span class="ml-auto w-[150px] shrink-0 font-medium">Short-Time Tripping Time</span><span class="w-6 shrink-0 font-medium">Tsd</span><span class="shrink-0">= <span id="ts_rStTime" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> S</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0 font-medium">3.3 Instanteneous Pick Up Current:</span><span class="w-6 shrink-0 font-medium">Ii</span><span class="w-[145px] shrink-0">= <span id="ts_rInstMult" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> x In (Pri = <span id="ts_rInstPri" class="inline-block min-w-[30px] border-b border-dotted border-gray-500 text-center"></span> A)</span></div>
+                            <div class="flex items-end"><span class="w-[195px] shrink-0 font-medium">3.4 Ground Fault Pick Up Current:</span><span class="w-6 shrink-0 font-medium">Ig</span><span class="w-[145px] shrink-0">= <span id="ts_rGfMult" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> x In (Pri = <span id="ts_rGfPri" class="inline-block min-w-[30px] border-b border-dotted border-gray-500 text-center"></span> A)</span><span class="ml-auto w-[150px] shrink-0 font-medium">Ground Fault Tripping Time</span><span class="w-6 shrink-0 font-medium">Tg</span><span class="shrink-0">= <span id="ts_rGfTime" class="inline-block min-w-[25px] border-b border-dotted border-gray-500 text-center"></span> S</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2 shrink-0">
+                        <h3 class="font-bold mb-1">4. Function Trip Unit Test: Full-Function Test Kit</h3>
+                        <table class="w-full ts-report-table text-center text-[12px] border-collapse">
+                            <thead class="bg-gray-100 font-bold">
+                                <tr><th class="w-1/5 py-1">Function Test</th><th class="w-1/5 py-1">Injected Current (A)</th><th class="w-1/5 py-1">Trip Time (s)</th><th class="w-1/5 py-1">Result</th><th class="w-1/5 py-1">Remark</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="text-left font-semibold">Long-Time</td><td id="ts_rFnLtInj"></td><td id="ts_rFnLtTime"></td><td id="ts_rFnLtResult"></td><td id="ts_rFnLtRemark" class="text-left text-xs"></td></tr>
+                                <tr><td class="text-left font-semibold">Short-Time</td><td id="ts_rFnStInj"></td><td id="ts_rFnStTime"></td><td id="ts_rFnStResult"></td><td id="ts_rFnStRemark" class="text-left text-xs"></td></tr>
+                                <tr><td class="text-left font-semibold">Instanteneous</td><td id="ts_rFnInstInj"></td><td id="ts_rFnInstTime"></td><td id="ts_rFnInstResult"></td><td id="ts_rFnInstRemark" class="text-left text-xs"></td></tr>
+                                <tr><td class="text-left font-semibold">Ground Fault</td><td id="ts_rFnGfInj"></td><td id="ts_rFnGfTime"></td><td id="ts_rFnGfResult"></td><td id="ts_rFnGfRemark" class="text-left text-xs"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-col flex-grow w-full min-h-[60mm] mb-[2mm]">
+                        <h3 class="font-bold mb-1 shrink-0">5. Tripping Curve Standard</h3>
+                        <div class="flex w-full flex-grow items-center justify-center">
+                            <img id="ts_rCurveImage" class="w-[56mm] h-[56mm] object-contain hidden border border-gray-200 p-1" src="">
+                            <span id="ts_rCurveEmpty" class="text-gray-400 italic text-[12px] my-2">ไม่มีรูปภาพประกอบ</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto w-full border-t-[6px] border-green-600 pt-3 shrink-0">
+                        <div class="grid grid-cols-3 gap-4 text-center text-[12px]">
+                            <div><p class="font-bold mb-4">Test By</p><p id="ts_rSignTestName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignTestDate" class="inline-block min-w-[80px]">....................</span></p></div>
+                            <div><p class="font-bold mb-4">Customer Witnessed</p><p id="ts_rSignCustName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignCustDate" class="inline-block min-w-[80px]">....................</span></p></div>
+                            <div><p class="font-bold mb-4">User Witnessed</p><p id="ts_rSignUserName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignUserDate" class="inline-block min-w-[80px]">....................</span></p></div>
+                        </div>
+                    </div>
+                </div> 
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script ควบคุมรวมทั้งหมด -->
+    <script>
+        // ==========================================
+        // 1. SYSTEM NAVIGATION & GLOBAL HELPERS
+        // ==========================================
+        function switchApp(appId) {
+            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
+            document.getElementById('app-' + appId).classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            // Menu state updating
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400', 'text-red-400', 'text-orange-400', 'text-green-400'));
+            document.querySelectorAll('.nav-btn-mobile').forEach(btn => btn.classList.remove('text-blue-400', 'text-red-400', 'text-orange-400', 'text-green-400'));
+            
+            const activeBtnClass = {
+                'missing-item': 'text-blue-400', 'claim-item': 'text-red-400', 
+                'trip-fac': 'text-orange-400', 'trip-site': 'text-green-400'
+            }[appId];
+
+            if(activeBtnClass) {
+                document.querySelector(`.nav-btn[data-target="${appId}"]`)?.classList.add(activeBtnClass);
+                document.querySelector(`.nav-btn-mobile[data-target="${appId}"]`)?.classList.add(activeBtnClass);
+            }
+
+            // Title updating
+            const titles = {
+                'missing-item': 'Missing Item Report', 'claim-item': 'Equipment Claim Report',
+                'trip-fac': 'Routine Test Report', 'trip-site': 'Trip Unit Test Report'
+            };
+            document.title = titles[appId] || 'Quality Control Forms';
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenuPanel').classList.toggle('hidden');
+        }
+
+        function formatDateThai(dateString) {
+            if(!dateString) return '-';
+            const d = new Date(dateString);
+            const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+        }
+
+        function formatDateGlobal(dateString) {
+            if(!dateString) return '';
+            const d = new Date(dateString);
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+
+        // Shared Image Compression Helper
+        function sharedHandleImageSelection(event, targetArray, maxLimit, warningId, loadingId, renderCallback) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            let filesToProcess = Array.from(files);
+            
+            if (targetArray.length + filesToProcess.length > maxLimit) {
+                document.getElementById(warningId).classList.remove('hidden');
+                filesToProcess = filesToProcess.slice(0, maxLimit - targetArray.length);
+            } else {
+                document.getElementById(warningId).classList.add('hidden');
+            }
+            
+            const loadingOverlay = document.getElementById(loadingId);
+            loadingOverlay.classList.remove('hidden');
+            let processedCount = 0; 
+
+            for (let i = 0; i < filesToProcess.length; i++) {
+                const file = filesToProcess[i];
+                if (!file.type.match('image.*')) { processedCount++; continue; }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+                        let width = img.width; let height = img.height;
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        targetArray.push({ id: Date.now() + i, data: canvas.toDataURL('image/jpeg', 0.7) });
+                        processedCount++;
+                        if(processedCount === filesToProcess.length) {
+                             renderCallback();
+                             loadingOverlay.classList.add('hidden');
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        }
+
+        // INIT
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // ใช้ optional chaining หรือตรวจสอบ null ก่อนตั้งค่า value ป้องกันบัค
+            const dateFields = ['inspectionDate', 'claimInspectionDate', 'tf_signTestDate', 'ts_signTestDate'];
+            dateFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = today;
+                }
+            });
+            
+            addMissingItem(); // Add 1 row default
+        });
+
+
+        // ==========================================
+        // 2. MISSING ITEM LOGIC
+        // ==========================================
+        let missingItemCount = 0;
+        let missingUploadedImages = [];
+
+        function addMissingItem() {
+            const currentRows = document.querySelectorAll('#missingItemsContainer .item-row').length;
+            if (currentRows >= 10) { document.getElementById('itemLimitWarning').classList.remove('hidden'); return; }
+            document.getElementById('itemLimitWarning').classList.add('hidden');
+            missingItemCount++;
+            
+            const container = document.getElementById('missingItemsContainer');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'item-row bg-gray-50 p-4 rounded-lg border border-gray-200 relative transition-all';
+            rowDiv.id = `mi-row-${missingItemCount}`;
+            rowDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-2 sm:hidden">
+                    <span class="font-semibold text-sm text-gray-500">รายการที่ ${missingItemCount}</span>
+                    ${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="text-red-500 hover:text-red-700 text-sm">ลบ</button>` : ''}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                    <div class="sm:col-span-5"><label class="block text-xs text-gray-500 sm:hidden mb-1">ชื่ออุปกรณ์</label><input type="text" class="item-name w-full px-3 py-2 border rounded text-sm" placeholder="ระบุชื่ออุปกรณ์ที่ขาด" required></div>
+                    <div class="sm:col-span-2"><label class="block text-xs text-gray-500 sm:hidden mb-1">จำนวน</label><input type="number" min="1" class="item-qty w-full px-3 py-2 border rounded text-sm" value="1" required></div>
+                    <div class="sm:col-span-4"><label class="block text-xs text-gray-500 sm:hidden mb-1">หมายเหตุ</label><input type="text" class="item-remark w-full px-3 py-2 border rounded text-sm" placeholder="หมายเหตุ (ถ้ามี)"></div>
+                    <div class="sm:col-span-1 hidden sm:flex justify-end mt-1">${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบรายการ">❌</button>` : ''}</div>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        function removeMissingItem(id) {
+            const row = document.getElementById(`mi-row-${id}`);
+            if (row) row.remove();
+            if (document.querySelectorAll('#missingItemsContainer .item-row').length < 10) { document.getElementById('itemLimitWarning').classList.add('hidden'); }
+        }
+
+        function renderMissingImagePreviews() {
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '';
+            missingUploadedImages.forEach(img => {
+                const div = document.createElement('div');
+                div.className = 'relative group aspect-square rounded-lg border overflow-hidden';
+                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeMissingImage(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 shadow-sm">❌</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function removeMissingImage(id) {
+            missingUploadedImages = missingUploadedImages.filter(img => img.id !== id);
+            renderMissingImagePreviews();
+            if (missingUploadedImages.length < 3) document.getElementById('imgLimitWarning').classList.add('hidden');
+        }
+
+        function generateMissingReport(event) {
+            event.preventDefault(); 
+            const projectName = document.getElementById('projectName').value;
+            const cabinetId = document.getElementById('cabinetId').value;
+            
+            document.getElementById('repProjectName').textContent = projectName;
+            document.getElementById('repCabinetId').textContent = cabinetId;
+            document.getElementById('repInspectionDate').textContent = formatDateThai(document.getElementById('inspectionDate').value);
+            document.getElementById('repInspectorName').textContent = document.getElementById('inspectorName').value;
+            document.getElementById('repSignInspectorName').textContent = document.getElementById('inspectorName').value;
+
+            const tbody = document.getElementById('repMissingItemsBody'); tbody.innerHTML = ''; 
+            let hasItems = false;
+            document.querySelectorAll('#missingItemsContainer .item-row').forEach((row, index) => {
+                const name = row.querySelector('.item-name').value;
+                if (name.trim() !== '') {
+                    hasItems = true;
+                    tbody.innerHTML += `<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}"><td class="border border-gray-800 px-2 py-1.5 text-center">${index + 1}</td><td class="border border-gray-800 px-2 py-1.5">${name}</td><td class="border border-gray-800 px-2 py-1.5 text-center">${row.querySelector('.item-qty').value}</td><td class="border border-gray-800 px-2 py-1.5">${row.querySelector('.item-remark').value || '-'}</td></tr>`;
+                }
+            });
+            if (!hasItems) tbody.innerHTML = `<tr><td colspan="4" class="border border-gray-800 px-2 py-3 text-center text-gray-500">ไม่มีรายการระบุ</td></tr>`;
+
+            const imgSection = document.getElementById('repImagesSection');
+            const imgGrid = document.getElementById('repImagesGrid'); imgGrid.innerHTML = '';
+            if (missingUploadedImages.length > 0) {
+                imgSection.style.display = 'block';
+                missingUploadedImages.forEach((img, index) => {
+                    imgGrid.innerHTML += `<div class="border print-border p-2 rounded page-break-avoid bg-white"><img src="${img.data}" class="w-full h-36 object-cover rounded mb-1"><p class="text-xs text-center text-gray-500">ภาพที่ ${index + 1}</p></div>`;
+                });
+            } else { imgSection.style.display = 'none'; }
+
+            document.getElementById('missingFormView').classList.add('hidden');
+            document.getElementById('missingReportContainer').classList.remove('hidden');
+            window.scrollTo(0, 0);
+            
+            // ตั้งชื่อไฟล์ PDF: Missing Item_ชื่อโปรเจค_ชื่อตู้
+            document.title = `Missing Item_${projectName}_${cabinetId}`;
+        }
+
+        function editMissingForm() {
+            document.getElementById('missingReportContainer').classList.add('hidden');
+            document.getElementById('missingFormView').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // ==========================================
+        // 3. EQUIPMENT CLAIM LOGIC
+        // ==========================================
+        let claimUploadedImages = [];
+
+        function renderClaimImagePreviews() {
+            const container = document.getElementById('claimImagePreviewContainer');
+            container.innerHTML = '';
+            claimUploadedImages.forEach(img => {
+                const div = document.createElement('div');
+                div.className = 'relative group aspect-square rounded-lg border overflow-hidden shadow-sm';
+                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeClaimImage(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 shadow-sm">❌</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function removeClaimImage(id) {
+            claimUploadedImages = claimUploadedImages.filter(img => img.id !== id);
+            renderClaimImagePreviews();
+            if (claimUploadedImages.length < 3) document.getElementById('claimImgLimitWarning').classList.add('hidden');
+        }
+
+        function generateClaimReport(event) {
+            event.preventDefault(); 
+            const eqName = document.getElementById('claimEqName').value;
+            
+            document.getElementById('rClaimDocNo').textContent = document.getElementById('claimDocNo').value || '-';
+            document.getElementById('rClaimInspDate').textContent = formatDateThai(document.getElementById('claimInspectionDate').value);
+            document.getElementById('rClaimSignInspectorName').textContent = document.getElementById('claimInspectorName').value;
+            
+            document.getElementById('rClaimEqName').textContent = eqName;
+            document.getElementById('rClaimEqBrand').textContent = document.getElementById('claimEqBrand').value;
+            document.getElementById('rClaimEqQty').textContent = document.getElementById('claimEqQty').value + ' EA';
+            document.getElementById('rClaimEqSerial').textContent = document.getElementById('claimEqSerial').value || '-';
+            document.getElementById('rClaimEqDesc').textContent = document.getElementById('claimEqDesc').value || '-';
+            document.getElementById('rClaimIssueDesc').textContent = document.getElementById('claimIssueDesc').value;
+
+            const imgSection = document.getElementById('repClaimImagesSection');
+            const imgGrid = document.getElementById('repClaimImagesGrid'); imgGrid.innerHTML = '';
+            if (claimUploadedImages.length > 0) {
+                imgSection.style.display = 'block';
+                claimUploadedImages.forEach((img, index) => {
+                    imgGrid.innerHTML += `<div class="border border-gray-300 p-2 rounded page-break-avoid bg-white"><img src="${img.data}" class="w-full h-40 object-cover rounded mb-1 border border-gray-100"><p class="text-xs text-center text-gray-500 mt-2">ภาพประกอบที่ ${index + 1}</p></div>`;
+                });
+            } else { imgSection.style.display = 'none'; }
+
+            document.getElementById('claimFormView').classList.add('hidden');
+            document.getElementById('claimReportContainer').classList.remove('hidden');
+            window.scrollTo(0, 0);
+            
+            // ตั้งชื่อไฟล์ PDF: Equipment Claim_ชื่ออุปกรณ์_ชื่อรุ่น
+            const eqBrand = document.getElementById('claimEqBrand').value;
+            document.title = `Equipment Claim_${eqName}_${eqBrand}`;
+        }
+
+        function editClaimForm() {
+            document.getElementById('claimReportContainer').classList.add('hidden');
+            document.getElementById('claimFormView').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // ==========================================
+        // 4. TRIP UNIT (FACTORY) LOGIC
+        // ==========================================
+        let tf_curveImageData = null;
+
+        function tf_handleCurveSelection() {
+            const select = document.getElementById('tf_curveSelect');
+            const uploadArea = document.getElementById('tf_uploadArea');
+            const previewArea = document.getElementById('tf_previewArea');
+            if (select.value === 'upload') {
+                uploadArea.classList.remove('hidden'); previewArea.classList.add('hidden'); tf_curveImageData = null;
+            } else if (select.value !== '') {
+                uploadArea.classList.add('hidden'); previewArea.classList.remove('hidden');
+                document.getElementById('tf_curveImagePreview').src = select.value; tf_curveImageData = select.value;
+            } else {
+                uploadArea.classList.add('hidden'); previewArea.classList.add('hidden'); tf_curveImageData = null;
+            }
+        }
+
+        function tf_handleCurveImage(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                tf_curveImageData = e.target.result;
+                document.getElementById('tf_curveImagePreview').src = tf_curveImageData;
+                document.getElementById('tf_previewArea').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ปรับรูปแบบ Checkbox ของ Factory ให้เป็นกล่องสี่เหลี่ยมเหมือนฉบับ Trading
+        function tf_renderInspection(name, value) {
+            const boxes = ['Good', 'Fair', 'Poor'];
+            return boxes.map((box, idx) => {
+                const checked = box === value ? '✓' : '';
+                return `<span class="${idx<2?'mr-6':''} flex items-center"><span class="inline-flex items-center justify-center w-[14px] h-[14px] border border-gray-800 mr-1.5 font-bold text-[12px] leading-none">${checked}</span>${box}</span>`;
+            }).join('');
+        }
+
+        function tf_generateReport(event) {
+            event.preventDefault();
+            document.getElementById('tf_rProject').textContent = document.getElementById('tf_infoProject').value || '-';
+            document.getElementById('tf_rJobNo').textContent = document.getElementById('tf_infoJob').value || '-';
+            document.getElementById('tf_rCustomer').textContent = document.getElementById('tf_infoCustomer').value || '-';
+            document.getElementById('tf_rCubicle').textContent = document.getElementById('tf_infoCubicle').value || '-';
+
+            document.getElementById('tf_rDetMfg').textContent = document.getElementById('tf_detManufacturer').value || '-';
+            document.getElementById('tf_rDetType').textContent = document.getElementById('tf_detTripType').value || '-';
+            document.getElementById('tf_rDetCB').textContent = document.getElementById('tf_detBreaker').value || '-';
+            document.getElementById('tf_rDetSerial').textContent = document.getElementById('tf_detSerial').value || '-';
+            document.getElementById('tf_rDetRate').textContent = document.getElementById('tf_detRateCurrent').value || '-';
+            document.getElementById('tf_rDetFeeder').textContent = document.getElementById('tf_detFeeder').value || '-';
+
+            document.getElementById('tf_rInsBodyContainer').innerHTML = tf_renderInspection('body', document.querySelector('input[name="tf_insBody"]:checked').value);
+            document.getElementById('tf_rInsIndicatorContainer').innerHTML = tf_renderInspection('ind', document.querySelector('input[name="tf_insIndicator"]:checked').value);
+            document.getElementById('tf_rInsModeContainer').innerHTML = tf_renderInspection('mode', document.querySelector('input[name="tf_insTestMode"]:checked').value);
+
+            const mapValues = [
+                {r: 'tf_rLtMult', i: 'tf_setLtMult'}, {r: 'tf_rLtPri', i: 'tf_setLtPri'}, {r: 'tf_rLtTime', i: 'tf_setLtTime'},
+                {r: 'tf_rStMult', i: 'tf_setStMult'}, {r: 'tf_rStPri', i: 'tf_setStPri'}, {r: 'tf_rStTime', i: 'tf_setStTime'},
+                {r: 'tf_rInstMult', i: 'tf_setInstMult'}, {r: 'tf_rInstPri', i: 'tf_setInstPri'},
+                {r: 'tf_rGfMult', i: 'tf_setGfMult'}, {r: 'tf_rGfPri', i: 'tf_setGfPri'}, {r: 'tf_rGfTime', i: 'tf_setGfTime'},
+                {r: 'tf_rFnLtInj', i: 'tf_fnLtInj'}, {r: 'tf_rFnLtTime', i: 'tf_fnLtTime'}, {r: 'tf_rFnLtResult', i: 'tf_fnLtResult'}, {r: 'tf_rFnLtRemark', i: 'tf_fnLtRemark'},
+                {r: 'tf_rFnStInj', i: 'tf_fnStInj'}, {r: 'tf_rFnStTime', i: 'tf_fnStTime'}, {r: 'tf_rFnStResult', i: 'tf_fnStResult'}, {r: 'tf_rFnStRemark', i: 'tf_fnStRemark'},
+                {r: 'tf_rFnInstInj', i: 'tf_fnInstInj'}, {r: 'tf_rFnInstTime', i: 'tf_fnInstTime'}, {r: 'tf_rFnInstResult', i: 'tf_fnInstResult'}, {r: 'tf_rFnInstRemark', i: 'tf_fnInstRemark'},
+                {r: 'tf_rFnGfInj', i: 'tf_fnGfInj'}, {r: 'tf_rFnGfTime', i: 'tf_fnGfTime'}, {r: 'tf_rFnGfResult', i: 'tf_fnGfResult'}, {r: 'tf_rFnGfRemark', i: 'tf_fnGfRemark'}
+            ];
+            mapValues.forEach(pair => {
+                const el = document.getElementById(pair.r);
+                const input = document.getElementById(pair.i);
+                if(el && input) el.textContent = input.value || '-';
+            });
+
+            const rCurveImg = document.getElementById('tf_rCurveImage'); const rCurveEmpty = document.getElementById('tf_rCurveEmpty');
+            if (tf_curveImageData) { rCurveImg.src = tf_curveImageData; rCurveImg.classList.remove('hidden'); rCurveEmpty.classList.add('hidden'); } 
+            else { rCurveImg.classList.add('hidden'); rCurveEmpty.classList.remove('hidden'); }
+
+            const tn = document.getElementById('tf_signTestName').value; const cn = document.getElementById('tf_signCustName').value; const un = document.getElementById('tf_signUserName').value;
+            document.getElementById('tf_rSignTestLine').textContent = tn ? `(${tn})` : '(..........................................)';
+            document.getElementById('tf_rSignCustLine').textContent = cn ? `(${cn})` : '(..........................................)';
+            document.getElementById('tf_rSignUserLine').textContent = un ? `(${un})` : '(..........................................)';
+
+            document.getElementById('tf_rSignTestDate').textContent = formatDateGlobal(document.getElementById('tf_signTestDate').value);
+            document.getElementById('tf_rSignCustDate').textContent = formatDateGlobal(document.getElementById('tf_signCustDate').value);
+            document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(document.getElementById('tf_signUserDate').value);
+
+            document.getElementById('tf_formView').classList.add('hidden'); document.getElementById('tf_reportContainer').classList.remove('hidden');
+            window.scrollTo(0, 0); 
+            
+            // ตั้งชื่อไฟล์ PDF: Trip Unit Test Report_ชื่อโปรเจค_รุ่นCB_ชื่อfeeder
+            const tf_project = document.getElementById('tf_infoProject').value || 'Project';
+            const tf_cb = document.getElementById('tf_detBreaker').value || 'CB';
+            const tf_feeder = document.getElementById('tf_detFeeder').value || 'Feeder';
+            document.title = `Trip Unit Test Report_${tf_project}_${tf_cb}_${tf_feeder}`;
+        }
+        function tf_editForm() { document.getElementById('tf_reportContainer').classList.add('hidden'); document.getElementById('tf_formView').classList.remove('hidden'); window.scrollTo(0,0); }
+
+
+        // ==========================================
+        // 5. TRIP UNIT (TRADING) LOGIC
+        // ==========================================
+        let ts_curveImageData = null;
+
+        function ts_handleCurveSelection() {
+            const select = document.getElementById('ts_curveSelect'); const uploadArea = document.getElementById('ts_uploadArea'); const previewArea = document.getElementById('ts_previewArea');
+            if (select.value === 'upload') { uploadArea.classList.remove('hidden'); previewArea.classList.add('hidden'); ts_curveImageData = null; } 
+            else if (select.value !== '') { uploadArea.classList.add('hidden'); previewArea.classList.remove('hidden'); document.getElementById('ts_curveImagePreview').src = select.value; ts_curveImageData = select.value; } 
+            else { uploadArea.classList.add('hidden'); previewArea.classList.add('hidden'); ts_curveImageData = null; }
+        }
+
+        function ts_handleCurveImage(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => { ts_curveImageData = e.target.result; document.getElementById('ts_curveImagePreview').src = ts_curveImageData; document.getElementById('ts_previewArea').classList.remove('hidden'); };
+            reader.readAsDataURL(file);
+        }
+
+        function ts_renderInspection(name, value) {
+            const boxes = ['Good', 'Fair', 'Poor'];
+            return boxes.map((box, idx) => {
+                const checked = box === value ? '✓' : '';
+                return `<span class="${idx<2?'mr-6':''} flex items-center"><span class="inline-flex items-center justify-center w-[14px] h-[14px] border border-gray-800 mr-1.5 font-bold text-[12px] leading-none">${checked}</span>${box}</span>`;
+            }).join('');
+        }
+
+        function ts_generateReport(event) {
+            event.preventDefault();
+            document.getElementById('ts_rDetMfg').textContent = document.getElementById('ts_detManufacturer').value;
+            document.getElementById('ts_rDetCB').textContent = document.getElementById('ts_detBreaker').value;
+            document.getElementById('ts_rDetRate').textContent = document.getElementById('ts_detRateCurrent').value;
+            document.getElementById('ts_rDetType').textContent = document.getElementById('ts_detTripType').value;
+            document.getElementById('ts_rDetSerial').textContent = document.getElementById('ts_detSerial').value;
+
+            document.getElementById('ts_rInsBodyContainer').innerHTML = `<span class="inline-block w-48 font-medium">2.1 Body and Frame</span> ${ts_renderInspection('body', document.querySelector('input[name="ts_insBody"]:checked').value)}`;
+            document.getElementById('ts_rInsIndicatorContainer').innerHTML = `<span class="inline-block w-48 font-medium">2.2 Trip Indicator</span> ${ts_renderInspection('ind', document.querySelector('input[name="ts_insIndicator"]:checked').value)}`;
+            document.getElementById('ts_rInsModeContainer').innerHTML = `<span class="inline-block w-48 font-medium">2.3 Test trip mode</span> ${ts_renderInspection('mode', document.querySelector('input[name="ts_insTestMode"]:checked').value)}`;
+
+            const tsMapValues = [
+                {r: 'ts_rLtMult', i: 'ts_setLtMult'}, {r: 'ts_rLtPri', i: 'ts_setLtPri'}, {r: 'ts_rLtTime', i: 'ts_setLtTime'},
+                {r: 'ts_rStMult', i: 'ts_setStMult'}, {r: 'ts_rStPri', i: 'ts_setStPri'}, {r: 'ts_rStTime', i: 'ts_setStTime'},
+                {r: 'ts_rInstMult', i: 'ts_setInstMult'}, {r: 'ts_rInstPri', i: 'ts_setInstPri'},
+                {r: 'ts_rGfMult', i: 'ts_setGfMult'}, {r: 'ts_rGfPri', i: 'ts_setGfPri'}, {r: 'ts_rGfTime', i: 'ts_setGfTime'},
+                {r: 'ts_rFnLtInj', i: 'ts_fnLtInj'}, {r: 'ts_rFnLtTime', i: 'ts_fnLtTime'}, {r: 'ts_rFnLtResult', i: 'ts_fnLtResult'}, {r: 'ts_rFnLtRemark', i: 'ts_fnLtRemark'},
+                {r: 'ts_rFnStInj', i: 'ts_fnStInj'}, {r: 'ts_rFnStTime', i: 'ts_fnStTime'}, {r: 'ts_rFnStResult', i: 'ts_fnStResult'}, {r: 'ts_rFnStRemark', i: 'ts_fnStRemark'},
+                {r: 'ts_rFnInstInj', i: 'ts_fnInstInj'}, {r: 'ts_rFnInstTime', i: 'ts_fnInstTime'}, {r: 'ts_rFnInstResult', i: 'ts_fnInstResult'}, {r: 'ts_rFnInstRemark', i: 'ts_fnInstRemark'},
+                {r: 'ts_rFnGfInj', i: 'ts_fnGfInj'}, {r: 'ts_rFnGfTime', i: 'ts_fnGfTime'}, {r: 'ts_rFnGfResult', i: 'ts_fnGfResult'}, {r: 'ts_rFnGfRemark', i: 'ts_fnGfRemark'}
+            ];
+            tsMapValues.forEach(pair => {
+                const el = document.getElementById(pair.r);
+                const input = document.getElementById(pair.i);
+                if(el && input) el.textContent = input.value || '-';
+            });
+
+            const rCurveImg = document.getElementById('ts_rCurveImage'); const rCurveEmpty = document.getElementById('ts_rCurveEmpty');
+            if (ts_curveImageData) { rCurveImg.src = ts_curveImageData; rCurveImg.classList.remove('hidden'); rCurveEmpty.classList.add('hidden'); } 
+            else { rCurveImg.classList.add('hidden'); rCurveEmpty.classList.remove('hidden'); }
+
+            const tn = document.getElementById('ts_signTestName').value; const cn = document.getElementById('ts_signCustName').value; const un = document.getElementById('ts_signUserName').value;
+            document.getElementById('ts_rSignTestName').textContent = tn ? `(${tn})` : '(.........................................)';
+            document.getElementById('ts_rSignCustName').textContent = cn ? `(${cn})` : '(.........................................)';
+            document.getElementById('ts_rSignUserName').textContent = un ? `(${un})` : '(.........................................)';
+
+            document.getElementById('ts_rSignTestDate').textContent = formatDateGlobal(document.getElementById('ts_signTestDate').value) || '....................';
+            document.getElementById('ts_rSignCustDate').textContent = formatDateGlobal(document.getElementById('ts_signCustDate').value) || '-';
+            document.getElementById('ts_rSignUserDate').textContent = formatDateGlobal(document.getElementById('ts_signUserDate').value) || '-';
+
+            document.getElementById('ts_formView').classList.add('hidden'); document.getElementById('ts_reportContainer').classList.remove('hidden');
+            window.scrollTo(0, 0); 
+            
+            // ตั้งชื่อไฟล์ PDF: Trip Unit Test_รุ่นCB_SerialNo
+            const ts_cb = document.getElementById('ts_detBreaker').value || 'CB';
+            const ts_serial = document.getElementById('ts_detSerial').value || 'SN';
+            document.title = `Trip Unit Test_${ts_cb}_${ts_serial}`;
+        }
+        function ts_editForm() { document.getElementById('ts_reportContainer').classList.add('hidden'); document.getElementById('ts_formView').classList.remove('hidden'); window.scrollTo(0,0); }
+
+    </script>
+</body>
+</html>
