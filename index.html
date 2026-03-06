@@ -1237,9 +1237,10 @@
             document.getElementById('claimReportContainer').classList.remove('hidden');
             window.scrollTo(0, 0);
             
-            // ตั้งชื่อไฟล์ PDF: Equipment Claim_ชื่ออุปกรณ์_ชื่อรุ่น
-            const eqBrand = document.getElementById('claimEqBrand').value;
-            document.title = `Equipment Claim_${eqName}_${eqBrand}`;
+            // ตั้งชื่อไฟล์ PDF: Equipment Claim_ยี่ห้อ_เลขที่เอกสาร
+            const eqBrand = document.getElementById('claimEqBrand').value || 'Brand';
+            const docNo = document.getElementById('claimDocNo').value || 'DocNo';
+            document.title = `Equipment Claim_${eqBrand}_${docNo}`;
         }
 
         function editClaimForm() {
@@ -1427,3 +1428,4 @@
     </script>
 </body>
 </html>
+
