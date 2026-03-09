@@ -220,6 +220,15 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ตรวจสอบ <span class="text-red-500">*</span></label>
                                 <input type="text" id="inspectorName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
                             </div>
+                            <div class="sm:col-span-2 mt-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ลายเซ็นผู้ตรวจสอบ</label>
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg inline-block bg-white relative">
+                                    <canvas id="sigCanvas_missing" width="300" height="120" class="touch-none cursor-crosshair"></canvas>
+                                </div>
+                                <div class="mt-1">
+                                    <button type="button" onclick="clearSignature('sigCanvas_missing')" class="text-sm text-red-500 hover:text-red-700 underline">ลบลายเซ็น</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -311,7 +320,12 @@
                             <div id="repImagesGrid" class="grid grid-cols-3 gap-4 mt-4"></div>
                         </div>
                         <div class="mt-auto mb-4 grid grid-cols-2 gap-8 text-center page-break-avoid">
-                            <div><div class="border-b border-gray-800 w-3/4 mx-auto mb-2"></div><p class="text-sm">(<span id="repSignInspectorName" class="inline-block min-w-[100px]"></span>)</p><p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p></div>
+                            <div>
+                                <img id="repSignImage_missing" src="" class="mx-auto h-12 object-contain hidden mb-1 z-10 relative">
+                                <div class="border-b border-gray-800 w-3/4 mx-auto mb-2 relative -mt-3"></div>
+                                <p class="text-sm">(<span id="repSignInspectorName" class="inline-block min-w-[100px]"></span>)</p>
+                                <p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p>
+                            </div>
                             <div><div class="border-b border-gray-800 w-3/4 mx-auto mb-2"></div><p class="text-sm">(<span class="inline-block min-w-[100px] text-transparent">_</span>)</p><p class="text-sm font-bold mt-1">ผู้รับทราบ</p></div>
                         </div>
                     </div>
@@ -1074,6 +1088,7 @@
         // INIT
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
+            initSignaturePad('sigCanvas_missing'); // เปิดระบบเซ็นชื่อ
             
             // ใช้ optional chaining หรือตรวจสอบ null ก่อนตั้งค่า value ป้องกันบัค
             const dateFields = ['inspectionDate', 'claimInspectionDate', 'tf_signTestDate', 'ts_signTestDate'];
@@ -1175,6 +1190,11 @@
 
             document.getElementById('missingFormView').classList.add('hidden');
             document.getElementById('missingReportContainer').classList.remove('hidden');
+            // ดึงภาพลายเซ็นไปแสดงใน PDF
+            const missingCanvas = document.getElementById('sigCanvas_missing');
+            const missingSignImg = document.getElementById('repSignImage_missing');
+            missingSignImg.src = missingCanvas.toDataURL();
+            missingSignImg.classList.remove('hidden');
             window.scrollTo(0, 0);
             
             // ตั้งชื่อไฟล์ PDF: Missing Item_ชื่อโปรเจค_ชื่อตู้
@@ -1424,8 +1444,62 @@
             document.title = `Trip Unit Test_${ts_cb}_${ts_serial}`;
         }
         function ts_editForm() { document.getElementById('ts_reportContainer').classList.add('hidden'); document.getElementById('ts_formView').classList.remove('hidden'); window.scrollTo(0,0); }
+// ==========================================
+        // 6. SIGNATURE PAD LOGIC (ระบบเซ็นชื่อรองรับ iPad)
+        // ==========================================
+        function initSignaturePad(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
 
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            function startPosition(e) {
+                e.preventDefault(); // ป้องกันหน้าจอเลื่อนตอนเซ็น
+                isDrawing = true;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            }
+
+            function endPosition() { isDrawing = false; }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            canvas.addEventListener('mousedown', startPosition);
+            canvas.addEventListener('mouseup', endPosition);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseleave', endPosition);
+
+            // สำหรับ iPad / มือถือ
+            canvas.addEventListener('touchstart', startPosition, {passive: false});
+            canvas.addEventListener('touchend', endPosition);
+            canvas.addEventListener('touchmove', draw, {passive: false});
+        }
+
+        function clearSignature(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     </script>
 </body>
 </html>
+
 
