@@ -902,10 +902,45 @@
                     <!-- Signatures -->
                     <div class="mb-10">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
-                            <div><label class="block text-sm font-semibold mb-1">Test By</label><input type="text" id="ts_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ทดสอบ"><input type="date" id="ts_signTestDate" class="w-full px-3 py-2 border rounded text-sm"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Customer Witnessed</label><input type="text" id="ts_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer"><input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
-                            <div><label class="block text-sm font-semibold mb-1">User Witnessed</label><input type="text" id="ts_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User"><input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                       <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
+                            <!-- ช่อง 1: Test By -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Test By</label>
+                                <input type="text" id="ts_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ทดสอบ">
+                                <input type="date" id="ts_signTestDate" class="w-full px-3 py-2 border rounded text-sm mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('ts_signTest')" class="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="ts_signTest_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
+
+                            <!-- ช่อง 2: Customer Witnessed -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Customer Witnessed</label>
+                                <input type="text" id="ts_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer">
+                                <input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('ts_signCust')" class="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="ts_signCust_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
+
+                            <!-- ช่อง 3: User Witnessed -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">User Witnessed</label>
+                                <input type="text" id="ts_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User">
+                                <input type="text" placeholder="-" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="ts_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('ts_signUser')" class="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="ts_signUser_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -978,9 +1013,36 @@
 
                     <div class="mt-auto w-full border-t-[6px] border-green-600 pt-3 shrink-0">
                         <div class="grid grid-cols-3 gap-4 text-center text-[12px]">
-                            <div><p class="font-bold mb-4">Test By</p><p id="ts_rSignTestName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignTestDate" class="inline-block min-w-[80px]">....................</span></p></div>
-                            <div><p class="font-bold mb-4">Customer Witnessed</p><p id="ts_rSignCustName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignCustDate" class="inline-block min-w-[80px]">....................</span></p></div>
-                            <div><p class="font-bold mb-4">User Witnessed</p><p id="ts_rSignUserName" class="min-h-[20px]">(.........................................)</p><p>Date: <span id="ts_rSignUserDate" class="inline-block min-w-[80px]">....................</span></p></div>
+                            <!-- Test By -->
+                            <div class="flex flex-col items-center">
+                                <p class="font-bold mb-1">Test By</p>
+                                <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
+                                    <!-- ตัวรองรับรูปภาพลายเซ็น -->
+                                    <img id="ts_rSignTestImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="ts_rSignTestName" class="min-h-[20px]">(.........................................)</p>
+                                <p>Date: <span id="ts_rSignTestDate" class="inline-block min-w-[80px]">....................</span></p>
+                            </div>
+                            
+                            <!-- Customer -->
+                            <div class="flex flex-col items-center">
+                                <p class="font-bold mb-1">Customer Witnessed</p>
+                                <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
+                                    <img id="ts_rSignCustImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="ts_rSignCustName" class="min-h-[20px]">(.........................................)</p>
+                                <p>Date: <span id="ts_rSignCustDate" class="inline-block min-w-[80px]">....................</span></p>
+                            </div>
+                            
+                            <!-- User -->
+                            <div class="flex flex-col items-center">
+                                <p class="font-bold mb-1">User Witnessed</p>
+                                <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
+                                    <img id="ts_rSignUserImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="ts_rSignUserName" class="min-h-[20px]">(.........................................)</p>
+                                <p>Date: <span id="ts_rSignUserDate" class="inline-block min-w-[80px]">....................</span></p>
+                            </div>
                         </div>
                     </div>
                 </div> 
@@ -1445,6 +1507,16 @@
             document.getElementById('ts_rSignCustDate').textContent = formatDateGlobal(document.getElementById('ts_signCustDate').value) || '-';
             document.getElementById('ts_rSignUserDate').textContent = formatDateGlobal(document.getElementById('ts_signUserDate').value) || '-';
 
+            // --- ดึงภาพลายเซ็น (ถ้ามี) ไปแสดง ---
+            const ts_testImg = document.getElementById('ts_rSignTestImg');
+            if(signaturesData['ts_signTest']) { ts_testImg.src = signaturesData['ts_signTest']; ts_testImg.classList.remove('hidden'); } else { ts_testImg.classList.add('hidden'); }
+
+            const ts_custImg = document.getElementById('ts_rSignCustImg');
+            if(signaturesData['ts_signCust']) { ts_custImg.src = signaturesData['ts_signCust']; ts_custImg.classList.remove('hidden'); } else { ts_custImg.classList.add('hidden'); }
+
+            const ts_userImg = document.getElementById('ts_rSignUserImg');
+            if(signaturesData['ts_signUser']) { ts_userImg.src = signaturesData['ts_signUser']; ts_userImg.classList.remove('hidden'); } else { ts_userImg.classList.add('hidden'); }
+            // -----------------------------------
             document.getElementById('ts_formView').classList.add('hidden'); document.getElementById('ts_reportContainer').classList.remove('hidden');
             window.scrollTo(0, 0); 
             
@@ -1585,6 +1657,7 @@
     </div>
 </body>
 </html>
+
 
 
 
