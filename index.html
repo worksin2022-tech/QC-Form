@@ -1190,11 +1190,16 @@
 
             document.getElementById('missingFormView').classList.add('hidden');
             document.getElementById('missingReportContainer').classList.remove('hidden');
-            // ดึงภาพลายเซ็นไปแสดงใน PDF
-            const missingCanvas = document.getElementById('sigCanvas_missing');
+            // ดึงภาพลายเซ็นจาก Popup ไปแสดงใน PDF (ถ้ามีการเซ็น)
             const missingSignImg = document.getElementById('repSignImage_missing');
-            missingSignImg.src = missingCanvas.toDataURL();
-            missingSignImg.classList.remove('hidden');
+            if (missingSignImg) {
+                if (signaturesData['missing_inspector']) {
+                    missingSignImg.src = signaturesData['missing_inspector'];
+                    missingSignImg.classList.remove('hidden');
+                } else {
+                    missingSignImg.classList.add('hidden'); // ซ่อนถ้าไม่ได้เซ็น
+                }
+            }
             window.scrollTo(0, 0);
             
             // ตั้งชื่อไฟล์ PDF: Missing Item_ชื่อโปรเจค_ชื่อตู้
@@ -1498,9 +1503,118 @@
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
+        // ==========================================
+        // 6. SIGNATURE MODAL POPUP LOGIC (ระบบเซ็นชื่อส่วนกลาง)
+        // ==========================================
+        let isDrawing = false;
+        let activeSignatureTarget = null;
+        let signaturesData = {}; // เก็บข้อมูลลายเซ็นแยกตามฟอร์ม
+
+        function openSignatureModal(targetId) {
+            activeSignatureTarget = targetId;
+            const modal = document.getElementById('signatureModal');
+            modal.classList.remove('hidden');
+            initModalSignaturePad('modalSignaturePad');
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signatureModal').classList.add('hidden');
+        }
+
+        function clearModalSignature() {
+            const canvas = document.getElementById('modalSignaturePad');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signaturesData[activeSignatureTarget] = null;
+            const previewImg = document.getElementById(activeSignatureTarget + '_preview');
+            if(previewImg) previewImg.classList.add('hidden');
+        }
+
+        function saveModalSignature() {
+            const canvas = document.getElementById('modalSignaturePad');
+            // เช็คว่ามีการวาดหรือไม่ (อย่างง่าย)
+            signaturesData[activeSignatureTarget] = canvas.toDataURL('image/png');
+            
+            // โชว์รูปพรีวิวเล็กๆ ข้างปุ่มกด
+            const previewImg = document.getElementById(activeSignatureTarget + '_preview');
+            if(previewImg) {
+                previewImg.src = signaturesData[activeSignatureTarget];
+                previewImg.classList.remove('hidden');
+            }
+            closeSignatureModal();
+        }
+
+        function initModalSignaturePad(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // เคลียร์ค่าเก่าทุกครั้งที่เปิดป๊อบอัพใหม่
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            function startPosition(e) {
+                if(e.cancelable) e.preventDefault();
+                isDrawing = true;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            }
+
+            function endPosition() { isDrawing = false; }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                if(e.cancelable) e.preventDefault();
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            // ถอด Event เก่าออกก่อนป้องกันการซ้อนทับ
+            canvas.replaceWith(canvas.cloneNode(true));
+            const newCanvas = document.getElementById(canvasId);
+
+            newCanvas.addEventListener('mousedown', startPosition);
+            newCanvas.addEventListener('mouseup', endPosition);
+            newCanvas.addEventListener('mousemove', draw);
+            newCanvas.addEventListener('mouseleave', endPosition);
+
+            newCanvas.addEventListener('touchstart', startPosition, {passive: false});
+            newCanvas.addEventListener('touchend', endPosition);
+            newCanvas.addEventListener('touchmove', draw, {passive: false});
+        }
     </script>
+    <!-- ========================================== -->
+    <!-- SIGNATURE MODAL (ซ่อนไว้รอเรียกใช้) -->
+    <!-- ========================================== -->
+    <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">เซ็นลายเซ็นของคุณ</h3>
+            <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 touch-none overflow-hidden relative w-full flex justify-center">
+                <!-- วาง Canvas ขนาดพอดีมือถือ/ไอแพด -->
+                <canvas id="modalSignaturePad" width="340" height="160" class="cursor-crosshair bg-white"></canvas>
+            </div>
+            <div class="flex gap-3 w-full">
+                <button type="button" onclick="clearModalSignature()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition">ล้าง (Clear)</button>
+                <button type="button" onclick="closeSignatureModal()" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก</button>
+                <button type="button" onclick="saveModalSignature()" class="flex-[1.5] py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-md transition">บันทึก (Save)</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+
 
 
 
