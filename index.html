@@ -642,9 +642,44 @@
                     <div class="mb-10">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
-                            <div><label class="block text-sm font-semibold mb-1">Quality Control</label><input type="text" id="tf_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ตรวจสอบ"><input type="date" id="tf_signTestDate" class="w-full px-3 py-2 border rounded text-sm"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Customer Witnessed</label><input type="text" id="tf_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer"><input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
-                            <div><label class="block text-sm font-semibold mb-1">User Witnessed</label><input type="text" id="tf_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User"><input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center"></div>
+                            <!-- ช่อง 1: Quality Control -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Quality Control</label>
+                                <input type="text" id="tf_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ตรวจสอบ">
+                                <input type="date" id="tf_signTestDate" class="w-full px-3 py-2 border rounded text-sm mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('tf_signTest')" class="bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="tf_signTest_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
+
+                            <!-- ช่อง 2: Customer Witnessed -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Customer Witnessed</label>
+                                <input type="text" id="tf_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer">
+                                <input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signCustDate" class="w-full px-3 py-2 border rounded text-sm text-center mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('tf_signCust')" class="bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="tf_signCust_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
+
+                            <!-- ช่อง 3: User Witnessed -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">User Witnessed</label>
+                                <input type="text" id="tf_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User">
+                                <input type="text" placeholder="ระบุวันที่" onfocus="(this.type='date')" onblur="(this.value == '' ? this.type='text' : null)" id="tf_signUserDate" class="w-full px-3 py-2 border rounded text-sm text-center mb-2">
+                                <div class="flex flex-col gap-2">
+                                    <button type="button" onclick="openSignatureModal('tf_signUser')" class="bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-3 py-2 rounded font-bold flex justify-center items-center text-sm transition-colors shadow-sm">
+                                        คลิกเซ็นชื่อ
+                                    </button>
+                                    <img id="tf_signUser_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -732,16 +767,28 @@
 
                     <div class="shrink-0 w-full mt-auto">
                         <div class="grid grid-cols-3 gap-x-[3mm] text-center bg-[#D2D3D4] border-[3mm] border-[#D2D3D4]">
-                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
-                                <p id="tf_rSignTestLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                            <!-- Quality Control -->
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
+                                <div class="h-[40px] flex items-end justify-center w-full mb-0.5 mt-1 relative">
+                                    <img id="tf_rSignTestImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="tf_rSignTestLine" class="mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center z-20 relative"></p>
                                 <p class="font-medium mb-1 text-[13px]">Quality Control</p><p class="text-[13px]">Date: <span id="tf_rSignTestDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
                             </div>
-                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
-                                <p id="tf_rSignCustLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                            <!-- Customer Witnessed -->
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
+                                <div class="h-[40px] flex items-end justify-center w-full mb-0.5 mt-1 relative">
+                                    <img id="tf_rSignCustImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="tf_rSignCustLine" class="mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center z-20 relative"></p>
                                 <p class="font-medium mb-1 text-[13px]">Customer Witnessed</p><p class="text-[13px]">Date: <span id="tf_rSignCustDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
                             </div>
-                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between">
-                                <p id="tf_rSignUserLine" class="mt-4 mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center"></p>
+                            <!-- User Witnessed -->
+                            <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
+                                <div class="h-[40px] flex items-end justify-center w-full mb-0.5 mt-1 relative">
+                                    <img id="tf_rSignUserImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <p id="tf_rSignUserLine" class="mb-0.5 text-center px-1 text-[13px] leading-tight min-h-[1.5em] flex items-center justify-center z-20 relative"></p>
                                 <p class="font-medium mb-1 text-[13px]">User Witnessed</p><p class="text-[13px]">Date: <span id="tf_rSignUserDate" class="inline-block min-w-[80px] border-b border-dotted border-black"></span></p>
                             </div>
                         </div>
@@ -1427,6 +1474,16 @@
             document.getElementById('tf_rSignCustDate').textContent = formatDateGlobal(document.getElementById('tf_signCustDate').value);
             document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(document.getElementById('tf_signUserDate').value);
 
+            // --- ดึงภาพลายเซ็น (ถ้ามี) ไปแสดง ---
+            const tf_testImg = document.getElementById('tf_rSignTestImg');
+            if(signaturesData['tf_signTest']) { tf_testImg.src = signaturesData['tf_signTest']; tf_testImg.classList.remove('hidden'); } else { tf_testImg.classList.add('hidden'); }
+
+            const tf_custImg = document.getElementById('tf_rSignCustImg');
+            if(signaturesData['tf_signCust']) { tf_custImg.src = signaturesData['tf_signCust']; tf_custImg.classList.remove('hidden'); } else { tf_custImg.classList.add('hidden'); }
+
+            const tf_userImg = document.getElementById('tf_rSignUserImg');
+            if(signaturesData['tf_signUser']) { tf_userImg.src = signaturesData['tf_signUser']; tf_userImg.classList.remove('hidden'); } else { tf_userImg.classList.add('hidden'); }
+            // -----------------------------------
             document.getElementById('tf_formView').classList.add('hidden'); document.getElementById('tf_reportContainer').classList.remove('hidden');
             window.scrollTo(0, 0); 
             
@@ -1657,6 +1714,7 @@
     </div>
 </body>
 </html>
+
 
 
 
