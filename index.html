@@ -362,7 +362,17 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 px-3">
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขที่เอกสาร</label><input type="text" id="claimDocNo" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น EQ-2023-001"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label><input type="date" id="claimInspectionDate" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">ตรวจสอบโดย <span class="text-red-500">*</span></label><input type="text" id="claimInspectorName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="ชื่อผู้ตรวจสอบ"></div>
+                            <!-- ช่องตรวจสอบโดย + ปุ่มเซ็นชื่อ -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ตรวจสอบโดย <span class="text-red-500">*</span></label>
+                                <input type="text" id="claimInspectorName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 mb-2" placeholder="ชื่อผู้ตรวจสอบ">
+                                <div class="flex items-center gap-3">
+                                    <button type="button" onclick="openSignatureModal('claim_inspector')" class="bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg font-bold flex justify-center items-center text-sm transition-colors shadow-sm whitespace-nowrap">
+                                        คลิกเพื่อเซ็นชื่อ
+                                    </button>
+                                    <img id="claim_inspector_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -464,7 +474,15 @@
                         </div>
 
                         <div class="mt-auto shrink-0 mb-4 grid grid-cols-1 gap-8 text-center page-break-avoid">
-                            <div class="w-64 ml-auto mr-10"><div class="border-b border-gray-800 w-full mx-auto mb-2 mt-10"></div><p class="text-sm">(<span id="rClaimSignInspectorName" class="inline-block min-w-[150px]"></span>)</p><p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p></div>
+                            <div class="w-64 ml-auto mr-10 relative">
+                                <div class="h-[40px] flex items-end justify-center w-full mb-1 mt-10 relative">
+                                    <!-- ตัวรองรับรูปภาพลายเซ็น -->
+                                    <img id="claim_rSignImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
+                                </div>
+                                <div class="border-b border-gray-800 w-full mx-auto mb-2 relative z-20"></div>
+                                <p class="text-sm z-20 relative">(<span id="rClaimSignInspectorName" class="inline-block min-w-[150px]"></span>)</p>
+                                <p class="text-sm font-bold mt-1 z-20 relative">ผู้ตรวจสอบ</p>
+                            </div>
                         </div>
                     </div>
 
@@ -1372,6 +1390,15 @@
                 });
             } else { imgSection.style.display = 'none'; }
 
+            // --- ดึงภาพลายเซ็น (ถ้ามี) ไปแสดง ---
+            const claimSignImg = document.getElementById('claim_rSignImg');
+            if(signaturesData['claim_inspector']) {
+                claimSignImg.src = signaturesData['claim_inspector'];
+                claimSignImg.classList.remove('hidden');
+            } else {
+                claimSignImg.classList.add('hidden');
+            }
+            // -----------------------------------
             document.getElementById('claimFormView').classList.add('hidden');
             document.getElementById('claimReportContainer').classList.remove('hidden');
             window.scrollTo(0, 0);
@@ -1714,6 +1741,7 @@
     </div>
 </body>
 </html>
+
 
 
 
