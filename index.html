@@ -18,21 +18,27 @@
         /* ========================================== */
         @media print {
             @page {
-                size: A4 portrait;
-                margin: 0 !important; 
-            }
-            html, body {
-                width: 210mm !important; 
-                height: 296mm !important; /* ลดความสูงลง 1mm เพื่อตัดปัญหากระดาษหน้า 2 โผล่ใน iPad */
-                max-height: 296mm !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important; 
-                box-sizing: border-box !important;
-                background-color: white !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
+            size: A4 portrait; /* บังคับเป็นกระดาษ A4 แนวตั้งเสมอ */
+            margin: 0mm; /* ลบขอบกระดาษทิ้ง */
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important; /* บังคับพิมพ์สีพื้นหลัง */
+            print-color-adjust: exact !important;
+        }
+        /* บังคับให้หน้าพรีวิว A4 กลายเป็นหน้ากระดาษเต็มแผ่นตอนปริ้น */
+        .w-\[210mm\] {
+            width: 100% !important;
+            max-width: 210mm !important;
+            margin: 0 !important;
+            padding-top: 10mm !important; /* ขอบบนกระดาษตอนปริ้น */
+            padding-bottom: 10mm !important; /* ขอบล่างกระดาษตอนปริ้น */
+            box-shadow: none !important; /* เอาเงาพื้นหลังออกตอนปริ้น */
+        }
+        button {
+            display: none !important; /* ซ่อนปุ่มต่างๆ ตอนปริ้นแบบเด็ดขาด */
+        }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             .app-container.hidden { display: none !important; }
@@ -1819,6 +1825,7 @@
     </button>
 </body>
 </html>
+
 
 
 
