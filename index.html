@@ -1720,6 +1720,78 @@
             canvas.addEventListener('touchend', endPosition);
             canvas.addEventListener('touchmove', draw, {passive: false});
         }
+        // ==========================================
+            // 7. AUTO-SAVE DRAFT (ระบบบันทึกร่างอัตโนมัติ)
+            // ==========================================
+            function saveDraft() {
+                const draftData = {};
+                // เก็บข้อมูลจากช่องกรอกทั้งหมด (ยกเว้นช่องอัปโหลดไฟล์รูป เพราะเบราว์เซอร์ไม่อนุญาตให้โหลดกลับอัตโนมัติ)
+                document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
+                    if (el.id) {
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            draftData[el.id] = el.checked;
+                        } else {
+                            draftData[el.id] = el.value;
+                        }
+                    }
+                });
+                
+                // เก็บลายเซ็นทั้งหมด
+                draftData.signatures = typeof signaturesData !== 'undefined' ? signaturesData : {};
+
+                try {
+                    localStorage.setItem('qcFormDraft_v1', JSON.stringify(draftData));
+                } catch (e) {
+                    console.log("Local storage is full or disabled.");
+                }
+            }
+
+            function loadDraft() {
+                const saved = localStorage.getItem('qcFormDraft_v1');
+                if (saved) {
+                    try {
+                        const draftData = JSON.parse(saved);
+                        
+                        // คืนค่าข้อมูลลงช่องกรอก
+                        document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
+                            if (el.id && draftData.hasOwnProperty(el.id)) {
+                                if (el.type === 'checkbox' || el.type === 'radio') {
+                                    el.checked = draftData[el.id];
+                                } else {
+                                    el.value = draftData[el.id];
+                                }
+                            }
+                        });
+
+                        // คืนค่ารูปลายเซ็นในหน้าฟอร์ม
+                        if (draftData.signatures) {
+                            signaturesData = draftData.signatures;
+                            for (const key in signaturesData) {
+                                const previewImg = document.getElementById(key + '_preview');
+                                if (previewImg && signaturesData[key]) {
+                                    previewImg.src = signaturesData[key];
+                                    previewImg.classList.remove('hidden');
+                                }
+                            }
+                        }
+                    } catch(e) {
+                        console.error("Error loading draft", e);
+                    }
+                }
+            }
+
+            function clearDraftData() {
+                if(confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ล้างข้อมูลทั้งหมด" ในฟอร์มนี้ เพื่อเริ่มงานใหม่?')) {
+                    localStorage.removeItem('qcFormDraft_v1');
+                    location.reload(); // โหลดหน้าเว็บใหม่เพื่อล้างค่าทั้งหมด
+                }
+            }
+
+            // สั่งให้ระบบโหลดข้อมูลเดิม และเริ่มเซฟอัตโนมัติทุกๆ 3 วินาที (3000 ms)
+            window.addEventListener('DOMContentLoaded', () => {
+                loadDraft();
+                setInterval(saveDraft, 3000);
+            });
     </script>
 
     <!-- ========================================== -->
@@ -1739,8 +1811,15 @@
             </div>
         </div>
     </div>
+<!-- ปุ่มล้างข้อมูล (ลอยอยู่มุมขวาล่าง) -->
+    <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="ล้างข้อมูลในฟอร์มทั้งหมด">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+    </button>
 </body>
 </html>
+
 
 
 
