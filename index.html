@@ -1820,7 +1820,7 @@
             function downloadDirectPDF() {
                 // หาว่าตอนนี้กำลังเปิดรายงานฟอร์มไหนอยู่
                 let activeReport = null;
-                const reportIds = ['reportContainer', 'missingReportContainer', 'tf_reportContainer', 'claimReportContainer'];
+                const reportIds = ['reportContainer', 'ts_reportContainer', 'missingReportContainer', 'tf_reportContainer', 'claimReportContainer'];
                 
                 for (let id of reportIds) {
                     let el = document.getElementById(id);
@@ -1884,6 +1884,7 @@
     </button>
 </body>
 </html>
+
 
 
 
