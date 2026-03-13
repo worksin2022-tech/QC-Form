@@ -1527,9 +1527,9 @@
             document.getElementById('tf_rSignCustLine').textContent = cn ? `(${cn})` : '(..........................................)';
             document.getElementById('tf_rSignUserLine').textContent = un ? `(${un})` : '(..........................................)';
 
-            document.getElementById('tf_rSignTestDate').textContent = formatDateGlobal(document.getElementById('tf_signTestDate').value) || '.........';
-document.getElementById('tf_rSignCustDate').textContent = formatDateGlobal(document.getElementById('tf_signCustDate').value) || '.........';
-document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(document.getElementById('tf_signUserDate').value) || '.........';
+            document.getElementById('tf_rSignTestDate').textContent = formatDateGlobal(document.getElementById('tf_signTestDate').value) || '....................';
+document.getElementById('tf_rSignCustDate').textContent = formatDateGlobal(document.getElementById('tf_signCustDate').value) || '....................';
+document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(document.getElementById('tf_signUserDate').value) || '....................';
             // --- ดึงภาพลายเซ็น (ถ้ามี) ไปแสดง ---
             const tf_testImg = document.getElementById('tf_rSignTestImg');
             if(signaturesData['tf_signTest']) { tf_testImg.src = signaturesData['tf_signTest']; tf_testImg.classList.remove('hidden'); } else { tf_testImg.classList.add('hidden'); }
@@ -1891,6 +1891,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
     </button>
 </body>
 </html>
+
 
 
 
