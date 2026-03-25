@@ -1811,46 +1811,89 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             }
             
         // ==========================================
-        // 8. QR / BARCODE SCANNER LOGIC
+        // 8. QR / BARCODE SCANNER LOGIC (อัปเดตระบบ Zoom และ Focus)
         // ==========================================
         let html5QrcodeScannerInstance = null;
         let qrTargetInputId = null;
+        let cameraMediaTrack = null; // เก็บ object ของกล้องไว้สั่งซูม
 
         function startQRScanner(targetInputId) {
             qrTargetInputId = targetInputId;
             document.getElementById('qrScannerModal').classList.remove('hidden');
+            document.getElementById('zoomControls').classList.add('hidden'); // ซ่อนแถบซูมไว้ก่อน
 
-            // สร้าง Instance ใหม่ถ้ายังไม่มี
             if (!html5QrcodeScannerInstance) {
                 html5QrcodeScannerInstance = new Html5Qrcode("qr-reader");
             }
 
-            // ตั้งค่ากรอบสแกน
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            // ตั้งค่าให้อ่านเฉพาะ Data Matrix และ QR Code เพื่อให้จับภาพได้รวดเร็วขึ้น
+            const formatsToSupport = [
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128
+            ];
 
-            // เปิดกล้องหลัง (environment)
+            const config = { 
+                fps: 15, // เพิ่มเฟรมเรตให้อ่านไวขึ้น
+                qrbox: { width: 200, height: 200 }, // บีบกรอบโฟกัสให้เล็กลงเพื่อให้คนเล็งง่ายขึ้น
+                formatsToSupport: formatsToSupport
+            };
+
+            // บังคับใช้กล้องหลัง และพยายามสั่งโหมดโฟกัสแบบต่อเนื่อง
+            const videoConstraints = {
+                facingMode: "environment",
+                advanced: [{ focusMode: "continuous" }] 
+            };
+
             html5QrcodeScannerInstance.start(
-                { facingMode: "environment" }, 
+                videoConstraints, 
                 config,
                 (decodedText, decodedResult) => {
                     // ทำงานเมื่อสแกนสำเร็จ
                     document.getElementById(qrTargetInputId).value = decodedText;
-                    
-                    // กระตุ้นให้ระบบ Auto-save ทำงาน
                     saveDraft(); 
-                    
                     stopQRScanner();
                     
-                    // (ตัวเลือก) เสียงติ๊ดเมื่อสแกนติด
                     const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
                     audio.play().catch(e => console.log("Audio play prevented"));
                 },
                 (errorMessage) => {
-                    // ทำงานเมื่อกำลังค้นหาโค้ด (ซ่อน error ไว้เพื่อไม่ให้ console รก)
+                    // ซ่อน Error กรณีหากล่องไม่เจอ
                 }
-            ).catch((err) => {
+            ).then(() => {
+                // เมื่อเปิดกล้องสำเร็จ ให้ลองดึง API ซูมของเบราว์เซอร์มาใช้งาน
+                const videoElement = document.querySelector("#qr-reader video");
+                if (videoElement && videoElement.srcObject) {
+                    const stream = videoElement.srcObject;
+                    const tracks = stream.getVideoTracks();
+                    
+                    if (tracks.length > 0) {
+                        cameraMediaTrack = tracks[0];
+                        const capabilities = cameraMediaTrack.getCapabilities();
+                        
+                        // ตรวจสอบว่ามือถือ/เบราว์เซอร์เครื่องนี้อนุญาตให้แอปเว็บสั่งซูมได้หรือไม่
+                        if (capabilities.zoom) {
+                            const zoomInput = document.getElementById('cameraZoom');
+                            zoomInput.min = capabilities.zoom.min;
+                            zoomInput.max = capabilities.zoom.max;
+                            zoomInput.step = capabilities.zoom.step || 0.1;
+                            zoomInput.value = cameraMediaTrack.getSettings().zoom || 1;
+                            
+                            // แสดงแถบซูม
+                            document.getElementById('zoomControls').classList.remove('hidden');
+                            
+                            // เมื่อผู้ใช้เลื่อนแถบซูม ให้สั่งกล้องซูมตาม
+                            zoomInput.oninput = (event) => {
+                                cameraMediaTrack.applyConstraints({
+                                    advanced: [{ zoom: parseFloat(event.target.value) }]
+                                }).catch(err => console.log("Zoom not supported", err));
+                            };
+                        }
+                    }
+                }
+            }).catch((err) => {
                 console.error("Camera start error", err);
-                alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การใช้งานกล้องในเบราว์เซอร์ของคุณ");
+                alert("ไม่สามารถเปิดกล้องได้ หรือถูกเบราว์เซอร์บล็อกสิทธิ์การใช้กล้อง");
                 stopQRScanner();
             });
         }
@@ -1860,11 +1903,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             if (html5QrcodeScannerInstance && html5QrcodeScannerInstance.isScanning) {
                 html5QrcodeScannerInstance.stop().then(() => {
                     console.log("QR Scanner stopped.");
+                    cameraMediaTrack = null; // เคลียร์กล้อง
                 }).catch((err) => {
                     console.error("Failed to stop scanner", err);
                 });
             }
-        }
+        }        
     </script>
 
     <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
@@ -1889,7 +1933,15 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div id="qr-reader" class="w-full rounded overflow-hidden border"></div>
+            
+            <div id="qr-reader" class="w-full rounded overflow-hidden border bg-black"></div>
+            
+            <div id="zoomControls" class="w-full mt-4 flex items-center gap-3 hidden px-2">
+                <span class="text-sm font-medium text-gray-500">ซูม</span>
+                <input type="range" id="cameraZoom" min="1" max="3" step="0.1" value="1" class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <span class="text-lg">🔍</span>
+            </div>
+
             <button type="button" onclick="stopQRScanner()" class="mt-4 w-full py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก (Cancel)</button>
         </div>
     </div>
