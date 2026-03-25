@@ -1811,11 +1811,11 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             }
             
         // ==========================================
-        // 8. QR / BARCODE SCANNER LOGIC (อัปเดตระบบ Zoom และ Focus)
+        // 8. QR / BARCODE SCANNER LOGIC (Safe Mode + Auto Zoom/Focus)
         // ==========================================
         let html5QrcodeScannerInstance = null;
         let qrTargetInputId = null;
-        let cameraMediaTrack = null; // เก็บ object ของกล้องไว้สั่งซูม
+        let cameraMediaTrack = null;
 
         function startQRScanner(targetInputId) {
             qrTargetInputId = targetInputId;
@@ -1826,7 +1826,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 html5QrcodeScannerInstance = new Html5Qrcode("qr-reader");
             }
 
-            // ตั้งค่าให้อ่านเฉพาะ Data Matrix และ QR Code เพื่อให้จับภาพได้รวดเร็วขึ้น
+            // บังคับหาแค่ 3 ชนิดนี้ จะได้ไวขึ้น
             const formatsToSupport = [
                 Html5QrcodeSupportedFormats.DATA_MATRIX,
                 Html5QrcodeSupportedFormats.QR_CODE,
@@ -1834,15 +1834,14 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             ];
 
             const config = { 
-                fps: 15, // เพิ่มเฟรมเรตให้อ่านไวขึ้น
-                qrbox: { width: 200, height: 200 }, // บีบกรอบโฟกัสให้เล็กลงเพื่อให้คนเล็งง่ายขึ้น
+                fps: 15, 
+                qrbox: { width: 250, height: 250 }, 
                 formatsToSupport: formatsToSupport
             };
 
-            // บังคับใช้กล้องหลัง และพยายามสั่งโหมดโฟกัสแบบต่อเนื่อง
+            // เรียกกล้องหลังแบบพื้นฐานที่สุด ป้องกันเบราว์เซอร์งอแงเตะออก
             const videoConstraints = {
-                facingMode: "environment",
-                advanced: [{ focusMode: "continuous" }] 
+                facingMode: "environment"
             };
 
             html5QrcodeScannerInstance.start(
@@ -1858,42 +1857,56 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     audio.play().catch(e => console.log("Audio play prevented"));
                 },
                 (errorMessage) => {
-                    // ซ่อน Error กรณีหากล่องไม่เจอ
+                    // กำลังหาโฟกัส ซ่อน error ไว้
                 }
             ).then(() => {
-                // เมื่อเปิดกล้องสำเร็จ ให้ลองดึง API ซูมของเบราว์เซอร์มาใช้งาน
-                const videoElement = document.querySelector("#qr-reader video");
-                if (videoElement && videoElement.srcObject) {
-                    const stream = videoElement.srcObject;
-                    const tracks = stream.getVideoTracks();
-                    
-                    if (tracks.length > 0) {
-                        cameraMediaTrack = tracks[0];
-                        const capabilities = cameraMediaTrack.getCapabilities();
+                // [ส่วนเสริม] เมื่อกล้องเปิดติดแล้ว ลองตรวจสอบระบบ Zoom/Focus ของเครื่องนั้นๆ
+                setTimeout(() => {
+                    const videoElement = document.querySelector("#qr-reader video");
+                    if (videoElement && videoElement.srcObject) {
+                        const tracks = videoElement.srcObject.getVideoTracks();
                         
-                        // ตรวจสอบว่ามือถือ/เบราว์เซอร์เครื่องนี้อนุญาตให้แอปเว็บสั่งซูมได้หรือไม่
-                        if (capabilities.zoom) {
-                            const zoomInput = document.getElementById('cameraZoom');
-                            zoomInput.min = capabilities.zoom.min;
-                            zoomInput.max = capabilities.zoom.max;
-                            zoomInput.step = capabilities.zoom.step || 0.1;
-                            zoomInput.value = cameraMediaTrack.getSettings().zoom || 1;
+                        if (tracks.length > 0) {
+                            cameraMediaTrack = tracks[0];
+                            const capabilities = cameraMediaTrack.getCapabilities();
                             
-                            // แสดงแถบซูม
-                            document.getElementById('zoomControls').classList.remove('hidden');
-                            
-                            // เมื่อผู้ใช้เลื่อนแถบซูม ให้สั่งกล้องซูมตาม
-                            zoomInput.oninput = (event) => {
-                                cameraMediaTrack.applyConstraints({
-                                    advanced: [{ zoom: parseFloat(event.target.value) }]
-                                }).catch(err => console.log("Zoom not supported", err));
-                            };
+                            // ถ้าเครื่องรองรับ API ซูม ให้แสดงแถบเลื่อน
+                            if (capabilities && capabilities.zoom) {
+                                const zoomInput = document.getElementById('cameraZoom');
+                                zoomInput.min = capabilities.zoom.min || 1;
+                                zoomInput.max = capabilities.zoom.max || 3;
+                                zoomInput.step = capabilities.zoom.step || 0.1;
+                                zoomInput.value = cameraMediaTrack.getSettings().zoom || 1;
+                                
+                                document.getElementById('zoomControls').classList.remove('hidden');
+                                
+                                zoomInput.oninput = (event) => {
+                                    cameraMediaTrack.applyConstraints({
+                                        advanced: [{ zoom: parseFloat(event.target.value) }]
+                                    }).catch(err => console.log("Zoom not supported", err));
+                                };
+                            }
+
+                            // ลองพยายามเปิดโหมดโฟกัสแบบต่อเนื่องเงียบๆ
+                            if(capabilities && capabilities.focusMode && capabilities.focusMode.includes("continuous")) {
+                                 cameraMediaTrack.applyConstraints({
+                                    advanced: [{ focusMode: "continuous" }]
+                                }).catch(e => console.log("Focus mode not supported"));
+                            }
                         }
                     }
-                }
+                }, 500); // รอให้กล้องตั้งตัว 0.5 วินาที
             }).catch((err) => {
                 console.error("Camera start error", err);
-                alert("ไม่สามารถเปิดกล้องได้ หรือถูกเบราว์เซอร์บล็อกสิทธิ์การใช้กล้อง");
+                
+                // แจ้งเตือนผู้ใช้ให้ตรงจุด
+                if (err.name === 'NotAllowedError') {
+                    alert("⚠️ คุณไม่อนุญาตให้ใช้กล้อง กรุณาปลดล็อกในตั้งค่าเบราว์เซอร์");
+                } else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    alert("⚠️ เบราว์เซอร์บล็อกกล้อง! ต้องเปิดใช้งานเว็บผ่านระบบ HTTPS หรือบน GitHub Pages เท่านั้นครับ (รันไฟล์ local จากเครื่องตรงๆ ไม่ได้)");
+                } else {
+                    alert("⚠️ ไม่สามารถเปิดกล้องได้: " + err.message);
+                }
                 stopQRScanner();
             });
         }
@@ -1902,8 +1915,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             document.getElementById('qrScannerModal').classList.add('hidden');
             if (html5QrcodeScannerInstance && html5QrcodeScannerInstance.isScanning) {
                 html5QrcodeScannerInstance.stop().then(() => {
-                    console.log("QR Scanner stopped.");
-                    cameraMediaTrack = null; // เคลียร์กล้อง
+                    cameraMediaTrack = null;
                 }).catch((err) => {
                     console.error("Failed to stop scanner", err);
                 });
