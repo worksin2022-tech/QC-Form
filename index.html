@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quality Control Forms</title>
-    <!-- ใช้ Tailwind CSS สำหรับ Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ตัวช่วยสร้าง PDF ทันที -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -93,18 +92,13 @@
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
 
-    <!-- ========================================== -->
-    <!-- NAVIGATION BAR -->
-    <!-- ========================================== -->
     <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <!-- โลโก้ / ชื่อแอป -->
                 <div class="flex-shrink-0 flex items-center cursor-pointer hover:text-blue-400 transition" onclick="switchApp('home')">
                     <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
                     <span class="font-bold text-xl hidden sm:block">Quality Control Forms</span>
                 </div>
-                <!-- ลิงก์เมนู Desktop -->
                 <div class="hidden md:block">
                     <div class="ml-4 flex items-baseline space-x-2">
                         <button onclick="switchApp('home')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="home">หน้าแรก</button>
@@ -114,7 +108,6 @@
                         <button onclick="switchApp('trip-site')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-site">Trip (Trading)</button>
                     </div>
                 </div>
-                <!-- Mobile menu button -->
                 <div class="md:hidden flex items-center">
                     <button id="mobileMenuBtn" class="outline-none mobile-menu-button p-2 rounded-md hover:bg-gray-700 focus:outline-none" onclick="toggleMobileMenu()">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -122,7 +115,6 @@
                 </div>
             </div>
         </div>
-        <!-- Mobile Menu Panel -->
         <div id="mobileMenuPanel" class="hidden md:hidden bg-gray-700 pb-3 pt-2">
             <button onclick="switchApp('home'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="home">หน้าแรก (Home)</button>
             <button onclick="switchApp('missing-item'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="missing-item">Missing Item Form</button>
@@ -132,12 +124,8 @@
         </div>
     </nav>
 
-    <!-- พื้นที่แสดงผลหลัก -->
     <div class="flex-grow w-full">
         
-        <!-- ========================================== -->
-        <!-- APP 0: DASHBOARD (หน้าแรก) -->
-        <!-- ========================================== -->
         <div id="app-home" class="app-container max-w-7xl mx-auto p-6 lg:p-12 no-print">
             <div class="text-center mb-12 mt-6">
                 <h1 class="text-3xl font-bold text-gray-800 mb-4">ฟอร์มบันทึกผลการตรวจสอบแผนก Qc</h1>
@@ -145,7 +133,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                <!-- Card 1: Missing Item -->
                 <div onclick="switchApp('missing-item')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
                     <div class="h-2 bg-blue-500 w-full"></div>
                     <div class="p-6">
@@ -157,7 +144,6 @@
                     </div>
                 </div>
 
-                <!-- Card 2: Equipment Claim -->
                 <div onclick="switchApp('claim-item')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
                     <div class="h-2 bg-red-500 w-full"></div>
                     <div class="p-6">
@@ -169,7 +155,6 @@
                     </div>
                 </div>
 
-                <!-- Card 3: Trip Unit (Factory) -->
                 <div onclick="switchApp('trip-fac')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
                     <div class="h-2 bg-orange-500 w-full"></div>
                     <div class="p-6">
@@ -181,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- Card 4: Trip Unit (Trading) -->
                 <div onclick="switchApp('trip-site')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
                     <div class="h-2 bg-green-500 w-full"></div>
                     <div class="p-6">
@@ -195,9 +179,6 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- APP 1: MISSING ITEM FORM -->
-        <!-- ========================================== -->
         <div id="app-missing-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
                 <div class="border-b pb-4 mb-6">
@@ -206,7 +187,6 @@
                 </div>
 
                 <form id="missingInspectionForm" onsubmit="generateMissingReport(event)">
-                    <!-- 1. ข้อมูลทั่วไป -->
                     <div class="mb-8">
                         <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3 mb-4">1. ข้อมูลทั่วไป</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -227,7 +207,6 @@
                                 <input type="text" id="inspectorName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
                             </div>
                             
-                            <!-- ปุ่มเปิด Popup ลายเซ็น (แทนที่กล่องเซ็นแบบเก่า) -->
                             <div class="sm:col-span-2 mt-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">ลายเซ็นผู้ตรวจสอบ (ถ้ามี)</label>
                                 <div class="flex items-center gap-4">
@@ -242,7 +221,6 @@
                         </div>
                     </div>
 
-                    <!-- 2. รายการของที่ขาด -->
                     <div class="mb-8">
                         <div class="flex justify-between items-center mb-4">
                             <div class="flex items-center gap-3">
@@ -256,7 +234,6 @@
                         <div id="missingItemsContainer" class="space-y-4"></div>
                     </div>
 
-                    <!-- 3. รูปภาพประกอบ -->
                     <div class="mb-10">
                         <div class="flex items-center gap-3 mb-4">
                             <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">3. รูปภาพประกอบ</h2>
@@ -274,7 +251,6 @@
                         <div id="imagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
                     </div>
 
-                    <!-- ปุ่ม Submit -->
                     <div class="border-t pt-6">
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -284,7 +260,6 @@
                 </form>
             </div>
 
-            <!-- View 2: หน้ารายงาน (Report View) -->
             <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
@@ -352,9 +327,6 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- APP 2: EQUIPMENT CLAIM FORM -->
-        <!-- ========================================== -->
         <div id="app-claim-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="claimFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
                 <div class="border-b pb-4 mb-6 flex justify-between items-start sm:items-center">
@@ -366,13 +338,11 @@
                 </div>
 
                 <form id="claimInspectionForm" onsubmit="generateClaimReport(event)">
-                    <!-- 1. ข้อมูลเอกสาร -->
                     <div class="mb-8">
                         <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">1. ข้อมูลเอกสาร (Document Info)</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 px-3">
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขที่เอกสาร</label><input type="text" id="claimDocNo" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น EQ-2023-001"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label><input type="date" id="claimInspectionDate" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
-                            <!-- ช่องตรวจสอบโดย + ปุ่มเซ็นชื่อ -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">ตรวจสอบโดย <span class="text-red-500">*</span></label>
                                 <input type="text" id="claimInspectorName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 mb-2" placeholder="ชื่อผู้ตรวจสอบ">
@@ -386,7 +356,6 @@
                         </div>
                     </div>
 
-                    <!-- 2. รายละเอียดอุปกรณ์ -->
                     <div class="mb-8">
                         <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">2. รายละเอียดอุปกรณ์ (Equipment Details)</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-3">
@@ -398,13 +367,11 @@
                         </div>
                     </div>
 
-                    <!-- 3. ปัญหาที่พบ -->
                     <div class="mb-8">
                         <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-red-50 py-1">3. ปัญหาที่พบ (Found Issues)</h2>
                         <div class="px-3"><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดปัญหา <span class="text-red-500">*</span></label><textarea id="claimIssueDesc" rows="4" required class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="อธิบายลักษณะอาการเสีย..."></textarea></div>
                     </div>
 
-                    <!-- 4. รูปภาพประกอบ -->
                     <div class="mb-10">
                         <div class="flex items-center gap-3 mb-4 bg-gray-50 py-1 border-l-4 border-red-500 pl-3">
                             <h2 class="text-lg font-semibold text-gray-700">4. ภาพประกอบ (Images)</h2>
@@ -432,7 +399,6 @@
                 </form>
             </div>
 
-            <!-- View 2: หน้ารายงาน (Report View) -->
             <div id="claimReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="editClaimForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
@@ -490,7 +456,6 @@
                         <div class="mt-auto shrink-0 mb-4 grid grid-cols-1 gap-8 text-center page-break-avoid">
                             <div class="w-64 ml-auto mr-10 relative">
                                 <div class="h-[40px] flex items-end justify-center w-full mb-1 mt-10 relative">
-                                    <!-- ตัวรองรับรูปภาพลายเซ็น -->
                                     <img id="claim_rSignImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
                                 </div>
                                 <div class="border-b border-gray-800 w-full mx-auto mb-2 relative z-20"></div>
@@ -508,9 +473,6 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- APP 3: TRIP UNIT TEST (FACTORY) -->
-        <!-- ========================================== -->
         <div id="app-trip-fac" class="app-container hidden max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="tf_formView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
                 <div class="border-b-[6px] border-orange-500 pb-4 mb-6 flex justify-between items-center">
@@ -522,7 +484,6 @@
                 </div>
 
                 <form onsubmit="tf_generateReport(event)">
-                    <!-- 0. PROJECT INFO -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">Project Information</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -533,7 +494,6 @@
                         </div>
                     </div>
 
-                    <!-- 1. DETAILS -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">1. DETAILS</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -541,12 +501,19 @@
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.2 Circuit Breaker</label><input type="text" id="tf_detBreaker" class="w-full px-3 py-2 border rounded text-center"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.3 Rate Current</label><input type="text" id="tf_detRateCurrent" class="w-full px-3 py-2 border rounded text-center"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.4 Trip Unit Type</label><input type="text" id="tf_detTripType" class="w-full px-3 py-2 border rounded text-center"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label><input type="text" id="tf_detSerial" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="tf_detSerial" class="w-full px-3 py-2 border rounded text-center">
+                                    <button type="button" onclick="startQRScanner('tf_detSerial')" class="bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 border border-gray-300 transition-colors shadow-sm" title="สแกน QR/Barcode">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.6 Feeder Name</label><input type="text" id="tf_detFeeder" class="w-full px-3 py-2 border rounded text-center"></div>
                         </div>
                     </div>
 
-                    <!-- 2. INSPECTION -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">2. INSPECTION</h2>
                         <div class="flex flex-col gap-3">
@@ -577,7 +544,6 @@
                         </div>
                     </div>
 
-                    <!-- 3. TEST SETTING -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">3. TEST SETTING</h2>
                         <div class="space-y-3">
@@ -599,7 +565,6 @@
                         </div>
                     </div>
 
-                    <!-- 4. FUNCTION TRIP UNIT TEST -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">4. FUNCTION TRIP UNIT TEST: FULL-FUNCTION TEST KIT</h2>
                         <div class="overflow-x-auto">
@@ -637,7 +602,6 @@
                         </div>
                     </div>
 
-                    <!-- 5. TRIPPING CURVE -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">5. TRIPPING CURVE STANDARD</h2>
                         <select id="tf_curveSelect" class="w-full px-3 py-2 border rounded text-sm mb-3" onchange="tf_handleCurveSelection()">
@@ -670,11 +634,9 @@
                         <div id="tf_previewArea" class="mt-2 hidden text-center border p-2 rounded bg-gray-50"><img id="tf_curveImagePreview" class="max-h-32 mx-auto object-contain rounded"></div>
                     </div>
 
-                    <!-- Signatures -->
                     <div class="mb-10">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-orange-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
-                            <!-- ช่อง 1: Quality Control -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">Quality Control</label>
                                 <input type="text" id="tf_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ตรวจสอบ">
@@ -687,7 +649,6 @@
                                 </div>
                             </div>
 
-                            <!-- ช่อง 2: Customer Witnessed -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">Customer Witnessed</label>
                                 <input type="text" id="tf_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer">
@@ -700,7 +661,6 @@
                                 </div>
                             </div>
 
-                            <!-- ช่อง 3: User Witnessed -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">User Witnessed</label>
                                 <input type="text" id="tf_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User">
@@ -719,7 +679,6 @@
                 </form>
             </div>
 
-            <!-- View 2: หน้ารายงาน (Report View / PDF Layout) -->
             <div id="tf_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="tf_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
@@ -730,7 +689,6 @@
 </button>
                 </div>
 
-                <!-- คืนค่า Original: ความสูง 297mm และคืนค่า Padding/Margin ดั้งเดิมทั้งหมดให้ Factory -->
                 <div id="tf_reportView" class="bg-white mx-auto relative flex flex-col text-sm text-black shadow-lg w-full max-w-[210mm] h-[297mm] pt-[3mm] px-[5mm] pb-[5mm] print:shadow-none">
                     <div class="w-full bg-[#D2D3D4] text-center font-medium text-[15px] py-1 mb-[1mm] shrink-0">ROUTINE VERIFICATION TEST REPORT - TRIP UNIT TEST</div>
 
@@ -803,7 +761,6 @@
 
                     <div class="shrink-0 w-full mt-auto">
                         <div class="grid grid-cols-3 gap-x-[3mm] text-center bg-[#D2D3D4] border-[3mm] border-[#D2D3D4]">
-            <!-- Quality Control -->
             <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
                 <div class="h-[35px] flex items-end justify-center w-full mt-1 relative">
                     <span class="text-[12px] text-gray-500 absolute bottom-0">(.........................................)</span>
@@ -814,7 +771,6 @@
                 <p class="text-[13px]">Date: <span id="tf_rSignTestDate">.........</span></p>
             </div>
 
-            <!-- Customer Witnessed -->
             <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
                 <div class="h-[35px] flex items-end justify-center w-full mt-1 relative">
                     <span class="text-[12px] text-gray-500 absolute bottom-0">(.........................................)</span>
@@ -825,7 +781,6 @@
                 <p class="text-[13px]">Date: <span id="tf_rSignCustDate">.........</span></p>
             </div>
 
-            <!-- User Witnessed -->
             <div class="py-1 bg-[#F1F2F2] flex flex-col justify-between items-center relative">
                 <div class="h-[35px] flex items-end justify-center w-full mt-1 relative">
                     <span class="text-[12px] text-gray-500 absolute bottom-0">(.........................................)</span>
@@ -842,9 +797,6 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- APP 4: TRIP UNIT TEST (TRADING) -->
-        <!-- ========================================== -->
         <div id="app-trip-site" class="app-container hidden max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="ts_formView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
                 <div class="border-b-[6px] border-green-600 pb-4 mb-6 flex justify-end items-end">
@@ -852,7 +804,6 @@
                 </div>
 
                 <form onsubmit="ts_generateReport(event)">
-                    <!-- 1. DETAILS -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">1. DETAILS</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -860,11 +811,18 @@
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.2 Circuit Breaker</label><input type="text" id="ts_detBreaker" class="w-full px-3 py-2 border rounded text-center"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.3 Rate Current</label><input type="text" id="ts_detRateCurrent" class="w-full px-3 py-2 border rounded text-center"></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">1.4 Micrologic Trip Unit</label><input type="text" id="ts_detTripType" class="w-full px-3 py-2 border rounded text-center"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label><input type="text" id="ts_detSerial" class="w-full px-3 py-2 border rounded text-center"></div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">1.5 Serial No.</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="ts_detSerial" class="w-full px-3 py-2 border rounded text-center">
+                                    <button type="button" onclick="startQRScanner('ts_detSerial')" class="bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 border border-gray-300 transition-colors shadow-sm" title="สแกน QR/Barcode">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 2. INSPECTION -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">2. INSPECTION</h2>
                         <div class="flex flex-col gap-3">
@@ -895,7 +853,6 @@
                         </div>
                     </div>
 
-                    <!-- 3. BEFORE TEST SETTING -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">3. BEFORE TEST SETTING</h2>
                         <div class="space-y-3">
@@ -917,7 +874,6 @@
                         </div>
                     </div>
 
-                    <!-- 4. FUNCTION TRIP UNIT TEST -->
                     <div class="mb-8">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">4. FUNCTION TRIP UNIT TEST: FULL-FUNCTION TEST KIT</h2>
                         <div class="overflow-x-auto">
@@ -955,7 +911,6 @@
                         </div>
                     </div>
 
-                    <!-- 5. TRIPPING CURVE -->
                     <div class="mb-8">
                         <div class="flex justify-between items-center bg-gray-100 py-1 mb-2 border-l-4 border-green-500 pl-3">
                             <h2 class="text-lg font-bold text-gray-800">5. TRIPPING CURVE STANDARD</h2>
@@ -990,11 +945,9 @@
                         <div id="ts_previewArea" class="mt-2 hidden text-center border p-2 rounded bg-gray-50"><img id="ts_curveImagePreview" class="max-h-32 mx-auto object-contain rounded"></div>
                     </div>
 
-                    <!-- Signatures -->
                     <div class="mb-10">
                         <h2 class="text-lg font-bold text-gray-800 border-l-4 border-green-500 pl-3 mb-4 bg-gray-100 py-1">Signatures / ผู้ลงนาม</h2>
                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-gray-50 p-4 rounded border">
-                            <!-- ช่อง 1: Test By -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">Test By</label>
                                 <input type="text" id="ts_signTestName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อผู้ทดสอบ">
@@ -1007,7 +960,6 @@
                                 </div>
                             </div>
 
-                            <!-- ช่อง 2: Customer Witnessed -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">Customer Witnessed</label>
                                 <input type="text" id="ts_signCustName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ Customer">
@@ -1020,7 +972,6 @@
                                 </div>
                             </div>
 
-                            <!-- ช่อง 3: User Witnessed -->
                             <div>
                                 <label class="block text-sm font-semibold mb-1">User Witnessed</label>
                                 <input type="text" id="ts_signUserName" class="w-full px-3 py-2 border rounded text-sm mb-2" placeholder="ชื่อ User">
@@ -1039,7 +990,6 @@
                 </form>
             </div>
 
-            <!-- View 2: หน้ารายงาน (Report View / PDF) -->
             <div id="ts_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="ts_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
@@ -1108,18 +1058,15 @@
 
                     <div class="mt-auto w-full border-t-[6px] border-green-600 pt-3 shrink-0">
                         <div class="grid grid-cols-3 gap-4 text-center text-[12px]">
-                            <!-- Test By -->
                             <div class="flex flex-col items-center">
                                 <p class="font-bold mb-1">Test By</p>
                                 <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
-                                    <!-- ตัวรองรับรูปภาพลายเซ็น -->
                                     <img id="ts_rSignTestImg" src="" class="h-[45px] object-contain absolute bottom-0 z-10 hidden">
                                 </div>
                                 <p id="ts_rSignTestName" class="min-h-[20px]">(.........................................)</p>
                                 <p>Date: <span id="ts_rSignTestDate" class="inline-block min-w-[80px]">....................</span></p>
                             </div>
                             
-                            <!-- Customer -->
                             <div class="flex flex-col items-center">
                                 <p class="font-bold mb-1">Customer Witnessed</p>
                                 <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
@@ -1129,7 +1076,6 @@
                                 <p>Date: <span id="ts_rSignCustDate" class="inline-block min-w-[80px]">....................</span></p>
                             </div>
                             
-                            <!-- User -->
                             <div class="flex flex-col items-center">
                                 <p class="font-bold mb-1">User Witnessed</p>
                                 <div class="h-[40px] flex items-end justify-center w-full mb-1 relative">
@@ -1146,7 +1092,6 @@
 
     </div>
 
-    <!-- Script ควบคุมรวมทั้งหมด -->
     <script>
         // ==========================================
         // 1. SYSTEM NAVIGATION & GLOBAL HELPERS
@@ -1864,16 +1809,68 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     noPrintElements.forEach(el => el.style.display = '');
                 });
             }
+            
+        // ==========================================
+        // 8. QR / BARCODE SCANNER LOGIC
+        // ==========================================
+        let html5QrcodeScannerInstance = null;
+        let qrTargetInputId = null;
+
+        function startQRScanner(targetInputId) {
+            qrTargetInputId = targetInputId;
+            document.getElementById('qrScannerModal').classList.remove('hidden');
+
+            // สร้าง Instance ใหม่ถ้ายังไม่มี
+            if (!html5QrcodeScannerInstance) {
+                html5QrcodeScannerInstance = new Html5Qrcode("qr-reader");
+            }
+
+            // ตั้งค่ากรอบสแกน
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            // เปิดกล้องหลัง (environment)
+            html5QrcodeScannerInstance.start(
+                { facingMode: "environment" }, 
+                config,
+                (decodedText, decodedResult) => {
+                    // ทำงานเมื่อสแกนสำเร็จ
+                    document.getElementById(qrTargetInputId).value = decodedText;
+                    
+                    // กระตุ้นให้ระบบ Auto-save ทำงาน
+                    saveDraft(); 
+                    
+                    stopQRScanner();
+                    
+                    // (ตัวเลือก) เสียงติ๊ดเมื่อสแกนติด
+                    const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
+                    audio.play().catch(e => console.log("Audio play prevented"));
+                },
+                (errorMessage) => {
+                    // ทำงานเมื่อกำลังค้นหาโค้ด (ซ่อน error ไว้เพื่อไม่ให้ console รก)
+                }
+            ).catch((err) => {
+                console.error("Camera start error", err);
+                alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การใช้งานกล้องในเบราว์เซอร์ของคุณ");
+                stopQRScanner();
+            });
+        }
+
+        function stopQRScanner() {
+            document.getElementById('qrScannerModal').classList.add('hidden');
+            if (html5QrcodeScannerInstance && html5QrcodeScannerInstance.isScanning) {
+                html5QrcodeScannerInstance.stop().then(() => {
+                    console.log("QR Scanner stopped.");
+                }).catch((err) => {
+                    console.error("Failed to stop scanner", err);
+                });
+            }
+        }
     </script>
 
-    <!-- ========================================== -->
-    <!-- SIGNATURE MODAL (ซ่อนไว้รอเรียกใช้) -->
-    <!-- ========================================== -->
     <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
             <h3 class="text-xl font-bold mb-4 text-gray-800">เซ็นลายเซ็นของคุณ</h3>
             <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 touch-none overflow-hidden relative w-full flex justify-center">
-                <!-- วาง Canvas ขนาดพอดีมือถือ/ไอแพด -->
                 <canvas id="modalSignaturePad" width="340" height="160" class="cursor-crosshair bg-white"></canvas>
             </div>
             <div class="flex gap-3 w-full">
@@ -1883,7 +1880,20 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             </div>
         </div>
     </div>
-<!-- ปุ่มล้างข้อมูล (ลอยอยู่มุมขวาล่าง) -->
+    
+    <div id="qrScannerModal" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] hidden flex flex-col items-center justify-center backdrop-blur-sm no-print">
+        <div class="bg-white rounded-2xl shadow-2xl p-4 w-[95%] max-w-md flex flex-col items-center">
+            <div class="flex justify-between items-center w-full mb-3">
+                <h3 class="text-lg font-bold text-gray-800">สแกน Serial Number</h3>
+                <button type="button" onclick="stopQRScanner()" class="text-gray-500 hover:text-red-500 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="qr-reader" class="w-full rounded overflow-hidden border"></div>
+            <button type="button" onclick="stopQRScanner()" class="mt-4 w-full py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก (Cancel)</button>
+        </div>
+    </div>
+
     <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="ล้างข้อมูลในฟอร์มทั้งหมด">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1891,8 +1901,3 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
     </button>
 </body>
 </html>
-
-
-
-
-
