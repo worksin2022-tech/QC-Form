@@ -1835,49 +1835,64 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             loadDraft();
             setInterval(saveDraft, 3000);
         });
+       // ==========================================
+        // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - อัปเดตชื่อไฟล์
         // ==========================================
-            // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF)
-            // ==========================================
-            function downloadDirectPDF() {
-                // หาว่าตอนนี้กำลังเปิดรายงานฟอร์มไหนอยู่
-                let activeReport = null;
-                const reportIds = ['reportContainer', 'ts_reportContainer', 'missingReportContainer', 'tf_reportContainer', 'claimReportContainer'];
-                
-                for (let id of reportIds) {
-                    let el = document.getElementById(id);
-                    if (el && !el.classList.contains('hidden')) {
-                        activeReport = el;
-                        break;
-                    }
-                }
+        function downloadDirectPDF() {
+            let activeReport = null;
+            let filename = 'QC_Report.pdf'; // ชื่อไฟล์เริ่มต้นกันเหนียว
 
-                if (!activeReport) {
-                    alert('ไม่พบหน้ารายงานที่จะดาวน์โหลด');
-                    return;
-                }
-
-                // ซ่อนปุ่มต่างๆ (เช่น ปุ่มกลับ, ปุ่มพิมพ์) ชั่วคราวก่อนสร้าง PDF
-                const noPrintElements = activeReport.querySelectorAll('.no-print, button');
-                noPrintElements.forEach(el => el.style.display = 'none');
-
-                // กำหนดชื่อไฟล์ (ใช้ชื่อเดียวกับที่ระบบตั้งไว้ใน title)
-                const filename = document.title ? document.title + '.pdf' : 'QC_Report.pdf';
-
-                // ตั้งค่าหน้ากระดาษ PDF (A4 แนวตั้ง ไร้ขอบ)
-                const opt = {
-                    margin:       0,
-                    filename:     filename,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                // เริ่มกระบวนการดาวน์โหลด
-                html2pdf().set(opt).from(activeReport).save().then(() => {
-                    // คืนค่าปุ่มต่างๆ กลับมาแสดงเหมือนเดิม
-                    noPrintElements.forEach(el => el.style.display = '');
-                });
+            // 1. ตรวจสอบว่ากำลังเปิดรายงานฟอร์มไหนอยู่ และดึงข้อมูลจากหน้าเว็บมาตั้งชื่อไฟล์
+            if (!document.getElementById('missingReportContainer').classList.contains('hidden')) {
+                activeReport = document.getElementById('missingReportView');
+                const proj = document.getElementById('repProjectName').textContent || 'Project';
+                const cab = document.getElementById('repCabinetId').textContent || 'Cabinet';
+                filename = `Missing Item_${proj}_${cab}.pdf`;
+            } 
+            else if (!document.getElementById('claimReportContainer').classList.contains('hidden')) {
+                activeReport = document.getElementById('claimReportView');
+                const brand = document.getElementById('rClaimEqBrand').textContent || 'Brand';
+                const doc = document.getElementById('rClaimDocNo').textContent || 'DocNo';
+                filename = `Equipment Claim_${brand}_${doc}.pdf`;
             }
+            else if (!document.getElementById('tf_reportContainer').classList.contains('hidden')) {
+                activeReport = document.getElementById('tf_reportView');
+                const proj = document.getElementById('tf_rProject').textContent || 'Project';
+                const cb = document.getElementById('tf_rDetCB').textContent || 'CB';
+                const feeder = document.getElementById('tf_rDetFeeder').textContent || 'Feeder';
+                filename = `Trip Unit Test Report_${proj}_${cb}_${feeder}.pdf`;
+            }
+            else if (!document.getElementById('ts_reportContainer').classList.contains('hidden')) {
+                activeReport = document.getElementById('ts_reportView');
+                const cb = document.getElementById('ts_rDetCB').textContent || 'CB';
+                const serial = document.getElementById('ts_rDetSerial').textContent || 'SN';
+                filename = `Trip Unit Test_${cb}_${serial}.pdf`;
+            }
+
+            if (!activeReport) {
+                alert('ไม่พบหน้ารายงานที่จะดาวน์โหลด');
+                return;
+            }
+
+            // ซ่อนปุ่มต่างๆ (เช่น ปุ่มกลับ, ปุ่มพิมพ์) ชั่วคราวก่อนสร้าง PDF
+            const noPrintElements = document.querySelectorAll('.no-print, button');
+            noPrintElements.forEach(el => el.style.display = 'none');
+
+            // ตั้งค่าหน้ากระดาษ PDF (A4 แนวตั้ง ไร้ขอบ)
+            const opt = {
+                margin:       0,
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // เริ่มกระบวนการดาวน์โหลด
+            html2pdf().set(opt).from(activeReport).save().then(() => {
+                // คืนค่าปุ่มต่างๆ กลับมาแสดงเหมือนเดิม
+                noPrintElements.forEach(el => el.style.display = '');
+            });
+        }
             
         // ==========================================
         // 8. QR / BARCODE SCANNER LOGIC (Safe Mode + Auto Zoom/Focus)
