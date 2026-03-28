@@ -1835,38 +1835,44 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             loadDraft();
             setInterval(saveDraft, 3000);
         });
-       // ==========================================
-        // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - อัปเดตชื่อไฟล์
+      // ==========================================
+        // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF)
         // ==========================================
         function downloadDirectPDF() {
             let activeReport = null;
-            let filename = 'QC_Report.pdf'; // ชื่อไฟล์เริ่มต้นกันเหนียว
+            let filename = 'QC_Report.pdf';
 
-            // 1. ตรวจสอบว่ากำลังเปิดรายงานฟอร์มไหนอยู่ และดึงข้อมูลจากหน้าเว็บมาตั้งชื่อไฟล์
+            // ฟังก์ชันช่วยทำความสะอาดชื่อไฟล์ ลบอักขระพิเศษหรือช่องว่างที่มองไม่เห็นทิ้ง
+            const sanitize = (name) => {
+                if (!name) return '';
+                return name.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim();
+            };
+
+            // 1. ตรวจสอบว่ากำลังเปิดรายงานฟอร์มไหนอยู่
             if (!document.getElementById('missingReportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('missingReportView');
-                const proj = document.getElementById('repProjectName').textContent || 'Project';
-                const cab = document.getElementById('repCabinetId').textContent || 'Cabinet';
+                const proj = sanitize(document.getElementById('repProjectName').textContent) || 'Project';
+                const cab = sanitize(document.getElementById('repCabinetId').textContent) || 'Cabinet';
                 filename = `Missing Item_${proj}_${cab}.pdf`;
             } 
             else if (!document.getElementById('claimReportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('claimReportView');
-                const brand = document.getElementById('rClaimEqBrand').textContent || 'Brand';
-                const doc = document.getElementById('rClaimDocNo').textContent || 'DocNo';
+                const brand = sanitize(document.getElementById('rClaimEqBrand').textContent) || 'Brand';
+                const doc = sanitize(document.getElementById('rClaimDocNo').textContent) || 'DocNo';
                 filename = `Equipment Claim_${brand}_${doc}.pdf`;
             }
             else if (!document.getElementById('tf_reportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('tf_reportView');
-                const proj = document.getElementById('tf_rProject').textContent || 'Project';
-                const cb = document.getElementById('tf_rDetCB').textContent || 'CB';
-                const feeder = document.getElementById('tf_rDetFeeder').textContent || 'Feeder';
-                filename = `Trip Unit Test Report_${proj}_${cb}_${feeder}.pdf`;
+                const proj = sanitize(document.getElementById('tf_rProject').textContent) || 'Project';
+                const cb = sanitize(document.getElementById('tf_rDetCB').textContent) || 'CB';
+                const feeder = sanitize(document.getElementById('tf_rDetFeeder').textContent) || 'Feeder';
+                filename = `Trip Unit Test (Fac)_${proj}_${cb}_${feeder}.pdf`;
             }
             else if (!document.getElementById('ts_reportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('ts_reportView');
-                const cb = document.getElementById('ts_rDetCB').textContent || 'CB';
-                const serial = document.getElementById('ts_rDetSerial').textContent || 'SN';
-                filename = `Trip Unit Test_${cb}_${serial}.pdf`;
+                const cb = sanitize(document.getElementById('ts_rDetCB').textContent) || 'CB';
+                const serial = sanitize(document.getElementById('ts_rDetSerial').textContent) || 'SN';
+                filename = `Trip Unit Test (Trading)_${cb}_${serial}.pdf`;
             }
 
             if (!activeReport) {
@@ -1874,11 +1880,11 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 return;
             }
 
-            // ซ่อนปุ่มต่างๆ (เช่น ปุ่มกลับ, ปุ่มพิมพ์) ชั่วคราวก่อนสร้าง PDF
+            // ซ่อนปุ่มต่างๆ ชั่วคราวก่อนสร้าง PDF
             const noPrintElements = document.querySelectorAll('.no-print, button');
             noPrintElements.forEach(el => el.style.display = 'none');
 
-            // ตั้งค่าหน้ากระดาษ PDF (A4 แนวตั้ง ไร้ขอบ)
+            // ตั้งค่าหน้ากระดาษ PDF
             const opt = {
                 margin:       0,
                 filename:     filename,
@@ -1887,8 +1893,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // เริ่มกระบวนการดาวน์โหลด
-            html2pdf().set(opt).from(activeReport).save().then(() => {
+            // เริ่มกระบวนการดาวน์โหลด (บังคับใส่ filename ลงใน .save() อีกชั้น)
+            html2pdf().set(opt).from(activeReport).save(filename).then(() => {
                 // คืนค่าปุ่มต่างๆ กลับมาแสดงเหมือนเดิม
                 noPrintElements.forEach(el => el.style.display = '');
             });
