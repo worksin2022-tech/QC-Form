@@ -1695,77 +1695,146 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             canvas.addEventListener('touchmove', draw, {passive: false});
         }
         // ==========================================
-            // 7. AUTO-SAVE DRAFT (ระบบบันทึกร่างอัตโนมัติ)
-            // ==========================================
-            function saveDraft() {
-                const draftData = {};
-                // เก็บข้อมูลจากช่องกรอกทั้งหมด (ยกเว้นช่องอัปโหลดไฟล์รูป เพราะเบราว์เซอร์ไม่อนุญาตให้โหลดกลับอัตโนมัติ)
-                document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
-                    if (el.id) {
-                        if (el.type === 'checkbox' || el.type === 'radio') {
-                            draftData[el.id] = el.checked;
-                        } else {
-                            draftData[el.id] = el.value;
-                        }
-                    }
-                });
-                
-                // เก็บลายเซ็นทั้งหมด
-                draftData.signatures = typeof signaturesData !== 'undefined' ? signaturesData : {};
-
-                try {
-                    localStorage.setItem('qcFormDraft_v1', JSON.stringify(draftData));
-                } catch (e) {
-                    console.log("Local storage is full or disabled.");
-                }
-            }
-
-            function loadDraft() {
-                const saved = localStorage.getItem('qcFormDraft_v1');
-                if (saved) {
-                    try {
-                        const draftData = JSON.parse(saved);
-                        
-                        // คืนค่าข้อมูลลงช่องกรอก
-                        document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
-                            if (el.id && draftData.hasOwnProperty(el.id)) {
-                                if (el.type === 'checkbox' || el.type === 'radio') {
-                                    el.checked = draftData[el.id];
-                                } else {
-                                    el.value = draftData[el.id];
-                                }
-                            }
-                        });
-
-                        // คืนค่ารูปลายเซ็นในหน้าฟอร์ม
-                        if (draftData.signatures) {
-                            signaturesData = draftData.signatures;
-                            for (const key in signaturesData) {
-                                const previewImg = document.getElementById(key + '_preview');
-                                if (previewImg && signaturesData[key]) {
-                                    previewImg.src = signaturesData[key];
-                                    previewImg.classList.remove('hidden');
-                                }
-                            }
-                        }
-                    } catch(e) {
-                        console.error("Error loading draft", e);
+        // 7. AUTO-SAVE DRAFT (ระบบบันทึกร่างอัตโนมัติ)
+        // ==========================================
+        function saveDraft() {
+            const draftData = {};
+            // 1. เก็บข้อมูลจากช่องกรอกทั้งหมด
+            document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
+                if (el.id) {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        draftData[el.id] = el.checked;
+                    } else {
+                        draftData[el.id] = el.value;
                     }
                 }
-            }
-
-            function clearDraftData() {
-                if(confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ล้างข้อมูลทั้งหมด" ในฟอร์มนี้ เพื่อเริ่มงานใหม่?')) {
-                    localStorage.removeItem('qcFormDraft_v1');
-                    location.reload(); // โหลดหน้าเว็บใหม่เพื่อล้างค่าทั้งหมด
-                }
-            }
-
-            // สั่งให้ระบบโหลดข้อมูลเดิม และเริ่มเซฟอัตโนมัติทุกๆ 3 วินาที (3000 ms)
-            window.addEventListener('DOMContentLoaded', () => {
-                loadDraft();
-                setInterval(saveDraft, 3000);
             });
+            
+            // 2. เก็บลายเซ็นทั้งหมด
+            draftData.signatures = typeof signaturesData !== 'undefined' ? signaturesData : {};
+
+            // 3. เก็บข้อมูลรูปภาพ (Missing Item & Claim)
+            draftData.missingImages = typeof missingUploadedImages !== 'undefined' ? missingUploadedImages : [];
+            draftData.claimImages = typeof claimUploadedImages !== 'undefined' ? claimUploadedImages : [];
+
+            // 4. เก็บข้อมูลรูปกราฟ (Trip Unit) กรณีอัปโหลดเอง
+            draftData.tfCurveImage = typeof tf_curveImageData !== 'undefined' ? tf_curveImageData : null;
+            draftData.tsCurveImage = typeof ts_curveImageData !== 'undefined' ? ts_curveImageData : null;
+
+            // 5. เก็บข้อมูลแถวรายการของฟอร์ม Missing Item
+            const missingItemsData = [];
+            document.querySelectorAll('#missingItemsContainer .item-row').forEach(row => {
+                missingItemsData.push({
+                    name: row.querySelector('.item-name').value,
+                    qty: row.querySelector('.item-qty').value,
+                    remark: row.querySelector('.item-remark').value
+                });
+            });
+            draftData.missingItemsList = missingItemsData;
+
+            try {
+                // บันทึกทั้งหมดลง LocalStorage
+                localStorage.setItem('qcFormDraft_v1', JSON.stringify(draftData));
+            } catch (e) {
+                console.log("Local storage is full or disabled.");
+            }
+        }
+
+        function loadDraft() {
+            const saved = localStorage.getItem('qcFormDraft_v1');
+            if (saved) {
+                try {
+                    const draftData = JSON.parse(saved);
+                    
+                    // 1. คืนค่าข้อมูลลงช่องกรอก
+                    document.querySelectorAll('input:not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]), textarea, select').forEach(el => {
+                        if (el.id && draftData.hasOwnProperty(el.id)) {
+                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                el.checked = draftData[el.id];
+                            } else {
+                                el.value = draftData[el.id];
+                            }
+                        }
+                    });
+
+                    // 2. คืนค่ารูปลายเซ็นในหน้าฟอร์ม
+                    if (draftData.signatures) {
+                        signaturesData = draftData.signatures;
+                        for (const key in signaturesData) {
+                            const previewImg = document.getElementById(key + '_preview');
+                            if (previewImg && signaturesData[key]) {
+                                previewImg.src = signaturesData[key];
+                                previewImg.classList.remove('hidden');
+                            }
+                        }
+                    }
+
+                    // 3. คืนค่ารูปภาพ Missing Item
+                    if (draftData.missingImages && draftData.missingImages.length > 0) {
+                        missingUploadedImages = draftData.missingImages;
+                        renderMissingImagePreviews(); // วาดรูปขึ้นหน้าจอ
+                    }
+
+                    // 4. คืนค่ารูปภาพ Equipment Claim
+                    if (draftData.claimImages && draftData.claimImages.length > 0) {
+                        claimUploadedImages = draftData.claimImages;
+                        renderClaimImagePreviews(); // วาดรูปขึ้นหน้าจอ
+                    }
+
+                    // 5. คืนค่ารูปกราฟ Factory
+                    if (draftData.tfCurveImage) {
+                        tf_curveImageData = draftData.tfCurveImage;
+                        const previewImg = document.getElementById('tf_curveImagePreview');
+                        if (previewImg) {
+                            previewImg.src = tf_curveImageData;
+                            document.getElementById('tf_previewArea').classList.remove('hidden');
+                        }
+                    }
+
+                    // 6. คืนค่ารูปกราฟ Trading
+                    if (draftData.tsCurveImage) {
+                        ts_curveImageData = draftData.tsCurveImage;
+                        const previewImg = document.getElementById('ts_curveImagePreview');
+                        if (previewImg) {
+                            previewImg.src = ts_curveImageData;
+                            document.getElementById('ts_previewArea').classList.remove('hidden');
+                        }
+                    }
+
+                    // 7. คืนค่าแถวรายการ Missing Item (ถ้ามี)
+                    if (draftData.missingItemsList && draftData.missingItemsList.length > 0) {
+                        const container = document.getElementById('missingItemsContainer');
+                        container.innerHTML = ''; // ล้างค่า Default 1 แถวที่สร้างไว้ตอนโหลดหน้าทิ้งก่อน
+                        missingItemCount = 0; // รีเซ็ตตัวนับแถว
+                        
+                        draftData.missingItemsList.forEach(item => {
+                            addMissingItem(); // สร้างแถวใหม่
+                            const rows = document.querySelectorAll('#missingItemsContainer .item-row');
+                            const lastRow = rows[rows.length - 1]; // เลือกแถวล่าสุดที่เพิ่งสร้าง
+                            lastRow.querySelector('.item-name').value = item.name;
+                            lastRow.querySelector('.item-qty').value = item.qty;
+                            lastRow.querySelector('.item-remark').value = item.remark;
+                        });
+                    }
+
+                } catch(e) {
+                    console.error("Error loading draft", e);
+                }
+            }
+        }
+
+        function clearDraftData() {
+            if(confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ล้างข้อมูลทั้งหมด" ในฟอร์มนี้ เพื่อเริ่มงานใหม่?')) {
+                localStorage.removeItem('qcFormDraft_v1');
+                location.reload(); // โหลดหน้าเว็บใหม่เพื่อล้างค่าทั้งหมด
+            }
+        }
+
+        // สั่งให้ระบบโหลดข้อมูลเดิม และเริ่มเซฟอัตโนมัติทุกๆ 3 วินาที (3000 ms)
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDraft();
+            setInterval(saveDraft, 3000);
+        });
         // ==========================================
             // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF)
             // ==========================================
