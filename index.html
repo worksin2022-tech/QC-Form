@@ -1835,44 +1835,44 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             loadDraft();
             setInterval(saveDraft, 3000);
         });
-      // ==========================================
-        // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF)
+     // ==========================================
+        // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================
         function downloadDirectPDF() {
             let activeReport = null;
             let filename = 'QC_Report.pdf';
 
-            // ฟังก์ชันช่วยทำความสะอาดชื่อไฟล์ ลบอักขระพิเศษหรือช่องว่างที่มองไม่เห็นทิ้ง
+            // ฟังก์ชันทำความสะอาดชื่อไฟล์ ลบอักขระพิเศษ และเปลี่ยนช่องว่างเป็น _
             const sanitize = (name) => {
-                if (!name) return '';
-                return name.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim();
+                if (!name) return 'Unknown';
+                return name.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '_').trim();
             };
 
-            // 1. ตรวจสอบว่ากำลังเปิดรายงานฟอร์มไหนอยู่
+            // 1. ตรวจสอบฟอร์มที่กำลังเปิด และดึงข้อความจากหน้าจอมาประกอบเป็นชื่อไฟล์
             if (!document.getElementById('missingReportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('missingReportView');
-                const proj = sanitize(document.getElementById('repProjectName').textContent) || 'Project';
-                const cab = sanitize(document.getElementById('repCabinetId').textContent) || 'Cabinet';
-                filename = `Missing Item_${proj}_${cab}.pdf`;
+                const proj = sanitize(document.getElementById('repProjectName').textContent);
+                const cab = sanitize(document.getElementById('repCabinetId').textContent);
+                filename = `Missing_Item_${proj}_${cab}.pdf`;
             } 
             else if (!document.getElementById('claimReportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('claimReportView');
-                const brand = sanitize(document.getElementById('rClaimEqBrand').textContent) || 'Brand';
-                const doc = sanitize(document.getElementById('rClaimDocNo').textContent) || 'DocNo';
-                filename = `Equipment Claim_${brand}_${doc}.pdf`;
+                const brand = sanitize(document.getElementById('rClaimEqBrand').textContent);
+                const doc = sanitize(document.getElementById('rClaimDocNo').textContent);
+                filename = `Equipment_Claim_${brand}_${doc}.pdf`;
             }
             else if (!document.getElementById('tf_reportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('tf_reportView');
-                const proj = sanitize(document.getElementById('tf_rProject').textContent) || 'Project';
-                const cb = sanitize(document.getElementById('tf_rDetCB').textContent) || 'CB';
-                const feeder = sanitize(document.getElementById('tf_rDetFeeder').textContent) || 'Feeder';
-                filename = `Trip Unit Test (Fac)_${proj}_${cb}_${feeder}.pdf`;
+                const proj = sanitize(document.getElementById('tf_rProject').textContent);
+                const cb = sanitize(document.getElementById('tf_rDetCB').textContent);
+                const feeder = sanitize(document.getElementById('tf_rDetFeeder').textContent);
+                filename = `Trip_Test_Factory_${proj}_${cb}_${feeder}.pdf`;
             }
             else if (!document.getElementById('ts_reportContainer').classList.contains('hidden')) {
                 activeReport = document.getElementById('ts_reportView');
-                const cb = sanitize(document.getElementById('ts_rDetCB').textContent) || 'CB';
-                const serial = sanitize(document.getElementById('ts_rDetSerial').textContent) || 'SN';
-                filename = `Trip Unit Test (Trading)_${cb}_${serial}.pdf`;
+                const cb = sanitize(document.getElementById('ts_rDetCB').textContent);
+                const serial = sanitize(document.getElementById('ts_rDetSerial').textContent);
+                filename = `Trip_Test_Trading_${cb}_${serial}.pdf`;
             }
 
             if (!activeReport) {
@@ -1880,11 +1880,10 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 return;
             }
 
-            // ซ่อนปุ่มต่างๆ ชั่วคราวก่อนสร้าง PDF
-            const noPrintElements = document.querySelectorAll('.no-print, button');
+            // ซ่อนปุ่มต่างๆ (เพื่อไม่ให้ติดไปใน PDF)
+            const noPrintElements = activeReport.querySelectorAll('.no-print, button');
             noPrintElements.forEach(el => el.style.display = 'none');
 
-            // ตั้งค่าหน้ากระดาษ PDF
             const opt = {
                 margin:       0,
                 filename:     filename,
@@ -1893,13 +1892,14 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // เริ่มกระบวนการดาวน์โหลด (บังคับใส่ filename ลงใน .save() อีกชั้น)
-            html2pdf().set(opt).from(activeReport).save(filename).then(() => {
-                // คืนค่าปุ่มต่างๆ กลับมาแสดงเหมือนเดิม
+            // ใช้ .toPdf().get('pdf') เพื่อเจาะทะลุเข้าไปสั่ง Save ด้วยระบบของ jsPDF โดยตรง
+            html2pdf().set(opt).from(activeReport).toPdf().get('pdf').then(function(pdf) {
+                pdf.save(filename); // บังคับเซฟด้วยชื่อตัวแปรที่ประกอบมา
+                
+                // คืนค่าปุ่มต่างๆ กลับมาแสดง
                 noPrintElements.forEach(el => el.style.display = '');
             });
         }
-            
         // ==========================================
         // 8. QR / BARCODE SCANNER LOGIC (Safe Mode + Auto Zoom/Focus)
         // ==========================================
