@@ -138,13 +138,7 @@
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-<body>
-<div class="max-w-7xl mx-auto px-4 pt-4 no-print">
-    <button onclick="window.location.href='index.html'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg flex items-center transition-colors shadow-sm">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        กลับหน้าแรก (Home)
-    </button>
-</div>
+    
     <!-- 🌟 NATIVE PRINT HEADER (ขวาตรง ซ้ายเฉียง) -->
     <div id="nativePrintHeader" class="hidden print-fixed-header">
         <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
@@ -189,12 +183,17 @@
     <div class="control-panel p-4 no-print">
         <div class="max-w-7xl mx-auto">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                        Report Builder
-                        <span id="saveStatus" class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold ml-2 hidden shadow-sm"><i class="fa-solid fa-cloud-check"></i> เซฟแล้ว</span>
-                    </h2>
-                    <p class="text-sm text-slate-500 font-medium mt-1">จัดการโมดูล พิมพ์รายงาน หรือบันทึกส่งต่อให้ทีม</p>
+                <div class="flex items-center gap-4">
+                    <button onclick="window.location.href='index.html'" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-2.5 rounded-xl transition-colors shadow-sm flex items-center justify-center border border-slate-300" title="กลับหน้าแรก">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    </button>
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                            Report Builder
+                            <span id="saveStatus" class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold ml-2 hidden shadow-sm"><i class="fa-solid fa-cloud-check"></i> เซฟแล้ว</span>
+                        </h2>
+                        <p class="text-sm text-slate-500 font-medium mt-1">จัดการโมดูล พิมพ์รายงาน หรือบันทึกส่งต่อให้ทีม</p>
+                    </div>
                 </div>
                 
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
