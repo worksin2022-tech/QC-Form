@@ -83,21 +83,21 @@
             .a4-wrapper { background: transparent; padding: 0; display: block; width: 100%; overflow: visible; }
             
             .native-print-mode .a4-page { 
-            box-shadow: none !important; border-radius: 0 !important; 
-            width: 100% !important; max-width: 100% !important; margin: 0 !important; 
-            min-height: auto !important; 
-            padding: 0 15mm !important; 
-            background: transparent !important; 
-        }
-        
-        .no-print, .control-panel { display: none !important; }
+                box-shadow: none !important; border-radius: 0 !important; 
+                width: 100% !important; max-width: 100% !important; margin: 0 !important; 
+                min-height: auto !important; 
+                padding: 0 15mm !important; 
+                background: transparent !important; 
+            }
+            
+            .no-print, .control-panel { display: none !important; }
 
-        .print-fixed-header { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
-        .print-fixed-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
+            .print-fixed-header { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
+            .print-fixed-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
 
-        .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
-        
-        .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+            .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
+            
+            .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
             
             .native-print-mode .insulation-block, 
             .native-print-mode .dielectric-block, 
@@ -138,9 +138,32 @@
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-    
-    <!-- 🌟 NATIVE PRINT HEADER (ขวาตรง ซ้ายเฉียง) -->
+<body>
+
+    <!-- 🌟 Tailwind Safelist -->
+    <div class="hidden bg-slate-50 bg-slate-100 bg-slate-500 bg-slate-700 bg-slate-800 text-slate-400 text-slate-500 text-slate-600 text-slate-700 text-slate-800 border-slate-100 border-slate-200 border-slate-300 hover:bg-slate-100 hover:bg-slate-200 hover:text-slate-700 bg-orange-50 bg-orange-100 bg-orange-500 text-orange-400 text-orange-500 text-orange-600 text-orange-700 border-orange-100 border-orange-200 border-orange-300 hover:bg-orange-100 hover:bg-orange-200 hover:text-orange-700"></div>
+
+    <!-- 🌟 NATIVE PRINT HEADER (ขวาตรง ซ้ายเฉียงลง \) -->
     <div id="nativePrintHeader" class="hidden print-fixed-header">
+        <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
+            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                <!-- ส่วนซ้าย (Slate-700) เฉียงลง -->
+                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
+                <!-- เส้นส้มหนา -->
+                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
+                <!-- ส่วนขวา (Slate-900) ด้านขวาตรง -->
+                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
+                <!-- ขอบล่างเส้นส้มบางๆ วิ่งสุดขอบเฉียงพอดี -->
+                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+            </svg>
+        </div>
+        <div class="absolute bottom-[2mm] right-[15mm] z-10">
+            <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
+        </div>
+    </div>
+
+    <!-- 🌟 NATIVE PRINT FOOTER (ขวาตรง ซ้ายเฉียงขึ้น / ให้รับกับขอบบนสมมาตร) -->
+    <div id="nativePrintFooter" class="hidden print-fixed-footer">
         <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
             <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
                 <!-- ส่วนซ้าย (Slate-700) เฉียงขึ้น -->
@@ -149,31 +172,10 @@
                 <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
                 <!-- ส่วนขวา (Slate-900) ด้านขวาตรง -->
                 <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                <!-- ขอบล่างเส้นส้มบางๆ วิ่งสุดขอบ -->
-                <polygon points="0.6,11.5 210,11.5 210,12 0,12" fill="#f97316" />
+                <!-- ขอบบนเส้นส้มบางๆ วิ่งสุดขอบเฉียงพอดี -->
+                <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
             </svg>
         </div>
-        <!-- ข้อความส่วนหัว (ขยับชิดขวา 15mm) -->
-        <div class="absolute bottom-[2mm] right-[15mm] z-10">
-            <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
-        </div>
-    </div>
-
-    <!-- 🌟 NATIVE PRINT FOOTER -->
-    <div id="nativePrintFooter" class="hidden print-fixed-footer">
-        <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
-            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                <!-- ส่วนซ้าย (Slate-700) เฉียงขึ้น -->
-                <polygon points="0,12 15,0 100,0 85,12" fill="#334155" />
-                <!-- เส้นส้มหนา -->
-                <polygon points="100,0 106,0 91,12 85,12" fill="#f97316" />
-                <!-- ส่วนขวา (Slate-900) ด้านขวาตรง -->
-                <polygon points="106,0 210,0 210,12 91,12" fill="#0f172a" />
-                <!-- ขอบบนเส้นส้มบางๆ วิ่งสุดขอบ -->
-                <polygon points="15,0 210,0 210,0.5 14.4,0.5" fill="#f97316" />
-            </svg>
-        </div>
-        <!-- ข้อความส่วนท้าย (ฝั่งซ้ายยังคง 25mm หลบมุมเฉียง) -->
         <div class="absolute top-[3mm] left-[25mm] z-10">
             <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">AVATAR ELECTRIC CO., LTD.</span>
         </div>
@@ -184,9 +186,6 @@
         <div class="max-w-7xl mx-auto">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
                 <div class="flex items-center gap-4">
-                    <button onclick="window.location.href='index.html'" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-2.5 rounded-xl transition-colors shadow-sm flex items-center justify-center border border-slate-300" title="กลับหน้าแรก">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    </button>
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
                             Report Builder
@@ -294,10 +293,10 @@
                         <!-- 🌟 Web View Decorative Overlay -->
                         <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
                             <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                                <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                                <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                                <polygon points="0.6,11.5 210,11.5 210,12 0,12" fill="#f97316" />
+                                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
+                                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
+                                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
+                                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
                             </svg>
                             <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
                                 <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
@@ -306,10 +305,10 @@
                         
                         <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
                             <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                <polygon points="0,12 15,0 100,0 85,12" fill="#334155" />
-                                <polygon points="100,0 106,0 91,12 85,12" fill="#f97316" />
-                                <polygon points="106,0 210,0 210,12 91,12" fill="#0f172a" />
-                                <polygon points="15,0 210,0 210,0.5 14.4,0.5" fill="#f97316" />
+                                <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
+                                <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
+                                <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
+                                <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
                             </svg>
                             <div class="absolute top-[3mm] left-[25mm] z-[1]">
                                 <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
@@ -348,9 +347,8 @@
                                 <ul id="dynamicScopeList" class="list-decimal list-outside space-y-1.5 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
                             </div>
 
-                            <!-- 🌟 MODULE CONTAINER (สำหรับการลากวาง) -->
+                            <!-- 🌟 MODULE CONTAINER -->
                             <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
-                                <!-- แต่ละ Module จะถูกห่อด้วย div เล็กๆ ข้างในเพื่อทำ Drag Handle -->
                                 <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
                                     <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
                                         <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
@@ -596,7 +594,6 @@
         // 🌟 ระบบลากวางสลับตำแหน่ง (Drag & Drop Popup - อัปเกรด 2 ชั้น)
         // ==========================================
         
-        // ฟังก์ชันช่วยหาคอนเทนเนอร์และคลาสของบล็อกย่อย
         function getSubContainerInfo(modId) {
             const map = {
                 'mod_before': { id: 'bf_container', cls: 'photo-group-block' },
@@ -1458,82 +1455,6 @@
             });
 
             const webFooter = document.getElementById('webFooter');
-        if (webFooter) webFooter.style.display = 'none';
-
-        const blocks = ['.photo-group-block', '.insulation-block', '.dielectric-block', '.grounding-block'];
-        blocks.forEach(selector => {
-            document.querySelectorAll(selector).forEach(block => {
-                const grid = block.querySelector('.grid');
-                if (grid && !selector.includes('grounding')) splitGridForPrint(grid, 6, 8); 
-                else if (grid) splitGridForPrint(grid, 4, 8);
-            });
-        });
-        const ctGrid = document.getElementById('ct_grid');
-        if (ctGrid) splitGridForPrint(ctGrid, 8, 8);
-    }
-
-    function restoreDocumentAfterPrint() {
-        const wrapper = document.querySelector('.a4-wrapper');
-        const element = document.getElementById('reportDocument');
-        
-        wrapper.style.minHeight = '';
-        wrapper.style.height = '';
-        wrapper.style.overflow = '';
-
-        wrapper.classList.remove('preparing-pdf'); 
-        element.classList.remove('html2pdf-mode-active');
-        document.body.classList.remove('native-print-mode'); 
-
-        document.getElementById('printLayoutThead').classList.add('hidden');
-        document.getElementById('printLayoutTfoot').classList.add('hidden');
-        document.getElementById('nativePrintHeader').classList.add('hidden');
-        document.getElementById('nativePrintFooter').classList.add('hidden');
-
-        const nativePageNums = document.getElementById('nativePageNumbers');
-        if (nativePageNums) nativePageNums.remove();
-
-        element.querySelectorAll('.no-print').forEach(el => {
-            if (el.hasAttribute('data-orig-display')) {
-                const orig = el.getAttribute('data-orig-display');
-                if (orig === '') el.style.removeProperty('display');
-                else el.style.display = orig;
-                el.removeAttribute('data-orig-display');
-            }
-        });
-        
-        element.querySelectorAll('.print-text-span').forEach(span => span.remove());
-        element.querySelectorAll('.tmp-hidden-element').forEach(el => el.classList.remove('hidden', 'tmp-hidden-element'));
-
-        element.querySelectorAll('.tmp-no-print').forEach(box => {
-            box.classList.remove('tmp-no-print');
-            if (box.hasAttribute('data-orig-display')) {
-                const orig = box.getAttribute('data-orig-display');
-                if (orig === '') box.style.removeProperty('display');
-                else box.style.display = orig;
-                box.removeAttribute('data-orig-display');
-            }
-        });
-
-        document.querySelectorAll('.tmp-split-wrapper').forEach(wrap => {
-            const origGrid = wrap.previousElementSibling;
-            if (origGrid && origGrid.classList.contains('tmp-orig-grid')) {
-                Array.from(wrap.querySelectorAll('.photo-box')).forEach(box => origGrid.appendChild(box));
-                const allChildren = Array.from(origGrid.children);
-                allChildren.sort((a, b) => parseInt(a.getAttribute('data-orig-index')) - parseInt(b.getAttribute('data-orig-index')));
-                allChildren.forEach(child => origGrid.appendChild(child));
-                
-                wrap.remove();
-                origGrid.classList.remove('tmp-orig-grid', 'tmp-no-print');
-                if (origGrid.hasAttribute('data-orig-display')) {
-                    const orig = origGrid.getAttribute('data-orig-display');
-                    if (orig === '') origGrid.style.removeProperty('display');
-                    else origGrid.style.display = orig;
-                    origGrid.removeAttribute('data-orig-display');
-                }
-            }
-        });
-
-        const webFooter = document.getElementById('webFooter');
         if (webFooter) webFooter.style.display = '';
     }
 
@@ -1547,52 +1468,47 @@
         for (let i = 1; i <= totalPages; i++) {
             pdf.setPage(i);
             
-            // --- TOP HEADER ---
-            // Left Gray (Slant Up)
+            // --- TOP HEADER (\ Slant Down) ---
             pdf.setFillColor(colorGrey[0], colorGrey[1], colorGrey[2]);
-            pdf.fillPolygon([0, 12, 15, 0, 125, 0, 110, 12]);
+            pdf.fillPolygon([0, 0, 15, 12, 125, 12, 110, 0]);
             
-            // Orange Divider
             pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([125, 0, 131, 0, 116, 12, 110, 12]);
+            pdf.fillPolygon([110, 0, 116, 0, 131, 12, 125, 12]);
             
-            // Right Black (Straight Right Edge)
             pdf.setFillColor(colorBlack[0], colorBlack[1], colorBlack[2]);
-            pdf.fillPolygon([131, 0, 210, 0, 210, 12, 116, 12]);
+            pdf.fillPolygon([116, 0, 210, 0, 210, 12, 131, 12]);
 
-            // Thin Orange Line Bottom (วิ่งสุดขอบ)
+            // Thin Orange Line Bottom (ชนขอบเฉียงพอดี)
             pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([0.6, 11.5, 210, 11.5, 210, 12, 0, 12]);
+            pdf.fillPolygon([14.375, 11.5, 210, 11.5, 210, 12, 15, 12]);
 
             pdf.setFontSize(8);
             pdf.setTextColor(241, 245, 249);
             pdf.setFont('Helvetica', 'bold');
-            pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' }); // ขยับกลับมา 195
+            pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' });
 
-            // --- BOTTOM FOOTER ---
+            // --- BOTTOM FOOTER (/ Slant Up Mirrored) ---
             const fY = 285;
-            // Left Gray (Slant Up)
+            
             pdf.setFillColor(colorGrey[0], colorGrey[1], colorGrey[2]);
-            pdf.fillPolygon([0, fY+12, 15, fY, 100, fY, 85, fY+12]);
+            pdf.fillPolygon([0, fY+12, 15, fY, 125, fY, 110, fY+12]);
             
-            // Orange Divider
             pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([100, fY, 106, fY, 91, fY+12, 85, fY+12]);
+            pdf.fillPolygon([125, fY, 131, fY, 116, fY+12, 110, fY+12]);
             
-            // Right Black (Straight Right Edge)
             pdf.setFillColor(colorBlack[0], colorBlack[1], colorBlack[2]);
-            pdf.fillPolygon([106, fY, 210, fY, 210, fY+12, 91, fY+12]);
+            pdf.fillPolygon([131, fY, 210, fY, 210, fY+12, 116, fY+12]);
 
-            // Thin Orange Line Top (วิ่งสุดขอบ)
+            // Thin Orange Line Top (ชนขอบเฉียงพอดี)
             pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([15, fY, 210, fY, 210, fY+0.5, 14.4, fY+0.5]);
+            pdf.fillPolygon([15, fY, 210, fY, 210, fY+0.5, 14.375, fY+0.5]);
 
             pdf.setFontSize(9);
             pdf.setTextColor(241, 245, 249);
             pdf.setFont('Helvetica', 'bold');
             pdf.text('AVATAR ELECTRIC CO., LTD.', 25, fY + 8);
             
-            pdf.text(`Page ${i} of ${totalPages}`, 195, fY + 8, { align: 'right' }); // ขยับกลับมา 195
+            pdf.text(`Page ${i} of ${totalPages}`, 195, fY + 8, { align: 'right' });
         }
     }
 
@@ -1627,7 +1543,7 @@
                 pagebreak:    { mode: ['css', 'legacy'], avoid: ['.photo-box', '.breaker-group', 'tr', '.section-title'] }
             };
 
-            const worker = html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
+            let worker = html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
                 drawNativeHeaderFooter(pdf);
             });
 
@@ -1682,47 +1598,47 @@
                 if (calculatedPages < 1) calculatedPages = 1;
                 
                 const activeBreaks = Array.from(td.querySelectorAll('.pdf-page-break')).filter(el => el.offsetParent !== null);
-            const explicitPages = activeBreaks.length + 1;
-            
-            const totalPages = Math.max(calculatedPages, explicitPages);
-            
-            const pageNumContainer = document.createElement('div');
-            pageNumContainer.id = 'nativePageNumbers';
-            pageNumContainer.className = 'absolute top-0 left-0 w-full pointer-events-none z-[9999] hidden print:block';
-            
-            for (let i = 1; i <= totalPages; i++) {
-                const pageNum = document.createElement('div');
-                pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1'; // ขยับกลับมาขวา 15mm
-                pageNum.style.top = `calc(${i * 297}mm - 8mm)`; 
-                pageNum.innerText = `Page ${i} of ${totalPages}`;
-                pageNumContainer.appendChild(pageNum);
-            }
-            
-            document.body.appendChild(pageNumContainer);
-            wrapper.style.width = originalWidth;
-            
-            // ลบ Ghost Spacer ออกเมื่อพิมพ์เสร็จ
-            window.addEventListener('afterprint', function cleanupGhost() {
-                const ghost = document.getElementById('ghostSpacerHacker');
-                if (ghost) ghost.remove();
-                window.removeEventListener('afterprint', cleanupGhost);
+                const explicitPages = activeBreaks.length + 1;
+                
+                const totalPages = Math.max(calculatedPages, explicitPages);
+                
+                const pageNumContainer = document.createElement('div');
+                pageNumContainer.id = 'nativePageNumbers';
+                pageNumContainer.className = 'absolute top-0 left-0 w-full pointer-events-none z-[9999] hidden print:block';
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageNum = document.createElement('div');
+                    pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1'; 
+                    pageNum.style.top = `calc(${i * 297}mm - 8mm)`; 
+                    pageNum.innerText = `Page ${i} of ${totalPages}`;
+                    pageNumContainer.appendChild(pageNum);
+                }
+                
+                document.body.appendChild(pageNumContainer);
+                wrapper.style.width = originalWidth;
+                
+                // ลบ Ghost Spacer ออกเมื่อพิมพ์เสร็จ
+                window.addEventListener('afterprint', function cleanupGhost() {
+                    const ghost = document.getElementById('ghostSpacerHacker');
+                    if (ghost) ghost.remove();
+                    window.removeEventListener('afterprint', cleanupGhost);
+                });
+
+                setTimeout(() => {
+                    window.print();
+                }, 100);
             });
+        }
 
-            setTimeout(() => {
-                window.print();
-            }, 100);
+        window.addEventListener('afterprint', () => {
+            restoreDocumentAfterPrint();
         });
-    }
 
-    window.addEventListener('afterprint', () => {
-        restoreDocumentAfterPrint();
-    });
-
-    function closePreview() {
-        const modal = document.getElementById('pdfModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
+        function closePreview() {
+            const modal = document.getElementById('pdfModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     </script>
 </body>
 </html>
