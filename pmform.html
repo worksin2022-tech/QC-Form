@@ -824,14 +824,23 @@
                 html: document.getElementById('reportDocument').innerHTML
             };
             
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(draft));
+            // 🌟 แก้ไข: ใช้ Blob แทน Data URI เพื่อให้รองรับ iPadOS และ iOS 100%
+            const jsonStr = JSON.stringify(draft);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
             const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("href", url);
             const projectName = document.getElementById('inputProject').value || 'Untitled';
             downloadAnchorNode.setAttribute("download", `PM_Report_${projectName}.json`);
+            
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
-            downloadAnchorNode.remove();
+            document.body.removeChild(downloadAnchorNode);
+            
+            // ล้างหน่วยความจำหลังจากดาวน์โหลดเสร็จ
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
             showSaveStatus('<i class="fa-solid fa-check"></i> นำออกสำเร็จ');
         }
 
