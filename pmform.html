@@ -55,23 +55,74 @@
         /* ========================================================= */
         /* 🌟 1. CSS โหมด PDF ภาพ (HTML2PDF) 🌟 */
         /* ========================================================= */
-        .html2pdf-mode-active { padding: 0 !important; display: block !important; overflow: visible !important; background: white !important; }
-        .html2pdf-mode-active .a4-page {
-            margin: 0 !important; box-shadow: none !important; border-radius: 0 !important;
-            transform: none !important; min-height: auto !important; 
-            padding-top: 0 !important; padding-bottom: 0 !important; 
+        /* แก้ปัญหาหน้ากระดาษโดนตัดขอบซ้าย/ขวา และล้นจอบนมือถือ */
+        body.html2pdf-body-lock {
+            width: 794px !important;
+            min-width: 794px !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
+        .html2pdf-mode-wrapper {
+            display: block !important;
+            width: 794px !important;
+            min-width: 794px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            transform: none !important;
+        }
+
+        .html2pdf-mode-active.a4-page { 
+            padding: 0 15mm !important; 
+            display: block !important; 
+            overflow: visible !important; 
+            background: white !important; 
+            margin: 0 !important; 
+            box-shadow: none !important; 
+            border-radius: 0 !important;
+            transform: none !important; 
+            width: 794px !important; 
+            min-width: 794px !important;
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+        }
+
+        .html2pdf-mode-active #mainHeader,
+        .native-print-mode #mainHeader {
+            margin-top: 0 !important; 
+        }
+        
+        .html2pdf-mode-active #moduleContainer {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .html2pdf-mode-active #moduleContainer > div:last-child {
+            margin-bottom: 0 !important; 
+            padding-bottom: 0 !important; 
+            border-bottom: none !important; /* ป้องกันพื้นที่ขอบล่างดันให้เกิดหน้าว่าง */
+        }
+
+        .html2pdf-mode-active .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
+        .html2pdf-mode-active .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+
+        .html2pdf-mode-active .general-block,
         .html2pdf-mode-active .insulation-block, 
         .html2pdf-mode-active .dielectric-block,
         .html2pdf-mode-active .grounding-block,
-        .html2pdf-mode-active .photo-group-block { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+        .html2pdf-mode-active .contact-block,
+        .html2pdf-mode-active .photo-group-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
         .html2pdf-mode-active .mb-10, .html2pdf-mode-active .mb-8, .html2pdf-mode-active .pb-8 { margin-bottom: 0 !important; padding-bottom: 0 !important; }
         
-        .html2pdf-mode-active .insulation-block > .flex.mb-4, .html2pdf-mode-active .dielectric-block > .flex.mb-4, .html2pdf-mode-active .grounding-block > .flex.mb-4, .html2pdf-mode-active .photo-group-block > .flex.mb-4 { margin-bottom: 4px !important; }
-        .html2pdf-mode-active .insulation-block table.mb-6, .html2pdf-mode-active .dielectric-block table.mb-6, .html2pdf-mode-active .grounding-block table.mb-6 { margin-bottom: 4px !important; }
-        .html2pdf-mode-active .grid { gap: 6px !important; }
+        .html2pdf-mode-active .general-block > .flex.mb-3, .html2pdf-mode-active .insulation-block > .flex.mb-4, .html2pdf-mode-active .dielectric-block > .flex.mb-4, .html2pdf-mode-active .grounding-block > .flex.mb-4, .html2pdf-mode-active .contact-block > .flex.mb-3, .html2pdf-mode-active .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
+        .html2pdf-mode-active .general-block table.mb-6, .html2pdf-mode-active .insulation-block table.mb-6, .html2pdf-mode-active .dielectric-block table.mb-6, .html2pdf-mode-active .grounding-block table.mb-6, .html2pdf-mode-active .contact-block table.mb-6 { margin-bottom: 12px !important; }
         .html2pdf-mode-active table th, .html2pdf-mode-active table td { padding: 4px 6px !important; line-height: 1.2 !important; }
+        .html2pdf-mode-active .dielectric-block table th { font-size: 9.5px !important; letter-spacing: -0.2px !important; }
 
         /* ========================================================= */
         /* 🌟 2. CSS สำหรับโหมด Native Print (PDF แก้ไขข้อความได้) 🌟 */
@@ -88,6 +139,7 @@
                 min-height: auto !important; 
                 padding: 0 15mm !important; 
                 background: transparent !important; 
+                display: block !important;
             }
             
             .no-print, .control-panel { display: none !important; }
@@ -99,14 +151,18 @@
             
             .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
             
+            .native-print-mode .general-block,
             .native-print-mode .insulation-block, 
             .native-print-mode .dielectric-block, 
             .native-print-mode .grounding-block, 
+            .native-print-mode .contact-block,
             .native-print-mode .photo-group-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
 
+            .native-print-mode .general-block > .flex.mb-3,
             .native-print-mode .insulation-block > .flex.mb-4,
             .native-print-mode .dielectric-block > .flex.mb-4,
             .native-print-mode .grounding-block > .flex.mb-4,
+            .native-print-mode .contact-block > .flex.mb-3,
             .native-print-mode .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
             
             .native-print-mode table.mb-6 { margin-bottom: 12px !important; }
@@ -131,8 +187,10 @@
         table { border-collapse: collapse; width: 100%; background-color: #ffffff; }
         th, td { border: 1px solid #cbd5e1 !important; padding: 6px; background-clip: padding-box !important; }
         th { background-color: #f1f5f9 !important; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: bold; }
+        
+        /* 🌟 ลบคำสั่ง td[rowspan]::after ที่วาดเส้นซ้อนทับทิ้งไป เพื่อให้เส้นบางเท่ากันหมด */
         td[rowspan] { position: relative; }
-        td[rowspan]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border: 1px solid #cbd5e1; pointer-events: none; z-index: 10; }
+        
         .no-print th, .no-print td, td.no-print, th.no-print { border: none !important; background: transparent !important; }
         .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
@@ -184,7 +242,7 @@
     <!-- 🛠️ CONTROL PANEL -->
     <div class="control-panel p-4 no-print">
         <div class="max-w-7xl mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
                 <div class="flex items-center gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
@@ -228,49 +286,60 @@
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3">
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_before', this.checked)"></div>
-                    <span class="font-bold text-slate-700 text-[13px] leading-tight">1. Before</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-broom text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_cleaning', this.checked)"></div>
-                    <span class="font-bold text-slate-700 text-[13px] leading-tight">2. Cleaning</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-image text-orange-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_after', this.checked)"></div>
-                    <span class="font-bold text-slate-700 text-[13px] leading-tight">3. After</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-clipboard-check text-slate-500"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_general', this.checked)"></div>
-                    <span class="font-bold text-slate-800 text-[13px] leading-tight">4. Gen Check</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><span class="font-bold text-[20px] text-slate-600 font-serif leading-none">&Omega;</span><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_insulation', this.checked)"></div>
-                    <span class="font-bold text-slate-800 text-[13px] leading-tight">5. Insulation Test</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-bolt text-slate-600"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_dielectric', this.checked)"></div>
-                    <span class="font-bold text-slate-800 text-[13px] leading-tight">6. Dielectric Test</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full">
-                        <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8"/><path d="M5 12h14"/><path d="M8 16h8"/><path d="M10 20h4"/></svg>
-                        <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
-                    </div>
-                    <span class="font-bold text-slate-800 text-[13px] leading-tight">7. Grounding Test</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full">
-                        <svg class="w-[20px] h-[20px] text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
-                        <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_contact', this.checked)">
-                    </div>
-                    <span class="font-bold text-slate-800 text-[13px] leading-tight">8. Contact Test</span>
-                </label>
-                <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                    <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-contract text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)"></div>
-                    <span class="font-bold text-slate-700 text-[13px] leading-tight">9. Calibration</span>
-                </label>
+            <!-- 🌟 แถบควบคุมการซ่อน/แสดงเมนู -->
+            <div class="flex justify-between items-center border-t border-slate-200 pt-3 mb-3 mt-4">
+                <span class="text-[13px] font-bold text-slate-500 uppercase tracking-wide"><i class="fa-solid fa-layer-group mr-1.5"></i> เลือกหัวข้อเพื่อสร้างรายงาน</span>
+                <button onclick="toggleModuleGrid()" class="text-xs font-bold text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                    <span id="toggleGridText">พับเก็บเมนู</span> <i id="toggleGridIcon" class="fa-solid fa-chevron-up"></i>
+                </button>
+            </div>
+            
+            <!-- 🌟 หุ้ม Grid เพื่อทำพับเก็บ -->
+            <div id="moduleGridWrapper" class="transition-all duration-300 ease-in-out overflow-hidden origin-top" style="max-height: 500px; opacity: 1;">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3 pb-2">
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_before', this.checked)"></div>
+                        <span class="font-bold text-slate-700 text-[13px] leading-tight">1. Before</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-broom text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_cleaning', this.checked)"></div>
+                        <span class="font-bold text-slate-700 text-[13px] leading-tight">2. Cleaning</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_after', this.checked)"></div>
+                        <span class="font-bold text-slate-700 text-[13px] leading-tight">3. After</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-clipboard-check text-slate-500"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_general', this.checked)"></div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">4. Gen Check</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><span class="font-bold text-[20px] text-slate-600 font-serif leading-none">&Omega;</span><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_insulation', this.checked)"></div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">5. Insulation Test</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-bolt text-slate-600"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_dielectric', this.checked)"></div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">6. Dielectric Test</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full">
+                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8"/><path d="M5 12h14"/><path d="M8 16h8"/><path d="M10 20h4"/></svg>
+                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
+                        </div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">7. Grounding Test</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full">
+                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
+                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_contact', this.checked)">
+                        </div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">8. Contact Test</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-contract text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)"></div>
+                        <span class="font-bold text-slate-700 text-[13px] leading-tight">9. Calibration</span>
+                    </label>
+                </div>
             </div>
         </div>
     </div>
@@ -280,65 +349,64 @@
         <table class="w-full border-none m-0 p-0" id="printLayoutTable">
             
             <thead class="hidden" id="printLayoutThead">
-                <!-- เว้นที่ว่างให้ Fixed Header ซ้อนลงมาพอดี -->
                 <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
             </thead>
             
             <tbody class="border-none m-0 p-0">
-            <tr>
-                <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
-                    
-                    <div id="reportDocument" class="a4-page relative">
+                <tr>
+                    <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
                         
-                        <!-- 🌟 Web View Decorative Overlay -->
-                        <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
-                            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
-                            </svg>
-                            <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
-                                <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                        <div id="reportDocument" class="a4-page relative">
+                            
+                            <!-- 🌟 Web View Decorative Overlay -->
+                            <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                    <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
+                                    <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
+                                    <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
+                                    <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+                                </svg>
+                                <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
+                                    <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
-                            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                                <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                                <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                                <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
-                            </svg>
-                            <div class="absolute top-[3mm] left-[25mm] z-[1]">
-                                <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                            
+                            <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                    <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
+                                    <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
+                                    <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
+                                    <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
+                                </svg>
+                                <div class="absolute top-[3mm] left-[25mm] z-[1]">
+                                    <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                                </div>
                             </div>
-                        </div>
-                        <!-- 🌟 END Web View Overlay -->
+                            <!-- 🌟 END Web View Overlay -->
 
-                        <div id="mainHeader" class="w-full flex justify-between items-end pb-4 mb-4 relative border-b-[2px] border-slate-100 shrink-0 bg-white z-10 pt-2 mt-[12mm]">
-                            <div class="absolute bottom-[-2px] left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 via-slate-500 to-slate-900 rounded-full"></div>
-                            <div class="w-[35%]">
-                                <div class="h-16 w-56 bg-slate-50 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-300 rounded-xl relative cursor-pointer hover:bg-slate-100 hover:border-orange-400 transition-all overflow-hidden" onclick="document.getElementById('logoUpload').click()">
-                                    <div id="logoImg" class="hidden w-full h-full absolute top-0 left-0 bg-white z-10" style="background-size: contain; background-repeat: no-repeat; background-position: left center; border-radius: inherit;"></div>
-                                    <span class="no-print font-medium"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>อัปโหลดโลโก้บริษัท</span>
-                                    <input type="file" id="logoUpload" class="hidden" accept="image/*" onchange="previewLogo(event)">
+                            <div id="mainHeader" class="w-full flex justify-between items-end pb-4 mb-4 relative border-b-[2px] border-slate-100 shrink-0 bg-white z-10 pt-2 mt-[12mm]">
+                                <div class="absolute bottom-[-2px] left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 via-slate-500 to-slate-900 rounded-full"></div>
+                                <div class="w-[35%]">
+                                    <div class="h-16 w-56 bg-slate-50 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-300 rounded-xl relative cursor-pointer hover:bg-slate-100 hover:border-orange-400 transition-all overflow-hidden" onclick="document.getElementById('logoUpload').click()">
+                                        <div id="logoImg" class="hidden w-full h-full absolute top-0 left-0 bg-white z-10" style="background-size: contain; background-repeat: no-repeat; background-position: left center; border-radius: inherit;"></div>
+                                        <span class="no-print font-medium"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>อัปโหลดโลโก้บริษัท</span>
+                                        <input type="file" id="logoUpload" class="hidden" accept="image/*" onchange="previewLogo(event)">
+                                    </div>
+                                </div>
+                                <div class="w-[65%] text-right flex flex-col justify-end items-end pb-1">
+                                    <h1 class="text-[28px] font-extrabold text-slate-800 uppercase tracking-tight mb-2 leading-none">Preventive Maintenance</h1>
+                                    <div class="flex items-center justify-end gap-2 text-sm text-slate-600 mb-1.5 w-full">
+                                        <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Project</span>
+                                        <input type="text" id="inputProject" placeholder="ระบุชื่อโครงการ..." class="paper-input w-72 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
+                                    </div>
+                                    <div class="flex items-center justify-end gap-2 text-sm text-slate-600 w-full">
+                                        <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Date</span>
+                                        <input type="text" id="inputDate" placeholder="ระบุวันที่..." class="paper-input w-48 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="w-[65%] text-right flex flex-col justify-end items-end pb-1">
-                                <h1 class="text-[28px] font-extrabold text-slate-800 uppercase tracking-tight mb-2 leading-none">Preventive Maintenance</h1>
-                                <div class="flex items-center justify-end gap-2 text-sm text-slate-600 mb-1.5 w-full">
-                                    <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Project</span>
-                                    <input type="text" id="inputProject" placeholder="ระบุชื่อโครงการ..." class="paper-input w-72 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
-                                </div>
-                                <div class="flex items-center justify-end gap-2 text-sm text-slate-600 w-full">
-                                    <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Date</span>
-                                    <input type="text" id="inputDate" placeholder="ระบุวันที่..." class="paper-input w-48 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
-                                </div>
-                            </div>
-                        </div>
 
-                        <div id="scopeSection" class="mb-8 mt-2">
+                            <div id="scopeSection" class="mb-8 mt-2">
                                 <div class="section-title">
                                     <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
                                     <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
@@ -365,35 +433,16 @@
 
                                 <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
                                     <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addPhotoGroup('af')" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
+                                        <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
                                     </div>
                                     <div id="af_container"></div>
                                 </div>
 
-                                <div id="mod_general" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="flex justify-between items-center mb-3">
-                                        <div class="section-title mb-0">
-                                            <div class="section-icon bg-slate-600"><i class="fa-solid fa-clipboard-check"></i></div>
-                                            <h3 class="text-xl font-bold text-slate-800">General Check</h3>
-                                        </div>
-                                        <button onclick="addGeneralCheckRow()" class="bg-white border-2 border-slate-400 hover:bg-slate-50 text-slate-600 px-4 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
+                                <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                        <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
                                     </div>
-                                    <div class="flex items-center gap-3 w-[70%] mb-4">
-                                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 text-[13px] flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel</span>
-                                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-slate-700 text-[16px] w-full border-b border-slate-300 pb-1">
-                                    </div>
-                                    <table class="w-full text-sm text-center mb-6">
-                                        <thead>
-                                            <tr>
-                                                <th class="w-[8%]">No.</th>
-                                                <th class="w-[50%] text-left pl-4">Detail</th>
-                                                <th class="w-[17%]">Result</th>
-                                                <th class="w-[20%]">Remark</th>
-                                                <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="generalCheckBody"></tbody>
-                                    </table>
+                                    <div id="gen_container"></div>
                                 </div>
 
                                 <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
@@ -417,37 +466,11 @@
                                     <div id="gro_container"></div>
                                 </div>
 
-                                <div id="mod_contact" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="flex justify-between items-center mb-3">
-                                        <div class="section-title mb-0">
-                                            <div class="section-icon bg-orange-500">
-                                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
-                                            </div>
-                                            <h3 class="text-xl font-bold text-slate-800">Contact Resistance Test</h3>
-                                        </div>
-                                        <button onclick="addBreakerRow()" class="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 px-4 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มเบรกเกอร์</button>
+                                <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                        <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
                                     </div>
-                                    <table class="w-full text-sm text-center mb-6">
-                                        <tr>
-                                            <th class="w-[15%]">Breaker</th>
-                                            <th class="w-[15%]">Phase</th>
-                                            <th class="w-[20%]">Test Current</th>
-                                            <th class="w-[25%]">Observation (µΩ)</th>
-                                            <th class="w-[20%]">Result</th>
-                                            <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
-                                        </tr>
-                                        <tbody id="contactTableBody"></tbody>
-                                    </table>
-                                    <div id="contactPhotoSection" class="mt-4 transition-all relative">
-                                        <div class="flex items-center justify-between mb-2 ml-1">
-                                            <div class="flex items-center gap-2">
-                                                <i class="fa-solid fa-image text-slate-400"></i>
-                                                <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Evidence Photograph</h4>
-                                            </div>
-                                            <button onclick="addPhotoBox('ct_grid', 'ct')" class="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
-                                        </div>
-                                        <div id="ct_grid" class="grid grid-cols-2 gap-3"></div>
-                                    </div>
+                                    <div id="ct_container"></div>
                                 </div>
 
                                 <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
@@ -467,7 +490,6 @@
             </tbody>
             
             <tfoot class="hidden" id="printLayoutTfoot">
-                <!-- เว้นที่ว่างให้ Fixed Footer ซ้อนขึ้นมาพอดี -->
                 <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
             </tfoot>
         </table>
@@ -520,11 +542,62 @@
         let selectedModules = []; 
         let breakerCount = 0;
         let groupCounts = { bf: 0, cl: 0, af: 0 }; 
+        let genCount = 0; 
         let insCount = 0; 
         let dieCount = 0; 
         let groCount = 0; 
+        let ctCount = 0; 
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
         let reorderSortable = null;
+        let isGridCollapsed = false; // 🌟 ตัวแปรเก็บสถานะการพับเมนู
+
+        // 🌟 1. เพิ่มฟังก์ชันจัดการสีผลลัพธ์ (Pass/Fail/NA)
+        function updateResultColor(select) {
+            select.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
+            if (select.value === 'Pass') select.classList.add('text-emerald-600');
+            else if (select.value === 'Fail') select.classList.add('text-red-600');
+            else select.classList.add('text-slate-400');
+        }
+
+        // 🌟 ฟังก์ชันปรับลดขนาดตัวอักษรอัตโนมัติ (สำหรับช่อง Breaker)
+        function adjustFontSize(el) {
+            const valLen = el.value.length;
+            if (valLen > 15) el.style.fontSize = '11px';
+            else if (valLen > 10) el.style.fontSize = '13px';
+            else if (valLen > 6) el.style.fontSize = '15px';
+            else el.style.fontSize = '18px'; // ค่าเริ่มต้น (text-lg)
+        }
+
+        // 🌟 ฟังก์ชันเลื่อนหน้าจอไปยังตำแหน่งที่เลือก (Go To)
+        function scrollToElement(elementId) {
+            closeReorderModal();
+            setTimeout(() => {
+                const el = document.getElementById(elementId);
+                if (el) {
+                    // เลื่อนหน้าจอไปตรงกลาง
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // สร้างเอฟเฟกต์ไฮไลต์กระพริบสีส้ม
+                    const oldOutline = el.style.outline;
+                    const oldOutlineOffset = el.style.outlineOffset;
+                    const oldTransition = el.style.transition;
+                    
+                    el.style.transition = 'outline 0.3s ease';
+                    el.style.outline = '4px solid #f97316'; // สีส้ม
+                    el.style.outlineOffset = '4px';
+                    el.style.borderRadius = '8px';
+                    
+                    setTimeout(() => {
+                        el.style.outline = '4px solid transparent';
+                        setTimeout(() => {
+                            el.style.outline = oldOutline;
+                            el.style.outlineOffset = oldOutlineOffset;
+                            el.style.transition = oldTransition;
+                        }, 300);
+                    }, 1500);
+                }
+            }, 150); // รอให้ Modal ปิดสนิทก่อน
+        }
 
         let moduleTitles = {
             'mod_before': 'Photograph: Before',
@@ -560,15 +633,50 @@
             const isLoaded = await loadDraft(); 
             
             if (!isLoaded) {
-                initGeneralCheck();
+                addGeneralCheckBlock(); 
                 addInsulationBlock();
                 addDielectricBlock();
                 addGroundingBlock();
+                addContactBlock(); 
                 addPhotoGroup('bf');
                 addPhotoGroup('cl');
                 addPhotoGroup('af');
-                for(let i=0; i<4; i++) { addPhotoBox('ct_grid', 'ct'); }
             }
+
+            // 🌟 1. บังคับอัปเดตสี Select ทั้งหมดทันทีเมื่อโหลดหน้าจอเสร็จ (แก้ปัญหา Draft เก่าสีไม่ตรง)
+            document.querySelectorAll('select').forEach(updateResultColor);
+            
+            // 🌟 ปรับขนาดฟอนต์ช่อง Breaker ทันทีเมื่อโหลดหน้าเว็บ
+            document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
+
+            // 🌟 2. ดักจับการเปลี่ยนค่า Dropdown ทั้งหน้าจอ (Event Delegation - แก้ปัญหาตารางเก่าๆ ที่ไม่มี onchange ติดมา)
+            document.addEventListener('change', (e) => {
+                if (e.target.tagName === 'SELECT') {
+                    updateResultColor(e.target);
+                    showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                }
+            });
+            
+            // 🌟 3. ซ่อนเมนูอัตโนมัติเมื่อเลื่อนหน้าจอ
+            let lastScrollY = window.scrollY;
+            window.isGridScrollLocked = false;
+            
+            window.addEventListener('scroll', () => {
+                if (window.isGridScrollLocked) return; // 🌟 ข้ามการทำงานถ้าถูกล็อคอยู่ (เพิ่งกดปุ่มด้วยมือ)
+                
+                const currentScrollY = window.scrollY;
+                
+                // ถ้ายูสเซอร์กำลัง "เลื่อนลง" (เกิน 200px และมากกว่าพิกัดเดิม 10px) ให้พับเก็บ
+                if (currentScrollY > 200 && currentScrollY > lastScrollY + 10 && !isGridCollapsed) {
+                    executeToggleGrid(true);
+                } 
+                // ถ้ายูสเซอร์เลื่อน "กลับขึ้นมาบนสุด" ให้กางเมนูออก
+                else if (currentScrollY < 50 && isGridCollapsed) {
+                    executeToggleGrid(false);
+                }
+                
+                lastScrollY = currentScrollY;
+            });
             
             setInterval(saveDraft, 3000); // 🌟 Auto-save ทุก 3 วิ
             
@@ -576,6 +684,43 @@
                 showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
             });
         });
+
+        // 🌟 ฟังก์ชัน พับ/ขยาย เมนูเลือกโมดูล (กดด้วยมือ)
+        function toggleModuleGrid() {
+            window.isGridScrollLocked = true; // ล็อคระบบออโต้ 0.5 วินาที ป้องกันหน้าจอกระตุกพับเอง
+            executeToggleGrid(!isGridCollapsed);
+            
+            setTimeout(() => { 
+                window.isGridScrollLocked = false; 
+            }, 500); 
+        }
+
+        // 🌟 ฟังก์ชันเปลี่ยน UI สำหรับระบบพับ-กาง
+        function executeToggleGrid(forceCollapse) {
+            if (isGridCollapsed === forceCollapse) return; // สถานะตรงกันอยู่แล้วไม่ต้องทำอะไร
+            
+            const wrapper = document.getElementById('moduleGridWrapper');
+            const icon = document.getElementById('toggleGridIcon');
+            const text = document.getElementById('toggleGridText');
+            
+            isGridCollapsed = forceCollapse;
+            
+            if (isGridCollapsed) {
+                wrapper.style.maxHeight = '0px';
+                wrapper.style.opacity = '0';
+                wrapper.style.transform = 'scaleY(0)';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                text.innerText = 'ขยายเมนูหัวข้อ';
+            } else {
+                wrapper.style.maxHeight = '500px';
+                wrapper.style.opacity = '1';
+                wrapper.style.transform = 'scaleY(1)';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                text.innerText = 'พับเก็บเมนู';
+            }
+        }
 
         function showSaveStatus(html, isSuccess = true) {
             const status = document.getElementById('saveStatus');
@@ -599,9 +744,11 @@
                 'mod_before': { id: 'bf_container', cls: 'photo-group-block' },
                 'mod_cleaning': { id: 'cl_container', cls: 'photo-group-block' },
                 'mod_after': { id: 'af_container', cls: 'photo-group-block' },
+                'mod_general': { id: 'gen_container', cls: 'general-block' }, 
                 'mod_insulation': { id: 'ins_container', cls: 'insulation-block' },
                 'mod_dielectric': { id: 'die_container', cls: 'dielectric-block' },
-                'mod_grounding': { id: 'gro_container', cls: 'grounding-block' }
+                'mod_grounding': { id: 'gro_container', cls: 'grounding-block' },
+                'mod_contact': { id: 'ct_container', cls: 'contact-block' } 
             };
             return map[modId];
         }
@@ -627,13 +774,16 @@
                 
                 // โครงสร้างหัวข้อหลัก
                 let html = `
-                    <div class="p-3 flex items-center justify-between cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors group">
-                        <div class="flex items-center gap-3 pointer-events-none">
-                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
+                    <div class="p-2 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors group">
+                        <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full p-1">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors pointer-events-none">
                                 <i class="fa-solid fa-grip-vertical"></i>
                             </div>
-                            <span class="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">${moduleTitles[modId]}</span>
+                            <span class="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors pointer-events-none">${moduleTitles[modId]}</span>
                         </div>
+                        <button onclick="scrollToElement('${modId}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่ส่วนนี้">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
                     </div>
                 `;
 
@@ -648,16 +798,21 @@
                             if (!subBlock.id) return;
                             
                             // ดึงชื่อตู้มาแสดง ถ้าไม่มีให้โชว์คำว่า "ชุดที่..."
-                            const inputs = subBlock.querySelectorAll('input.paper-input');
+                            const panelInput = subBlock.querySelector('input[placeholder*="ระบุชื่อตู้"]');
                             let subTitle = `ชุดที่ ${index + 1}`;
-                            if (inputs.length > 1 && inputs[1].value) {
-                                subTitle = `ตู้: ${inputs[1].value}`; // ปกติ Input ที่ 2 จะเป็นชื่อตู้
+                            if (panelInput && panelInput.value.trim() !== '') {
+                                subTitle = `ตู้: ${panelInput.value}`;
                             }
 
                             html += `
-                                <li class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 cursor-grab active:cursor-grabbing hover:border-blue-300" data-id="${subBlock.id}">
-                                    <i class="fa-solid fa-bars text-slate-300 pointer-events-none text-xs"></i>
-                                    <span class="text-sm font-semibold text-slate-600 pointer-events-none">${subTitle}</span>
+                                <li class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300" data-id="${subBlock.id}">
+                                    <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full">
+                                        <i class="fa-solid fa-bars text-slate-300 pointer-events-none text-xs"></i>
+                                        <span class="text-sm font-semibold text-slate-600 pointer-events-none">${subTitle}</span>
+                                    </div>
+                                    <button onclick="scrollToElement('${subBlock.id}')" class="go-to-btn text-slate-400 hover:text-blue-600 hover:bg-blue-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่ตู้ใบนี้">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
                                 </li>
                             `;
                         });
@@ -677,15 +832,17 @@
             reorderSortable = new Sortable(list, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                filter: '.sub-reorder-list', // ป้องกันไม่ให้เผลอลากลิสต์ย่อยไปปนกับหัวหลัก
+                filter: '.sub-reorder-list, .go-to-btn', // ป้องกันไม่ให้ปุ่ม Go-To ถูกลาก
                 preventOnFilter: false
             });
 
-            // 2. ตั้งค่าลากวางให้หัวข้อย่อย (ทำงานแยกกัน ไม่ปนกับอันบน)
+            // 2. ตั้งค่าลากวางให้หัวข้อย่อย
             document.querySelectorAll('.sub-reorder-list').forEach(subList => {
                 new Sortable(subList, {
                     animation: 150,
                     ghostClass: 'sortable-ghost',
+                    filter: '.go-to-btn', // ป้องกันไม่ให้ปุ่ม Go-To ถูกลาก
+                    preventOnFilter: false,
                     fallbackOnBody: true,
                     swapThreshold: 0.65
                 });
@@ -764,7 +921,7 @@
         async function saveDraft() {
             syncDOMValues(); 
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, photoCounters, moduleTitles },
+                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
                 html: document.getElementById('reportDocument').innerHTML
             };
             
@@ -802,6 +959,8 @@
             insCount = draft.globals.insCount || 0;
             dieCount = draft.globals.dieCount || 0;
             groCount = draft.globals.groCount || 0;
+            genCount = draft.globals.genCount || 0;
+            ctCount = draft.globals.ctCount || 0;
             photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
 
@@ -814,17 +973,19 @@
             });
 
             renderScope();
+            
+            // 🌟 อัปเดตขนาดตัวอักษรหลังจาก Load Draft
+            document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
         }
 
         async function exportData() {
             showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังเตรียมไฟล์...');
             syncDOMValues();
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, photoCounters, moduleTitles },
+                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
                 html: document.getElementById('reportDocument').innerHTML
             };
             
-            // 🌟 แก้ไข: ใช้ Blob แทน Data URI เพื่อให้รองรับ iPadOS และ iOS 100%
             const jsonStr = JSON.stringify(draft);
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -884,7 +1045,7 @@
             let config = {
                 'bf': { color: 'slate', icon: 'fa-camera-retro', modId: 'mod_before' },
                 'cl': { color: 'slate', icon: 'fa-broom', modId: 'mod_cleaning' },
-                'af': { color: 'orange', icon: 'fa-camera', modId: 'mod_after' }
+                'af': { color: 'slate', icon: 'fa-camera', modId: 'mod_after' }
             }[type];
 
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
@@ -908,7 +1069,7 @@
                     <div class="flex items-center justify-between mb-2 ml-1">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-image text-slate-400"></i>
-                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Evidence Photograph</h4>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
                         </div>
                         <button onclick="addPhotoBox('grid_${prefix}', '${type}')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
                     </div>
@@ -924,14 +1085,58 @@
             if(block) block.remove();
         }
 
-        function initGeneralCheck() {
-            const tbody = document.getElementById('generalCheckBody');
-            tbody.innerHTML = '';
-            defaultGeneralTasks.forEach(task => addGeneralCheckRow(task));
+        // 🌟 เพิ่มระบบจัดการบล็อกของ General Check ให้แยกแต่ละชุดได้
+        function addGeneralCheckBlock() {
+            genCount++;
+            const id = genCount;
+            const container = document.getElementById('gen_container');
+            const prefix = `gen_${id}`;
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="general-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-600"><i class="fa-solid fa-clipboard-check text-white"></i></div>
+                            <h3 class="text-xl font-bold text-slate-800">General Check</h3>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="addGeneralCheckRow('tbody_${prefix}')" class="bg-white border-2 border-slate-400 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
+                            ${id > 1 ? `<button onclick="removeGeneralCheckBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 text-[13px] flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel</span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                    </div>
+                    <table class="w-full text-sm text-center mb-6">
+                        <thead>
+                            <tr>
+                                <th class="w-[8%]">No.</th>
+                                <th class="w-[50%] text-left pl-4">Detail</th>
+                                <th class="w-[17%]">Result</th>
+                                <th class="w-[20%]">Remark</th>
+                                <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody_${prefix}"></tbody>
+                    </table>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', blockHtml);
+            
+            // นำรายการ Default ไปใส่ในตารางชุดที่เพิ่งสร้างขึ้นใหม่
+            defaultGeneralTasks.forEach(task => addGeneralCheckRow(`tbody_${prefix}`, task));
         }
 
-        function addGeneralCheckRow(task = "") {
-            const tbody = document.getElementById('generalCheckBody');
+        function removeGeneralCheckBlock(prefix) {
+            const block = document.getElementById(`block_${prefix}`);
+            if(block) block.remove();
+        }
+
+        function addGeneralCheckRow(tbodyId, task = "") {
+            const tbody = document.getElementById(tbodyId);
+            if(!tbody) return;
             const rowCount = tbody.children.length + 1;
             const tr = document.createElement('tr');
             tr.className = 'gen-check-row';
@@ -941,7 +1146,7 @@
                     <input type="text" value="${task}" class="paper-input text-slate-800 font-medium w-full text-left" placeholder="ระบุรายละเอียดการตรวจสอบ...">
                 </td>
                 <td class="p-0">
-                    <select class="w-full h-full p-2 bg-transparent outline-none cursor-pointer font-bold text-emerald-600 text-center text-center-last hover:bg-slate-50 transition-colors">
+                    <select onchange="updateResultColor(this)" class="w-full h-full p-2 bg-transparent outline-none cursor-pointer font-bold text-emerald-600 text-center text-center-last hover:bg-slate-50 transition-colors">
                         <option value="Pass" class="text-emerald-600">Pass</option>
                         <option value="Fail" class="text-red-600">Fail</option>
                         <option value="N/A" class="text-slate-400">N/A</option>
@@ -949,23 +1154,25 @@
                 </td>
                 <td class="p-1"><input type="text" class="paper-input text-orange-600 font-bold text-center" placeholder="-"></td>
                 <td class="no-print text-center border-none align-middle" style="border: none !important; background: transparent;">
-                    <button onclick="removeGeneralCheckRow(this)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-1" title="ลบรายการนี้">
+                    <button onclick="removeGeneralCheckRow(this, '${tbodyId}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-1" title="ลบรายการนี้">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </td>
             `;
             tbody.appendChild(tr);
-            updateGeneralCheckNumbers();
+            updateGeneralCheckNumbers(tbodyId);
         }
 
-        function removeGeneralCheckRow(btn) {
+        function removeGeneralCheckRow(btn, tbodyId) {
             const row = btn.closest('tr');
             row.remove();
-            updateGeneralCheckNumbers();
+            updateGeneralCheckNumbers(tbodyId);
         }
 
-        function updateGeneralCheckNumbers() {
-            const rows = document.querySelectorAll('.gen-row-num');
+        function updateGeneralCheckNumbers(tbodyId) {
+            const tbody = document.getElementById(tbodyId);
+            if(!tbody) return;
+            const rows = tbody.querySelectorAll('.gen-row-num');
             rows.forEach((td, index) => { td.textContent = index + 1; });
         }
 
@@ -1002,7 +1209,7 @@
                         <tr>
                             <th class="w-[25%] text-left pl-4">Test connection</th>
                             <th class="w-[20%]">Voltage test</th>
-                            <th class="w-[20%]">Observation (MΩ)</th>
+                            <th class="w-[20%]">Observation <span class="normal-case">(MΩ)</span></th>
                             <th class="w-[20%]">Reference</th>
                             <th class="w-[15%]">Result</th>
                         </tr>
@@ -1010,28 +1217,26 @@
                             <td class="font-bold text-slate-700 text-left pl-4">L1 to L2+L3+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="text-slate-500 font-medium">≥ 1 MΩ</td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="text-slate-500 font-medium leading-tight align-middle" rowspan="3">IEC61439-1<br>≥ 1 MΩ</td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L2 to L1+L3+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="text-slate-500 font-medium">≥ 1 MΩ</td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L3 to L1+L2+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="text-slate-500 font-medium">≥ 1 MΩ</td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                     </table>
                     <div class="flex items-center justify-between mb-2 ml-1">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-image text-slate-400"></i>
-                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Evidence Photograph</h4>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
                         </div>
                         <button onclick="addPhotoBox('grid_${prefix}', 'ins')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
                     </div>
@@ -1074,37 +1279,35 @@
                     <table class="w-full text-sm text-center mb-6">
                         <tr>
                             <th class="w-[25%] text-left pl-4">Test connection</th>
-                            <th class="w-[20%]">Test Voltage (kV)</th>
-                            <th class="w-[25%]">Leakage Current (mA)</th>
-                            <th class="w-[15%]">Duration</th>
+                            <th class="w-[20%]">Test Voltage</th>
+                            <th class="w-[25%]">Leakage Current <span class="normal-case">(mA)</span></th>
+                            <th class="w-[15%]">Reference</th>
                             <th class="w-[15%]">Result</th>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L1 to L2+L3+GND</td>
-                            <td class="p-1"><input type="text" value="2.5 kV" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="p-1"><input type="text" value="1 min" class="paper-input text-center text-slate-600"></td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="text-slate-500 font-medium leading-tight align-middle" rowspan="3">IEC61439-1<br><span class="text-[11px] text-slate-400 font-normal mt-1 block">No Puncture<br>No Flash Over</span></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L2 to L1+L3+GND</td>
-                            <td class="p-1"><input type="text" value="2.5 kV" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="p-1"><input type="text" value="1 min" class="paper-input text-center text-slate-600"></td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L3 to L1+L2+GND</td>
-                            <td class="p-1"><input type="text" value="2.5 kV" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="p-1"><input type="text" value="1 min" class="paper-input text-center text-slate-600"></td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                     </table>
                     <div class="flex items-center justify-between mb-2 ml-1">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-image text-slate-400"></i>
-                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Evidence Photograph</h4>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
                         </div>
                         <button onclick="addPhotoBox('grid_${prefix}', 'die')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
                     </div>
@@ -1149,7 +1352,7 @@
                     <table class="w-full text-sm text-center mb-6">
                         <tr>
                             <th class="w-[30%] text-left pl-4">Test connection</th>
-                            <th class="w-[25%]">Observation (Ω)</th>
+                            <th class="w-[25%]">Observation <span class="normal-case">(Ω)</span></th>
                             <th class="w-[25%]">Reference</th>
                             <th class="w-[20%]">Result</th>
                         </tr>
@@ -1157,13 +1360,13 @@
                             <td class="font-bold text-slate-700 text-left pl-4">Ground Busbar to Earth</td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="text-slate-500 font-medium leading-tight">ว.ส.ท<br>≤ 5 Ω</td>
-                            <td class="p-1"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                     </table>
                     <div class="flex items-center justify-between mb-2 ml-1">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-image text-slate-400"></i>
-                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Evidence Photograph</h4>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
                         </div>
                         <button onclick="addPhotoBox('grid_${prefix}', 'gro')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
                     </div>
@@ -1179,13 +1382,83 @@
             if(block) block.remove();
         }
 
+        // 🌟 ฟังก์ชันจัดการบล็อกตาราง Contact Resistance แบบหลายชุด 
+        function addContactBlock() {
+            ctCount++;
+            const id = ctCount;
+            const container = document.getElementById('ct_container');
+            const prefix = `ct_block_${id}`;
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="contact-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-700">
+                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">Contact Resistance Test</h3>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="addBreakerRow('tbody_${prefix}', 'photoSec_${prefix}')" class="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มเบรกเกอร์</button>
+                            ${id > 1 ? `<button onclick="removeContactBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 text-[13px] flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel</span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                    </div>
+                    <table class="w-full text-sm text-center mb-6">
+                        <thead>
+                            <tr>
+                                <th class="w-[15%]">Breaker</th>
+                                <th class="w-[15%]">Phase</th>
+                                <th class="w-[20%]">Test Current</th>
+                                <th class="w-[25%]">
+                                    Observation 
+                                    <select class="bg-transparent outline-none cursor-pointer normal-case font-bold text-slate-600 text-center hover:bg-slate-200 rounded px-1 transition-colors">
+                                        <option value="(µΩ)">(µΩ)</option>
+                                        <option value="(mΩ)">(mΩ)</option>
+                                    </select>
+                                </th>
+                                <th class="w-[20%]">Result</th>
+                                <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody_${prefix}"></tbody>
+                    </table>
+                    <div id="photoSec_${prefix}" class="contact-photo-section mt-4 transition-all relative">
+                        <div class="flex items-center justify-between mb-2 ml-1">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-image text-slate-400"></i>
+                                <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
+                            </div>
+                            <button onclick="addPhotoBox('grid_${prefix}', 'ct')" class="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
+                        </div>
+                        <div id="grid_${prefix}" class="grid grid-cols-2 gap-3"></div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', blockHtml);
+            
+            // สร้างตารางแรก 1 อันโดยอัตโนมัติ
+            addBreakerRow(`tbody_${prefix}`, `photoSec_${prefix}`);
+            
+            for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }
+        }
+
+        function removeContactBlock(prefix) {
+            const block = document.getElementById(`block_${prefix}`);
+            if(block) block.remove();
+        }
+
         function addPhotoBox(gridId, prefix) {
             photoCounters[prefix]++;
             const i = photoCounters[prefix];
             const grid = document.getElementById(gridId);
             
             let colorClass = 'text-slate-500';
-            if(prefix === 'af' || prefix === 'ct') colorClass = 'text-orange-500';
+            if(prefix === 'af' || prefix === 'ct') colorClass = 'text-slate-500';
 
             const box = document.createElement('div');
             box.className = 'photo-box group';
@@ -1214,7 +1487,6 @@
                 
                 moduleDiv.classList.remove('hidden');
                 if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
-                if(moduleId === 'mod_contact' && breakerCount === 0) { addBreakerRow(); }
             } else {
                 moduleDiv.classList.add('hidden');
                 selectedModules = selectedModules.filter(item => item !== moduleId);
@@ -1277,42 +1549,49 @@
             document.querySelectorAll('.' + className).forEach(el => { if(el.value !== value) el.value = value; });
         }
 
-        function addBreakerRow() {
+        function addBreakerRow(tbodyId, photoSecId) {
             breakerCount++;
-            const tbody = document.getElementById('contactTableBody');
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
             const rowHtml = `
                 <tr class="breaker-group" id="breaker_row_${breakerCount}_1">
-                    <td class="border border-slate-300 p-2 font-bold text-lg text-center align-middle" rowspan="3" style="width: 15%;"><input type="text" value="F${breakerCount}" class="paper-input text-center text-orange-600 font-black text-lg bg-transparent w-full sync-name-${breakerCount}" oninput="syncInputs('sync-name-${breakerCount}', this.value)"></td>
+                    <td class="border border-slate-300 p-2 font-bold text-lg text-center align-middle" rowspan="3" style="width: 15%;"><input type="text" value="F${breakerCount}" class="paper-input text-center text-orange-600 font-black text-lg bg-transparent w-full sync-name-${breakerCount}" oninput="syncInputs('sync-name-${breakerCount}', this.value); adjustFontSize(this)"></td>
                     <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center" style="width: 15%;">L1</td>
                     <td class="border border-slate-300 p-2 text-center align-middle" rowspan="3" style="width: 20%;"><input type="text" value="50 A" class="paper-input text-center font-medium text-slate-600 bg-transparent w-full sync-amp-${breakerCount}" oninput="syncInputs('sync-amp-${breakerCount}', this.value)"></td>
                     <td class="border border-slate-300 p-1 text-center" style="width: 25%;"><input type="text" placeholder="..." class="paper-input text-center py-1 font-bold text-orange-600 w-full"></td>
-                    <td class="border border-slate-300 p-1 text-center" style="width: 20%;"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
-                    <td class="no-print text-center border-none w-[5%] align-middle" rowspan="3" style="border: none !important; background: transparent;"><button onclick="removeBreakerRow(${breakerCount})" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2"><i class="fa-solid fa-trash-can"></i></button></td>
+                    <td class="border border-slate-300 p-1 text-center" style="width: 20%;"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                    <td class="no-print text-center border-none w-[5%] align-middle" rowspan="3" style="border: none !important; background: transparent;"><button onclick="removeBreakerRow(${breakerCount}, '${tbodyId}', '${photoSecId}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
                 <tr id="breaker_row_${breakerCount}_2">
                     <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center">L2</td>
                     <td class="border border-slate-300 p-1 text-center"><input type="text" placeholder="..." class="paper-input text-center py-1 font-bold text-orange-600 w-full"></td>
-                    <td class="border border-slate-300 p-1 text-center"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                    <td class="border border-slate-300 p-1 text-center"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                 </tr>
                 <tr id="breaker_row_${breakerCount}_3">
                     <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center">L3</td>
                     <td class="border border-slate-300 p-1 text-center"><input type="text" placeholder="..." class="paper-input text-center py-1 font-bold text-orange-600 w-full"></td>
-                    <td class="border border-slate-300 p-1 text-center"><select class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                    <td class="border border-slate-300 p-1 text-center"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                 </tr>
             `;
             tbody.insertAdjacentHTML('beforeend', rowHtml);
-            checkContactPageBreak();
+            checkContactPageBreak(tbodyId, photoSecId);
         }
 
-        function removeBreakerRow(id) {
-            const r1 = document.getElementById(`breaker_row_${id}_1`); const r2 = document.getElementById(`breaker_row_${id}_2`); const r3 = document.getElementById(`breaker_row_${id}_3`);
-            if(r1) r1.remove(); if(r2) r2.remove(); if(r3) r3.remove(); checkContactPageBreak();
+        function removeBreakerRow(id, tbodyId, photoSecId) {
+            const r1 = document.getElementById(`breaker_row_${id}_1`); 
+            const r2 = document.getElementById(`breaker_row_${id}_2`); 
+            const r3 = document.getElementById(`breaker_row_${id}_3`);
+            if(r1) r1.remove(); if(r2) r2.remove(); if(r3) r3.remove(); 
+            checkContactPageBreak(tbodyId, photoSecId);
         }
 
-        function checkContactPageBreak() {
-            const rows = document.querySelectorAll('.breaker-group').length;
-            const photoSec = document.getElementById('contactPhotoSection');
-            if(rows >= 4) { photoSec.classList.add('pdf-page-break', 'pt-6'); } else { photoSec.classList.remove('pdf-page-break', 'pt-6'); }
+        function checkContactPageBreak(tbodyId, photoSecId) {
+            const tbody = document.getElementById(tbodyId);
+            const photoSec = document.getElementById(photoSecId);
+            if (!tbody || !photoSec) return;
+            const rows = tbody.querySelectorAll('.breaker-group').length;
+            if(rows >= 4) { photoSec.classList.add('pdf-page-break', 'pt-6'); } 
+            else { photoSec.classList.remove('pdf-page-break', 'pt-6'); }
         }
 
         function compressImage(file, callback) {
@@ -1412,12 +1691,16 @@
         }
 
         function prepareDocumentForPrint(isNative = false) {
+            window.scrollTo(0, 0); // รีเซ็ตสกอร์บาร์ ป้องกันการเกิด Offset ตัดภาพขาด
+            
             const wrapper = document.querySelector('.a4-wrapper');
             const element = document.getElementById('reportDocument');
             wrapper.classList.add('preparing-pdf'); 
 
             if (!isNative) {
+                document.body.classList.add('html2pdf-body-lock'); // ล็อค body ป้องกันการครอบภาพ
                 element.classList.add('html2pdf-mode-active');
+                wrapper.classList.add('html2pdf-mode-wrapper'); 
             } else {
                 document.body.classList.add('native-print-mode'); 
                 document.getElementById('printLayoutThead').classList.remove('hidden');
@@ -1435,6 +1718,12 @@
                 const span = document.createElement('span');
                 span.className = input.className + ' print-text-span';
                 span.textContent = input.value || input.placeholder || '';
+                
+                // 🌟 คัดลอกขนาดฟอนต์ที่ถูกปรับลดแล้ว ไปยังโหมดพิมพ์ด้วย
+                if (input.style.fontSize) {
+                    span.style.fontSize = input.style.fontSize;
+                }
+                
                 input.parentNode.insertBefore(span, input);
                 input.classList.add('hidden', 'tmp-hidden-element');
             });
@@ -1444,10 +1733,19 @@
                 span.className = select.className + ' print-text-span text-center';
                 const selectedOpt = select.options[select.selectedIndex];
                 span.textContent = selectedOpt ? selectedOpt.text : '';
-                if (selectedOpt && selectedOpt.classList.contains('text-red-600')) {
-                    span.classList.remove('text-emerald-600');
-                    span.classList.add('text-red-600');
+                
+                // 🌟 3. อัปเดตสีสำหรับตอนแปลงเป็น PDF
+                if (selectedOpt) {
+                    span.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
+                    if (selectedOpt.classList.contains('text-red-600')) {
+                        span.classList.add('text-red-600');
+                    } else if (selectedOpt.classList.contains('text-slate-400')) {
+                        span.classList.add('text-slate-400');
+                    } else {
+                        span.classList.add('text-emerald-600');
+                    }
                 }
+                
                 select.parentNode.insertBefore(span, select);
                 select.classList.add('hidden', 'tmp-hidden-element');
             });
@@ -1464,64 +1762,132 @@
             });
 
             const webFooter = document.getElementById('webFooter');
-        if (webFooter) webFooter.style.display = '';
-    }
+            if (webFooter) webFooter.style.display = 'none';
 
-    // 🌟 ฟังก์ชันวาดกราฟิกโหมดภาพ
-    function drawNativeHeaderFooter(pdf) {
-        const totalPages = pdf.internal.getNumberOfPages();
-        const colorGrey = [51, 65, 85];  // #334155
-        const colorBlack = [15, 23, 42]; // #0f172a
-        const colorOrange = [249, 115, 22]; // #f97316
-
-        for (let i = 1; i <= totalPages; i++) {
-            pdf.setPage(i);
-            
-            // --- TOP HEADER (\ Slant Down) ---
-            pdf.setFillColor(colorGrey[0], colorGrey[1], colorGrey[2]);
-            pdf.fillPolygon([0, 0, 15, 12, 125, 12, 110, 0]);
-            
-            pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([110, 0, 116, 0, 131, 12, 125, 12]);
-            
-            pdf.setFillColor(colorBlack[0], colorBlack[1], colorBlack[2]);
-            pdf.fillPolygon([116, 0, 210, 0, 210, 12, 131, 12]);
-
-            // Thin Orange Line Bottom (ชนขอบเฉียงพอดี)
-            pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([14.375, 11.5, 210, 11.5, 210, 12, 15, 12]);
-
-            pdf.setFontSize(8);
-            pdf.setTextColor(241, 245, 249);
-            pdf.setFont('Helvetica', 'bold');
-            pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' });
-
-            // --- BOTTOM FOOTER (/ Slant Up Mirrored) ---
-            const fY = 285;
-            
-            pdf.setFillColor(colorGrey[0], colorGrey[1], colorGrey[2]);
-            pdf.fillPolygon([0, fY+12, 15, fY, 125, fY, 110, fY+12]);
-            
-            pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([125, fY, 131, fY, 116, fY+12, 110, fY+12]);
-            
-            pdf.setFillColor(colorBlack[0], colorBlack[1], colorBlack[2]);
-            pdf.fillPolygon([131, fY, 210, fY, 210, fY+12, 116, fY+12]);
-
-            // Thin Orange Line Top (ชนขอบเฉียงพอดี)
-            pdf.setFillColor(colorOrange[0], colorOrange[1], colorOrange[2]);
-            pdf.fillPolygon([15, fY, 210, fY, 210, fY+0.5, 14.375, fY+0.5]);
-
-            pdf.setFontSize(9);
-            pdf.setTextColor(241, 245, 249);
-            pdf.setFont('Helvetica', 'bold');
-            pdf.text('AVATAR ELECTRIC CO., LTD.', 25, fY + 8);
-            
-            pdf.text(`Page ${i} of ${totalPages}`, 195, fY + 8, { align: 'right' });
+            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.contact-block'];
+            blocks.forEach(selector => {
+                document.querySelectorAll(selector).forEach(block => {
+                    const grid = block.querySelector('.grid');
+                    if (grid && selector.includes('contact')) splitGridForPrint(grid, 8, 8);
+                    else if (grid && !selector.includes('grounding')) splitGridForPrint(grid, 6, 8); 
+                    else if (grid) splitGridForPrint(grid, 4, 8);
+                });
+            });
         }
-    }
 
-    function generatePDF(action) {
+        function restoreDocumentAfterPrint() {
+            const wrapper = document.querySelector('.a4-wrapper');
+            const element = document.getElementById('reportDocument');
+            
+            wrapper.style.minHeight = '';
+            wrapper.style.height = '';
+            wrapper.style.overflow = '';
+
+            wrapper.classList.remove('preparing-pdf', 'html2pdf-mode-wrapper'); 
+            element.classList.remove('html2pdf-mode-active');
+            document.body.classList.remove('native-print-mode', 'html2pdf-body-lock'); // ปลดล็อค body กลับสู่สภาพเดิม
+
+            document.getElementById('printLayoutThead').classList.add('hidden');
+            document.getElementById('printLayoutTfoot').classList.add('hidden');
+            document.getElementById('nativePrintHeader').classList.add('hidden');
+            document.getElementById('nativePrintFooter').classList.add('hidden');
+
+            const nativePageNums = document.getElementById('nativePageNumbers');
+            if (nativePageNums) nativePageNums.remove();
+
+            element.querySelectorAll('.no-print').forEach(el => {
+                if (el.hasAttribute('data-orig-display')) {
+                    const orig = el.getAttribute('data-orig-display');
+                    if (orig === '') el.style.removeProperty('display');
+                    else el.style.display = orig;
+                    el.removeAttribute('data-orig-display');
+                }
+            });
+            
+            element.querySelectorAll('.print-text-span').forEach(span => span.remove());
+            element.querySelectorAll('.tmp-hidden-element').forEach(el => el.classList.remove('hidden', 'tmp-hidden-element'));
+
+            element.querySelectorAll('.tmp-no-print').forEach(box => {
+                box.classList.remove('tmp-no-print');
+                if (box.hasAttribute('data-orig-display')) {
+                    const orig = box.getAttribute('data-orig-display');
+                    if (orig === '') box.style.removeProperty('display');
+                    else box.style.display = orig;
+                    box.removeAttribute('data-orig-display');
+                }
+            });
+
+            document.querySelectorAll('.tmp-split-wrapper').forEach(wrap => {
+                const origGrid = wrap.previousElementSibling;
+                if (origGrid && origGrid.classList.contains('tmp-orig-grid')) {
+                    Array.from(wrap.querySelectorAll('.photo-box')).forEach(box => origGrid.appendChild(box));
+                    const allChildren = Array.from(origGrid.children);
+                    allChildren.sort((a, b) => parseInt(a.getAttribute('data-orig-index')) - parseInt(b.getAttribute('data-orig-index')));
+                    allChildren.forEach(child => origGrid.appendChild(child));
+                    
+                    wrap.remove();
+                    origGrid.classList.remove('tmp-orig-grid', 'tmp-no-print');
+                    if (origGrid.hasAttribute('data-orig-display')) {
+                        const orig = origGrid.getAttribute('data-orig-display');
+                        if (orig === '') origGrid.style.removeProperty('display');
+                        else origGrid.style.display = orig;
+                        origGrid.removeAttribute('data-orig-display');
+                    }
+                }
+            });
+
+            const webFooter = document.getElementById('webFooter');
+            if (webFooter) webFooter.style.display = '';
+        }
+
+        // 🌟 ฟังก์ชันวาดกราฟิกโหมดภาพ
+        function drawPoly(pdf, pts, color) {
+            pdf.setFillColor(color[0], color[1], color[2]);
+            // ใช้สามเหลี่ยม 2 รูปต่อกันเป็นสี่เหลี่ยม เพื่อสร้างทรงเฉียง
+            pdf.triangle(pts[0], pts[1], pts[2], pts[3], pts[6], pts[7], 'F');
+            pdf.triangle(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7], 'F');
+        }
+
+        function drawNativeHeaderFooter(pdf) {
+            const totalPages = pdf.internal.getNumberOfPages();
+            const colorGrey = [51, 65, 85];  // #334155
+            const colorBlack = [15, 23, 42]; // #0f172a
+            const colorOrange = [249, 115, 22]; // #f97316
+
+            for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                
+                // --- TOP HEADER (\ Slant Down) ---
+                drawPoly(pdf, [0,0, 110,0, 125,12, 15,12], colorGrey);
+                drawPoly(pdf, [110,0, 116,0, 131,12, 125,12], colorOrange);
+                drawPoly(pdf, [116,0, 210,0, 210,12, 131,12], colorBlack);
+                // เส้นส้มบางด้านล่าง
+                drawPoly(pdf, [14.375,11.5, 210,11.5, 210,12, 15,12], colorOrange);
+
+                pdf.setFontSize(8);
+                pdf.setTextColor(241, 245, 249);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' });
+
+                // --- BOTTOM FOOTER (/ Slant Up Mirrored) ---
+                const fY = 285;
+                
+                drawPoly(pdf, [0,fY+12, 15,fY, 125,fY, 110,fY+12], colorGrey);
+                drawPoly(pdf, [125,fY, 131,fY, 116,fY+12, 110,fY+12], colorOrange);
+                drawPoly(pdf, [131,fY, 210,fY, 210,fY+12, 116,fY+12], colorBlack);
+                // เส้นส้มบางด้านบน
+                drawPoly(pdf, [15,fY, 210,fY, 210,fY+0.5, 14.375,fY+0.5], colorOrange);
+
+                pdf.setFontSize(9);
+                pdf.setTextColor(241, 245, 249);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('AVATAR ELECTRIC CO., LTD.', 25, fY + 8);
+                
+                pdf.text(`Page ${i} of ${totalPages}`, 195, fY + 8, { align: 'right' });
+            }
+        }
+
+        function generatePDF(action) {
             if(selectedModules.length === 0) {
                 alert('กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ');
                 return;
@@ -1544,28 +1910,45 @@
             const element = document.getElementById('reportDocument');
             
             const opt = {
-                margin:       [15, 0, 15, 0], // เว้น 15mm บนและล่าง เพื่อเป็นพื้นที่ให้ลวดลาย Overlay
+                margin:       [12, 0, 12, 0], // เว้น 12mm บนและล่าง เพื่อเป็นพื้นที่ให้ลวดลาย Overlay
                 filename:     `PM_Report_${document.getElementById('inputProject').value || 'Untitled'}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
+                // เราเอา width และ windowWidth ที่ฝืนบีบอัดออกไป ให้มันจับตาม body จริงที่เราล็อคไว้
                 html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 }, 
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'], avoid: ['.photo-box', '.breaker-group', 'tr', '.section-title'] }
+                pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            let worker = html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
-                drawNativeHeaderFooter(pdf);
-            });
+            const worker = html2pdf().set(opt).from(element);
 
             if (action === 'preview') {
-                worker.outputPdf('datauristring').then(function(pdfBase64) {
-                    document.getElementById('pdfIframe').src = pdfBase64;
+                worker.toPdf().get('pdf').then(function(pdf) {
+                    drawNativeHeaderFooter(pdf);
+                }).output('blob').then(function(pdfBlob) {
+                    // ใช้ Blob URL แทน DataURI(Base64) ทำให้โหลดเร็วและไม่แครชเวลาไฟล์ใหญ่
+                    const blobUrl = URL.createObjectURL(pdfBlob);
+                    document.getElementById('pdfIframe').src = blobUrl;
                     document.getElementById('pdfLoading').classList.add('hidden'); 
                     restoreDocumentAfterPrint(); 
                     btn.innerHTML = originalText;
+                }).catch(function(err) {
+                    console.error("PDF Generation Error:", err);
+                    alert("เกิดข้อผิดพลาดในการสร้างพรีวิว (อาจมีรูปภาพมากเกินไปหรือคอมพิวเตอร์ทำงานไม่ทัน)\nตรวจสอบใน Console สำหรับรายละเอียด");
+                    document.getElementById('pdfLoading').classList.add('hidden');
+                    closePreview();
+                    restoreDocumentAfterPrint();
+                    btn.innerHTML = originalText;
                 });
             } else {
-                worker.save().then(() => {
+                worker.toPdf().get('pdf').then(function(pdf) {
+                    drawNativeHeaderFooter(pdf);
+                }).save().then(() => {
                     restoreDocumentAfterPrint(); 
+                    btn.innerHTML = originalText;
+                }).catch(function(err) {
+                    console.error("PDF Save Error:", err);
+                    alert("เกิดข้อผิดพลาดในการบันทึก PDF");
+                    restoreDocumentAfterPrint();
                     btn.innerHTML = originalText;
                 });
             }
@@ -1631,7 +2014,7 @@
                     const ghost = document.getElementById('ghostSpacerHacker');
                     if (ghost) ghost.remove();
                     window.removeEventListener('afterprint', cleanupGhost);
-                });
+                }, { once: true });
 
                 setTimeout(() => {
                     window.print();
