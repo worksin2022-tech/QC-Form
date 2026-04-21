@@ -38,16 +38,25 @@
             box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;
         }
 
+        /* 🌟 คลาสเฉพาะหน้าปก ไม่ให้มี Padding เพื่อกราฟิกเต็มแผ่น */
+        .cover-page {
+            padding: 0 !important;
+            overflow: hidden;
+            background-color: white;
+            border-radius: 12px;
+        }
+
         /* ซ่อนปุ่มเวลา Print */
         .preparing-pdf .no-print, .preparing-pdf .tmp-no-print { display: none !important; }
         .print-text-span { display: inline-block; width: 100%; background: transparent !important; border: none !important; min-height: 1.5em; word-break: break-word; white-space: pre-wrap; }
 
-        /* กฎการตัดหน้า */
+        /* กฎการตัดหน้ากระดาษ (บังคับตัดก่อนโมดูล/บล็อกเสมอ) */
         .pdf-page-break { page-break-before: always !important; break-before: page !important; }
+        
         .photo-box { page-break-inside: avoid !important; break-inside: avoid !important; }
         tr { page-break-inside: avoid !important; break-inside: avoid !important; }
 
-        /* การตกแต่งขณะลากวาง (SortableJS Ghost) */
+        /* การตกแต่งขณะลากวาง */
         .sortable-ghost { opacity: 0.4; background-color: #f8fafc; border: 2px dashed #94a3b8; border-radius: 12px; }
         .drag-handle { cursor: grab; }
         .drag-handle:active { cursor: grabbing; }
@@ -55,7 +64,6 @@
         /* ========================================================= */
         /* 🌟 1. CSS โหมด PDF ภาพ (HTML2PDF) 🌟 */
         /* ========================================================= */
-        /* แก้ปัญหาหน้ากระดาษโดนตัดขอบซ้าย/ขวา และล้นจอบนมือถือ */
         body.html2pdf-body-lock {
             width: 794px !important;
             min-width: 794px !important;
@@ -76,7 +84,7 @@
             transform: none !important;
         }
 
-        .html2pdf-mode-active.a4-page { 
+        .html2pdf-mode-active.a4-page, .html2pdf-mode-active .a4-page { 
             padding: 0 15mm !important; 
             display: block !important; 
             overflow: visible !important; 
@@ -92,6 +100,11 @@
             top: 0 !important;
         }
 
+        .html2pdf-mode-active .cover-page {
+            padding: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
         .html2pdf-mode-active #mainHeader,
         .native-print-mode #mainHeader {
             margin-top: 0 !important; 
@@ -100,12 +113,13 @@
         .html2pdf-mode-active #moduleContainer {
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
+            display: block !important;
         }
 
         .html2pdf-mode-active #moduleContainer > div:last-child {
             margin-bottom: 0 !important; 
             padding-bottom: 0 !important; 
-            border-bottom: none !important; /* ป้องกันพื้นที่ขอบล่างดันให้เกิดหน้าว่าง */
+            border-bottom: none !important; 
         }
 
         .html2pdf-mode-active .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
@@ -125,30 +139,46 @@
         .html2pdf-mode-active .dielectric-block table th { font-size: 9.5px !important; letter-spacing: -0.2px !important; }
 
         /* ========================================================= */
-        /* 🌟 2. CSS สำหรับโหมด Native Print (PDF แก้ไขข้อความได้) 🌟 */
+        /* 🌟 CSS สำหรับโหมด Native Print (PDF แก้ไขข้อความได้) 🌟 */
         /* ========================================================= */
         @media print {
             @page { size: A4 portrait; margin: 0 !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            body, html { background: white; margin: 0; padding: 0; width: 100%; height: auto; }
-            .a4-wrapper { background: transparent; padding: 0; display: block; width: 100%; overflow: visible; }
+            body, html { background: white; margin: 0 !important; padding: 0 !important; width: 100%; height: auto !important; min-height: auto !important; }
+            .a4-wrapper { background: transparent; padding: 0 !important; margin: 0 !important; display: block; width: 100%; overflow: visible; min-height: auto !important; }
             
+            #printLayoutTable, #printLayoutTable tbody, #printLayoutTable tr, #printLayoutTable td {
+                page-break-inside: auto !important;
+            }
+
             .native-print-mode .a4-page { 
                 box-shadow: none !important; border-radius: 0 !important; 
                 width: 100% !important; max-width: 100% !important; margin: 0 !important; 
                 min-height: auto !important; 
                 padding: 0 15mm !important; 
-                background: transparent !important; 
                 display: block !important;
+            }
+
+            /* บังคับหน้าปกให้แสดงเต็มแผ่น */
+            .native-print-mode #coverPage {
+                height: 297mm !important;
+                max-height: 297mm !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                margin-bottom: 0 !important;
+                position: relative !important;
+                z-index: 10000 !important;
+                background-color: white !important;
             }
             
             .no-print, .control-panel { display: none !important; }
 
+            /* ล็อคกราฟิกหัวและท้ายกระดาษให้อยู่ตายตัวเสมอ */
             .print-fixed-header { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
             .print-fixed-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
 
+            .native-print-mode #moduleContainer { display: block !important; }
             .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
-            
             .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
             
             .native-print-mode .general-block,
@@ -157,17 +187,13 @@
             .native-print-mode .grounding-block, 
             .native-print-mode .contact-block,
             .native-print-mode .photo-group-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
-
-            .native-print-mode .general-block > .flex.mb-3,
-            .native-print-mode .insulation-block > .flex.mb-4,
-            .native-print-mode .dielectric-block > .flex.mb-4,
-            .native-print-mode .grounding-block > .flex.mb-4,
-            .native-print-mode .contact-block > .flex.mb-3,
-            .native-print-mode .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
             
+            .native-print-mode #moduleContainer > div:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
+            .native-print-mode #printLayoutTable { margin-bottom: 0 !important; }
             .native-print-mode table.mb-6 { margin-bottom: 12px !important; }
             .native-print-mode table th, .native-print-mode table td { padding: 4px 6px !important; line-height: 1.2 !important; }
-            .native-print-mode .dielectric-block table th { font-size: 9.5px !important; letter-spacing: -0.2px !important; }
+            
+            #coverPage input { border-bottom-color: transparent !important; }
         }
 
         /* ตกแต่งทั่วไป */
@@ -187,10 +213,7 @@
         table { border-collapse: collapse; width: 100%; background-color: #ffffff; }
         th, td { border: 1px solid #cbd5e1 !important; padding: 6px; background-clip: padding-box !important; }
         th { background-color: #f1f5f9 !important; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: bold; }
-        
-        /* 🌟 ลบคำสั่ง td[rowspan]::after ที่วาดเส้นซ้อนทับทิ้งไป เพื่อให้เส้นบางเท่ากันหมด */
         td[rowspan] { position: relative; }
-        
         .no-print th, .no-print td, td.no-print, th.no-print { border: none !important; background: transparent !important; }
         .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
@@ -201,17 +224,13 @@
     <!-- 🌟 Tailwind Safelist -->
     <div class="hidden bg-slate-50 bg-slate-100 bg-slate-500 bg-slate-700 bg-slate-800 text-slate-400 text-slate-500 text-slate-600 text-slate-700 text-slate-800 border-slate-100 border-slate-200 border-slate-300 hover:bg-slate-100 hover:bg-slate-200 hover:text-slate-700 bg-orange-50 bg-orange-100 bg-orange-500 text-orange-400 text-orange-500 text-orange-600 text-orange-700 border-orange-100 border-orange-200 border-orange-300 hover:bg-orange-100 hover:bg-orange-200 hover:text-orange-700"></div>
 
-    <!-- 🌟 NATIVE PRINT HEADER (ขวาตรง ซ้ายเฉียงลง \) -->
+    <!-- 🌟 NATIVE PRINT HEADER -->
     <div id="nativePrintHeader" class="hidden print-fixed-header">
         <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
-            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                <!-- ส่วนซ้าย (Slate-700) เฉียงลง -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
                 <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                <!-- เส้นส้มหนา -->
                 <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                <!-- ส่วนขวา (Slate-900) ด้านขวาตรง -->
                 <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                <!-- ขอบล่างเส้นส้มบางๆ วิ่งสุดขอบเฉียงพอดี -->
                 <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
             </svg>
         </div>
@@ -220,17 +239,13 @@
         </div>
     </div>
 
-    <!-- 🌟 NATIVE PRINT FOOTER (ขวาตรง ซ้ายเฉียงขึ้น / ให้รับกับขอบบนสมมาตร) -->
+    <!-- 🌟 NATIVE PRINT FOOTER -->
     <div id="nativePrintFooter" class="hidden print-fixed-footer">
         <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
-            <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                <!-- ส่วนซ้าย (Slate-700) เฉียงขึ้น -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
                 <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                <!-- เส้นส้มหนา -->
                 <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                <!-- ส่วนขวา (Slate-900) ด้านขวาตรง -->
                 <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                <!-- ขอบบนเส้นส้มบางๆ วิ่งสุดขอบเฉียงพอดี -->
                 <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
             </svg>
         </div>
@@ -242,7 +257,7 @@
     <!-- 🛠️ CONTROL PANEL -->
     <div class="control-panel p-4 no-print">
         <div class="max-w-7xl mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
                 <div class="flex items-center gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
@@ -254,7 +269,6 @@
                 </div>
                 
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                    <!-- ส่วนปุ่มจัดการไฟล์ (Import/Export/Clear) -->
                     <div class="flex gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                         <button onclick="exportData()" class="flex-1 md:flex-none justify-center bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-1.5" title="บันทึกข้อมูลเป็นไฟล์ JSON">
                             <i class="fa-solid fa-download text-slate-500"></i> นำออก
@@ -271,7 +285,6 @@
                         </button>
                     </div>
 
-                    <!-- ปุ่มสร้าง PDF -->
                     <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                         <button onclick="openReorderModal()" class="flex-1 md:flex-none justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-4 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2">
                             <i class="fa-solid fa-sort"></i> จัดเรียง
@@ -286,7 +299,6 @@
                 </div>
             </div>
             
-            <!-- 🌟 แถบควบคุมการซ่อน/แสดงเมนู -->
             <div class="flex justify-between items-center border-t border-slate-200 pt-3 mb-3 mt-4">
                 <span class="text-[13px] font-bold text-slate-500 uppercase tracking-wide"><i class="fa-solid fa-layer-group mr-1.5"></i> เลือกหัวข้อเพื่อสร้างรายงาน</span>
                 <button onclick="toggleModuleGrid()" class="text-xs font-bold text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
@@ -294,7 +306,6 @@
                 </button>
             </div>
             
-            <!-- 🌟 หุ้ม Grid เพื่อทำพับเก็บ -->
             <div id="moduleGridWrapper" class="transition-all duration-300 ease-in-out overflow-hidden origin-top" style="max-height: 500px; opacity: 1;">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3 pb-2">
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
@@ -323,7 +334,7 @@
                     </label>
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full">
-                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8"/><path d="M5 12h14"/><path d="M8 16h8"/><path d="M10 20h4"/></svg>
+                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
                             <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
                         </div>
                         <span class="font-bold text-slate-800 text-[13px] leading-tight">7. Grounding Test</span>
@@ -344,159 +355,231 @@
         </div>
     </div>
 
-    <!-- 🌟 NATIVE PRINT TABLE WRAPPER -->
-    <div class="a4-wrapper">
-        <table class="w-full border-none m-0 p-0" id="printLayoutTable">
+    <!-- 🌟 โครงสร้างเอกสาร PDF (รวมหน้าปกและเนื้อหา) -->
+    <div class="a4-wrapper flex-col items-center gap-6 print:block print:w-full print:gap-0 bg-slate-200 print:bg-transparent pb-10">
+        <div id="exportWrapper" class="w-full flex flex-col items-center gap-6 print:block print:w-full print:gap-0">
             
-            <thead class="hidden" id="printLayoutThead">
-                <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
-            </thead>
-            
-            <tbody class="border-none m-0 p-0">
-                <tr>
-                    <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
-                        
-                        <div id="reportDocument" class="a4-page relative">
+            <!-- ============================================== -->
+            <!-- 🌟 หน้าปก (COVER PAGE) -->
+            <!-- ============================================== -->
+            <div id="coverPage" class="a4-page relative cover-page print:shadow-none">
+                
+                <!-- กราฟิกด้านบน -->
+                <div class="absolute top-0 left-0 w-full h-[220px] pointer-events-none z-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                        <rect x="0" y="0" width="100" height="20" fill="#1e293b" />
+                        <rect x="0" y="20" width="100" height="2" fill="#f59e0b" />
+                        <rect x="0" y="22" width="100" height="6" fill="#f97316" />
+                        <defs>
+                            <linearGradient id="coverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#fdba74" stop-opacity="1" />
+                                <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="0" y="28" width="100" height="72" fill="url(#coverGrad)" />
+                    </svg>
+                </div>
+
+                <!-- ข้อความหัวเรื่อง -->
+                <div class="relative z-10 mt-[140px] pl-[80px]">
+                    <h1 class="text-[52px] font-normal text-slate-800 tracking-tight leading-none mb-1" style="font-family: Arial, Helvetica, sans-serif;">Avatar Electric</h1>
+                    <h2 class="text-[20px] font-semibold text-orange-500 tracking-wide" style="font-family: Arial, Helvetica, sans-serif; margin-left: 205px;">Company Limited</h2>
+                </div>
+
+                <!-- 🌟 โลโก้หมวกตรงกลาง (ดึงรูปคงที่มาแสดง) -->
+                <div class="relative z-10 w-full flex justify-center mt-[60px]">
+                    <img src="Logo Avatar เล็ก.png" alt="Avatar Electric" class="w-[320px] h-[320px] object-contain z-20 drop-shadow-md" onerror="this.onerror=null; this.src=''; this.alt='[คำแนะนำ: นำไฟล์รูปภาพ Logo Avatar เล็ก.png มาวางไว้ในโฟลเดอร์เดียวกับไฟล์นี้]';" />
+                </div>
+
+                <!-- ช่องกรอกรายละเอียด Project หน้าปก -->
+                <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-6 bg-white/80 backdrop-blur-sm rounded-xl no-print-bg">
+                    <h3 class="text-2xl font-extrabold text-slate-800 uppercase tracking-widest text-center mb-6">Preventive Maintenance</h3>
+                    <table class="w-full text-lg border-none">
+                        <tr>
+                            <td class="font-bold text-slate-500 w-[120px] pb-3 border-none text-left align-bottom uppercase text-sm">Project :</td>
+                            <td class="pb-3 border-none border-b-2 border-slate-300 border-dotted pl-2 align-bottom">
+                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[19px] bg-transparent" placeholder="ระบุชื่อโครงการ..." oninput="syncCoverInputs()">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-slate-500 w-[120px] pt-4 pb-3 border-none text-left align-bottom uppercase text-sm">Date :</td>
+                            <td class="pt-4 pb-3 border-none border-b-2 border-slate-300 border-dotted pl-2 align-bottom">
+                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[19px] bg-transparent" placeholder="ระบุวันที่..." oninput="syncCoverInputs()">
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- โลโก้มาตรฐานมุมซ้ายล่าง -->
+                <div class="absolute bottom-[110px] left-[80px] z-20">
+                    <div class="w-[280px] h-[80px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverIsoLogoUpload').click()">
+                        <img id="coverIsoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-left bg-no-repeat" style="border-radius: inherit;" />
+                        <div id="coverIsoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-blue-500 no-print border-2 border-dashed border-slate-300 group-hover:border-blue-400 px-3 py-2 rounded-lg bg-slate-50/80 w-full h-full flex justify-center items-center"><i class="fa-solid fa-plus mr-1"></i>อัปโหลดโลโก้ ISO / มาตรฐาน</div>
+                        <input type="file" id="coverIsoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverIsoLogoImg', 'coverIsoLogoPlaceholder')">
+                    </div>
+                </div>
+
+                <!-- โลโก้ EcoXpert มุมขวาล่าง -->
+                <div class="absolute bottom-[90px] right-[80px] z-20">
+                    <div class="w-[160px] h-[100px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverEcoLogoUpload').click()">
+                        <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-right bg-no-repeat" style="border-radius: inherit;" />
+                        <div id="coverEcoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-green-500 no-print text-center px-2 py-2 border-2 border-dashed border-slate-300 group-hover:border-green-500 bg-slate-50/80 rounded-lg w-full h-full flex flex-col justify-center items-center"><i class="fa-solid fa-plus mb-1"></i>อัปโหลดโลโก้<br>EcoXpert</div>
+                        <input type="file" id="coverEcoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverEcoLogoImg', 'coverEcoLogoPlaceholder')">
+                    </div>
+                </div>
+
+                <!-- กราฟิกด้านล่างสุด -->
+                <div class="absolute bottom-0 left-0 w-full h-[220px] pointer-events-none z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                        <polygon points="0,60 100,85 100,89 0,64" fill="#ea580c" />
+                        <polygon points="0,63 100,88 100,100 0,100" fill="#1e293b" />
+                    </svg>
+                    <div class="absolute bottom-[30px] left-[80px] text-white font-medium tracking-wider" style="font-size: 20px; font-family: Arial, Helvetica, sans-serif;">
+                        www.avatar-electric.com
+                    </div>
+                </div>
+
+            </div>
+            <!-- ============================================== -->
+
+            <!-- ============================================== -->
+            <!-- 🌟 หน้าเนื้อหาหลัก (ใช้ตารางป้องกันเนื้อหาทับ Header/Footer) -->
+            <!-- ============================================== -->
+            <table class="w-full border-none m-0 p-0 relative z-10 shadow-lg print:shadow-none bg-white pdf-page-break" id="printLayoutTable">
+                
+                <thead class="hidden print:table-header-group" id="printLayoutThead">
+                    <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
+                </thead>
+                
+                <tbody class="border-none m-0 p-0">
+                    <tr>
+                        <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
                             
-                            <!-- 🌟 Web View Decorative Overlay -->
-                            <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
-                                <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                    <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                                    <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                                    <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                                    <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
-                                </svg>
-                                <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
-                                    <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                            <div id="reportDocument" class="a4-page relative bg-white" style="box-shadow: none;">
+                                
+                                <!-- 🌟 Web View Decorative Overlay -->
+                                <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                        <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
+                                        <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
+                                        <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
+                                        <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+                                    </svg>
+                                    <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
+                                        <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                                    </div>
                                 </div>
+                                
+                                <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                        <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
+                                        <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
+                                        <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
+                                        <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
+                                    </svg>
+                                    <div class="absolute top-[3mm] left-[25mm] z-[1]">
+                                        <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                                    </div>
+                                </div>
+
+                                <!-- Input ซ่อนเพื่อรับค่าจากหน้าปก -->
+                                <div class="hidden">
+                                    <input type="text" id="inputProject">
+                                    <input type="text" id="inputDate">
+                                </div>
+
+                                <!-- เริ่มเนื้อหาแรก: Scope of work -->
+                                <div id="scopeSection" class="mb-8 mt-12">
+                                    <div class="section-title">
+                                        <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
+                                        <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                    </div>
+                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณาติ๊กเลือกหัวข้อจากเมนูด้านบน เพื่อสร้าง Scope อัตโนมัติ...</p>
+                                    <ul id="dynamicScopeList" class="list-decimal list-outside space-y-1.5 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
+                                </div>
+
+                                <!-- 🌟 MODULE CONTAINER -->
+                                <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
+                                    <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
+                                        </div>
+                                        <div id="bf_container"></div>
+                                    </div>
+
+                                    <div id="mod_cleaning" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addPhotoGroup('cl')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Cleaning</button>
+                                        </div>
+                                        <div id="cl_container"></div>
+                                    </div>
+
+                                    <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
+                                        </div>
+                                        <div id="af_container"></div>
+                                    </div>
+
+                                    <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
+                                        </div>
+                                        <div id="gen_container"></div>
+                                    </div>
+
+                                    <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addInsulationBlock()" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Insulation</button>
+                                        </div>
+                                        <div id="ins_container"></div>
+                                    </div>
+
+                                    <div id="mod_dielectric" class="mb-10 hidden pt-4 pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addDielectricBlock()" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Dielectric</button>
+                                        </div>
+                                        <div id="die_container"></div>
+                                    </div>
+
+                                    <div id="mod_grounding" class="mb-10 hidden pt-4 pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addGroundingBlock()" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Grounding</button>
+                                        </div>
+                                        <div id="gro_container"></div>
+                                    </div>
+
+                                    <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
+                                        </div>
+                                        <div id="ct_container"></div>
+                                    </div>
+
+                                    <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
+                                        <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
+                                            <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
+                                            <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
+                                            <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- END MODULE CONTAINER -->
+
                             </div>
-                            
-                            <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
-                                <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                    <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                                    <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                                    <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                                    <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
-                                </svg>
-                                <div class="absolute top-[3mm] left-[25mm] z-[1]">
-                                    <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
-                                </div>
-                            </div>
-                            <!-- 🌟 END Web View Overlay -->
-
-                            <div id="mainHeader" class="w-full flex justify-between items-end pb-4 mb-4 relative border-b-[2px] border-slate-100 shrink-0 bg-white z-10 pt-2 mt-[12mm]">
-                                <div class="absolute bottom-[-2px] left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 via-slate-500 to-slate-900 rounded-full"></div>
-                                <div class="w-[35%]">
-                                    <div class="h-16 w-56 bg-slate-50 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-300 rounded-xl relative cursor-pointer hover:bg-slate-100 hover:border-orange-400 transition-all overflow-hidden" onclick="document.getElementById('logoUpload').click()">
-                                        <div id="logoImg" class="hidden w-full h-full absolute top-0 left-0 bg-white z-10" style="background-size: contain; background-repeat: no-repeat; background-position: left center; border-radius: inherit;"></div>
-                                        <span class="no-print font-medium"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>อัปโหลดโลโก้บริษัท</span>
-                                        <input type="file" id="logoUpload" class="hidden" accept="image/*" onchange="previewLogo(event)">
-                                    </div>
-                                </div>
-                                <div class="w-[65%] text-right flex flex-col justify-end items-end pb-1">
-                                    <h1 class="text-[28px] font-extrabold text-slate-800 uppercase tracking-tight mb-2 leading-none">Preventive Maintenance</h1>
-                                    <div class="flex items-center justify-end gap-2 text-sm text-slate-600 mb-1.5 w-full">
-                                        <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Project</span>
-                                        <input type="text" id="inputProject" placeholder="ระบุชื่อโครงการ..." class="paper-input w-72 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
-                                    </div>
-                                    <div class="flex items-center justify-end gap-2 text-sm text-slate-600 w-full">
-                                        <span class="font-bold uppercase tracking-wider text-[11px] bg-slate-100 px-2 py-1 rounded text-slate-700 shrink-0">Date</span>
-                                        <input type="text" id="inputDate" placeholder="ระบุวันที่..." class="paper-input w-48 text-right font-bold text-[15px] text-orange-600 placeholder-slate-300">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="scopeSection" class="mb-8 mt-2">
-                                <div class="section-title">
-                                    <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
-                                    <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
-                                </div>
-                                <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณาติ๊กเลือกหัวข้อจากเมนูด้านบน เพื่อสร้าง Scope อัตโนมัติ...</p>
-                                <ul id="dynamicScopeList" class="list-decimal list-outside space-y-1.5 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
-                            </div>
-
-                            <!-- 🌟 MODULE CONTAINER -->
-                            <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
-                                <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
-                                    </div>
-                                    <div id="bf_container"></div>
-                                </div>
-
-                                <div id="mod_cleaning" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addPhotoGroup('cl')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Cleaning</button>
-                                    </div>
-                                    <div id="cl_container"></div>
-                                </div>
-
-                                <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
-                                    </div>
-                                    <div id="af_container"></div>
-                                </div>
-
-                                <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
-                                    </div>
-                                    <div id="gen_container"></div>
-                                </div>
-
-                                <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addInsulationBlock()" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Insulation</button>
-                                    </div>
-                                    <div id="ins_container"></div>
-                                </div>
-
-                                <div id="mod_dielectric" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addDielectricBlock()" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Dielectric</button>
-                                    </div>
-                                    <div id="die_container"></div>
-                                </div>
-
-                                <div id="mod_grounding" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addGroundingBlock()" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Grounding</button>
-                                    </div>
-                                    <div id="gro_container"></div>
-                                </div>
-
-                                <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                    <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                        <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
-                                    </div>
-                                    <div id="ct_container"></div>
-                                </div>
-
-                                <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
-                                    <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
-                                        <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
-                                        <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
-                                        <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- END MODULE CONTAINER -->
-
-                        </div>
-
-                    </td>
-                </tr>
-            </tbody>
-            
-            <tfoot class="hidden" id="printLayoutTfoot">
-                <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
-            </tfoot>
-        </table>
+                        </td>
+                    </tr>
+                </tbody>
+                
+                <tfoot class="hidden print:table-footer-group" id="printLayoutTfoot">
+                    <tr><td style="border: none !important; padding: 0 !important; background: transparent; height: 12mm;"></td></tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 
     <!-- 🖼️ MODAL สำหรับพรีวิว PDF ภาพ -->
-    <div id="pdfModal" class="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-6 transition-opacity">
+    <div id="pdfModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-6 transition-opacity">
         <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col h-[95vh] overflow-hidden border border-slate-200">
             <div class="flex justify-between items-center p-5 border-b bg-slate-50">
                 <h3 class="text-xl font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-pdf text-red-500 mr-3 text-2xl"></i> พรีวิวเอกสาร PDF</h3>
@@ -516,7 +599,7 @@
     </div>
 
     <!-- 🔄 MODAL สำหรับจัดเรียงหัวข้อ -->
-    <div id="reorderModal" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4 transition-opacity">
+    <div id="reorderModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4 transition-opacity">
         <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
             <div class="flex justify-between items-center p-5 border-b bg-slate-50">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-sort text-indigo-500"></i> จัดเรียงลำดับหัวข้อ</h3>
@@ -537,7 +620,7 @@
         </div>
     </div>
 
-    <!-- 🧠 JAVASCRIPT LOGIC -->
+    <!-- 🧠 JAVASCRIPT LOGIC (สมบูรณ์ 100% ไม่มีตกหล่น) -->
     <script>
         let selectedModules = []; 
         let breakerCount = 0;
@@ -549,9 +632,8 @@
         let ctCount = 0; 
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
         let reorderSortable = null;
-        let isGridCollapsed = false; // 🌟 ตัวแปรเก็บสถานะการพับเมนู
+        let isGridCollapsed = false;
 
-        // 🌟 1. เพิ่มฟังก์ชันจัดการสีผลลัพธ์ (Pass/Fail/NA)
         function updateResultColor(select) {
             select.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
             if (select.value === 'Pass') select.classList.add('text-emerald-600');
@@ -559,31 +641,27 @@
             else select.classList.add('text-slate-400');
         }
 
-        // 🌟 ฟังก์ชันปรับลดขนาดตัวอักษรอัตโนมัติ (สำหรับช่อง Breaker)
         function adjustFontSize(el) {
             const valLen = el.value.length;
             if (valLen > 15) el.style.fontSize = '11px';
             else if (valLen > 10) el.style.fontSize = '13px';
             else if (valLen > 6) el.style.fontSize = '15px';
-            else el.style.fontSize = '18px'; // ค่าเริ่มต้น (text-lg)
+            else el.style.fontSize = '18px'; 
         }
 
-        // 🌟 ฟังก์ชันเลื่อนหน้าจอไปยังตำแหน่งที่เลือก (Go To)
         function scrollToElement(elementId) {
             closeReorderModal();
             setTimeout(() => {
                 const el = document.getElementById(elementId);
                 if (el) {
-                    // เลื่อนหน้าจอไปตรงกลาง
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
-                    // สร้างเอฟเฟกต์ไฮไลต์กระพริบสีส้ม
                     const oldOutline = el.style.outline;
                     const oldOutlineOffset = el.style.outlineOffset;
                     const oldTransition = el.style.transition;
                     
                     el.style.transition = 'outline 0.3s ease';
-                    el.style.outline = '4px solid #f97316'; // สีส้ม
+                    el.style.outline = '4px solid #f97316';
                     el.style.outlineOffset = '4px';
                     el.style.borderRadius = '8px';
                     
@@ -596,7 +674,7 @@
                         }, 300);
                     }, 1500);
                 }
-            }, 150); // รอให้ Modal ปิดสนิทก่อน
+            }, 150);
         }
 
         let moduleTitles = {
@@ -611,7 +689,6 @@
             'mod_calibration': 'Certificate of Calibration'
         };
 
-        // 🌟 กำหนดลำดับมาตรฐาน (Default Order)
         const defaultModuleOrder = [
             'mod_before', 'mod_cleaning', 'mod_after',
             'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_contact', 'mod_calibration'
@@ -643,13 +720,9 @@
                 addPhotoGroup('af');
             }
 
-            // 🌟 1. บังคับอัปเดตสี Select ทั้งหมดทันทีเมื่อโหลดหน้าจอเสร็จ (แก้ปัญหา Draft เก่าสีไม่ตรง)
             document.querySelectorAll('select').forEach(updateResultColor);
-            
-            // 🌟 ปรับขนาดฟอนต์ช่อง Breaker ทันทีเมื่อโหลดหน้าเว็บ
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
 
-            // 🌟 2. ดักจับการเปลี่ยนค่า Dropdown ทั้งหน้าจอ (Event Delegation - แก้ปัญหาตารางเก่าๆ ที่ไม่มี onchange ติดมา)
             document.addEventListener('change', (e) => {
                 if (e.target.tagName === 'SELECT') {
                     updateResultColor(e.target);
@@ -657,47 +730,47 @@
                 }
             });
             
-            // 🌟 3. ซ่อนเมนูอัตโนมัติเมื่อเลื่อนหน้าจอ
             let lastScrollY = window.scrollY;
             window.isGridScrollLocked = false;
             
             window.addEventListener('scroll', () => {
-                if (window.isGridScrollLocked) return; // 🌟 ข้ามการทำงานถ้าถูกล็อคอยู่ (เพิ่งกดปุ่มด้วยมือ)
+                if (window.isGridScrollLocked) return;
                 
                 const currentScrollY = window.scrollY;
-                
-                // ถ้ายูสเซอร์กำลัง "เลื่อนลง" (เกิน 200px และมากกว่าพิกัดเดิม 10px) ให้พับเก็บ
                 if (currentScrollY > 200 && currentScrollY > lastScrollY + 10 && !isGridCollapsed) {
                     executeToggleGrid(true);
-                } 
-                // ถ้ายูสเซอร์เลื่อน "กลับขึ้นมาบนสุด" ให้กางเมนูออก
-                else if (currentScrollY < 50 && isGridCollapsed) {
+                } else if (currentScrollY < 50 && isGridCollapsed) {
                     executeToggleGrid(false);
                 }
-                
                 lastScrollY = currentScrollY;
             });
             
-            setInterval(saveDraft, 3000); // 🌟 Auto-save ทุก 3 วิ
+            setInterval(saveDraft, 3000); 
             
-            document.getElementById('reportDocument').addEventListener('input', () => {
+            document.getElementById('exportWrapper').addEventListener('input', () => {
                 showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
             });
         });
 
-        // 🌟 ฟังก์ชัน พับ/ขยาย เมนูเลือกโมดูล (กดด้วยมือ)
-        function toggleModuleGrid() {
-            window.isGridScrollLocked = true; // ล็อคระบบออโต้ 0.5 วินาที ป้องกันหน้าจอกระตุกพับเอง
-            executeToggleGrid(!isGridCollapsed);
+        // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
+        function syncCoverInputs() {
+            const valProject = document.getElementById('coverInputProject').value;
+            const valDate = document.getElementById('coverInputDate').value;
             
-            setTimeout(() => { 
-                window.isGridScrollLocked = false; 
-            }, 500); 
+            const pInput = document.getElementById('inputProject');
+            const dInput = document.getElementById('inputDate');
+            if(pInput) pInput.value = valProject;
+            if(dInput) dInput.value = valDate;
         }
 
-        // 🌟 ฟังก์ชันเปลี่ยน UI สำหรับระบบพับ-กาง
+        function toggleModuleGrid() {
+            window.isGridScrollLocked = true;
+            executeToggleGrid(!isGridCollapsed);
+            setTimeout(() => { window.isGridScrollLocked = false; }, 500); 
+        }
+
         function executeToggleGrid(forceCollapse) {
-            if (isGridCollapsed === forceCollapse) return; // สถานะตรงกันอยู่แล้วไม่ต้องทำอะไร
+            if (isGridCollapsed === forceCollapse) return;
             
             const wrapper = document.getElementById('moduleGridWrapper');
             const icon = document.getElementById('toggleGridIcon');
@@ -735,10 +808,6 @@
             }
         }
 
-        // ==========================================
-        // 🌟 ระบบลากวางสลับตำแหน่ง (Drag & Drop Popup - อัปเกรด 2 ชั้น)
-        // ==========================================
-        
         function getSubContainerInfo(modId) {
             const map = {
                 'mod_before': { id: 'bf_container', cls: 'photo-group-block' },
@@ -756,9 +825,7 @@
         function openReorderModal() {
             const list = document.getElementById('reorderList');
             list.innerHTML = '';
-            
             const container = document.getElementById('moduleContainer');
-            // เอาเฉพาะโมดูลที่ไม่ได้ถูกซ่อนอยู่มาแสดง
             const activeModules = Array.from(container.children).filter(el => !el.classList.contains('hidden'));
             
             if(activeModules.length === 0) {
@@ -772,7 +839,6 @@
                 li.className = 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-2';
                 li.setAttribute('data-id', modId);
                 
-                // โครงสร้างหัวข้อหลัก
                 let html = `
                     <div class="p-2 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors group">
                         <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full p-1">
@@ -787,23 +853,18 @@
                     </div>
                 `;
 
-                // ค้นหาบล็อกย่อย (ถ้ามีมากกว่า 1 อัน จะแสดงเป็น Sub-list)
                 const subInfo = getSubContainerInfo(modId);
                 if (subInfo) {
                     const subContainer = document.getElementById(subInfo.id);
                     if (subContainer && subContainer.children.length > 1) {
                         html += `<ul class="sub-reorder-list bg-slate-50 p-2 space-y-2 border-t border-slate-100 pl-10" data-parent="${subInfo.id}" data-class="${subInfo.cls}">`;
-                        
                         Array.from(subContainer.children).forEach((subBlock, index) => {
                             if (!subBlock.id) return;
-                            
-                            // ดึงชื่อตู้มาแสดง ถ้าไม่มีให้โชว์คำว่า "ชุดที่..."
                             const panelInput = subBlock.querySelector('input[placeholder*="ระบุชื่อตู้"]');
                             let subTitle = `ชุดที่ ${index + 1}`;
                             if (panelInput && panelInput.value.trim() !== '') {
                                 subTitle = `ตู้: ${panelInput.value}`;
                             }
-
                             html += `
                                 <li class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300" data-id="${subBlock.id}">
                                     <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full">
@@ -819,7 +880,6 @@
                         html += `</ul>`;
                     }
                 }
-
                 li.innerHTML = html;
                 list.appendChild(li);
             });
@@ -827,21 +887,19 @@
             document.getElementById('reorderModal').classList.remove('hidden');
             document.getElementById('reorderModal').classList.add('flex');
 
-            // 1. ตั้งค่าลากวางให้หัวข้อหลัก
             if(reorderSortable) reorderSortable.destroy();
             reorderSortable = new Sortable(list, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                filter: '.sub-reorder-list, .go-to-btn', // ป้องกันไม่ให้ปุ่ม Go-To ถูกลาก
+                filter: '.sub-reorder-list, .go-to-btn',
                 preventOnFilter: false
             });
 
-            // 2. ตั้งค่าลากวางให้หัวข้อย่อย
             document.querySelectorAll('.sub-reorder-list').forEach(subList => {
                 new Sortable(subList, {
                     animation: 150,
                     ghostClass: 'sortable-ghost',
-                    filter: '.go-to-btn', // ป้องกันไม่ให้ปุ่ม Go-To ถูกลาก
+                    filter: '.go-to-btn',
                     preventOnFilter: false,
                     fallbackOnBody: true,
                     swapThreshold: 0.65
@@ -856,8 +914,6 @@
 
         function applyReorder() {
             const list = document.getElementById('reorderList');
-            
-            // 1. จัดเรียงหัวข้อหลัก
             const newOrderIds = Array.from(list.children).map(li => li.getAttribute('data-id'));
             const container = document.getElementById('moduleContainer');
             newOrderIds.forEach(id => {
@@ -865,7 +921,6 @@
                 if (mod) container.appendChild(mod);
             });
 
-            // 2. จัดเรียงบล็อกย่อย (ตู้ต่างๆ)
             document.querySelectorAll('.sub-reorder-list').forEach(subList => {
                 const parentId = subList.getAttribute('data-parent');
                 const blockClass = subList.getAttribute('data-class');
@@ -878,30 +933,25 @@
                         if (subBlock) parentContainer.appendChild(subBlock);
                     });
 
-                    // 3. ปรับ CSS การขึ้นหน้าใหม่ (Page Break) ของบล็อกย่อยให้ถูกต้อง
                     const blocks = Array.from(parentContainer.querySelectorAll('.' + blockClass));
                     blocks.forEach((block, index) => {
                         if(index === 0) {
-                            block.classList.remove('pdf-page-break', 'pt-6'); // อันแรกสุดของหัวข้อไม่ต้องตัดหน้า
+                            block.classList.remove('pdf-page-break', 'pt-6');
                         } else {
-                            block.classList.add('pdf-page-break', 'pt-6'); // อันต่อๆไปตัดหน้าเสมอ
+                            block.classList.add('pdf-page-break', 'pt-6');
                         }
                     });
                 }
             });
 
-            renderScope(); // อัปเดตเลขหน้า Scope
-            saveDraft(); // เซฟข้อมูล
+            renderScope();
+            saveDraft();
             closeReorderModal();
             showSaveStatus('<i class="fa-solid fa-check"></i> จัดเรียงสำเร็จ');
         }
 
-        // ==========================================
-        // 🌟 ระบบจัดการไฟล์ (Export / Import / Save)
-        // ==========================================
-
         function syncDOMValues() {
-            const doc = document.getElementById('reportDocument');
+            const doc = document.getElementById('exportWrapper');
             doc.querySelectorAll('input:not([type="file"]), select, textarea').forEach(el => {
                 if (el.type === 'checkbox') {
                     if (el.checked) el.setAttribute('checked', 'checked');
@@ -922,9 +972,8 @@
             syncDOMValues(); 
             const draft = {
                 globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
-                html: document.getElementById('reportDocument').innerHTML
+                html: document.getElementById('exportWrapper').innerHTML
             };
-            
             try {
                 await localforage.setItem('smart_pm_draft', draft);
                 const time = new Date().toLocaleTimeString('th-TH');
@@ -964,7 +1013,18 @@
             photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
 
-            document.getElementById('reportDocument').innerHTML = draft.html;
+            if (draft.html.includes('id="coverPage"')) {
+                document.getElementById('exportWrapper').innerHTML = draft.html;
+            } else {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = draft.html;
+                
+                const oldScope = tempDiv.querySelector('#scopeSection');
+                const oldModule = tempDiv.querySelector('#moduleContainer');
+
+                if (oldScope) document.getElementById('scopeSection').innerHTML = oldScope.innerHTML;
+                if (oldModule) document.getElementById('moduleContainer').innerHTML = oldModule.innerHTML;
+            }
 
             document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
             selectedModules.forEach(modId => {
@@ -973,8 +1033,6 @@
             });
 
             renderScope();
-            
-            // 🌟 อัปเดตขนาดตัวอักษรหลังจาก Load Draft
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
         }
 
@@ -983,25 +1041,19 @@
             syncDOMValues();
             const draft = {
                 globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
-                html: document.getElementById('reportDocument').innerHTML
+                html: document.getElementById('exportWrapper').innerHTML
             };
-            
             const jsonStr = JSON.stringify(draft);
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", url);
-            const projectName = document.getElementById('inputProject').value || 'Untitled';
+            const projectName = document.getElementById('coverInputProject')?.value || 'Untitled';
             downloadAnchorNode.setAttribute("download", `PM_Report_${projectName}.json`);
-            
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             document.body.removeChild(downloadAnchorNode);
-            
-            // ล้างหน่วยความจำหลังจากดาวน์โหลดเสร็จ
             setTimeout(() => URL.revokeObjectURL(url), 100);
-            
             showSaveStatus('<i class="fa-solid fa-check"></i> นำออกสำเร็จ');
         }
 
@@ -1013,7 +1065,6 @@
                 try {
                     const draft = JSON.parse(e.target.result);
                     if(!draft.globals || !draft.html) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
-                    
                     if (confirm('คุณต้องการนำเข้าข้อมูลนี้ใช่หรือไม่? ข้อมูลที่อยู่บนจอขณะนี้จะถูกลบและเขียนทับทันที')) {
                         applyDataToDOM(draft);
                         await saveDraft();
@@ -1022,7 +1073,7 @@
                 } catch(error) {
                     alert("ไฟล์ข้อมูลไม่ถูกต้อง หรือเสียหาย: " + error.message);
                 }
-                event.target.value = ''; // Reset input เพื่อให้โหลดไฟล์เดิมซ้ำได้
+                event.target.value = '';
             };
             reader.readAsText(file);
         }
@@ -1034,7 +1085,74 @@
             }
         }
 
-        // ==========================================
+        function toggleModule(moduleId, isChecked) {
+            const moduleDiv = document.getElementById(moduleId);
+            if (!moduleDiv) return;
+
+            if (isChecked) {
+                insertModuleInDefaultOrder(moduleId);
+                moduleDiv.classList.remove('hidden');
+                if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
+            } else {
+                moduleDiv.classList.add('hidden');
+                selectedModules = selectedModules.filter(item => item !== moduleId);
+            }
+            renderScope();
+        }
+
+        function insertModuleInDefaultOrder(moduleId) {
+            const container = document.getElementById('moduleContainer');
+            const moduleDiv = document.getElementById(moduleId);
+            if (!moduleDiv || !container) return;
+            
+            const myIndex = defaultModuleOrder.indexOf(moduleId);
+            let inserted = false;
+            for (let i = myIndex + 1; i < defaultModuleOrder.length; i++) {
+                const nextMod = document.getElementById(defaultModuleOrder[i]);
+                if (nextMod && nextMod.parentNode === container) {
+                    container.insertBefore(moduleDiv, nextMod);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) {
+                container.appendChild(moduleDiv);
+            }
+        }
+
+        function renderScope() {
+            const listUl = document.getElementById('dynamicScopeList');
+            const emptyText = document.getElementById('emptyScopeText');
+            if (!listUl || !emptyText) return;
+            listUl.innerHTML = '';
+            
+            const container = document.getElementById('moduleContainer');
+            if(container) {
+                const sortedModules = Array.from(container.children)
+                    .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden'))
+                    .map(el => el.id);
+                    
+                if (sortedModules.length > 0) {
+                    emptyText.style.display = 'none';
+                    sortedModules.forEach(modId => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span class="text-slate-800">${moduleTitles[modId] || modId}</span>`;
+                        listUl.appendChild(li);
+                    });
+                } else {
+                    emptyText.style.display = 'block';
+                }
+            }
+        }
+
+        function updateModuleTitle(modId, newTitle) {
+            moduleTitles[modId] = newTitle || '...';
+            renderScope();
+        }
+
+        function syncInputs(className, value) {
+            document.querySelectorAll('.' + className).forEach(el => { if(el.value !== value) el.value = value; });
+        }
 
         function addPhotoGroup(type) {
             groupCounts[type]++;
@@ -1048,6 +1166,7 @@
                 'af': { color: 'slate', icon: 'fa-camera', modId: 'mod_after' }
             }[type];
 
+            // 🌟 ให้บล็อกที่เพิ่มเข้ามาใหม่ มีการตัดหน้าเสมอ
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
             const currentTitle = moduleTitles[config.modId];
 
@@ -1085,7 +1204,6 @@
             if(block) block.remove();
         }
 
-        // 🌟 เพิ่มระบบจัดการบล็อกของ General Check ให้แยกแต่ละชุดได้
         function addGeneralCheckBlock() {
             genCount++;
             const id = genCount;
@@ -1124,8 +1242,6 @@
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', blockHtml);
-            
-            // นำรายการ Default ไปใส่ในตารางชุดที่เพิ่งสร้างขึ้นใหม่
             defaultGeneralTasks.forEach(task => addGeneralCheckRow(`tbody_${prefix}`, task));
         }
 
@@ -1337,7 +1453,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700">
-                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8"/><path d="M5 12h14"/><path d="M8 16h8"/><path d="M10 20h4"/></svg>
+                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">Grounding Test</h3>
                         </div>
@@ -1382,7 +1498,6 @@
             if(block) block.remove();
         }
 
-        // 🌟 ฟังก์ชันจัดการบล็อกตาราง Contact Resistance แบบหลายชุด 
         function addContactBlock() {
             ctCount++;
             const id = ctCount;
@@ -1441,112 +1556,13 @@
             `;
             container.insertAdjacentHTML('beforeend', blockHtml);
             
-            // สร้างตารางแรก 1 อันโดยอัตโนมัติ
             addBreakerRow(`tbody_${prefix}`, `photoSec_${prefix}`);
-            
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }
         }
 
         function removeContactBlock(prefix) {
             const block = document.getElementById(`block_${prefix}`);
             if(block) block.remove();
-        }
-
-        function addPhotoBox(gridId, prefix) {
-            photoCounters[prefix]++;
-            const i = photoCounters[prefix];
-            const grid = document.getElementById(gridId);
-            
-            let colorClass = 'text-slate-500';
-            if(prefix === 'af' || prefix === 'ct') colorClass = 'text-slate-500';
-
-            const box = document.createElement('div');
-            box.className = 'photo-box group';
-            box.style.aspectRatio = '3/2';
-            box.style.borderRadius = '8px';
-            box.onclick = () => document.getElementById(`img_${prefix}_${i}`).click();
-            box.innerHTML = `
-                <div class="text-slate-400 flex flex-col items-center no-print transition-transform group-hover:scale-110 group-hover:${colorClass}">
-                    <i class="fa-solid fa-plus text-3xl mb-2 opacity-50"></i>
-                    <span class="text-sm font-semibold">อัปโหลดรูปภาพ</span>
-                </div>
-                <div id="prev_${prefix}_${i}" class="photo-image hidden" style="background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: inherit;"></div>
-                <input type="file" id="img_${prefix}_${i}" class="hidden" accept="image/*" onchange="previewImg(event, 'prev_${prefix}_${i}')">
-                <div class="delete-photo-btn no-print" onclick="event.stopPropagation(); removeImg('prev_${prefix}_${i}', 'img_${prefix}_${i}')">
-                    <i class="fa-solid fa-trash-can mr-1"></i> ลบรูป
-                </div>
-            `;
-            grid.appendChild(box);
-        }
-
-        // 🌟 อัปเดต Scope อัตโนมัติ (อ่านลำดับจากการลากวางจริงใน DOM)
-        function toggleModule(moduleId, isChecked) {
-            const moduleDiv = document.getElementById(moduleId);
-            if (isChecked) {
-                insertModuleInDefaultOrder(moduleId);
-                
-                moduleDiv.classList.remove('hidden');
-                if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
-            } else {
-                moduleDiv.classList.add('hidden');
-                selectedModules = selectedModules.filter(item => item !== moduleId);
-            }
-            renderScope();
-        }
-
-        // 🌟 ฟังก์ชันสำหรับแทรกกลับไปจุดตั้งต้น
-        function insertModuleInDefaultOrder(moduleId) {
-            const container = document.getElementById('moduleContainer');
-            const moduleDiv = document.getElementById(moduleId);
-            
-            const myIndex = defaultModuleOrder.indexOf(moduleId);
-            
-            let inserted = false;
-            for (let i = myIndex + 1; i < defaultModuleOrder.length; i++) {
-                const nextMod = document.getElementById(defaultModuleOrder[i]);
-                if (nextMod && nextMod.parentNode === container) {
-                    container.insertBefore(moduleDiv, nextMod);
-                    inserted = true;
-                    break;
-                }
-            }
-            
-            if (!inserted) {
-                container.appendChild(moduleDiv);
-            }
-        }
-
-        function renderScope() {
-            const listUl = document.getElementById('dynamicScopeList');
-            const emptyText = document.getElementById('emptyScopeText');
-            listUl.innerHTML = '';
-            
-            const container = document.getElementById('moduleContainer');
-            if(container) {
-                const sortedModules = Array.from(container.children)
-                    .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden'))
-                    .map(el => el.id);
-                    
-                if (sortedModules.length > 0) {
-                    emptyText.style.display = 'none';
-                    sortedModules.forEach(modId => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `<span class="text-slate-800">${moduleTitles[modId]}</span>`;
-                        listUl.appendChild(li);
-                    });
-                } else {
-                    emptyText.style.display = 'block';
-                }
-            }
-        }
-
-        function updateModuleTitle(modId, newTitle) {
-            moduleTitles[modId] = newTitle || '...';
-            renderScope();
-        }
-
-        function syncInputs(className, value) {
-            document.querySelectorAll('.' + className).forEach(el => { if(el.value !== value) el.value = value; });
         }
 
         function addBreakerRow(tbodyId, photoSecId) {
@@ -1594,6 +1610,34 @@
             else { photoSec.classList.remove('pdf-page-break', 'pt-6'); }
         }
 
+        function addPhotoBox(gridId, prefix) {
+            photoCounters[prefix]++;
+            const i = photoCounters[prefix];
+            const grid = document.getElementById(gridId);
+            
+            let colorClass = 'text-slate-500';
+            if(prefix === 'af' || prefix === 'ct') colorClass = 'text-slate-500';
+
+            const box = document.createElement('div');
+            box.className = 'photo-box group relative cursor-pointer m-0';
+            box.style.aspectRatio = '3/2';
+            box.style.borderRadius = '8px';
+            box.setAttribute('onclick', `document.getElementById('img_${prefix}_${i}').click()`);
+            
+            box.innerHTML = `
+                <div class="text-slate-400 flex flex-col items-center justify-center w-full h-full no-print transition-transform group-hover:scale-110 group-hover:${colorClass}">
+                    <i class="fa-solid fa-plus text-3xl mb-2 opacity-50"></i>
+                    <span class="text-sm font-semibold">อัปโหลดรูปภาพ</span>
+                </div>
+                <div id="prev_${prefix}_${i}" class="photo-image hidden" style="background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: inherit;"></div>
+                <input type="file" id="img_${prefix}_${i}" class="hidden" accept="image/*" onchange="previewImg(event, 'prev_${prefix}_${i}')">
+                <div class="delete-photo-btn no-print" onclick="event.stopPropagation(); removeImg('prev_${prefix}_${i}', 'img_${prefix}_${i}')">
+                    <i class="fa-solid fa-trash-can mr-1"></i> ลบรูป
+                </div>
+            `;
+            grid.appendChild(box);
+        }
+
         function compressImage(file, callback) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1606,10 +1650,10 @@
                     const maxSize = 1200; 
 
                     if (width > height && width > maxSize) {
-                        height *= maxSize / width;
+                        height = Math.round(height * maxSize / width);
                         width = maxSize;
                     } else if (height > maxSize) {
-                        width *= maxSize / height;
+                        width = Math.round(width * maxSize / height);
                         height = maxSize;
                     }
 
@@ -1635,28 +1679,31 @@
                     showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
                 });
             }
+            event.target.value = '';
         }
 
         function removeImg(previewId, inputId) {
             const imgElement = document.getElementById(previewId);
             imgElement.style.backgroundImage = "";
             imgElement.classList.add('hidden');
-            document.getElementById(inputId).value = ""; 
+            const inputElement = document.getElementById(inputId);
+            if(inputElement) inputElement.value = ""; 
         }
 
-        function previewLogo(event) {
+        function previewCoverLogo(event, imgId, placeholderId) {
             const file = event.target.files[0];
             if (file) {
                 compressImage(file, (compressedBase64) => {
-                    const imgElement = document.getElementById('logoImg');
-                    imgElement.style.backgroundImage = `url('${compressedBase64}')`;
+                    const imgElement = document.getElementById(imgId);
+                    imgElement.src = compressedBase64;
                     imgElement.classList.remove('hidden');
+                    document.getElementById(placeholderId).classList.add('hidden');
                     showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
                 });
             }
+            event.target.value = '';
         }
 
-        // 🌟 แยกรูปภาพ (เฉพาะ HTML2PDF)
         function splitGridForPrint(grid, firstChunkSize, nextChunkSize) {
             const allBoxes = Array.from(grid.children);
             if (allBoxes.some(child => child.classList.contains('photo-box'))) {
@@ -1668,7 +1715,7 @@
                     grid.style.setProperty('display', 'none', 'important');
                     
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'tmp-split-wrapper w-full';
+                    wrapper.className = 'tmp-split-wrapper w-full block';
                     grid.parentNode.insertBefore(wrapper, grid.nextSibling);
                     
                     let startIndex = 0;
@@ -1676,10 +1723,18 @@
                     while (startIndex < visibleBoxes.length) {
                         let currentChunkSize = isFirstChunk ? firstChunkSize : nextChunkSize;
                         const chunk = visibleBoxes.slice(startIndex, startIndex + currentChunkSize);
+                        
+                        if (!isFirstChunk) { 
+                            const breaker = document.createElement('div');
+                            breaker.className = 'pdf-page-break block w-full h-[1px] m-0 p-0 border-none bg-transparent';
+                            wrapper.appendChild(breaker);
+                        }
+                        
+                        // 🌟 แก้ไขตรงนี้: เพิ่ม pt-8 เข้าไปเฉพาะ Chunk ที่ไม่ใช่ก้อนแรก (หน้าถัดไป)
+                        const topSpacingClass = !isFirstChunk ? ' pt-8' : '';
                         const newGrid = document.createElement('div');
-                        newGrid.className = grid.className.replace('tmp-orig-grid', '').replace('tmp-no-print', '') + ' w-full tmp-chunk-grid';
+                        newGrid.className = grid.className.replace('tmp-orig-grid', '').replace('tmp-no-print', '') + ' w-full tmp-chunk-grid' + topSpacingClass;
                         newGrid.style.display = ''; 
-                        if (!isFirstChunk) { newGrid.classList.add('pdf-page-break'); }
                         
                         chunk.forEach(box => newGrid.appendChild(box));
                         wrapper.appendChild(newGrid);
@@ -1691,35 +1746,37 @@
         }
 
         function prepareDocumentForPrint(isNative = false) {
-            window.scrollTo(0, 0); // รีเซ็ตสกอร์บาร์ ป้องกันการเกิด Offset ตัดภาพขาด
+            window.scrollTo(0, 0); 
             
             const wrapper = document.querySelector('.a4-wrapper');
             const element = document.getElementById('reportDocument');
             wrapper.classList.add('preparing-pdf'); 
 
             if (!isNative) {
-                document.body.classList.add('html2pdf-body-lock'); // ล็อค body ป้องกันการครอบภาพ
+                document.body.classList.add('html2pdf-body-lock'); 
                 element.classList.add('html2pdf-mode-active');
                 wrapper.classList.add('html2pdf-mode-wrapper'); 
             } else {
                 document.body.classList.add('native-print-mode'); 
                 document.getElementById('printLayoutThead').classList.remove('hidden');
                 document.getElementById('printLayoutTfoot').classList.remove('hidden');
-                document.getElementById('nativePrintHeader').classList.remove('hidden');
-                document.getElementById('nativePrintFooter').classList.remove('hidden');
             }
 
-            element.querySelectorAll('.no-print').forEach(el => {
-                el.setAttribute('data-orig-display', el.style.display || '');
-                el.style.setProperty('display', 'none', 'important');
+            document.querySelectorAll('.no-print').forEach(el => {
+                if(!el.closest('.no-print-bg')) { 
+                    el.setAttribute('data-orig-display', el.style.display || '');
+                    el.style.setProperty('display', 'none', 'important');
+                } else {
+                    el.classList.remove('bg-white/80', 'bg-white/50', 'bg-slate-50/80'); 
+                    el.classList.add('bg-transparent');
+                }
             });
 
-            element.querySelectorAll('input.paper-input').forEach(input => {
+            document.querySelectorAll('input.paper-input').forEach(input => {
                 const span = document.createElement('span');
                 span.className = input.className + ' print-text-span';
                 span.textContent = input.value || input.placeholder || '';
                 
-                // 🌟 คัดลอกขนาดฟอนต์ที่ถูกปรับลดแล้ว ไปยังโหมดพิมพ์ด้วย
                 if (input.style.fontSize) {
                     span.style.fontSize = input.style.fontSize;
                 }
@@ -1728,13 +1785,12 @@
                 input.classList.add('hidden', 'tmp-hidden-element');
             });
 
-            element.querySelectorAll('select').forEach(select => {
+            document.querySelectorAll('select').forEach(select => {
                 const span = document.createElement('span');
                 span.className = select.className + ' print-text-span text-center';
                 const selectedOpt = select.options[select.selectedIndex];
                 span.textContent = selectedOpt ? selectedOpt.text : '';
                 
-                // 🌟 3. อัปเดตสีสำหรับตอนแปลงเป็น PDF
                 if (selectedOpt) {
                     span.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
                     if (selectedOpt.classList.contains('text-red-600')) {
@@ -1750,10 +1806,10 @@
                 select.classList.add('hidden', 'tmp-hidden-element');
             });
 
-            element.querySelectorAll('.photo-box').forEach(box => {
+            document.querySelectorAll('.photo-box').forEach(box => {
                 if(!box.closest('.hidden')) { 
                     const img = box.querySelector('.photo-image');
-                    if(img.classList.contains('hidden')) {
+                    if(img && img.classList.contains('hidden')) {
                         box.classList.add('tmp-no-print'); 
                         box.setAttribute('data-orig-display', box.style.display || '');
                         box.style.setProperty('display', 'none', 'important');
@@ -1768,8 +1824,9 @@
             blocks.forEach(selector => {
                 document.querySelectorAll(selector).forEach(block => {
                     const grid = block.querySelector('.grid');
+                    // 🌟 แบ่งหน้าให้พอดี 6 รูป ตามไฟล์ต้นฉบับ
                     if (grid && selector.includes('contact')) splitGridForPrint(grid, 8, 8);
-                    else if (grid && !selector.includes('grounding')) splitGridForPrint(grid, 6, 8); 
+                    else if (grid && !selector.includes('grounding')) splitGridForPrint(grid, 6, 6); 
                     else if (grid) splitGridForPrint(grid, 4, 8);
                 });
             });
@@ -1785,29 +1842,38 @@
 
             wrapper.classList.remove('preparing-pdf', 'html2pdf-mode-wrapper'); 
             element.classList.remove('html2pdf-mode-active');
-            document.body.classList.remove('native-print-mode', 'html2pdf-body-lock'); // ปลดล็อค body กลับสู่สภาพเดิม
+            document.body.classList.remove('native-print-mode', 'html2pdf-body-lock'); 
 
             document.getElementById('printLayoutThead').classList.add('hidden');
             document.getElementById('printLayoutTfoot').classList.add('hidden');
-            document.getElementById('nativePrintHeader').classList.add('hidden');
-            document.getElementById('nativePrintFooter').classList.add('hidden');
 
             const nativePageNums = document.getElementById('nativePageNumbers');
             if (nativePageNums) nativePageNums.remove();
 
-            element.querySelectorAll('.no-print').forEach(el => {
-                if (el.hasAttribute('data-orig-display')) {
-                    const orig = el.getAttribute('data-orig-display');
-                    if (orig === '') el.style.removeProperty('display');
-                    else el.style.display = orig;
-                    el.removeAttribute('data-orig-display');
+            document.querySelectorAll('.no-print').forEach(el => {
+                if(!el.closest('.no-print-bg')) {
+                    if (el.hasAttribute('data-orig-display')) {
+                        const orig = el.getAttribute('data-orig-display');
+                        if (orig === '') el.style.removeProperty('display');
+                        else el.style.display = orig;
+                        el.removeAttribute('data-orig-display');
+                    }
+                } else {
+                    if (el.id === 'coverInputProject' || el.id === 'coverInputDate' || el.id === 'coverInputLocation') {
+                        el.closest('.no-print-bg').classList.add('bg-white/80');
+                    } else if (el.querySelector('#coverMainLogoPlaceholder')) {
+                        el.classList.add('bg-white/50');
+                    } else {
+                        el.querySelector('span')?.classList.add('bg-slate-50/80');
+                    }
+                    el.classList.remove('bg-transparent');
                 }
             });
             
-            element.querySelectorAll('.print-text-span').forEach(span => span.remove());
-            element.querySelectorAll('.tmp-hidden-element').forEach(el => el.classList.remove('hidden', 'tmp-hidden-element'));
+            document.querySelectorAll('.print-text-span').forEach(span => span.remove());
+            document.querySelectorAll('.tmp-hidden-element').forEach(el => el.classList.remove('hidden', 'tmp-hidden-element'));
 
-            element.querySelectorAll('.tmp-no-print').forEach(box => {
+            document.querySelectorAll('.tmp-no-print').forEach(box => {
                 box.classList.remove('tmp-no-print');
                 if (box.hasAttribute('data-orig-display')) {
                     const orig = box.getAttribute('data-orig-display');
@@ -1840,28 +1906,24 @@
             if (webFooter) webFooter.style.display = '';
         }
 
-        // 🌟 ฟังก์ชันวาดกราฟิกโหมดภาพ
         function drawPoly(pdf, pts, color) {
             pdf.setFillColor(color[0], color[1], color[2]);
-            // ใช้สามเหลี่ยม 2 รูปต่อกันเป็นสี่เหลี่ยม เพื่อสร้างทรงเฉียง
             pdf.triangle(pts[0], pts[1], pts[2], pts[3], pts[6], pts[7], 'F');
             pdf.triangle(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7], 'F');
         }
 
         function drawNativeHeaderFooter(pdf) {
             const totalPages = pdf.internal.getNumberOfPages();
-            const colorGrey = [51, 65, 85];  // #334155
-            const colorBlack = [15, 23, 42]; // #0f172a
-            const colorOrange = [249, 115, 22]; // #f97316
+            const colorGrey = [51, 65, 85];  
+            const colorBlack = [15, 23, 42]; 
+            const colorOrange = [249, 115, 22]; 
 
-            for (let i = 1; i <= totalPages; i++) {
+            for (let i = 2; i <= totalPages; i++) {
                 pdf.setPage(i);
                 
-                // --- TOP HEADER (\ Slant Down) ---
                 drawPoly(pdf, [0,0, 110,0, 125,12, 15,12], colorGrey);
                 drawPoly(pdf, [110,0, 116,0, 131,12, 125,12], colorOrange);
                 drawPoly(pdf, [116,0, 210,0, 210,12, 131,12], colorBlack);
-                // เส้นส้มบางด้านล่าง
                 drawPoly(pdf, [14.375,11.5, 210,11.5, 210,12, 15,12], colorOrange);
 
                 pdf.setFontSize(8);
@@ -1869,13 +1931,10 @@
                 pdf.setFont('helvetica', 'bold');
                 pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' });
 
-                // --- BOTTOM FOOTER (/ Slant Up Mirrored) ---
                 const fY = 285;
-                
                 drawPoly(pdf, [0,fY+12, 15,fY, 125,fY, 110,fY+12], colorGrey);
                 drawPoly(pdf, [125,fY, 131,fY, 116,fY+12, 110,fY+12], colorOrange);
                 drawPoly(pdf, [131,fY, 210,fY, 210,fY+12, 116,fY+12], colorBlack);
-                // เส้นส้มบางด้านบน
                 drawPoly(pdf, [15,fY, 210,fY, 210,fY+0.5, 14.375,fY+0.5], colorOrange);
 
                 pdf.setFontSize(9);
@@ -1883,7 +1942,7 @@
                 pdf.setFont('helvetica', 'bold');
                 pdf.text('AVATAR ELECTRIC CO., LTD.', 25, fY + 8);
                 
-                pdf.text(`Page ${i} of ${totalPages}`, 195, fY + 8, { align: 'right' });
+                pdf.text(`Page ${i - 1} of ${totalPages - 1}`, 195, fY + 8, { align: 'right' });
             }
         }
 
@@ -1907,16 +1966,15 @@
 
             prepareDocumentForPrint(false); 
 
-            const element = document.getElementById('reportDocument');
+            const element = document.getElementById('exportWrapper'); 
             
             const opt = {
-                margin:       [12, 0, 12, 0], // เว้น 12mm บนและล่าง เพื่อเป็นพื้นที่ให้ลวดลาย Overlay
-                filename:     `PM_Report_${document.getElementById('inputProject').value || 'Untitled'}.pdf`,
+                margin:       [0, 0, 0, 0], 
+                filename:     `PM_Report_${document.getElementById('coverInputProject').value || 'Untitled'}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                // เราเอา width และ windowWidth ที่ฝืนบีบอัดออกไป ให้มันจับตาม body จริงที่เราล็อคไว้
                 html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 }, 
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'] }
+                pagebreak:    { mode: ['css', 'legacy'], before: '.pdf-page-break' }
             };
 
             const worker = html2pdf().set(opt).from(element);
@@ -1925,7 +1983,6 @@
                 worker.toPdf().get('pdf').then(function(pdf) {
                     drawNativeHeaderFooter(pdf);
                 }).output('blob').then(function(pdfBlob) {
-                    // ใช้ Blob URL แทน DataURI(Base64) ทำให้โหลดเร็วและไม่แครชเวลาไฟล์ใหญ่
                     const blobUrl = URL.createObjectURL(pdfBlob);
                     document.getElementById('pdfIframe').src = blobUrl;
                     document.getElementById('pdfLoading').classList.add('hidden'); 
@@ -1933,7 +1990,7 @@
                     btn.innerHTML = originalText;
                 }).catch(function(err) {
                     console.error("PDF Generation Error:", err);
-                    alert("เกิดข้อผิดพลาดในการสร้างพรีวิว (อาจมีรูปภาพมากเกินไปหรือคอมพิวเตอร์ทำงานไม่ทัน)\nตรวจสอบใน Console สำหรับรายละเอียด");
+                    alert("เกิดข้อผิดพลาดในการสร้างพรีวิว\nตรวจสอบใน Console สำหรับรายละเอียด");
                     document.getElementById('pdfLoading').classList.add('hidden');
                     closePreview();
                     restoreDocumentAfterPrint();
@@ -2000,16 +2057,15 @@
                 
                 for (let i = 1; i <= totalPages; i++) {
                     const pageNum = document.createElement('div');
-                    pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1'; 
-                    pageNum.style.top = `calc(${i * 297}mm - 8mm)`; 
-                    pageNum.innerText = `Page ${i} of ${totalPages}`;
+                    pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1 z-[10001] print:block'; 
+                    pageNum.style.top = `calc(${(i + 1) * 297}mm - 8mm)`; 
+                    pageNum.innerText = `Page ${i} of ${totalPages}`; 
                     pageNumContainer.appendChild(pageNum);
                 }
                 
                 document.body.appendChild(pageNumContainer);
                 wrapper.style.width = originalWidth;
                 
-                // ลบ Ghost Spacer ออกเมื่อพิมพ์เสร็จ
                 window.addEventListener('afterprint', function cleanupGhost() {
                     const ghost = document.getElementById('ghostSpacerHacker');
                     if (ghost) ghost.remove();
