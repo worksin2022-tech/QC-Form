@@ -402,7 +402,7 @@
                                 Project
                             </div>
                             <div class="p-3 w-full flex-grow flex items-center">
-                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[24px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุชื่อโครงการ..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
+                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุชื่อโครงการ..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
                             </div>
                         </div>
 
@@ -412,7 +412,7 @@
                                 Date
                             </div>
                             <div class="p-3 w-full flex-grow flex items-center">
-                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[24px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุวันที่..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
+                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุวันที่..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
                             </div>
                         </div>
                     </div>
@@ -659,10 +659,10 @@
 
         function adjustCoverFontSize(el) {
             const valLen = el.value.length;
-            if (valLen > 45) el.style.fontSize = '14px';
-            else if (valLen > 35) el.style.fontSize = '16px';
-            else if (valLen > 25) el.style.fontSize = '20px';
-            else el.style.fontSize = '24px'; 
+            if (valLen > 45) el.style.fontSize = '12px';
+            else if (valLen > 35) el.style.fontSize = '14px';
+            else if (valLen > 25) el.style.fontSize = '16px';
+            else el.style.fontSize = '18px'; 
         }
 
         function scrollToElement(elementId) {
