@@ -235,7 +235,7 @@
             </svg>
         </div>
         <div class="absolute bottom-[2mm] right-[15mm] z-10">
-            <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
+            <span id="nativePrintHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
         </div>
     </div>
 
@@ -393,7 +393,7 @@
 
                 <!-- ช่องกรอกรายละเอียด Project หน้าปก -->
                 <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 print:shadow-none print:border-slate-300">
-                    <h3 class="text-[26px] font-extrabold text-slate-800 uppercase tracking-widest text-center mb-8 drop-shadow-sm">Preventive Maintenance</h3>
+                    <input type="text" id="coverInputReportType" class="w-full bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-orange-500 transition-colors text-[26px] font-extrabold text-slate-800 uppercase tracking-widest text-center mb-8 drop-shadow-sm outline-none" value="Preventive Maintenance Report" oninput="syncCoverInputs()">
                     
                     <div class="space-y-5">
                         <!-- Project Field -->
@@ -474,7 +474,7 @@
                                         <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
                                     </svg>
                                     <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
-                                        <span class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                                        <span id="webViewHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
                                     </div>
                                 </div>
                                 
@@ -778,6 +778,19 @@
             const dInput = document.getElementById('inputDate');
             if(pInput) pInput.value = valProject;
             if(dInput) dInput.value = valDate;
+
+            // 🌟 ซิงค์หัวกระดาษของทุกหน้าอัตโนมัติ
+            const reportTypeInput = document.getElementById('coverInputReportType');
+            if (reportTypeInput) {
+                let headerText = reportTypeInput.value.trim().toUpperCase();
+                if (!headerText) headerText = "REPORT";
+                
+                const nativeH = document.getElementById('nativePrintHeaderTitle');
+                if (nativeH) nativeH.innerText = headerText;
+                
+                const webH = document.getElementById('webViewHeaderTitle');
+                if (webH) webH.innerText = headerText;
+            }
         }
 
         function toggleModuleGrid() {
@@ -1052,6 +1065,7 @@
             renderScope();
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
+            syncCoverInputs(); // อัปเดตหัวกระดาษตอนโหลด Draft
         }
 
         async function exportData() {
@@ -1936,6 +1950,10 @@
             const colorBlack = [15, 23, 42]; 
             const colorOrange = [249, 115, 22]; 
 
+            const reportTypeInput = document.getElementById('coverInputReportType');
+            let pdfHeaderTitle = reportTypeInput ? reportTypeInput.value.trim().toUpperCase() : 'PREVENTIVE MAINTENANCE REPORT';
+            if (!pdfHeaderTitle) pdfHeaderTitle = "REPORT";
+
             for (let i = 2; i <= totalPages; i++) {
                 pdf.setPage(i);
                 
@@ -1947,7 +1965,7 @@
                 pdf.setFontSize(8);
                 pdf.setTextColor(241, 245, 249);
                 pdf.setFont('helvetica', 'bold');
-                pdf.text('PREVENTIVE MAINTENANCE REPORT', 195, 8.5, { align: 'right' });
+                pdf.text(pdfHeaderTitle, 195, 8.5, { align: 'right' });
 
                 const fY = 285;
                 drawPoly(pdf, [0,fY+12, 15,fY, 125,fY, 110,fY+12], colorGrey);
