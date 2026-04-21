@@ -392,22 +392,30 @@
                 </div>
 
                 <!-- ช่องกรอกรายละเอียด Project หน้าปก -->
-                <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-6 bg-white/80 backdrop-blur-sm rounded-xl no-print-bg">
-                    <h3 class="text-2xl font-extrabold text-slate-800 uppercase tracking-widest text-center mb-6">Preventive Maintenance</h3>
-                    <table class="w-full text-lg border-none">
-                        <tr>
-                            <td class="font-bold text-slate-500 w-[120px] pb-3 border-none text-left align-bottom uppercase text-sm">Project :</td>
-                            <td class="pb-3 border-none border-b-2 border-slate-300 border-dotted pl-2 align-bottom">
-                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[19px] bg-transparent" placeholder="ระบุชื่อโครงการ..." oninput="syncCoverInputs()">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="font-bold text-slate-500 w-[120px] pt-4 pb-3 border-none text-left align-bottom uppercase text-sm">Date :</td>
-                            <td class="pt-4 pb-3 border-none border-b-2 border-slate-300 border-dotted pl-2 align-bottom">
-                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[19px] bg-transparent" placeholder="ระบุวันที่..." oninput="syncCoverInputs()">
-                            </td>
-                        </tr>
-                    </table>
+                <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 print:shadow-none print:border-slate-300">
+                    <h3 class="text-[26px] font-extrabold text-slate-800 uppercase tracking-widest text-center mb-8 drop-shadow-sm">Preventive Maintenance</h3>
+                    
+                    <div class="space-y-5">
+                        <!-- Project Field -->
+                        <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
+                                Project
+                            </div>
+                            <div class="p-3 w-full flex-grow flex items-center">
+                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[24px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุชื่อโครงการ..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
+                            </div>
+                        </div>
+
+                        <!-- Date Field -->
+                        <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
+                                Date
+                            </div>
+                            <div class="p-3 w-full flex-grow flex items-center">
+                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[24px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุวันที่..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- โลโก้มาตรฐานมุมซ้ายล่าง -->
@@ -649,6 +657,14 @@
             else el.style.fontSize = '18px'; 
         }
 
+        function adjustCoverFontSize(el) {
+            const valLen = el.value.length;
+            if (valLen > 45) el.style.fontSize = '14px';
+            else if (valLen > 35) el.style.fontSize = '16px';
+            else if (valLen > 25) el.style.fontSize = '20px';
+            else el.style.fontSize = '24px'; 
+        }
+
         function scrollToElement(elementId) {
             closeReorderModal();
             setTimeout(() => {
@@ -722,6 +738,7 @@
 
             document.querySelectorAll('select').forEach(updateResultColor);
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
+            document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
 
             document.addEventListener('change', (e) => {
                 if (e.target.tagName === 'SELECT') {
@@ -1034,6 +1051,7 @@
 
             renderScope();
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
+            document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
         }
 
         async function exportData() {
