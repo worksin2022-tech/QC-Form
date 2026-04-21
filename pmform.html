@@ -1643,7 +1643,8 @@
 
             const blockHtml = `
                 <div id="block_${prefix}" class="trip-block relative mb-6 pb-6 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
-                    <div class="flex justify-between items-center mb-4 no-print">
+                    <!-- 🌟 เอา no-print ออกจากตรงนี้ -->
+                    <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700">
                                 <!-- 🌟 ตัดเส้นประในไอคอนออกเหลือแค่เส้นกราฟคลีนๆ -->
@@ -1654,7 +1655,8 @@
                         ${id > 1 ? `<button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
                     </div>
                     
-                    <div class="flex items-center gap-3 w-[70%] mb-4 no-print">
+                    <!-- 🌟 เอา no-print ออกจากตรงนี้ด้วย -->
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
