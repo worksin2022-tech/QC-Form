@@ -347,8 +347,16 @@
                         <span class="font-bold text-slate-800 text-[13px] leading-tight">8. Contact Test</span>
                     </label>
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full">
+                            <!-- 🌟 ตัดเส้นประในไอคอนออกเหลือแค่เส้นกราฟคลีนๆ -->
+                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
+                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_trip', this.checked)">
+                        </div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">9. Trip Unit Test</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-contract text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)"></div>
-                        <span class="font-bold text-slate-700 text-[13px] leading-tight">9. Calibration</span>
+                        <span class="font-bold text-slate-700 text-[13px] leading-tight">10. Calibration</span>
                     </label>
                 </div>
             </div>
@@ -564,6 +572,13 @@
                                         <div id="ct_container"></div>
                                     </div>
 
+                                    <div id="mod_trip" class="mb-10 hidden pt-4 pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <button onclick="addTripBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Trip Unit</button>
+                                        </div>
+                                        <div id="trip_container"></div>
+                                    </div>
+
                                     <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
                                         <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
                                             <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
@@ -638,7 +653,8 @@
         let dieCount = 0; 
         let groCount = 0; 
         let ctCount = 0; 
-        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
+        let tripCount = 0;
+        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0 };
         let reorderSortable = null;
         let isGridCollapsed = false;
 
@@ -702,12 +718,13 @@
             'mod_dielectric': 'Dielectric Strength Test',
             'mod_grounding': 'Grounding Test',
             'mod_contact': 'Contact Resistance Test',
-            'mod_calibration': 'Certificate of Calibration'
+            'mod_calibration': 'Certificate of Calibration',
+            'mod_trip': 'Trip Unit Test'
         };
 
         const defaultModuleOrder = [
             'mod_before', 'mod_cleaning', 'mod_after',
-            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_contact', 'mod_calibration'
+            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_contact', 'mod_trip', 'mod_calibration'
         ];
 
         const defaultGeneralTasks = [
@@ -731,6 +748,7 @@
                 addDielectricBlock();
                 addGroundingBlock();
                 addContactBlock(); 
+                addTripBlock();
                 addPhotoGroup('bf');
                 addPhotoGroup('cl');
                 addPhotoGroup('af');
@@ -847,7 +865,8 @@
                 'mod_insulation': { id: 'ins_container', cls: 'insulation-block' },
                 'mod_dielectric': { id: 'die_container', cls: 'dielectric-block' },
                 'mod_grounding': { id: 'gro_container', cls: 'grounding-block' },
-                'mod_contact': { id: 'ct_container', cls: 'contact-block' } 
+                'mod_contact': { id: 'ct_container', cls: 'contact-block' },
+                'mod_trip': { id: 'trip_container', cls: 'trip-block' }
             };
             return map[modId];
         }
@@ -1001,7 +1020,7 @@
         async function saveDraft() {
             syncDOMValues(); 
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
+                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles },
                 html: document.getElementById('exportWrapper').innerHTML
             };
             try {
@@ -1040,7 +1059,8 @@
             groCount = draft.globals.groCount || 0;
             genCount = draft.globals.genCount || 0;
             ctCount = draft.globals.ctCount || 0;
-            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0 };
+            tripCount = draft.globals.tripCount || 0;
+            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0 };
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
 
             if (draft.html.includes('id="coverPage"')) {
@@ -1072,7 +1092,7 @@
             showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังเตรียมไฟล์...');
             syncDOMValues();
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, photoCounters, moduleTitles },
+                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles },
                 html: document.getElementById('exportWrapper').innerHTML
             };
             const jsonStr = JSON.stringify(draft);
@@ -1125,6 +1145,23 @@
                 insertModuleInDefaultOrder(moduleId);
                 moduleDiv.classList.remove('hidden');
                 if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
+
+                // 🌟 หากเปิดใช้งานหัวข้อแล้วไม่มีข้อมูลอยู่เลย ให้สร้างขึ้นมา 1 ชุดอัตโนมัติ
+                const subInfo = getSubContainerInfo(moduleId);
+                if (subInfo) {
+                    const container = document.getElementById(subInfo.id);
+                    if (container && container.children.length === 0) {
+                        if (moduleId === 'mod_before') addPhotoGroup('bf');
+                        else if (moduleId === 'mod_cleaning') addPhotoGroup('cl');
+                        else if (moduleId === 'mod_after') addPhotoGroup('af');
+                        else if (moduleId === 'mod_general') addGeneralCheckBlock();
+                        else if (moduleId === 'mod_insulation') addInsulationBlock();
+                        else if (moduleId === 'mod_dielectric') addDielectricBlock();
+                        else if (moduleId === 'mod_grounding') addGroundingBlock();
+                        else if (moduleId === 'mod_contact') addContactBlock();
+                        else if (moduleId === 'mod_trip') addTripBlock();
+                    }
+                }
             } else {
                 moduleDiv.classList.add('hidden');
                 selectedModules = selectedModules.filter(item => item !== moduleId);
@@ -1597,6 +1634,271 @@
             if(block) block.remove();
         }
 
+        function addTripBlock() {
+            tripCount++;
+            const id = tripCount;
+            const container = document.getElementById('trip_container');
+            const prefix = `trip_${id}`;
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="trip-block relative mb-6 pb-6 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-4 no-print">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-700">
+                                <!-- 🌟 ตัดเส้นประในไอคอนออกเหลือแค่เส้นกราฟคลีนๆ -->
+                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">Trip Unit Test</h3>
+                        </div>
+                        ${id > 1 ? `<button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                    </div>
+                    
+                    <div class="flex items-center gap-3 w-[70%] mb-4 no-print">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
+                            <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
+                        </span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                    </div>
+
+                    <!-- 📝 Single Table Layout (ตามภาพต้นฉบับ) -->
+                    <table class="w-full text-[13px] text-center border-collapse border-2 border-slate-400 bg-white shadow-sm print:shadow-none">
+                        <!-- Details Header -->
+                        <tr class="bg-slate-100">
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">Details</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left w-[20%] text-slate-700">Manufacturer</td>
+                            <td class="border border-slate-400 py-0 px-1 w-[20%]"><input type="text" value="Schneider" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left w-[20%] text-slate-700">Micrologic Trip Unit</td>
+                            <td colspan="2" class="border border-slate-400 py-0 px-1 w-[40%]"><input type="text" placeholder="..." class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left text-slate-700">Circuit Breaker</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="..." class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left text-slate-700">Serial No.</td>
+                            <td colspan="2" class="border border-slate-400 py-0 px-1"><input type="text" placeholder="..." class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left text-slate-700">Rate Current</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="..." class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-1.5 px-3 font-semibold text-left text-slate-700">Feeder Name</td>
+                            <td colspan="2" class="border border-slate-400 py-0 px-1"><input type="text" placeholder="..." class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                        </tr>
+
+                        <!-- Inspection -->
+                        <tr class="bg-slate-100">
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">Inspection</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.1 Body and Frame</td>
+                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.2 Trip Indicator</td>
+                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.3 Test trip mode</td>
+                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Before Test Setting -->
+                        <tr class="bg-slate-100">
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">Before test setting</td>
+                        </tr>
+                        <tr class="bg-slate-50 font-bold text-slate-700">
+                            <td class="border border-slate-400 py-1.5">Function setting</td>
+                            <td class="border border-slate-400 py-1.5">Setting</td>
+                            <td class="border border-slate-400 py-1.5">Current</td>
+                            <td class="border border-slate-400 py-1.5">Time sensitive setting</td>
+                            <td class="border border-slate-400 py-1.5">Remark</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 text-left font-semibold text-slate-700">Long-time</td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Ir = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> x In</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Pri = <input type="text" class="paper-input w-12 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> A</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Tr = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> S</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 text-left font-semibold text-slate-700">Short-time</td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Isd = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> x Ir</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Pri = <input type="text" class="paper-input w-12 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> A</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Tsd = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> S</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 text-left font-semibold text-slate-700">Instantaneous</td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Ii = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> x In</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Pri = <input type="text" class="paper-input w-12 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> A</div>
+                            </td>
+                            <td class="border border-slate-400 bg-slate-50 py-0 px-1 font-bold text-slate-400">-</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1.5 px-3 text-left font-semibold text-slate-700">Ground-fault</td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Ig = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> x In</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Pri = <input type="text" class="paper-input w-12 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> A</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium">Tg = <input type="text" class="paper-input w-8 text-center font-bold text-orange-600 px-0 mx-1 border-none py-1" placeholder="-"> S</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+
+                        <!-- Sensitive Trip Test -->
+                        <tr class="bg-slate-100">
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">Sensitive trip test</td>
+                        </tr>
+                        <tr class="bg-slate-50 font-bold text-slate-700">
+                            <td class="border border-slate-400 py-1.5">Function test</td>
+                            <td class="border border-slate-400 py-1.5">Injected current</td>
+                            <td class="border border-slate-400 py-1.5">Tripping time</td>
+                            <td class="border border-slate-400 py-1.5">Result</td>
+                            <td class="border border-slate-400 py-1.5">Remark</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">Long-time</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none py-1"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option><option value="N/A" class="text-slate-400">N/A</option></select></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">Short-time</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none py-1"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option><option value="N/A" class="text-slate-400">N/A</option></select></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">Instantaneous</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none py-1"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option><option value="N/A" class="text-slate-400">N/A</option></select></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">Ground-fault</td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center font-bold text-orange-600 border-none m-0 py-1"></td>
+                            <td class="border border-slate-400 py-0 px-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none py-1"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option><option value="N/A" class="text-slate-400">N/A</option></select></td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>
+
+                        <!-- Standard Curve -->
+                        <tr>
+                            <td class="border border-slate-400 py-4 px-3 font-bold text-slate-700 text-center align-middle">Standard<br>Curve</td>
+                            <td colspan="4" class="border border-slate-400 py-2 px-2">
+                                <!-- 🌟 เพิ่ม Dropdown เลือกรูป Curve 🌟 -->
+                                <div class="flex justify-start mb-2 no-print">
+                                    <select id="select_trip_curve_${prefix}" class="paper-input w-full max-w-[300px] border border-slate-300 bg-slate-50 text-[13px] px-2 py-1 rounded shadow-sm outline-none focus:border-orange-500 font-medium" onchange="handleTripCurveSelection('${prefix}', this.value)">
+                                        <option value="">-- ไม่ใส่รูปภาพ --</option>
+                                        <option value="upload">📁 อัปโหลดรูปจากคอมพิวเตอร์...</option>
+                                        <optgroup label="เลือก Curve มาตรฐาน">
+                                            <option value="800A 2.0.jpg">Curve 800A 2.0</option>
+                                            <option value="800A 6.0.jpg">Curve 800A 6.0</option>
+                                            <option value="1000A 2.0.png">Curve 1000A 2.0</option>
+                                            <option value="1000A 6.0.jpg">Curve 1000A 6.0</option>
+                                            <option value="1250A 2.0.jpg">Curve 1250A 2.0</option>
+                                            <option value="1250A 6.0.png">Curve 1250A 6.0</option>
+                                            <option value="1600A 2.0.jpg">Curve 1600A 2.0</option>
+                                            <option value="1600A 6.0.png">Curve 1600A 6.0</option>
+                                            <option value="2000A 2.0.jpg">Curve 2000A 2.0</option>
+                                            <option value="2000A 6.0.jpg">Curve 2000A 6.0</option>
+                                            <option value="2500A 2.0.jpg">Curve 2500A 2.0</option>
+                                            <option value="2500A 6.0.jpg">Curve 2500A 6.0</option>
+                                            <option value="3200A 2.0.png">Curve 3200A 2.0</option>
+                                            <option value="3200A 6.0.png">Curve 3200A 6.0</option>
+                                            <option value="4000A 2.0.jpg">Curve 4000A 2.0</option>
+                                            <option value="4000A 6.0.jpg">Curve 4000A 6.0</option>
+                                            <option value="5000A 2.0.jpg">Curve 5000A 2.0</option>
+                                            <option value="5000A 6.0.jpg">Curve 5000A 6.0</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <div class="w-full rounded-lg flex items-center justify-center p-1 relative group transition-colors h-[170px] cursor-pointer hover:bg-slate-50" onclick="document.getElementById('img_trip_curve_${prefix}').click()">
+                                    <div class="text-slate-400 flex flex-col items-center justify-center w-full h-full no-print group-hover:text-orange-500 transition-transform">
+                                        <!-- 🌟 ปรับกล่องข้อความให้เป็นขอบทึบดูสะอาดตาขึ้น -->
+                                        <span class="font-bold text-[13px] border border-slate-300 bg-slate-100 text-slate-500 px-4 py-2 rounded-lg shadow-sm text-center">คลิกเพื่ออัปโหลด<br>หรือเลือกจากเมนูด้านบน</span>
+                                    </div>
+                                    <div id="prev_trip_curve_${prefix}" class="photo-image hidden" style="background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 4px;"></div>
+                                    <input type="file" id="img_trip_curve_${prefix}" class="hidden" accept="image/*" onchange="document.getElementById('select_trip_curve_${prefix}').value='upload'; previewImg(event, 'prev_trip_curve_${prefix}')">
+                                    <div class="delete-photo-btn no-print" onclick="event.stopPropagation(); removeImg('prev_trip_curve_${prefix}', 'img_trip_curve_${prefix}'); document.getElementById('select_trip_curve_${prefix}').value='';">
+                                        <i class="fa-solid fa-trash-can mr-1"></i> ลบรูป
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', blockHtml);
+        }
+
+        function removeTripBlock(prefix) {
+            const block = document.getElementById(`block_${prefix}`);
+            if(block) block.remove();
+        }
+
+        function handleTripCurveSelection(prefix, value) {
+            const previewId = `prev_trip_curve_${prefix}`;
+            const imgElement = document.getElementById(previewId);
+            const inputElement = document.getElementById(`img_trip_curve_${prefix}`);
+
+            if (value === 'upload') {
+                inputElement.click();
+            } else if (value !== '') {
+                imgElement.style.backgroundImage = `url('${value}')`;
+                imgElement.classList.remove('hidden');
+                inputElement.value = ''; 
+                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            } else {
+                imgElement.style.backgroundImage = "";
+                imgElement.classList.add('hidden');
+                inputElement.value = ''; 
+                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            }
+        }
+
         function addBreakerRow(tbodyId, photoSecId) {
             breakerCount++;
             const tbody = document.getElementById(tbodyId);
@@ -1852,7 +2154,7 @@
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = 'none';
 
-            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.contact-block'];
+            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.contact-block', '.trip-block'];
             blocks.forEach(selector => {
                 document.querySelectorAll(selector).forEach(block => {
                     const grid = block.querySelector('.grid');
