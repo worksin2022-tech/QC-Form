@@ -506,11 +506,14 @@
 
                                 <!-- เริ่มเนื้อหาแรก: Scope of work -->
                                 <div id="scopeSection" class="mb-8 mt-12">
-                                    <div class="section-title">
-                                        <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
-                                        <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                    <div class="flex justify-between items-center mb-4">
+                                        <div class="section-title mb-0">
+                                            <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
+                                            <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                        </div>
+                                        <button onclick="addCustomScope()" class="bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
                                     </div>
-                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณาติ๊กเลือกหัวข้อจากเมนูด้านบน เพื่อสร้าง Scope อัตโนมัติ...</p>
+                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณาติ๊กเลือกหัวข้อจากเมนูด้านบน หรือกดเพิ่มรายการ เพื่อสร้าง Scope of work...</p>
                                     <ul id="dynamicScopeList" class="list-decimal list-outside space-y-1.5 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
                                 </div>
 
@@ -1193,6 +1196,19 @@
             const listUl = document.getElementById('dynamicScopeList');
             const emptyText = document.getElementById('emptyScopeText');
             if (!listUl || !emptyText) return;
+
+            // Save current input values before recreating the list
+            const currentInputs = Array.from(listUl.querySelectorAll('input'));
+            const savedValues = {};
+            const customOrder = [];
+            currentInputs.forEach(input => {
+                const id = input.getAttribute('data-scope-id');
+                if (id) {
+                    savedValues[id] = input.value;
+                    if (id.startsWith('custom_')) customOrder.push(id);
+                }
+            });
+
             listUl.innerHTML = '';
             
             const container = document.getElementById('moduleContainer');
@@ -1201,22 +1217,82 @@
                     .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden'))
                     .map(el => el.id);
                     
-                if (sortedModules.length > 0) {
-                    emptyText.style.display = 'none';
-                    sortedModules.forEach(modId => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `<span class="text-slate-800">${moduleTitles[modId] || modId}</span>`;
-                        listUl.appendChild(li);
-                    });
-                } else {
-                    emptyText.style.display = 'block';
-                }
+                // Render module-based scopes
+                sortedModules.forEach(modId => {
+                    const li = document.createElement('li');
+                    li.className = 'group relative mb-2 pl-1';
+                    const val = savedValues[modId] !== undefined ? savedValues[modId] : (moduleTitles[modId] || modId);
+                    li.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <input type="text" data-scope-id="${modId}" value="${val}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)">
+                        </div>
+                    `;
+                    listUl.appendChild(li);
+                });
+
+                // Render custom scopes
+                customOrder.forEach(customId => {
+                    const li = document.createElement('li');
+                    li.className = 'group relative mb-2 pl-1';
+                    li.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <input type="text" data-scope-id="${customId}" value="${savedValues[customId]}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)" placeholder="ระบุรายละเอียด Scope...">
+                            <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    `;
+                    listUl.appendChild(li);
+                });
+
+                checkEmptyScope();
             }
+        }
+
+        function checkEmptyScope() {
+            const listUl = document.getElementById('dynamicScopeList');
+            const emptyText = document.getElementById('emptyScopeText');
+            if(!listUl || !emptyText) return;
+            if(listUl.children.length > 0) {
+                emptyText.style.display = 'none';
+            } else {
+                emptyText.style.display = 'block';
+            }
+        }
+
+        function addCustomScope() {
+            const listUl = document.getElementById('dynamicScopeList');
+            const emptyText = document.getElementById('emptyScopeText');
+            if(emptyText) emptyText.style.display = 'none';
+
+            const customId = `custom_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            const li = document.createElement('li');
+            li.className = 'group relative mb-2 pl-1';
+            li.innerHTML = `
+                <div class="flex items-center w-full">
+                    <input type="text" data-scope-id="${customId}" value="" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)" placeholder="ระบุรายละเอียด Scope...">
+                    <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `;
+            listUl.appendChild(li);
+            
+            li.querySelector('input').focus();
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+        }
+
+        function removeCustomScope(btn) {
+            btn.closest('li').remove();
+            checkEmptyScope();
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
         }
 
         function updateModuleTitle(modId, newTitle) {
             moduleTitles[modId] = newTitle || '...';
-            renderScope();
+            const scopeInput = document.querySelector(`input[data-scope-id="${modId}"]`);
+            if (scopeInput) {
+                scopeInput.value = newTitle || '...';
+                scopeInput.setAttribute('value', scopeInput.value);
+            } else {
+                renderScope();
+            }
         }
 
         function syncInputs(className, value) {
