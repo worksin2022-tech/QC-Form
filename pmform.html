@@ -130,7 +130,8 @@
         .html2pdf-mode-active .dielectric-block,
         .html2pdf-mode-active .grounding-block,
         .html2pdf-mode-active .contact-block,
-        .html2pdf-mode-active .photo-group-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
+        .html2pdf-mode-active .photo-group-block,
+        .html2pdf-mode-active .trip-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
         .html2pdf-mode-active .mb-10, .html2pdf-mode-active .mb-8, .html2pdf-mode-active .pb-8 { margin-bottom: 0 !important; padding-bottom: 0 !important; }
         
         .html2pdf-mode-active .general-block > .flex.mb-3, .html2pdf-mode-active .insulation-block > .flex.mb-4, .html2pdf-mode-active .dielectric-block > .flex.mb-4, .html2pdf-mode-active .grounding-block > .flex.mb-4, .html2pdf-mode-active .contact-block > .flex.mb-3, .html2pdf-mode-active .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
@@ -186,7 +187,8 @@
             .native-print-mode .dielectric-block, 
             .native-print-mode .grounding-block, 
             .native-print-mode .contact-block,
-            .native-print-mode .photo-group-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
+            .native-print-mode .photo-group-block,
+            .native-print-mode .trip-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
             
             .native-print-mode #moduleContainer > div:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
             .native-print-mode #printLayoutTable { margin-bottom: 0 !important; }
@@ -310,7 +312,7 @@
             </div>
             
             <div id="moduleGridWrapper" class="transition-all duration-300 ease-in-out overflow-hidden origin-top" style="max-height: 500px; opacity: 1;">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3 pb-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3 pb-2">
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_before', this.checked)"></div>
                         <span class="font-bold text-slate-700 text-[13px] leading-tight">1. Before</span>
@@ -337,7 +339,7 @@
                     </label>
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full">
-                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
+                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
                             <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
                         </div>
                         <span class="font-bold text-slate-800 text-[13px] leading-tight">7. Grounding Test</span>
@@ -351,7 +353,6 @@
                     </label>
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full">
-                            <!-- 🌟 ตัดเส้นประในไอคอนออกเหลือแค่เส้นกราฟคลีนๆ -->
                             <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
                             <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_trip', this.checked)">
                         </div>
@@ -360,6 +361,10 @@
                     <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
                         <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-contract text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)"></div>
                         <span class="font-bold text-slate-700 text-[13px] leading-tight">10. Calibration</span>
+                    </label>
+                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
+                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-circle-plus text-slate-500"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)"></div>
+                        <span class="font-bold text-slate-800 text-[13px] leading-tight">11. Blank Page</span>
                     </label>
                 </div>
             </div>
@@ -507,17 +512,41 @@
                                     <input type="text" id="inputDate">
                                 </div>
 
+                                <!-- 🌟 TOC SECTION (สารบัญ) -->
+                                <div id="tocSection" class="mb-10 mt-12 pb-8 no-print-bg">
+                                    <div class="flex flex-col justify-center items-center mb-12">
+                                        <h2 class="text-[32px] font-extrabold text-slate-800 uppercase tracking-widest text-center relative px-6">
+                                            Content
+                                            <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 h-[5px] bg-orange-500 rounded-full"></div>
+                                        </h2>
+                                    </div>
+                                    <div class="w-[85%] mx-auto max-w-3xl relative z-10 print:w-[90%]">
+                                        <div id="tocList" class="flex flex-col gap-3">
+                                            <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                                                <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
+                                                รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- เริ่มเนื้อหาแรก: Scope of work -->
-                                <div id="scopeSection" class="mb-8 mt-12">
-                                    <div class="flex justify-between items-center mb-4">
+                                <div id="scopeSection" class="mb-8 pt-6 pdf-page-break relative">
+                                    <div class="flex justify-between items-center mb-4 no-print">
                                         <div class="section-title mb-0">
                                             <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
                                             <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
                                         </div>
                                         <button onclick="addCustomScope()" class="bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
                                     </div>
-                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณาติ๊กเลือกหัวข้อจากเมนูด้านบน หรือกดเพิ่มรายการ เพื่อสร้าง Scope of work...</p>
-                                    <ul id="dynamicScopeList" class="list-decimal list-outside space-y-1.5 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
+                                    <!-- For Print View -->
+                                    <div class="hidden print:flex section-title mb-6">
+                                        <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
+                                        <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                    </div>
+
+                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณากดเพิ่มรายการ เพื่อสร้าง Scope of work...</p>
+                                    <ul id="dynamicScopeList" class="list-decimal list-outside space-y-2 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
                                 </div>
 
                                 <!-- 🌟 MODULE CONTAINER -->
@@ -583,6 +612,15 @@
                                             <button onclick="addTripBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Trip Unit</button>
                                         </div>
                                         <div id="trip_container"></div>
+                                    </div>
+
+                                    <!-- 🌟 เพิ่มโมดูล Blank ตรงนี้ -->
+                                    <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                            <!-- 🌟 เปลี่ยนสีปุ่มให้เป็นสีเทา (Slate) 🌟 -->
+                                            <button onclick="addBlankGroup('blk')" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Blank (Custom)</button>
+                                        </div>
+                                        <div id="blk_container"></div>
                                     </div>
 
                                     <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
@@ -653,14 +691,14 @@
     <script>
         let selectedModules = []; 
         let breakerCount = 0;
-        let groupCounts = { bf: 0, cl: 0, af: 0 }; 
+        let groupCounts = { bf: 0, cl: 0, af: 0, blk: 0 }; 
         let genCount = 0; 
         let insCount = 0; 
         let dieCount = 0; 
         let groCount = 0; 
         let ctCount = 0; 
         let tripCount = 0;
-        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0 };
+        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
         let reorderSortable = null;
         let isGridCollapsed = false;
 
@@ -724,13 +762,14 @@
             'mod_dielectric': 'Dielectric Strength Test',
             'mod_grounding': 'Grounding Test',
             'mod_contact': 'Contact Resistance Test',
-            'mod_calibration': 'Certificate of Calibration',
-            'mod_trip': 'Trip Unit Test'
+            'mod_trip': 'Trip Unit Test',
+            'mod_blank': 'Custom Section',
+            'mod_calibration': 'Certificate of Calibration'
         };
 
         const defaultModuleOrder = [
             'mod_before', 'mod_cleaning', 'mod_after',
-            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_contact', 'mod_trip', 'mod_calibration'
+            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_contact', 'mod_trip', 'mod_blank', 'mod_calibration'
         ];
 
         const defaultGeneralTasks = [
@@ -749,6 +788,8 @@
             const isLoaded = await loadDraft(); 
             
             if (!isLoaded) {
+                // 🌟 แก้ไขตรงนี้: เปลี่ยนจาก "เพิ่ม Scope งานที่ทำ" เป็น "" (ค่าว่าง) 🌟
+                addCustomScope("");
                 addGeneralCheckBlock(); 
                 addInsulationBlock();
                 addDielectricBlock();
@@ -872,7 +913,8 @@
                 'mod_dielectric': { id: 'die_container', cls: 'dielectric-block' },
                 'mod_grounding': { id: 'gro_container', cls: 'grounding-block' },
                 'mod_contact': { id: 'ct_container', cls: 'contact-block' },
-                'mod_trip': { id: 'trip_container', cls: 'trip-block' }
+                'mod_trip': { id: 'trip_container', cls: 'trip-block' },
+                'mod_blank': { id: 'blk_container', cls: 'photo-group-block' }
             };
             return map[modId];
         }
@@ -999,7 +1041,6 @@
                 }
             });
 
-            renderScope();
             saveDraft();
             closeReorderModal();
             showSaveStatus('<i class="fa-solid fa-check"></i> จัดเรียงสำเร็จ');
@@ -1011,6 +1052,8 @@
                 if (el.type === 'checkbox') {
                     if (el.checked) el.setAttribute('checked', 'checked');
                     else el.removeAttribute('checked');
+                } else if (el.tagName === 'TEXTAREA') {
+                    el.textContent = el.value;
                 } else {
                     el.setAttribute('value', el.value);
                 }
@@ -1025,10 +1068,21 @@
 
         async function saveDraft() {
             syncDOMValues(); 
+            
+            const scopeItemsData = [];
+            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
+                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
+            });
+
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles },
+                globals: { 
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount, 
+                    groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles,
+                    customScopes: scopeItemsData 
+                },
                 html: document.getElementById('exportWrapper').innerHTML
             };
+
             try {
                 await localforage.setItem('smart_pm_draft', draft);
                 const time = new Date().toLocaleTimeString('th-TH');
@@ -1059,15 +1113,19 @@
         function applyDataToDOM(draft) {
             selectedModules = draft.globals.selectedModules || [];
             breakerCount = draft.globals.breakerCount || 0;
-            groupCounts = draft.globals.groupCounts || { bf: 0, cl: 0, af: 0 };
+            groupCounts = draft.globals.groupCounts || { bf: 0, cl: 0, af: 0, blk: 0 };
+            if (groupCounts.blk === undefined) groupCounts.blk = 0;
             insCount = draft.globals.insCount || 0;
             dieCount = draft.globals.dieCount || 0;
             groCount = draft.globals.groCount || 0;
             genCount = draft.globals.genCount || 0;
             ctCount = draft.globals.ctCount || 0;
             tripCount = draft.globals.tripCount || 0;
-            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0 };
+            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
+            if (photoCounters.blk === undefined) photoCounters.blk = 0;
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
+            
+            const loadedCustomScopes = draft.globals.customScopes || [];
 
             if (draft.html.includes('id="coverPage"')) {
                 document.getElementById('exportWrapper').innerHTML = draft.html;
@@ -1077,9 +1135,11 @@
                 
                 const oldScope = tempDiv.querySelector('#scopeSection');
                 const oldModule = tempDiv.querySelector('#moduleContainer');
+                const oldToc = tempDiv.querySelector('#tocSection');
 
                 if (oldScope) document.getElementById('scopeSection').innerHTML = oldScope.innerHTML;
                 if (oldModule) document.getElementById('moduleContainer').innerHTML = oldModule.innerHTML;
+                if (oldToc && document.getElementById('tocSection')) document.getElementById('tocSection').innerHTML = oldToc.innerHTML;
             }
 
             document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
@@ -1088,7 +1148,17 @@
                 if(cb) cb.checked = true;
             });
 
-            renderScope();
+            // Re-render scope items
+            const listUl = document.getElementById('dynamicScopeList');
+            if (listUl) {
+                listUl.innerHTML = '';
+                if (loadedCustomScopes.length > 0) {
+                    loadedCustomScopes.forEach(text => addCustomScope(text));
+                } else {
+                    checkEmptyScope();
+                }
+            }
+
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
             syncCoverInputs(); // อัปเดตหัวกระดาษตอนโหลด Draft
@@ -1097,8 +1167,18 @@
         async function exportData() {
             showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังเตรียมไฟล์...');
             syncDOMValues();
+
+            const scopeItemsData = [];
+            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
+                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
+            });
+
             const draft = {
-                globals: { selectedModules, breakerCount, groupCounts, insCount, dieCount, groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles },
+                globals: { 
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount, 
+                    groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles,
+                    customScopes: scopeItemsData
+                },
                 html: document.getElementById('exportWrapper').innerHTML
             };
             const jsonStr = JSON.stringify(draft);
@@ -1166,13 +1246,13 @@
                         else if (moduleId === 'mod_grounding') addGroundingBlock();
                         else if (moduleId === 'mod_contact') addContactBlock();
                         else if (moduleId === 'mod_trip') addTripBlock();
+                        else if (moduleId === 'mod_blank') addBlankGroup('blk');
                     }
                 }
             } else {
                 moduleDiv.classList.add('hidden');
                 selectedModules = selectedModules.filter(item => item !== moduleId);
             }
-            renderScope();
         }
 
         function insertModuleInDefaultOrder(moduleId) {
@@ -1195,59 +1275,31 @@
             }
         }
 
-        function renderScope() {
+        // 🌟 ฟังก์ชันจัดการ Scope of work (แบบกำหนดเอง)
+        function addCustomScope(text = "") {
             const listUl = document.getElementById('dynamicScopeList');
             const emptyText = document.getElementById('emptyScopeText');
-            if (!listUl || !emptyText) return;
+            if(emptyText) emptyText.style.display = 'none';
 
-            // Save current input values before recreating the list
-            const currentInputs = Array.from(listUl.querySelectorAll('input'));
-            const savedValues = {};
-            const customOrder = [];
-            currentInputs.forEach(input => {
-                const id = input.getAttribute('data-scope-id');
-                if (id) {
-                    savedValues[id] = input.value;
-                    if (id.startsWith('custom_')) customOrder.push(id);
-                }
-            });
+            const customId = `scope_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            const li = document.createElement('li');
+            li.className = 'group relative mb-2 pl-1 scope-item-row print:mb-3';
+            li.innerHTML = `
+                <div class="flex items-center w-full">
+                    <!-- 🌟 เปลี่ยน Placeholder ตรงนี้ 🌟 -->
+                    <input type="text" data-scope-id="${customId}" value="${text}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-1 transition-colors text-[15px]" oninput="this.setAttribute('value', this.value)" placeholder="เพิ่ม Scope งานที่ทำ...">
+                    <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `;
+            listUl.appendChild(li);
+            if (!text) li.querySelector('input').focus();
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+        }
 
-            listUl.innerHTML = '';
-            
-            const container = document.getElementById('moduleContainer');
-            if(container) {
-                const sortedModules = Array.from(container.children)
-                    .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden'))
-                    .map(el => el.id);
-                    
-                // Render module-based scopes
-                sortedModules.forEach(modId => {
-                    const li = document.createElement('li');
-                    li.className = 'group relative mb-2 pl-1';
-                    const val = savedValues[modId] !== undefined ? savedValues[modId] : (moduleTitles[modId] || modId);
-                    li.innerHTML = `
-                        <div class="flex items-center w-full">
-                            <input type="text" data-scope-id="${modId}" value="${val}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)">
-                        </div>
-                    `;
-                    listUl.appendChild(li);
-                });
-
-                // Render custom scopes
-                customOrder.forEach(customId => {
-                    const li = document.createElement('li');
-                    li.className = 'group relative mb-2 pl-1';
-                    li.innerHTML = `
-                        <div class="flex items-center w-full">
-                            <input type="text" data-scope-id="${customId}" value="${savedValues[customId]}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)" placeholder="ระบุรายละเอียด Scope...">
-                            <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                    `;
-                    listUl.appendChild(li);
-                });
-
-                checkEmptyScope();
-            }
+        function removeCustomScope(btn) {
+            btn.closest('li').remove();
+            checkEmptyScope();
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
         }
 
         function checkEmptyScope() {
@@ -1261,41 +1313,10 @@
             }
         }
 
-        function addCustomScope() {
-            const listUl = document.getElementById('dynamicScopeList');
-            const emptyText = document.getElementById('emptyScopeText');
-            if(emptyText) emptyText.style.display = 'none';
-
-            const customId = `custom_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            const li = document.createElement('li');
-            li.className = 'group relative mb-2 pl-1';
-            li.innerHTML = `
-                <div class="flex items-center w-full">
-                    <input type="text" data-scope-id="${customId}" value="" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-0.5 transition-colors" oninput="this.setAttribute('value', this.value)" placeholder="ระบุรายละเอียด Scope...">
-                    <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-            `;
-            listUl.appendChild(li);
-            
-            li.querySelector('input').focus();
-            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
-        }
-
-        function removeCustomScope(btn) {
-            btn.closest('li').remove();
-            checkEmptyScope();
-            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
-        }
-
+        // เอา updateModuleTitle ออกเพื่อไม่ให้ซิงค์ชื่อกลับไปที่ Global ทำให้บล็อกแต่ละบล็อกมีชื่ออิสระจากกัน
         function updateModuleTitle(modId, newTitle) {
-            moduleTitles[modId] = newTitle || '...';
-            const scopeInput = document.querySelector(`input[data-scope-id="${modId}"]`);
-            if (scopeInput) {
-                scopeInput.value = newTitle || '...';
-                scopeInput.setAttribute('value', scopeInput.value);
-            } else {
-                renderScope();
-            }
+            // function นี้ถูกเปลี่ยนการทำงานเพื่อรองรับการตั้งชื่ออิสระ
+            // เก็บไว้กัน error หากมีโค้ดเก่าเรียกใช้
         }
 
         function syncInputs(className, value) {
@@ -1309,21 +1330,26 @@
             const prefix = `${type}_${id}`;
             
             let config = {
-                'bf': { color: 'slate', icon: 'fa-camera-retro', modId: 'mod_before' },
-                'cl': { color: 'slate', icon: 'fa-broom', modId: 'mod_cleaning' },
-                'af': { color: 'slate', icon: 'fa-camera', modId: 'mod_after' }
+                'bf': { color: 'slate', icon: 'fa-camera-retro', modId: 'mod_before', defaultTitle: 'Photograph: Before' },
+                'cl': { color: 'slate', icon: 'fa-broom', modId: 'mod_cleaning', defaultTitle: 'Photograph: Cleaning' },
+                'af': { color: 'slate', icon: 'fa-camera', modId: 'mod_after', defaultTitle: 'Photograph: After' }
             }[type];
+
+            // 🌟 ป้องกันบั๊ก undefined ถ้าโหลดมาจาก Draft เก่า
+            let currentTitle = moduleTitles[config.modId];
+            if (!currentTitle || currentTitle === 'undefined') {
+                currentTitle = config.defaultTitle;
+            }
 
             // 🌟 ให้บล็อกที่เพิ่มเข้ามาใหม่ มีการตัดหน้าเสมอ
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
-            const currentTitle = moduleTitles[config.modId];
 
             const blockHtml = `
                 <div id="block_${prefix}" class="photo-group-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0 flex-grow w-3/4">
                             <div class="section-icon bg-${config.color}-700 shrink-0"><i class="fa-solid ${config.icon} text-white"></i></div>
-                            <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] sync-title-${type}" oninput="syncInputs('sync-title-${type}', this.value); updateModuleTitle('${config.modId}', this.value)">
+                            <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                         </div>
                         ${id > 1 ? `<button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
                     </div>
@@ -1331,7 +1357,7 @@
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <div class="flex items-center justify-between mb-2 ml-1">
                         <div class="flex items-center gap-2">
@@ -1352,6 +1378,66 @@
             if(block) block.remove();
         }
 
+        function addBlankGroup(type) {
+            groupCounts[type]++;
+            const id = groupCounts[type];
+            const container = document.getElementById(`${type}_container`);
+            const prefix = `${type}_${id}`;
+            
+            let currentTitle = 'Custom Section';
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="photo-group-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="section-title mb-0 flex-grow w-3/4">
+                            <!-- 🌟 เปลี่ยนสีพื้นหลังไอคอนให้เป็นสีเทา (bg-slate-700) 🌟 -->
+                            <div class="section-icon bg-slate-700 shrink-0"><i class="fa-solid fa-file-circle-plus text-white"></i></div>
+                            <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
+                        </div>
+                        ${id > 1 ? `<button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                    </div>
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
+                            <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
+                        </span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-4 ml-1 mt-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-image text-slate-400"></i>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph & Description</h4>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="addPhotoBox('grid_${prefix}', '${type}')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
+                            <!-- 🌟 เปลี่ยนสีปุ่มเพิ่ม Description เป็นสีเทา 🌟 -->
+                            <button onclick="addDescriptionBox('${prefix}')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-comment-dots mr-1"></i> เพิ่ม Description</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 🌟 พื้นที่สำหรับรูปภาพ (ย้ายขึ้นมาอยู่บน) 🌟 -->
+                    <div id="grid_${prefix}" class="grid grid-cols-2 gap-4 mb-4"></div>
+
+                    <!-- 🌟 พื้นที่สำหรับพิมพ์ Description (ย้ายลงมาอยู่ล่าง) 🌟 -->
+                    <div id="desc_container_${prefix}" class="w-full flex flex-col gap-2 mt-2"></div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', blockHtml);
+            for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, type); }
+        }
+
+        function addDescriptionBox(prefix) {
+            const container = document.getElementById(`desc_container_${prefix}`);
+            const div = document.createElement('div');
+            div.className = 'relative group w-full mb-2';
+            div.innerHTML = `
+                <textarea class="paper-textarea w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700 font-medium text-[15px] focus:outline-none focus:border-orange-500 focus:bg-white transition-colors resize-y min-h-[60px]" placeholder="พิมพ์ข้อความรายละเอียด / Description..." oninput="this.textContent = this.value; showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)"></textarea>
+                <button onclick="this.parentElement.remove(); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false);" class="absolute top-2 right-2 text-red-400 hover:text-red-600 bg-white rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity no-print shadow-sm border border-red-100 flex items-center justify-center" title="ลบกล่องข้อความ"><i class="fa-solid fa-trash-can"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
         function addGeneralCheckBlock() {
             genCount++;
             const id = genCount;
@@ -1364,7 +1450,7 @@
                     <div class="flex justify-between items-center mb-3">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-600"><i class="fa-solid fa-clipboard-check text-white"></i></div>
-                            <h3 class="text-xl font-bold text-slate-800">General Check</h3>
+                            <h3 class="text-xl font-bold text-slate-800 block-base-title">General Check</h3>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addGeneralCheckRow('tbody_${prefix}')" class="bg-white border-2 border-slate-400 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
@@ -1373,7 +1459,7 @@
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 text-[13px] flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel</span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <thead>
@@ -1455,7 +1541,7 @@
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700"><span class="font-bold text-[22px] font-serif leading-none text-white">&Omega;</span></div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                Insulation Resistance Test
+                                <span class="block-base-title">Insulation Resistance Test</span>
                                 <span class="text-slate-500 font-normal ml-1">(</span>
                                 <input type="text" placeholder="ระบุช่วง..." value="Before" class="paper-input text-lg font-bold text-orange-600 w-28 text-center px-1">
                                 <span class="text-slate-500 font-normal">)</span>
@@ -1467,7 +1553,7 @@
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <tr>
@@ -1530,7 +1616,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700"><i class="fa-solid fa-bolt text-white"></i></div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">Dielectric Strength Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Dielectric Strength Test</h3>
                         </div>
                         ${id > 1 ? `<button onclick="removeDielectricBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
                     </div>
@@ -1538,7 +1624,7 @@
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <tr>
@@ -1603,7 +1689,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">Grounding Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Grounding Test</h3>
                         </div>
                         ${id > 1 ? `<button onclick="removeGroundingBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
                     </div>
@@ -1611,7 +1697,7 @@
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <tr>
@@ -1660,7 +1746,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800">Contact Resistance Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 block-base-title">Contact Resistance Test</h3>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addBreakerRow('tbody_${prefix}', 'photoSec_${prefix}')" class="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มเบรกเกอร์</button>
@@ -1669,7 +1755,7 @@
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 text-[13px] flex items-center shadow-sm whitespace-nowrap"><i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel</span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <thead>
@@ -1722,27 +1808,24 @@
 
             const blockHtml = `
                 <div id="block_${prefix}" class="trip-block relative mb-6 pb-6 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
-                    <!-- 🌟 เอา no-print ออกจากตรงนี้ -->
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700">
-                                <!-- 🌟 ตัดเส้นประในไอคอนออกเหลือแค่เส้นกราฟคลีนๆ -->
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">Trip Unit Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Trip Unit Test</h3>
                         </div>
                         ${id > 1 ? `<button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
                     </div>
                     
-                    <!-- 🌟 เอา no-print ออกจากตรงนี้ด้วย -->
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
                             <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
                         </span>
-                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1">
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                     </div>
 
-                    <!-- 📝 Single Table Layout (ตามภาพต้นฉบับ) -->
+                    <!-- 📝 Single Table Layout -->
                     <table class="w-full text-[13px] text-center border-collapse border-2 border-slate-400 bg-white shadow-sm print:shadow-none">
                         <!-- Details Header -->
                         <tr class="bg-slate-100">
@@ -1938,7 +2021,6 @@
 
                                 <div class="w-full rounded-lg flex items-center justify-center p-1 relative group transition-colors h-[170px] cursor-pointer hover:bg-slate-50" onclick="document.getElementById('img_trip_curve_${prefix}').click()">
                                     <div class="text-slate-400 flex flex-col items-center justify-center w-full h-full no-print group-hover:text-orange-500 transition-transform">
-                                        <!-- 🌟 ปรับกล่องข้อความให้เป็นขอบทึบดูสะอาดตาขึ้น -->
                                         <span class="font-bold text-[13px] border border-slate-300 bg-slate-100 text-slate-500 px-4 py-2 rounded-lg shadow-sm text-center">คลิกเพื่ออัปโหลด<br>หรือเลือกจากเมนูด้านบน</span>
                                     </div>
                                     <div id="prev_trip_curve_${prefix}" class="photo-image hidden" style="background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 4px;"></div>
@@ -2160,6 +2242,133 @@
             }
         }
 
+        // 🌟 ฟังก์ชันคำนวณและอัปเดตเลขหน้าให้สารบัญ (Content) โฉมใหม่
+        function updateTOC() {
+            const tocList = document.getElementById('tocList');
+            if (!tocList) return;
+            tocList.innerHTML = '';
+
+            const items = [];
+            
+            // ตรวจสอบว่ามีหัวข้อ Scope of work หรือไม่
+            const scopeSec = document.getElementById('scopeSection');
+            if (scopeSec && !scopeSec.classList.contains('hidden') && window.getComputedStyle(scopeSec).display !== 'none') {
+                items.push({ title: 'Scope of work', id: 'scopeSection' });
+            }
+
+            // ดึงหัวข้อ Module ทั้งหมดที่เปิดใช้งาน
+            const container = document.getElementById('moduleContainer');
+            if (container) {
+                const activeModules = Array.from(container.children)
+                    .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden') && window.getComputedStyle(el).display !== 'none');
+                
+                activeModules.forEach(mod => {
+                    // หากเป็นหน้า Calibration
+                    if (mod.id === 'mod_calibration') {
+                        items.push({ title: 'Certificate of Calibration', id: mod.id });
+                        return;
+                    }
+
+                    // ดึงทุกชุดทดสอบออกมา
+                    const blocks = Array.from(mod.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block'));
+                    
+                    if (blocks.length > 0) {
+                        blocks.forEach(block => {
+                            let title = '';
+                            
+                            const titleInput = block.querySelector('input.photo-group-title-input');
+                            if (titleInput) {
+                                const span = titleInput.previousElementSibling;
+                                if (span && span.classList.contains('print-text-span')) {
+                                    title = span.textContent.trim();
+                                } else {
+                                    title = titleInput.value.trim() || titleInput.getAttribute('value');
+                                }
+                            } else {
+                                const baseTitleSpan = block.querySelector('.block-base-title');
+                                if (baseTitleSpan) {
+                                    title = baseTitleSpan.innerText.trim();
+                                }
+                            }
+                            
+                            if (!title || title === 'undefined') {
+                                title = moduleTitles[mod.id] || 'Inspection';
+                            }
+
+                            const eqInput = block.querySelector('input.eq-panel-input');
+                            let eqName = '';
+                            if (eqInput) {
+                                const span = eqInput.previousElementSibling;
+                                let val = '';
+                                if (span && span.classList.contains('print-text-span')) {
+                                    val = span.textContent.trim();
+                                } else {
+                                    val = eqInput.value.trim() || eqInput.getAttribute('value');
+                                }
+                                
+                                if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
+                                    eqName = ` (${val})`;
+                                }
+                            }
+
+                            items.push({ title: `${title}${eqName}`, id: block.id });
+                        });
+                    } else {
+                        let fallbackTitle = moduleTitles[mod.id] || mod.id;
+                        if (fallbackTitle === 'undefined') fallbackTitle = 'Inspection';
+                        items.push({ title: fallbackTitle, id: mod.id });
+                    }
+                });
+            }
+
+            // วาดสารบัญรูปแบบใหม่ (Flexbox List ไร้ตาราง)
+            items.forEach((item, index) => {
+                const pageNum = calculatePageNumber(item.id);
+                const displayNum = pageNum !== null ? String(pageNum).padStart(2, '0') : '-';
+                const indexStr = String(index + 1).padStart(2, '0'); // ใส่ 0 นำหน้าให้สวยงาม
+                
+                const row = document.createElement('div');
+                row.className = 'flex w-full items-end py-1.5 group';
+                row.innerHTML = `
+                    <div class="font-bold text-slate-700 text-[16px] tracking-wide whitespace-nowrap">
+                        <span class="text-orange-500 font-black mr-3 text-[16px]">${indexStr}.</span>${item.title}
+                    </div>
+                    <div class="flex-grow border-b-[2px] border-dotted border-slate-300 mx-4 relative top-[-6px] opacity-70 group-hover:opacity-100 transition-opacity min-w-[20px]"></div>
+                    <div class="font-black text-orange-600 text-[18px] whitespace-nowrap">
+                        ${displayNum}
+                    </div>
+                `;
+                tocList.appendChild(row);
+            });
+        }
+
+        // 🌟 ฟังก์ชันนับเลขหน้าจาก .pdf-page-break
+        function calculatePageNumber(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return null;
+
+            let pageCount = 1; // หน้าปกนับเป็น 1 เสมอ
+            
+            const allBreaks = document.querySelectorAll('.pdf-page-break');
+            for (let i = 0; i < allBreaks.length; i++) {
+                const brk = allBreaks[i];
+                
+                // ข้ามอันที่ถูกซ่อนไว้
+                if (brk.classList.contains('hidden') || window.getComputedStyle(brk).display === 'none') continue;
+                if (brk.closest('.hidden') || brk.closest('.tmp-no-print')) continue;
+
+                const pos = brk.compareDocumentPosition(el);
+                
+                // ถ้ารอยตัด (brk) อยู่ก่อนหน้า element เป้าหมาย ให้นับ +1 หน้า
+                if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    pageCount++;
+                } else if (brk === el) {
+                    pageCount++;
+                }
+            }
+            return pageCount;
+        }
+
         function prepareDocumentForPrint(isNative = false) {
             window.scrollTo(0, 0); 
             
@@ -2198,6 +2407,16 @@
                 
                 input.parentNode.insertBefore(span, input);
                 input.classList.add('hidden', 'tmp-hidden-element');
+            });
+
+            // 🌟 จัดการ textarea (Description) ตอน Print ให้ความสูงยืดหยุ่นตามข้อความ
+            document.querySelectorAll('textarea.paper-textarea').forEach(textarea => {
+                const span = document.createElement('span');
+                span.className = textarea.className + ' print-text-span !bg-transparent !border-none !p-0 !min-h-0 block whitespace-pre-wrap break-words';
+                span.textContent = textarea.value || '';
+                
+                textarea.parentNode.insertBefore(span, textarea);
+                textarea.classList.add('hidden', 'tmp-hidden-element');
             });
 
             document.querySelectorAll('select').forEach(select => {
@@ -2245,6 +2464,9 @@
                     else if (grid) splitGridForPrint(grid, 4, 8);
                 });
             });
+
+            // 🌟 อัปเดตตารางสารบัญ (Content) ทันทีหลังจากแยกหน้าเสร็จ
+            updateTOC();
         }
 
         function restoreDocumentAfterPrint() {
@@ -2264,6 +2486,9 @@
 
             const nativePageNums = document.getElementById('nativePageNumbers');
             if (nativePageNums) nativePageNums.remove();
+
+            const ghost = document.getElementById('ghostSpacerHacker');
+            if (ghost) ghost.remove();
 
             document.querySelectorAll('.no-print').forEach(el => {
                 if(!el.closest('.no-print-bg')) {
@@ -2319,12 +2544,25 @@
 
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = '';
-        }
 
-        function drawPoly(pdf, pts, color) {
-            pdf.setFillColor(color[0], color[1], color[2]);
-            pdf.triangle(pts[0], pts[1], pts[2], pts[3], pts[6], pts[7], 'F');
-            pdf.triangle(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7], 'F');
+            // รีเซ็ตหน้าสารบัญกลับมาเป็นข้อความปกติหลังจากพริ้นต์เสร็จ
+            const tocList = document.getElementById('tocList');
+            if (tocList) {
+                tocList.innerHTML = `
+                    <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                        <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
+                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                    </div>
+                `;
+            }
+
+            // คืนค่าปุ่ม Print ให้กดได้อีกครั้ง
+            const printBtn = document.querySelector('button[onclick="generateNativePDF()"]');
+            if (printBtn && printBtn.hasAttribute('data-original-text')) {
+                printBtn.innerHTML = printBtn.getAttribute('data-original-text');
+                printBtn.disabled = false;
+                printBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
         }
 
         function drawNativeHeaderFooter(pdf) {
