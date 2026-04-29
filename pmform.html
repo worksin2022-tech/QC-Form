@@ -20,16 +20,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; margin: 0; padding: 0; }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
 
-        .control-panel {
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
-            border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100;
-            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-        }
+        /* Custom Scrollbar สำหรับ Sidebar และ Main Area */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
 
         .a4-wrapper {
-            width: 100%; overflow-x: auto; background-color: #f1f5f9; padding: 3rem 0; display: flex; justify-content: center; position: relative;
+            width: 100%; display: flex; justify-content: center; position: relative;
         }
 
         .a4-page {
@@ -66,13 +66,17 @@
         /* ========================================================= */
         /* 🌟 1. CSS โหมด PDF ภาพ (HTML2PDF) 🌟 */
         /* ========================================================= */
-        body.html2pdf-body-lock {
+        body.html2pdf-body-lock, body.html2pdf-body-lock main, body.html2pdf-body-lock #a4ScrollArea {
+            display: block !important;
             width: 794px !important;
             min-width: 794px !important;
+            height: auto !important;
             overflow: visible !important;
             margin: 0 !important;
             padding: 0 !important;
         }
+        
+        body.html2pdf-body-lock aside, body.html2pdf-body-lock header { display: none !important; }
 
         .html2pdf-mode-wrapper {
             display: block !important;
@@ -147,7 +151,15 @@
         @media print {
             @page { size: A4 portrait; margin: 0 !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            body, html { background: white; margin: 0 !important; padding: 0 !important; width: 100%; height: auto !important; min-height: auto !important; }
+            
+            body, html, main, #a4ScrollArea { 
+                background: white !important; display: block !important; margin: 0 !important; 
+                padding: 0 !important; width: 100% !important; height: auto !important; 
+                min-height: auto !important; overflow: visible !important; 
+            }
+            
+            aside, header { display: none !important; }
+            
             .a4-wrapper { background: transparent; padding: 0 !important; margin: 0 !important; display: block; width: 100%; overflow: visible; min-height: auto !important; }
             
             #printLayoutTable, #printLayoutTable tbody, #printLayoutTable tr, #printLayoutTable td {
@@ -174,7 +186,7 @@
                 background-color: white !important;
             }
             
-            .no-print, .control-panel { display: none !important; }
+            .no-print { display: none !important; }
 
             /* ล็อคกราฟิกหัวและท้ายกระดาษให้อยู่ตายตัวเสมอ */
             .print-fixed-header { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
@@ -201,15 +213,14 @@
         }
 
         /* ตกแต่งทั่วไป */
-        .custom-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #2563eb; }
-        .module-card { transition: all 0.2s ease; }
-        .module-card:hover { border-color: #93c5fd; background-color: #eff6ff; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1); transform: translateY(-1px); }
+        .custom-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #f97316; }
+        
         .paper-input { border-bottom: 1px solid transparent; background: transparent; width: 100%; transition: all 0.3s ease; padding: 2px 4px; }
         .paper-input:hover { background: #f8fafc; border-bottom-color: #cbd5e1; }
-        .paper-input:focus { background: #eff6ff; border-bottom-color: #3b82f6; outline: none; }
+        .paper-input:focus { background: #fff7ed; border-bottom-color: #f97316; outline: none; }
         
         .photo-box { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: all 0.2s ease; }
-        .photo-box:hover { border-color: #60a5fa; background: #eff6ff; }
+        .photo-box:hover { border-color: #fb923c; background: #fff7ed; }
         .photo-image { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10; background-color: white; border-radius: inherit; }
         
         /* 🌟 ปุ่มลบรูุป และ ปุ่มวาดรูป 🌟 */
@@ -230,7 +241,7 @@
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-<body>
+<body class="flex h-screen overflow-hidden bg-slate-100">
 
     <!-- 🌟 Tailwind Safelist -->
     <div class="hidden bg-slate-50 bg-slate-100 bg-slate-500 bg-slate-700 bg-slate-800 text-slate-400 text-slate-500 text-slate-600 text-slate-700 text-slate-800 border-slate-100 border-slate-200 border-slate-300 hover:bg-slate-100 hover:bg-slate-200 hover:text-slate-700 bg-orange-50 bg-orange-100 bg-orange-500 text-orange-400 text-orange-500 text-orange-600 text-orange-700 border-orange-100 border-orange-200 border-orange-300 hover:bg-orange-100 hover:bg-orange-200 hover:text-orange-700"></div>
@@ -265,394 +276,458 @@
         </div>
     </div>
 
-    <!-- 🛠️ CONTROL PANEL -->
-    <div class="control-panel p-4 no-print">
-        <div class="max-w-7xl mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
-                <div class="flex items-center gap-3 sm:gap-4">
-                    <a href="index.html" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 text-slate-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-colors shrink-0" title="กลับหน้าแรก">
-                        <i class="fa-solid fa-house"></i>
-                    </a>
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                            Report Builder
-                            <span id="saveStatus" class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold ml-2 hidden shadow-sm"><i class="fa-solid fa-cloud-check"></i> เซฟแล้ว</span>
-                        </h2>
-                        <p class="text-sm text-slate-500 font-medium mt-1">จัดการโมดูล พิมพ์รายงาน หรือบันทึกส่งต่อให้ทีม</p>
-                    </div>
+    <!-- ======================================================= -->
+    <!-- 🗂️ SIDEBAR (เมนูด้านซ้าย) -->
+    <!-- ======================================================= -->
+    <aside class="w-[280px] bg-white border-r border-slate-200 flex-col shadow-xl z-50 shrink-0 no-print transition-all duration-300 relative hidden lg:flex" id="sidebar">
+        
+        <!-- Header Sidebar -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div class="flex items-center gap-3 w-full">
+                <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+                    <i class="fa-solid fa-file-invoice text-xl"></i>
                 </div>
-                
-                <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                    <div class="flex gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                        <button onclick="exportData()" class="flex-1 md:flex-none justify-center bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-1.5" title="บันทึกข้อมูลเป็นไฟล์ JSON">
-                            <i class="fa-solid fa-download text-slate-500"></i> นำออก
-                        </button>
-                        <button onclick="document.getElementById('importFile').click()" class="flex-1 md:flex-none justify-center bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-1.5" title="โหลดข้อมูลจากไฟล์ JSON">
-                            <i class="fa-solid fa-upload text-slate-500"></i> นำเข้า
-                        </button>
-                        <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                        
-                        <div class="w-px bg-slate-300 mx-1"></div>
-                        
-                        <button onclick="clearDraft()" class="flex-1 md:flex-none justify-center bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
-                            <i class="fa-solid fa-trash-can"></i> ล้าง
-                        </button>
-                    </div>
-
-                    <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                        <button onclick="openReorderModal()" class="flex-1 md:flex-none justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-4 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2">
-                            <i class="fa-solid fa-sort"></i> จัดเรียง
-                        </button>
-                        <button id="previewBtn" onclick="generatePDF('preview')" class="flex-1 md:flex-none justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-orange-600 text-slate-700 px-4 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2">
-                            <i class="fa-solid fa-eye"></i> พรีวิว
-                        </button>
-                        <button onclick="generateNativePDF()" class="flex-1 md:flex-none justify-center bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
-                            <i class="fa-solid fa-print"></i> พิมพ์ / PDF
-                        </button>
-                    </div>
+                <div class="overflow-hidden">
+                    <h2 class="text-[17px] font-extrabold text-slate-800 leading-tight truncate">Report Builder</h2>
+                    <span id="saveStatus" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold shadow-sm inline-flex items-center gap-1 mt-0.5 whitespace-nowrap"><i class="fa-solid fa-cloud-check"></i> เซฟแล้ว</span>
                 </div>
             </div>
+            <!-- ปุ่มซ่อนเมนูในมือถือ -->
+            <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="lg:hidden text-slate-400 hover:text-slate-600 p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Module List Sidebar -->
+        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50">
+            <span class="text-[12px] font-extrabold text-slate-400 uppercase tracking-wider mb-3 block"><i class="fa-solid fa-layer-group mr-1.5"></i> เลือกหัวข้อรายงาน</span>
             
-            <div class="flex justify-between items-center border-t border-slate-200 pt-3 mb-3 mt-4">
-                <span class="text-[13px] font-bold text-slate-500 uppercase tracking-wide"><i class="fa-solid fa-layer-group mr-1.5"></i> เลือกหัวข้อเพื่อสร้างรายงาน</span>
-                <button onclick="toggleModuleGrid()" class="text-xs font-bold text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
-                    <span id="toggleGridText">พับเก็บเมนู</span> <i id="toggleGridIcon" class="fa-solid fa-chevron-up"></i>
+            <div class="flex flex-col gap-2.5">
+                <!-- 1 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-camera"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">1. Before</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_before', this.checked)">
+                </label>
+                <!-- 2 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-broom"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">2. Cleaning</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_cleaning', this.checked)">
+                </label>
+                <!-- 3 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-camera"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">3. After</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_after', this.checked)">
+                </label>
+                <!-- 4 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-clipboard-check"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">4. Gen Check</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_general', this.checked)">
+                </label>
+                <!-- 5 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><span class="font-bold text-[18px] font-serif leading-none mt-0.5">&Omega;</span></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">5. Insulation Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_insulation', this.checked)">
+                </label>
+                <!-- 6 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-bolt"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">6. Dielectric Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_dielectric', this.checked)">
+                </label>
+                <!-- 7 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
+                        </div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">7. Grounding Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
+                </label>
+                <!-- 8 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
+                        </div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">8. Contact Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_contact', this.checked)">
+                </label>
+                <!-- 9 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
+                        </div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">9. Trip Unit Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_trip', this.checked)">
+                </label>
+                <!-- 10 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-contract"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">10. Calibration</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)">
+                </label>
+                <!-- 11 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-circle-plus"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">11. Blank Page</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)">
+                </label>
+            </div>
+        </div>
+        
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-slate-200 bg-white text-center">
+            <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Avatar Electric Co., Ltd.</p>
+        </div>
+    </aside>
+
+    <!-- ======================================================= -->
+    <!-- 💻 MAIN CONTENT AREA (พื้นที่ทำงานหลัก) -->
+    <!-- ======================================================= -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-200/40" id="mainContent">
+        
+        <!-- 🎯 TOP NAVBAR -->
+        <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center z-40 no-print shadow-sm shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="document.getElementById('sidebar').classList.toggle('hidden'); document.getElementById('sidebar').classList.toggle('absolute'); document.getElementById('sidebar').classList.toggle('h-full');" class="lg:hidden text-slate-500 hover:text-orange-600 bg-white border border-slate-200 w-10 h-10 rounded-lg flex items-center justify-center transition-colors shadow-sm">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="index.html" class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 text-slate-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-colors shrink-0" title="กลับหน้าแรก">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                <div class="hidden sm:block">
+                    <h2 class="text-lg font-bold text-slate-700 leading-tight">ระบบสร้างรายงาน (PM)</h2>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- 🌟 แก้ไข: เปลี่ยนจาก xl:flex เป็น md:flex เพื่อให้ปุ่มกลับมาแสดงบนหน้าจอทั่วไป 🌟 -->
+                <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-2 shadow-inner">
+                    <button onclick="exportData()" class="bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
+                        <i class="fa-solid fa-download"></i> นำออก
+                    </button>
+                    <button onclick="document.getElementById('importFile').click()" class="bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
+                        <i class="fa-solid fa-upload"></i> นำเข้า
+                    </button>
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                    <div class="w-px bg-slate-300 mx-1 my-1"></div>
+                    <button onclick="clearDraft()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
+                        <i class="fa-solid fa-trash-can"></i> ล้าง
+                    </button>
+                </div>
+
+                <button onclick="openReorderModal()" class="justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-sort"></i> <span class="hidden sm:inline">จัดเรียง</span>
+                </button>
+                <button id="previewBtn" onclick="generatePDF('preview')" class="justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-eye"></i> <span class="hidden sm:inline">พรีวิว</span>
+                </button>
+                <button onclick="generateNativePDF()" class="justify-center bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> พิมพ์ / PDF
                 </button>
             </div>
-            
-            <div id="moduleGridWrapper" class="transition-all duration-300 ease-in-out overflow-hidden origin-top" style="max-height: 500px; opacity: 1;">
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3 pb-2">
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_before', this.checked)"></div>
-                        <span class="font-bold text-slate-700 text-[13px] leading-tight">1. Before</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-broom text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_cleaning', this.checked)"></div>
-                        <span class="font-bold text-slate-700 text-[13px] leading-tight">2. Cleaning</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-camera text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_after', this.checked)"></div>
-                        <span class="font-bold text-slate-700 text-[13px] leading-tight">3. After</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-clipboard-check text-slate-500"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_general', this.checked)"></div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">4. Gen Check</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><span class="font-bold text-[20px] text-slate-600 font-serif leading-none">&Omega;</span><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_insulation', this.checked)"></div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">5. Insulation Test</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-bolt text-slate-600"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_dielectric', this.checked)"></div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">6. Dielectric Test</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full">
-                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
-                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_grounding', this.checked)">
-                        </div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">7. Grounding Test</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full">
-                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
-                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_contact', this.checked)">
-                        </div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">8. Contact Test</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full">
-                            <svg class="w-[20px] h-[20px] text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
-                            <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_trip', this.checked)">
-                        </div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">9. Trip Unit Test</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-contract text-slate-400"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)"></div>
-                        <span class="font-bold text-slate-700 text-[13px] leading-tight">10. Calibration</span>
-                    </label>
-                    <label class="module-card flex flex-col justify-center gap-2 bg-white p-3 rounded-xl border-2 border-slate-200 cursor-pointer">
-                        <div class="flex justify-between items-center w-full"><i class="fa-solid fa-file-circle-plus text-slate-500"></i><input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)"></div>
-                        <span class="font-bold text-slate-800 text-[13px] leading-tight">11. Blank Page</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-    </div>
+        </header>
 
-    <!-- 🌟 โครงสร้างเอกสาร PDF (รวมหน้าปกและเนื้อหา) -->
-    <div class="a4-wrapper flex-col items-center gap-6 print:block print:w-full print:gap-0 bg-slate-200 print:bg-transparent pb-10">
-        <div id="exportWrapper" class="w-full flex flex-col items-center gap-6 print:block print:w-full print:gap-0">
-            
-            <!-- ============================================== -->
-            <!-- 🌟 หน้าปก (COVER PAGE) -->
-            <!-- ============================================== -->
-            <div id="coverPage" class="a4-page relative cover-page print:shadow-none">
-                
-                <!-- กราฟิกด้านบน -->
-                <div class="absolute top-0 left-0 w-full h-[220px] pointer-events-none z-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
-                        <rect x="0" y="0" width="100" height="20" fill="#1e293b" />
-                        <rect x="0" y="20" width="100" height="2" fill="#f59e0b" />
-                        <rect x="0" y="22" width="100" height="6" fill="#f97316" />
-                        <defs>
-                            <linearGradient id="coverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="#fdba74" stop-opacity="1" />
-                                <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
-                            </linearGradient>
-                        </defs>
-                        <rect x="0" y="28" width="100" height="72" fill="url(#coverGrad)" />
-                    </svg>
-                </div>
-
-                <!-- ข้อความหัวเรื่อง -->
-                <div class="relative z-10 mt-[140px] pl-[80px]">
-                    <h1 class="text-[52px] font-normal text-slate-800 tracking-tight leading-none mb-1" style="font-family: Arial, Helvetica, sans-serif;">Avatar Electric</h1>
-                    <h2 class="text-[20px] font-semibold text-orange-500 tracking-wide" style="font-family: Arial, Helvetica, sans-serif; margin-left: 205px;">Company Limited</h2>
-                </div>
-
-                <!-- 🌟 โลโก้หมวกตรงกลาง (ดึงรูปคงที่มาแสดง) -->
-                <div class="relative z-10 w-full flex justify-center mt-[60px]">
-                    <img src="Logo Avatar เล็ก.png" alt="Avatar Electric" class="w-[320px] h-[320px] object-contain z-20 drop-shadow-md" onerror="this.onerror=null; this.src=''; this.alt='[คำแนะนำ: นำไฟล์รูปภาพ Logo Avatar เล็ก.png มาวางไว้ในโฟลเดอร์เดียวกับไฟล์นี้]';" />
-                </div>
-
-                <!-- ช่องกรอกรายละเอียด Project หน้าปก -->
-                <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 print:shadow-none print:border-slate-300">
-                    <input type="text" id="coverInputReportType" class="w-full bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-orange-500 transition-colors text-[26px] font-extrabold text-slate-800 uppercase tracking-widest text-center mb-8 drop-shadow-sm outline-none" value="Preventive Maintenance Report" oninput="syncCoverInputs()">
+        <!-- 📜 A4 SCROLL AREA (พื้นที่แสดงกระดาษรายงาน) -->
+        <div class="flex-1 overflow-y-auto w-full custom-scrollbar pb-16" id="a4ScrollArea">
+            <div class="a4-wrapper flex-col items-center gap-6 print:block print:w-full print:gap-0 bg-transparent print:bg-transparent pb-10 mt-6 md:mt-10">
+                <div id="exportWrapper" class="w-full flex flex-col items-center gap-6 print:block print:w-full print:gap-0">
                     
-                    <div class="space-y-5">
-                        <!-- Project Field -->
-                        <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                            <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
-                                Project
-                            </div>
-                            <div class="p-3 w-full flex-grow flex items-center">
-                                <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุชื่อโครงการ..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
-                            </div>
+                    <!-- ============================================== -->
+                    <!-- 🌟 หน้าปก (COVER PAGE) -->
+                    <!-- ============================================== -->
+                    <div id="coverPage" class="a4-page relative cover-page print:shadow-none">
+                        
+                        <!-- กราฟิกด้านบน -->
+                        <div class="absolute top-0 left-0 w-full h-[220px] pointer-events-none z-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                                <rect x="0" y="0" width="100" height="20" fill="#1e293b" />
+                                <rect x="0" y="20" width="100" height="2" fill="#f59e0b" />
+                                <rect x="0" y="22" width="100" height="6" fill="#f97316" />
+                                <defs>
+                                    <linearGradient id="coverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#fdba74" stop-opacity="1" />
+                                        <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+                                    </linearGradient>
+                                </defs>
+                                <rect x="0" y="28" width="100" height="72" fill="url(#coverGrad)" />
+                            </svg>
                         </div>
 
-                        <!-- Date Field -->
-                        <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                            <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
-                                Date
-                            </div>
-                            <div class="p-3 w-full flex-grow flex items-center">
-                                <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุวันที่..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
-                            </div>
+                        <!-- ข้อความหัวเรื่อง -->
+                        <div class="relative z-10 mt-[140px] pl-[80px]">
+                            <h1 class="text-[52px] font-normal text-slate-800 tracking-tight leading-none mb-1" style="font-family: Arial, Helvetica, sans-serif;">Avatar Electric</h1>
+                            <h2 class="text-[20px] font-semibold text-orange-500 tracking-wide" style="font-family: Arial, Helvetica, sans-serif; margin-left: 205px;">Company Limited</h2>
                         </div>
-                    </div>
-                </div>
 
-                <!-- โลโก้มาตรฐานมุมซ้ายล่าง -->
-                <div class="absolute bottom-[110px] left-[80px] z-20">
-                    <div class="w-[280px] h-[80px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverIsoLogoUpload').click()">
-                        <img id="coverIsoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-left bg-no-repeat" style="border-radius: inherit;" />
-                        <div id="coverIsoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-blue-500 no-print border-2 border-dashed border-slate-300 group-hover:border-blue-400 px-3 py-2 rounded-lg bg-slate-50/80 w-full h-full flex justify-center items-center"><i class="fa-solid fa-plus mr-1"></i>อัปโหลดโลโก้ ISO / มาตรฐาน</div>
-                        <input type="file" id="coverIsoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverIsoLogoImg', 'coverIsoLogoPlaceholder')">
-                    </div>
-                </div>
+                        <!-- 🌟 โลโก้หมวกตรงกลาง (ดึงรูปคงที่มาแสดง) -->
+                        <div class="relative z-10 w-full flex justify-center mt-[60px]">
+                            <img src="Logo Avatar เล็ก.png" alt="Avatar Electric" class="w-[320px] h-[320px] object-contain z-20 drop-shadow-md" onerror="this.onerror=null; this.src=''; this.alt='[คำแนะนำ: นำไฟล์รูปภาพ Logo Avatar เล็ก.png มาวางไว้ในโฟลเดอร์เดียวกับไฟล์นี้]';" />
+                        </div>
 
-                <!-- โลโก้ EcoXpert มุมขวาล่าง -->
-                <div class="absolute bottom-[90px] right-[80px] z-20">
-                    <div class="w-[160px] h-[100px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverEcoLogoUpload').click()">
-                        <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-right bg-no-repeat" style="border-radius: inherit;" />
-                        <div id="coverEcoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-green-500 no-print text-center px-2 py-2 border-2 border-dashed border-slate-300 group-hover:border-green-500 bg-slate-50/80 rounded-lg w-full h-full flex flex-col justify-center items-center"><i class="fa-solid fa-plus mb-1"></i>อัปโหลดโลโก้<br>EcoXpert</div>
-                        <input type="file" id="coverEcoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverEcoLogoImg', 'coverEcoLogoPlaceholder')">
-                    </div>
-                </div>
-
-                <!-- กราฟิกด้านล่างสุด -->
-                <div class="absolute bottom-0 left-0 w-full h-[220px] pointer-events-none z-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
-                        <polygon points="0,60 100,85 100,89 0,64" fill="#ea580c" />
-                        <polygon points="0,63 100,88 100,100 0,100" fill="#1e293b" />
-                    </svg>
-                    <div class="absolute bottom-[30px] left-[80px] text-white font-medium tracking-wider" style="font-size: 20px; font-family: Arial, Helvetica, sans-serif;">
-                        www.avatar-electric.com
-                    </div>
-                </div>
-
-            </div>
-            <!-- ============================================== -->
-
-            <!-- ============================================== -->
-            <!-- 🌟 หน้าเนื้อหาหลัก (ใช้ตารางป้องกันเนื้อหาทับ Header/Footer) -->
-            <!-- ============================================== -->
-            <table class="w-full border-none m-0 p-0 relative z-10 shadow-lg print:shadow-none bg-white pdf-page-break" id="printLayoutTable">
-                
-                <thead class="hidden print:table-header-group" id="printLayoutThead">
-                    <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
-                </thead>
-                
-                <tbody class="border-none m-0 p-0">
-                    <tr>
-                        <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
+                        <!-- ช่องกรอกรายละเอียด Project หน้าปก -->
+                        <div class="relative z-10 mt-[40px] mx-auto w-[650px] p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 print:shadow-none print:border-slate-300">
+                            <input type="text" id="coverInputReportType" class="w-full bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-orange-500 transition-colors text-[26px] font-extrabold text-slate-800 uppercase tracking-widest text-center mb-8 drop-shadow-sm outline-none" value="Preventive Maintenance Report" oninput="syncCoverInputs()">
                             
-                            <div id="reportDocument" class="a4-page relative bg-white" style="box-shadow: none;">
-                                
-                                <!-- 🌟 Web View Decorative Overlay -->
-                                <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                        <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                                        <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                                        <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                                        <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
-                                    </svg>
-                                    <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
-                                        <span id="webViewHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                            <div class="space-y-5">
+                                <!-- Project Field -->
+                                <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
+                                        Project
                                     </div>
-                                </div>
-                                
-                                <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                        <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                                        <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                                        <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                                        <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
-                                    </svg>
-                                    <div class="absolute top-[3mm] left-[25mm] z-[1]">
-                                        <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                                    <div class="p-3 w-full flex-grow flex items-center">
+                                        <input type="text" id="coverInputProject" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุชื่อโครงการ..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
                                     </div>
                                 </div>
 
-                                <!-- Input ซ่อนเพื่อรับค่าจากหน้าปก -->
-                                <div class="hidden">
-                                    <input type="text" id="inputProject">
-                                    <input type="text" id="inputDate">
-                                </div>
-
-                                <!-- 🌟 TOC SECTION (สารบัญ) -->
-                                <div id="tocSection" class="mb-10 mt-12 pb-8 no-print-bg">
-                                    <div class="flex flex-col justify-center items-center mb-12">
-                                        <h2 class="text-[32px] font-extrabold text-slate-800 uppercase tracking-widest text-center relative px-6">
-                                            Content
-                                            <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 h-[5px] bg-orange-500 rounded-full"></div>
-                                        </h2>
+                                <!-- Date Field -->
+                                <div class="flex items-stretch bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="bg-slate-700 text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center w-[130px] shrink-0 border-r-[4px] border-orange-500">
+                                        Date
                                     </div>
-                                    <div class="w-[85%] mx-auto max-w-3xl relative z-10 print:w-[90%]">
-                                        <div id="tocList" class="flex flex-col gap-3">
-                                            <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                                                <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
-                                                รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                                    <div class="p-3 w-full flex-grow flex items-center">
+                                        <input type="text" id="coverInputDate" class="paper-input font-bold text-orange-600 w-full text-[18px] bg-transparent border-none outline-none focus:ring-0 placeholder:text-orange-300 leading-none m-0" placeholder="ระบุวันที่..." style="transition: font-size 0.2s;" oninput="syncCoverInputs(); adjustCoverFontSize(this)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- โลโก้มาตรฐานมุมซ้ายล่าง -->
+                        <div class="absolute bottom-[110px] left-[80px] z-20">
+                            <div class="w-[280px] h-[80px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverIsoLogoUpload').click()">
+                                <img id="coverIsoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-left bg-no-repeat" style="border-radius: inherit;" />
+                                <div id="coverIsoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-blue-500 no-print border-2 border-dashed border-slate-300 group-hover:border-blue-400 px-3 py-2 rounded-lg bg-slate-50/80 w-full h-full flex justify-center items-center"><i class="fa-solid fa-plus mr-1"></i>อัปโหลดโลโก้ ISO / มาตรฐาน</div>
+                                <input type="file" id="coverIsoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverIsoLogoImg', 'coverIsoLogoPlaceholder')">
+                            </div>
+                        </div>
+
+                        <!-- โลโก้ EcoXpert มุมขวาล่าง -->
+                        <div class="absolute bottom-[90px] right-[80px] z-20">
+                            <div class="w-[160px] h-[100px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverEcoLogoUpload').click()">
+                                <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-right bg-no-repeat" style="border-radius: inherit;" />
+                                <div id="coverEcoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-green-500 no-print text-center px-2 py-2 border-2 border-dashed border-slate-300 group-hover:border-green-500 bg-slate-50/80 rounded-lg w-full h-full flex flex-col justify-center items-center"><i class="fa-solid fa-plus mb-1"></i>อัปโหลดโลโก้<br>EcoXpert</div>
+                                <input type="file" id="coverEcoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverEcoLogoImg', 'coverEcoLogoPlaceholder')">
+                            </div>
+                        </div>
+
+                        <!-- กราฟิกด้านล่างสุด -->
+                        <div class="absolute bottom-0 left-0 w-full h-[220px] pointer-events-none z-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                                <polygon points="0,60 100,85 100,89 0,64" fill="#ea580c" />
+                                <polygon points="0,63 100,88 100,100 0,100" fill="#1e293b" />
+                            </svg>
+                            <div class="absolute bottom-[30px] left-[80px] text-white font-medium tracking-wider" style="font-size: 20px; font-family: Arial, Helvetica, sans-serif;">
+                                www.avatar-electric.com
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- ============================================== -->
+
+                    <!-- ============================================== -->
+                    <!-- 🌟 หน้าเนื้อหาหลัก (ใช้ตารางป้องกันเนื้อหาทับ Header/Footer) -->
+                    <!-- ============================================== -->
+                    <table class="w-full border-none m-0 p-0 relative z-10 shadow-lg print:shadow-none bg-white pdf-page-break" id="printLayoutTable">
+                        
+                        <thead class="hidden print:table-header-group" id="printLayoutThead">
+                            <tr><td style="height: 12mm; border: none !important; padding: 0 !important; background: transparent;"></td></tr>
+                        </thead>
+                        
+                        <tbody class="border-none m-0 p-0">
+                            <tr>
+                                <td style="border: none !important; padding: 0 !important; background: transparent; vertical-align: top;">
+                                    
+                                    <div id="reportDocument" class="a4-page relative bg-white" style="box-shadow: none;">
+                                        
+                                        <!-- 🌟 Web View Decorative Overlay -->
+                                        <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
+                                                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
+                                                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
+                                                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+                                            </svg>
+                                            <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
+                                                <span id="webViewHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <!-- เริ่มเนื้อหาแรก: Scope of work -->
-                                <div id="scopeSection" class="mb-8 pt-6 pdf-page-break relative">
-                                    <div class="flex justify-between items-center mb-4 no-print">
-                                        <div class="section-title mb-0">
-                                            <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
-                                            <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                        
+                                        <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
+                                                <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
+                                                <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
+                                                <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
+                                                <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
+                                            </svg>
+                                            <div class="absolute top-[3mm] left-[25mm] z-[1]">
+                                                <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                                            </div>
                                         </div>
-                                        <button onclick="addCustomScope()" class="bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
-                                    </div>
-                                    <!-- For Print View -->
-                                    <div class="hidden print:flex section-title mb-6">
-                                        <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
-                                        <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
-                                    </div>
 
-                                    <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณากดเพิ่มรายการ เพื่อสร้าง Scope of work...</p>
-                                    <ul id="dynamicScopeList" class="list-decimal list-outside space-y-2 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
-                                </div>
-
-                                <!-- 🌟 MODULE CONTAINER -->
-                                <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
-                                    <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
+                                        <!-- Input ซ่อนเพื่อรับค่าจากหน้าปก -->
+                                        <div class="hidden">
+                                            <input type="text" id="inputProject">
+                                            <input type="text" id="inputDate">
                                         </div>
-                                        <div id="bf_container"></div>
-                                    </div>
 
-                                    <div id="mod_cleaning" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addPhotoGroup('cl')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Cleaning</button>
+                                        <!-- 🌟 TOC SECTION (สารบัญ) -->
+                                        <div id="tocSection" class="mb-10 mt-12 pb-8 no-print-bg">
+                                            <div class="flex flex-col justify-center items-center mb-12">
+                                                <h2 class="text-[32px] font-extrabold text-slate-800 uppercase tracking-widest text-center relative px-6">
+                                                    Content
+                                                    <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 h-[5px] bg-orange-500 rounded-full"></div>
+                                                </h2>
+                                            </div>
+                                            <div class="w-[85%] mx-auto max-w-3xl relative z-10 print:w-[90%]">
+                                                <div id="tocList" class="flex flex-col gap-3">
+                                                    <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                                                        <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
+                                                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div id="cl_container"></div>
-                                    </div>
 
-                                    <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
+                                        <!-- เริ่มเนื้อหาแรก: Scope of work -->
+                                        <div id="scopeSection" class="mb-8 pt-6 pdf-page-break relative">
+                                            <div class="flex justify-between items-center mb-4 no-print">
+                                                <div class="section-title mb-0">
+                                                    <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
+                                                    <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                                </div>
+                                                <button onclick="addCustomScope()" class="bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
+                                            </div>
+                                            <!-- For Print View -->
+                                            <div class="hidden print:flex section-title mb-6">
+                                                <div class="section-icon bg-slate-800"><i class="fa-solid fa-list-check"></i></div>
+                                                <h2 class="text-xl font-bold text-slate-800">Scope of work</h2>
+                                            </div>
+
+                                            <p id="emptyScopeText" class="text-slate-400 italic text-sm no-print ml-12 bg-slate-50 p-3 rounded-lg border border-slate-200">กรุณากดเพิ่มรายการ เพื่อสร้าง Scope of work...</p>
+                                            <ul id="dynamicScopeList" class="list-decimal list-outside space-y-2 text-slate-700 font-medium ml-10 pl-2 marker:text-orange-600 marker:font-bold"></ul>
                                         </div>
-                                        <div id="af_container"></div>
-                                    </div>
 
-                                    <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
+                                        <!-- 🌟 MODULE CONTAINER -->
+                                        <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
+                                            <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
+                                                </div>
+                                                <div id="bf_container"></div>
+                                            </div>
+
+                                            <div id="mod_cleaning" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addPhotoGroup('cl')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Cleaning</button>
+                                                </div>
+                                                <div id="cl_container"></div>
+                                            </div>
+
+                                            <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
+                                                </div>
+                                                <div id="af_container"></div>
+                                            </div>
+
+                                            <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
+                                                </div>
+                                                <div id="gen_container"></div>
+                                            </div>
+
+                                            <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addInsulationBlock()" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Insulation</button>
+                                                </div>
+                                                <div id="ins_container"></div>
+                                            </div>
+
+                                            <div id="mod_dielectric" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addDielectricBlock()" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Dielectric</button>
+                                                </div>
+                                                <div id="die_container"></div>
+                                            </div>
+
+                                            <div id="mod_grounding" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addGroundingBlock()" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Grounding</button>
+                                                </div>
+                                                <div id="gro_container"></div>
+                                            </div>
+
+                                            <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
+                                                </div>
+                                                <div id="ct_container"></div>
+                                            </div>
+
+                                            <div id="mod_trip" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addTripBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Trip Unit</button>
+                                                </div>
+                                                <div id="trip_container"></div>
+                                            </div>
+
+                                            <!-- 🌟 โมดูล Blank -->
+                                            <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
+                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
+                                                    <button onclick="addBlankGroup('blk')" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Blank (Custom)</button>
+                                                </div>
+                                                <div id="blk_container"></div>
+                                            </div>
+
+                                            <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
+                                                    <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
+                                                    <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
+                                                    <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div id="gen_container"></div>
-                                    </div>
+                                        <!-- END MODULE CONTAINER -->
 
-                                    <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addInsulationBlock()" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Insulation</button>
-                                        </div>
-                                        <div id="ins_container"></div>
                                     </div>
-
-                                    <div id="mod_dielectric" class="mb-10 hidden pt-4 pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addDielectricBlock()" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Dielectric</button>
-                                        </div>
-                                        <div id="die_container"></div>
-                                    </div>
-
-                                    <div id="mod_grounding" class="mb-10 hidden pt-4 pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addGroundingBlock()" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Grounding</button>
-                                        </div>
-                                        <div id="gro_container"></div>
-                                    </div>
-
-                                    <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
-                                        </div>
-                                        <div id="ct_container"></div>
-                                    </div>
-
-                                    <div id="mod_trip" class="mb-10 hidden pt-4 pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <button onclick="addTripBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Trip Unit</button>
-                                        </div>
-                                        <div id="trip_container"></div>
-                                    </div>
-
-                                    <!-- 🌟 โมดูล Blank -->
-                                    <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                        <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                            <!-- 🌟 เปลี่ยนสีปุ่มให้เป็นสีเทา (Slate) 🌟 -->
-                                            <button onclick="addBlankGroup('blk')" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Blank (Custom)</button>
-                                        </div>
-                                        <div id="blk_container"></div>
-                                    </div>
-
-                                    <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
-                                        <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
-                                            <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
-                                            <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
-                                            <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- END MODULE CONTAINER -->
-
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-                
-                <tfoot class="hidden print:table-footer-group" id="printLayoutTfoot">
-                    <tr><td style="border: none !important; padding: 0 !important; background: transparent; height: 12mm;"></td></tr>
-                </tfoot>
-            </table>
+                                </td>
+                            </tr>
+                        </tbody>
+                        
+                        <tfoot class="hidden print:table-footer-group" id="printLayoutTfoot">
+                            <tr><td style="border: none !important; padding: 0 !important; background: transparent; height: 12mm;"></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
 
     <!-- 🖼️ MODAL สำหรับพรีวิว PDF ภาพ -->
     <div id="pdfModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-6 transition-opacity">
@@ -755,7 +830,6 @@
         let tripCount = 0;
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
         let reorderSortable = null;
-        let isGridCollapsed = false;
 
         // ตัวแปรสำหรับ Fabric.js Canvas
         let fCanvas = null;
@@ -788,8 +862,16 @@
             closeReorderModal();
             setTimeout(() => {
                 const el = document.getElementById(elementId);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const scrollArea = document.getElementById('a4ScrollArea');
+                
+                if (el && scrollArea) {
+                    // 🌟 คำนวณพิกัดใหม่ให้แม่นยำ 100% เมื่ออยู่ใน Sidebar Layout 🌟
+                    const elRect = el.getBoundingClientRect();
+                    const scrollAreaRect = scrollArea.getBoundingClientRect();
+                    // หาระยะห่างที่แท้จริงจากจุดบนสุดของ Scroll Area
+                    const topPos = elRect.top - scrollAreaRect.top + scrollArea.scrollTop - 40; 
+                    
+                    scrollArea.scrollTo({ top: topPos, behavior: 'smooth' });
                     
                     const oldOutline = el.style.outline;
                     const oldOutlineOffset = el.style.outlineOffset;
@@ -870,21 +952,6 @@
                 }
             });
             
-            let lastScrollY = window.scrollY;
-            window.isGridScrollLocked = false;
-            
-            window.addEventListener('scroll', () => {
-                if (window.isGridScrollLocked) return;
-                
-                const currentScrollY = window.scrollY;
-                if (currentScrollY > 200 && currentScrollY > lastScrollY + 10 && !isGridCollapsed) {
-                    executeToggleGrid(true);
-                } else if (currentScrollY < 50 && isGridCollapsed) {
-                    executeToggleGrid(false);
-                }
-                lastScrollY = currentScrollY;
-            });
-            
             setInterval(saveDraft, 3000); 
             
             document.getElementById('exportWrapper').addEventListener('input', () => {
@@ -894,7 +961,6 @@
             initDrawingCanvas();
         });
 
-        // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
         function syncCoverInputs() {
             const valProject = document.getElementById('coverInputProject').value;
             const valDate = document.getElementById('coverInputDate').value;
@@ -904,7 +970,6 @@
             if(pInput) pInput.value = valProject;
             if(dInput) dInput.value = valDate;
 
-            // 🌟 ซิงค์หัวกระดาษของทุกหน้าอัตโนมัติ
             const reportTypeInput = document.getElementById('coverInputReportType');
             if (reportTypeInput) {
                 let headerText = reportTypeInput.value.trim().toUpperCase();
@@ -915,38 +980,6 @@
                 
                 const webH = document.getElementById('webViewHeaderTitle');
                 if (webH) webH.innerText = headerText;
-            }
-        }
-
-        function toggleModuleGrid() {
-            window.isGridScrollLocked = true;
-            executeToggleGrid(!isGridCollapsed);
-            setTimeout(() => { window.isGridScrollLocked = false; }, 500); 
-        }
-
-        function executeToggleGrid(forceCollapse) {
-            if (isGridCollapsed === forceCollapse) return;
-            
-            const wrapper = document.getElementById('moduleGridWrapper');
-            const icon = document.getElementById('toggleGridIcon');
-            const text = document.getElementById('toggleGridText');
-            
-            isGridCollapsed = forceCollapse;
-            
-            if (isGridCollapsed) {
-                wrapper.style.maxHeight = '0px';
-                wrapper.style.opacity = '0';
-                wrapper.style.transform = 'scaleY(0)';
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-                text.innerText = 'ขยายเมนูหัวข้อ';
-            } else {
-                wrapper.style.maxHeight = '500px';
-                wrapper.style.opacity = '1';
-                wrapper.style.transform = 'scaleY(1)';
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
-                text.innerText = 'พับเก็บเมนู';
             }
         }
 
@@ -986,7 +1019,7 @@
             const activeModules = Array.from(container.children).filter(el => !el.classList.contains('hidden'));
             
             if(activeModules.length === 0) {
-                alert('ยังไม่มีหัวข้อที่เปิดใช้งาน กรุณาเลือกหัวข้อจากเมนูด้านบนก่อนครับ');
+                alert('ยังไม่มีหัวข้อที่เปิดใช้งาน กรุณาเลือกจากแถบเมนูด้านซ้ายก่อนครับ');
                 return;
             }
 
@@ -999,7 +1032,7 @@
                 let html = `
                     <div class="p-2 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors group">
                         <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full p-1">
-                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors pointer-events-none">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors pointer-events-none shrink-0">
                                 <i class="fa-solid fa-grip-vertical"></i>
                             </div>
                             <span class="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors pointer-events-none">${moduleTitles[modId]}</span>
@@ -1013,20 +1046,38 @@
                 const subInfo = getSubContainerInfo(modId);
                 if (subInfo) {
                     const subContainer = document.getElementById(subInfo.id);
-                    if (subContainer && subContainer.children.length > 1) {
+                    // 🌟 เปลี่ยนให้แสดงรายการย่อยเสมอ (> 0) เพื่อให้เห็นชื่อตู้ที่พิมพ์แก้ไขใหม่ได้ทันที
+                    if (subContainer && subContainer.children.length > 0) {
                         html += `<ul class="sub-reorder-list bg-slate-50 p-2 space-y-2 border-t border-slate-100 pl-10" data-parent="${subInfo.id}" data-class="${subInfo.cls}">`;
                         Array.from(subContainer.children).forEach((subBlock, index) => {
                             if (!subBlock.id) return;
-                            const panelInput = subBlock.querySelector('input[placeholder*="ระบุชื่อตู้"]');
-                            let subTitle = `ชุดที่ ${index + 1}`;
-                            if (panelInput && panelInput.value.trim() !== '') {
-                                subTitle = `ตู้: ${panelInput.value}`;
+                            
+                            // 🌟 ดึงชื่อที่ถูกแก้ไข (เช่น Before MDB) และชื่อตู้ มาแสดงให้ตรงกับสารบัญ 🌟
+                            let blockTitle = '';
+                            const titleInput = subBlock.querySelector('input.photo-group-title-input');
+                            if (titleInput) {
+                                blockTitle = titleInput.value.trim() || titleInput.getAttribute('value');
+                            } else {
+                                const baseTitleSpan = subBlock.querySelector('.block-base-title');
+                                if (baseTitleSpan) blockTitle = baseTitleSpan.innerText.trim();
                             }
+                            if (!blockTitle || blockTitle === 'undefined') {
+                                blockTitle = moduleTitles[modId] || 'Inspection';
+                            }
+
+                            const panelInput = subBlock.querySelector('input.eq-panel-input');
+                            let eqName = '';
+                            if (panelInput && panelInput.value.trim() !== '') {
+                                eqName = ` (${panelInput.value.trim()})`;
+                            }
+
+                            let subTitle = `${blockTitle}${eqName}`;
+
                             html += `
                                 <li class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300" data-id="${subBlock.id}">
-                                    <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full">
-                                        <i class="fa-solid fa-bars text-slate-300 pointer-events-none text-xs"></i>
-                                        <span class="text-sm font-semibold text-slate-600 pointer-events-none">${subTitle}</span>
+                                    <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full overflow-hidden">
+                                        <i class="fa-solid fa-bars text-slate-300 pointer-events-none text-xs shrink-0"></i>
+                                        <span class="text-sm font-semibold text-slate-600 pointer-events-none truncate" title="${subTitle}">${subTitle}</span>
                                     </div>
                                     <button onclick="scrollToElement('${subBlock.id}')" class="go-to-btn text-slate-400 hover:text-blue-600 hover:bg-blue-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่ตู้ใบนี้">
                                         <i class="fa-solid fa-arrow-right"></i>
@@ -1208,7 +1259,6 @@
                 if(cb) cb.checked = true;
             });
 
-            // Re-render scope items
             const listUl = document.getElementById('dynamicScopeList');
             if (listUl) {
                 listUl.innerHTML = '';
@@ -1219,12 +1269,11 @@
                 }
             }
 
-            // Patch: สำหรับ Draft เก่าที่ยังไม่มีปุ่มวาดรูุป
             patchOldPhotoBoxes();
 
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
-            syncCoverInputs(); // อัปเดตหัวกระดาษตอนโหลด Draft
+            syncCoverInputs(); 
         }
 
         function patchOldPhotoBoxes() {
@@ -1320,7 +1369,6 @@
                 moduleDiv.classList.remove('hidden');
                 if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
 
-                // 🌟 หากเปิดใช้งานหัวข้อแล้วไม่มีข้อมูลอยู่เลย ให้สร้างขึ้นมา 1 ชุดอัตโนมัติ
                 const subInfo = getSubContainerInfo(moduleId);
                 if (subInfo) {
                     const container = document.getElementById(subInfo.id);
@@ -1469,7 +1517,6 @@
                 <div id="block_${prefix}" class="photo-group-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0 flex-grow w-3/4">
-                            <!-- 🌟 เปลี่ยนสีพื้นหลังไอคอนให้เป็นสีเทา (bg-slate-700) 🌟 -->
                             <div class="section-icon bg-slate-700 shrink-0"><i class="fa-solid fa-file-circle-plus text-white"></i></div>
                             <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                         </div>
@@ -1489,15 +1536,12 @@
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addPhotoBox('grid_${prefix}', '${type}')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
-                            <!-- 🌟 เปลี่ยนสีปุ่มเพิ่ม Description เป็นสีเทา 🌟 -->
                             <button onclick="addDescriptionBox('${prefix}')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-comment-dots mr-1"></i> เพิ่ม Description</button>
                         </div>
                     </div>
                     
-                    <!-- 🌟 พื้นที่สำหรับรูปภาพ (ย้ายขึ้นมาอยู่บน) 🌟 -->
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4 mb-4"></div>
 
-                    <!-- 🌟 พื้นที่สำหรับพิมพ์ Description (ย้ายลงมาอยู่ล่าง) 🌟 -->
                     <div id="desc_container_${prefix}" class="w-full flex flex-col gap-2 mt-2"></div>
                 </div>
             `;
@@ -2495,7 +2539,8 @@
             const el = document.getElementById(elementId);
             if (!el) return null;
 
-            let pageCount = 1; 
+            // 🌟 แก้ไข: เปลี่ยนจาก 1 เป็น 0 เพื่อหักลบหน้าปกออกจากการนับ 🌟
+            let pageCount = 0; 
             
             const allBreaks = document.querySelectorAll('.pdf-page-break');
             for (let i = 0; i < allBreaks.length; i++) {
@@ -2731,6 +2776,8 @@
         // 🌟 🌟 🌟 🌟 🌟
 
         function prepareDocumentForPrint(isNative = false) {
+            const scrollArea = document.getElementById('a4ScrollArea');
+            if (scrollArea) scrollArea.scrollTo(0, 0); 
             window.scrollTo(0, 0); 
             
             const wrapper = document.querySelector('.a4-wrapper');
@@ -2844,6 +2891,10 @@
 
             const nativePageNums = document.getElementById('nativePageNumbers');
             if (nativePageNums) nativePageNums.remove();
+
+            // ล้างค่า relative ที่เราตั้งไว้ตอนพิมพ์
+            const exportWrapper = document.getElementById('exportWrapper');
+            if (exportWrapper) exportWrapper.style.position = '';
 
             const ghost = document.getElementById('ghostSpacerHacker');
             if (ghost) ghost.remove();
@@ -3081,19 +3132,22 @@
                         
                         const totalPages = Math.max(calculatedPages, explicitPages);
                         
+                        // 🌟 สร้างระบบเลขหน้าด้วย Inline Style แบบบังคับแสดงผล 🌟
                         const pageNumContainer = document.createElement('div');
                         pageNumContainer.id = 'nativePageNumbers';
-                        pageNumContainer.className = 'absolute top-0 left-0 w-full pointer-events-none z-[9999] hidden print:block';
+                        pageNumContainer.setAttribute('style', 'position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 99999; display: block;');
                         
                         for (let i = 1; i <= totalPages; i++) {
                             const pageNum = document.createElement('div');
-                            pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1 z-[10001] print:block'; 
-                            pageNum.style.top = `calc(${(i + 1) * 297}mm - 8mm)`; 
                             pageNum.innerText = `Page ${i} of ${totalPages}`; 
+                            // คำนวณพิกัดให้อยู่ตรงมุมขวาล่างของแถบ Footer (ห่างจากขอบล่าง 9mm)
+                            pageNum.setAttribute('style', `position: absolute; right: 15mm; top: ${((i + 1) * 297) - 9}mm; font-size: 10.5px; font-weight: bold; color: #f8fafc; font-family: sans-serif; z-index: 100000; display: block;`);
                             pageNumContainer.appendChild(pageNum);
                         }
                         
-                        document.body.appendChild(pageNumContainer);
+                        const exportWrapper = document.getElementById('exportWrapper');
+                        exportWrapper.style.position = 'relative'; 
+                        exportWrapper.appendChild(pageNumContainer);
                     }
                 } catch (e) {
                     console.error("Pagination Error:", e);
