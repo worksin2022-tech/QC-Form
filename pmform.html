@@ -12,6 +12,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- SortableJS (สำหรับการลากวางสลับตำแหน่ง) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Fabric.js (ระบบวาดและจัดการรูปทรงอัจฉริยะ) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <!-- Google Fonts: Sarabun -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
@@ -205,12 +207,19 @@
         .paper-input { border-bottom: 1px solid transparent; background: transparent; width: 100%; transition: all 0.3s ease; padding: 2px 4px; }
         .paper-input:hover { background: #f8fafc; border-bottom-color: #cbd5e1; }
         .paper-input:focus { background: #eff6ff; border-bottom-color: #3b82f6; outline: none; }
+        
         .photo-box { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: all 0.2s ease; }
         .photo-box:hover { border-color: #60a5fa; background: #eff6ff; }
         .photo-image { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10; background-color: white; border-radius: inherit; }
+        
+        /* 🌟 ปุ่มลบรูุป และ ปุ่มวาดรูป 🌟 */
         .delete-photo-btn { position: absolute; top: 8px; right: 8px; background: #ef4444; color: white; border-radius: 8px; padding: 4px 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .photo-box:hover .delete-photo-btn { opacity: 1; }
         .delete-photo-btn:hover { background: #dc2626; transform: scale(1.05); }
+
+        .edit-photo-btn { position: absolute; bottom: 8px; right: 8px; background: #4f46e5; color: white; border-radius: 8px; padding: 4px 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .photo-box:hover .edit-photo-btn { opacity: 1; }
+        .edit-photo-btn:hover { background: #4338ca; transform: scale(1.05); }
 
         table { border-collapse: collapse; width: 100%; background-color: #ffffff; }
         th, td { border: 1px solid #cbd5e1 !important; padding: 6px; background-clip: padding-box !important; }
@@ -614,7 +623,7 @@
                                         <div id="trip_container"></div>
                                     </div>
 
-                                    <!-- 🌟 เพิ่มโมดูล Blank ตรงนี้ -->
+                                    <!-- 🌟 โมดูล Blank -->
                                     <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
                                         <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
                                             <!-- 🌟 เปลี่ยนสีปุ่มให้เป็นสีเทา (Slate) 🌟 -->
@@ -687,7 +696,53 @@
         </div>
     </div>
 
-    <!-- 🧠 JAVASCRIPT LOGIC (สมบูรณ์ 100% ไม่มีตกหล่น) -->
+    <!-- 🎨 MODAL สำหรับวาดรูปลงบนรูปภาพ (เวอร์ชั่น Fabric.js) -->
+    <div id="drawingModal" class="fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 w-full" style="max-width: 1200px; height: 95vh;">
+            <!-- Header Tools -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b bg-slate-50 shrink-0 gap-3">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2 shrink-0"><i class="fa-solid fa-paintbrush text-indigo-500"></i> เน้นข้อความบนรูปภาพ</h3>
+                
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                    <!-- แถบเครื่องมือวาดและรูปทรง -->
+                    <div class="flex items-center bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex-wrap">
+                        <button id="btnToolSelect" onclick="setDrawingMode('select')" class="p-2 rounded text-slate-500 hover:bg-slate-100 transition-colors" title="เลือกและเคลื่อนย้าย"><i class="fa-solid fa-arrow-pointer"></i></button>
+                        <button id="btnToolDraw" onclick="setDrawingMode('draw')" class="p-2 rounded bg-indigo-100 text-indigo-600 transition-colors" title="วาดอิสระ"><i class="fa-solid fa-pen"></i></button>
+                        <div class="w-px h-6 bg-slate-300 mx-1 hidden sm:block"></div>
+                        <button onclick="addShape('rect')" class="p-2 rounded text-slate-500 hover:bg-slate-100 transition-colors" title="เพิ่มสี่เหลี่ยม"><i class="fa-regular fa-square"></i></button>
+                        <button onclick="addShape('circle')" class="p-2 rounded text-slate-500 hover:bg-slate-100 transition-colors" title="เพิ่มวงกลม"><i class="fa-regular fa-circle"></i></button>
+                        <button onclick="addShape('arrow')" class="p-2 rounded text-slate-500 hover:bg-slate-100 transition-colors" title="เพิ่มลูกศร"><i class="fa-solid fa-arrow-right-long"></i></button>
+                        <div class="w-px h-6 bg-slate-300 mx-1 hidden sm:block"></div>
+                        <button onclick="deleteSelectedObject()" class="p-2 rounded text-red-500 hover:bg-red-50 transition-colors" title="ลบรูปทรงที่เลือก (สามารถกดปุ่ม Delete บนคีย์บอร์ดได้)"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm shrink-0">
+                        <input type="color" id="brushColor" value="#ef4444" class="w-6 h-6 cursor-pointer border-0 p-0" oninput="updateBrush()">
+                        <input type="range" id="brushSize" min="1" max="15" value="4" class="w-16 sm:w-20 accent-indigo-600" oninput="updateBrush()">
+                    </div>
+                    
+                    <button onclick="clearCanvas()" class="text-sm font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors border border-red-200 shrink-0">
+                        <i class="fa-solid fa-eraser"></i> <span class="hidden sm:inline">ลบทั้งหมด</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Canvas Area -->
+            <div class="flex-grow w-full bg-slate-200 relative overflow-hidden flex items-center justify-center p-2 sm:p-4" id="canvasContainer">
+                <canvas id="drawCanvas" class="shadow-md"></canvas>
+            </div>
+            
+            <!-- Footer -->
+            <div class="p-4 border-t bg-white flex justify-end gap-3 shrink-0">
+                <button onclick="closeDrawingModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">ยกเลิก</button>
+                <button onclick="saveDrawing()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl font-bold shadow-md transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> บันทึกรูปลงรายงาน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🧠 JAVASCRIPT LOGIC -->
     <script>
         let selectedModules = []; 
         let breakerCount = 0;
@@ -701,6 +756,10 @@
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
         let reorderSortable = null;
         let isGridCollapsed = false;
+
+        // ตัวแปรสำหรับ Fabric.js Canvas
+        let fCanvas = null;
+        let currentPreviewIdToEdit = null;
 
         function updateResultColor(select) {
             select.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
@@ -788,7 +847,6 @@
             const isLoaded = await loadDraft(); 
             
             if (!isLoaded) {
-                // 🌟 แก้ไขตรงนี้: เปลี่ยนจาก "เพิ่ม Scope งานที่ทำ" เป็น "" (ค่าว่าง) 🌟
                 addCustomScope("");
                 addGeneralCheckBlock(); 
                 addInsulationBlock();
@@ -832,6 +890,8 @@
             document.getElementById('exportWrapper').addEventListener('input', () => {
                 showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
             });
+
+            initDrawingCanvas();
         });
 
         // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
@@ -1159,9 +1219,37 @@
                 }
             }
 
+            // Patch: สำหรับ Draft เก่าที่ยังไม่มีปุ่มวาดรูุป
+            patchOldPhotoBoxes();
+
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
             syncCoverInputs(); // อัปเดตหัวกระดาษตอนโหลด Draft
+        }
+
+        function patchOldPhotoBoxes() {
+            document.querySelectorAll('.photo-box').forEach(box => {
+                if (!box.querySelector('.edit-photo-btn')) {
+                    const imgInp = box.querySelector('input[type="file"]');
+                    if(imgInp) {
+                        const parts = imgInp.id.split('_');
+                        if(parts.length >= 3) {
+                            const prefix = parts[1];
+                            const i = parts[2];
+                            const isHidden = box.querySelector('.photo-image').classList.contains('hidden') ? 'hidden' : '';
+                            box.insertAdjacentHTML('beforeend', `
+                                <div class="edit-photo-btn no-print ${isHidden} absolute bottom-2 right-2 bg-indigo-600 text-white rounded-lg p-2 flex items-center justify-center font-bold text-xs cursor-pointer z-20 hover:bg-indigo-700 shadow-md transition-all group-hover:opacity-100 opacity-0" onclick="event.stopPropagation(); openDrawingModal('prev_${prefix}_${i}')">
+                                    <i class="fa-solid fa-paintbrush mr-1"></i> วาด
+                                </div>
+                            `);
+                            
+                            imgInp.setAttribute('multiple', 'multiple');
+                            const gridId = box.parentElement.id;
+                            imgInp.setAttribute('onchange', `handleMultiUpload(event, '${gridId}', '${prefix}', ${i})`);
+                        }
+                    }
+                }
+            });
         }
 
         async function exportData() {
@@ -1275,7 +1363,6 @@
             }
         }
 
-        // 🌟 ฟังก์ชันจัดการ Scope of work (แบบกำหนดเอง)
         function addCustomScope(text = "") {
             const listUl = document.getElementById('dynamicScopeList');
             const emptyText = document.getElementById('emptyScopeText');
@@ -1286,7 +1373,6 @@
             li.className = 'group relative mb-2 pl-1 scope-item-row print:mb-3';
             li.innerHTML = `
                 <div class="flex items-center w-full">
-                    <!-- 🌟 เปลี่ยน Placeholder ตรงนี้ 🌟 -->
                     <input type="text" data-scope-id="${customId}" value="${text}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-1 transition-colors text-[15px]" oninput="this.setAttribute('value', this.value)" placeholder="เพิ่ม Scope งานที่ทำ...">
                     <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
@@ -1313,12 +1399,6 @@
             }
         }
 
-        // เอา updateModuleTitle ออกเพื่อไม่ให้ซิงค์ชื่อกลับไปที่ Global ทำให้บล็อกแต่ละบล็อกมีชื่ออิสระจากกัน
-        function updateModuleTitle(modId, newTitle) {
-            // function นี้ถูกเปลี่ยนการทำงานเพื่อรองรับการตั้งชื่ออิสระ
-            // เก็บไว้กัน error หากมีโค้ดเก่าเรียกใช้
-        }
-
         function syncInputs(className, value) {
             document.querySelectorAll('.' + className).forEach(el => { if(el.value !== value) el.value = value; });
         }
@@ -1335,13 +1415,11 @@
                 'af': { color: 'slate', icon: 'fa-camera', modId: 'mod_after', defaultTitle: 'Photograph: After' }
             }[type];
 
-            // 🌟 ป้องกันบั๊ก undefined ถ้าโหลดมาจาก Draft เก่า
             let currentTitle = moduleTitles[config.modId];
             if (!currentTitle || currentTitle === 'undefined') {
                 currentTitle = config.defaultTitle;
             }
 
-            // 🌟 ให้บล็อกที่เพิ่มเข้ามาใหม่ มีการตัดหน้าเสมอ
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-6' : '';
 
             const blockHtml = `
@@ -1991,7 +2069,6 @@
                         <tr>
                             <td class="border border-slate-400 py-4 px-3 font-bold text-slate-700 text-center align-middle">Standard<br>Curve</td>
                             <td colspan="4" class="border border-slate-400 py-2 px-2">
-                                <!-- 🌟 เพิ่ม Dropdown เลือกรูป Curve 🌟 -->
                                 <div class="flex justify-start mb-2 no-print">
                                     <select id="select_trip_curve_${prefix}" class="paper-input w-full max-w-[300px] border border-slate-300 bg-slate-50 text-[13px] px-2 py-1 rounded shadow-sm outline-none focus:border-orange-500 font-medium" onchange="handleTripCurveSelection('${prefix}', this.value)">
                                         <option value="">-- ไม่ใส่รูปภาพ --</option>
@@ -2107,6 +2184,7 @@
             else { photoSec.classList.remove('pdf-page-break', 'pt-6'); }
         }
 
+        // 🌟 เปลี่ยนการทำงานของ addPhotoBox ให้รองรับการอัปโหลดหลายไฟล์ และปุ่มวาดรูป
         function addPhotoBox(gridId, prefix) {
             photoCounters[prefix]++;
             const i = photoCounters[prefix];
@@ -2127,9 +2205,16 @@
                     <span class="text-sm font-semibold">อัปโหลดรูปภาพ</span>
                 </div>
                 <div id="prev_${prefix}_${i}" class="photo-image hidden" style="background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: inherit;"></div>
-                <input type="file" id="img_${prefix}_${i}" class="hidden" accept="image/*" onchange="previewImg(event, 'prev_${prefix}_${i}')">
+                <!-- 🌟 เพิ่ม attribute "multiple" และเรียกใช้ฟังก์ชันใหม่สำหรับ Multi-upload 🌟 -->
+                <input type="file" id="img_${prefix}_${i}" class="hidden" accept="image/*" multiple onchange="handleMultiUpload(event, '${gridId}', '${prefix}', ${i})">
+                
                 <div class="delete-photo-btn no-print" onclick="event.stopPropagation(); removeImg('prev_${prefix}_${i}', 'img_${prefix}_${i}')">
                     <i class="fa-solid fa-trash-can mr-1"></i> ลบรูป
+                </div>
+                
+                <!-- 🌟 เพิ่มปุ่มสำหรับวาดรูปลงบนรูปภาพ 🌟 -->
+                <div class="edit-photo-btn no-print hidden absolute bottom-2 right-2 bg-indigo-600 text-white rounded-lg p-2 flex items-center justify-center font-bold text-xs cursor-pointer z-20 hover:bg-indigo-700 shadow-md transition-all group-hover:opacity-100 opacity-0" onclick="event.stopPropagation(); openDrawingModal('prev_${prefix}_${i}')">
+                    <i class="fa-solid fa-paintbrush mr-1"></i> วาด
                 </div>
             `;
             grid.appendChild(box);
@@ -2157,7 +2242,6 @@
                     canvas.width = width;
                     canvas.height = height;
                     
-                    // 🌟 ถมพื้นหลังด้วยสีขาวก่อนวางรูปภาพ ป้องกันพื้นหลังโปร่งใสกลายเป็นสีดำ
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
@@ -2171,6 +2255,60 @@
             reader.readAsDataURL(file);
         }
 
+        // 🌟 ฟังก์ชันจัดการอัปโหลดภาพทีละหลายๆ รูป 🌟
+        function handleMultiUpload(event, gridId, prefix, clickedIndex) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const grid = document.getElementById(gridId);
+            let fileIdx = 0;
+
+            let boxes = Array.from(grid.querySelectorAll('.photo-box'));
+            let startIdx = boxes.findIndex(box => box.querySelector(`input[id="img_${prefix}_${clickedIndex}"]`));
+            if (startIdx === -1) startIdx = 0;
+
+            const processNextFile = () => {
+                if (fileIdx >= files.length) {
+                    event.target.value = ''; // Reset file input
+                    return;
+                }
+                
+                // หากช่องใส่รูปหมด ให้สร้างกล่องเพิ่มอัตโนมัติ
+                if (startIdx >= boxes.length) {
+                    addPhotoBox(gridId, prefix);
+                    boxes = Array.from(grid.querySelectorAll('.photo-box'));
+                }
+                
+                const box = boxes[startIdx];
+                const imgElement = box.querySelector('.photo-image');
+                
+                // จะเขียนทับเฉพาะช่องที่ถูกคลิก หรือช่องที่ว่างอยู่เท่านั้น
+                const isClickedBox = (startIdx === boxes.findIndex(b => b.querySelector(`input[id="img_${prefix}_${clickedIndex}"]`)));
+                
+                if (isClickedBox || imgElement.classList.contains('hidden')) {
+                    const file = files[fileIdx++];
+                    compressImage(file, (compressedBase64) => {
+                        imgElement.style.backgroundImage = `url('${compressedBase64}')`;
+                        imgElement.classList.remove('hidden');
+                        
+                        const editBtn = box.querySelector('.edit-photo-btn');
+                        if(editBtn) editBtn.classList.remove('hidden');
+                        
+                        showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                        
+                        startIdx++;
+                        processNextFile(); // ประมวลผลรูปถัดไปเมื่อรูปปัจจุบันเสร็จแล้ว
+                    });
+                } else {
+                    // หากช่องนี้มีรูปอยู่แล้วและไม่ใช่ช่องที่ถูกคลิก ให้ข้ามไปหาช่องถัดไป
+                    startIdx++;
+                    processNextFile();
+                }
+            };
+            
+            processNextFile();
+        }
+
         function previewImg(event, previewId) {
             const file = event.target.files[0];
             if (file) {
@@ -2178,6 +2316,13 @@
                     const imgElement = document.getElementById(previewId);
                     imgElement.style.backgroundImage = `url('${compressedBase64}')`;
                     imgElement.classList.remove('hidden');
+                    
+                    const box = imgElement.closest('.photo-box');
+                    if(box) {
+                        const editBtn = box.querySelector('.edit-photo-btn');
+                        if(editBtn) editBtn.classList.remove('hidden');
+                    }
+                    
                     showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
                 });
             }
@@ -2190,6 +2335,12 @@
             imgElement.classList.add('hidden');
             const inputElement = document.getElementById(inputId);
             if(inputElement) inputElement.value = ""; 
+            
+            const box = imgElement.closest('.photo-box');
+            if(box) {
+                const editBtn = box.querySelector('.edit-photo-btn');
+                if(editBtn) editBtn.classList.add('hidden');
+            }
         }
 
         function previewCoverLogo(event, imgId, placeholderId) {
@@ -2232,7 +2383,6 @@
                             wrapper.appendChild(breaker);
                         }
                         
-                        // 🌟 แก้ไขตรงนี้: เพิ่ม pt-8 เข้าไปเฉพาะ Chunk ที่ไม่ใช่ก้อนแรก (หน้าถัดไป)
                         const topSpacingClass = !isFirstChunk ? ' pt-8' : '';
                         const newGrid = document.createElement('div');
                         newGrid.className = grid.className.replace('tmp-orig-grid', '').replace('tmp-no-print', '') + ' w-full tmp-chunk-grid' + topSpacingClass;
@@ -2247,7 +2397,6 @@
             }
         }
 
-        // 🌟 ฟังก์ชันคำนวณและอัปเดตเลขหน้าให้สารบัญ (Content) โฉมใหม่
         function updateTOC() {
             const tocList = document.getElementById('tocList');
             if (!tocList) return;
@@ -2255,26 +2404,22 @@
 
             const items = [];
             
-            // ตรวจสอบว่ามีหัวข้อ Scope of work หรือไม่
             const scopeSec = document.getElementById('scopeSection');
             if (scopeSec && !scopeSec.classList.contains('hidden') && window.getComputedStyle(scopeSec).display !== 'none') {
                 items.push({ title: 'Scope of work', id: 'scopeSection' });
             }
 
-            // ดึงหัวข้อ Module ทั้งหมดที่เปิดใช้งาน
             const container = document.getElementById('moduleContainer');
             if (container) {
                 const activeModules = Array.from(container.children)
                     .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden') && window.getComputedStyle(el).display !== 'none');
                 
                 activeModules.forEach(mod => {
-                    // หากเป็นหน้า Calibration
                     if (mod.id === 'mod_calibration') {
                         items.push({ title: 'Certificate of Calibration', id: mod.id });
                         return;
                     }
 
-                    // ดึงทุกชุดทดสอบออกมา
                     const blocks = Array.from(mod.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block'));
                     
                     if (blocks.length > 0) {
@@ -2326,11 +2471,10 @@
                 });
             }
 
-            // วาดสารบัญรูปแบบใหม่ (Flexbox List ไร้ตาราง)
             items.forEach((item, index) => {
                 const pageNum = calculatePageNumber(item.id);
                 const displayNum = pageNum !== null ? String(pageNum).padStart(2, '0') : '-';
-                const indexStr = String(index + 1).padStart(2, '0'); // ใส่ 0 นำหน้าให้สวยงาม
+                const indexStr = String(index + 1).padStart(2, '0');
                 
                 const row = document.createElement('div');
                 row.className = 'flex w-full items-end py-1.5 group';
@@ -2347,24 +2491,21 @@
             });
         }
 
-        // 🌟 ฟังก์ชันนับเลขหน้าจาก .pdf-page-break
         function calculatePageNumber(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return null;
 
-            let pageCount = 1; // หน้าปกนับเป็น 1 เสมอ
+            let pageCount = 1; 
             
             const allBreaks = document.querySelectorAll('.pdf-page-break');
             for (let i = 0; i < allBreaks.length; i++) {
                 const brk = allBreaks[i];
                 
-                // ข้ามอันที่ถูกซ่อนไว้
                 if (brk.classList.contains('hidden') || window.getComputedStyle(brk).display === 'none') continue;
                 if (brk.closest('.hidden') || brk.closest('.tmp-no-print')) continue;
 
                 const pos = brk.compareDocumentPosition(el);
                 
-                // ถ้ารอยตัด (brk) อยู่ก่อนหน้า element เป้าหมาย ให้นับ +1 หน้า
                 if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
                     pageCount++;
                 } else if (brk === el) {
@@ -2373,6 +2514,221 @@
             }
             return pageCount;
         }
+
+        // 🌟 🌟 ระบบกระดานวาดรูปและรูปทรง (Fabric.js Image Annotation) 🌟 🌟
+        function initDrawingCanvas() {
+            // ดักจับปุ่มลบรูปทรงบนคีย์บอร์ด (Delete / Backspace)
+            window.addEventListener('keydown', (e) => {
+                if(document.getElementById('drawingModal').classList.contains('flex')) {
+                    if (e.key === 'Delete' || e.key === 'Backspace') {
+                        // ห้ามลบถ้ากำลังพิมพ์ข้อความในช่อง input อื่นอยู่
+                        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                            deleteSelectedObject();
+                        }
+                    }
+                }
+            });
+        }
+
+        function openDrawingModal(previewId) {
+            currentPreviewIdToEdit = previewId;
+            const modal = document.getElementById('drawingModal');
+            
+            const imgElement = document.getElementById(previewId);
+            const bgImage = imgElement.style.backgroundImage;
+            if (!bgImage || bgImage === 'none') return;
+            
+            let url = bgImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, ''); 
+            
+            // 🌟 สำคัญ: ต้องแสดง Modal ก่อนคำนวณขนาด ไม่งั้นค่าจะเป็น 0 ทำให้ Canvas พัง!
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // รอให้ Modal แอนิเมชันเปิดสุดก่อนนิดนึงเพื่อความชัวร์ในการดึงขนาด
+            setTimeout(() => {
+                const img = new Image();
+                img.onload = () => {
+                    const container = document.getElementById('canvasContainer');
+                    let maxWidth = container.clientWidth - 40;
+                    let maxHeight = container.clientHeight - 40;
+                    
+                    let w = img.width;
+                    let h = img.height;
+                    
+                    // ย่อขนาด Canvas ให้พอดีกับหน้าจอโดยรักษาสัดส่วนรูป
+                    if (w > maxWidth || h > maxHeight) {
+                        const ratio = Math.min(maxWidth / w, maxHeight / h);
+                        w = w * ratio;
+                        h = h * ratio;
+                    }
+                    
+                    // รีเซ็ต DOM ของ Canvas ป้องกันบั๊กซ้อนทับกัน
+                    container.innerHTML = '<canvas id="drawCanvas" class="shadow-md"></canvas>';
+                    const canvasDom = document.getElementById('drawCanvas');
+                    
+                    if (fCanvas) {
+                        fCanvas.dispose();
+                    }
+
+                    // สร้าง Fabric Canvas ตัวใหม่
+                    fCanvas = new fabric.Canvas('drawCanvas', {
+                        isDrawingMode: true,
+                        width: w,
+                        height: h
+                    });
+
+                    // นำรูปภาพตั้งต้นมาทำเป็น Background
+                    fabric.Image.fromURL(url, function(fImg) {
+                        fImg.scaleToWidth(w);
+                        fImg.scaleToHeight(h);
+                        fCanvas.setBackgroundImage(fImg, fCanvas.renderAll.bind(fCanvas));
+                    });
+
+                    // ตั้งค่าเริ่มต้นหัวปากกา
+                    updateBrush();
+                    setDrawingMode('draw');
+                };
+                img.src = url;
+            }, 50);
+        }
+
+        function closeDrawingModal() {
+            const modal = document.getElementById('drawingModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentPreviewIdToEdit = null;
+            if(fCanvas) {
+                fCanvas.dispose();
+                fCanvas = null;
+            }
+            // รีเซ็ต Canvas Container
+            document.getElementById('canvasContainer').innerHTML = '<canvas id="drawCanvas" class="shadow-md"></canvas>';
+        }
+
+        function saveDrawing() {
+            if (!currentPreviewIdToEdit || !fCanvas) return;
+            
+            // ปิดโหมดวาด เพื่อซ่อนตัว cursor ปากกาก่อนแคปรูป
+            fCanvas.isDrawingMode = false; 
+            fCanvas.discardActiveObject(); 
+            fCanvas.renderAll();
+            
+            // แปลง Canvas กลับเป็นรูปภาพคุณภาพสูง (เพิ่ม multiplier เพื่อให้ภาพคมชัด)
+            const dataUrl = fCanvas.toDataURL({
+                format: 'jpeg',
+                quality: 0.9,
+                multiplier: 2 
+            });
+            
+            const imgElement = document.getElementById(currentPreviewIdToEdit);
+            imgElement.style.backgroundImage = `url('${dataUrl}')`;
+            
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            closeDrawingModal();
+        }
+
+        function clearCanvas() {
+            if(fCanvas) {
+                // ลบทุก object ที่วาดไว้ แต่คง Background Image ไว้
+                const objects = fCanvas.getObjects();
+                objects.forEach(obj => fCanvas.remove(obj));
+                fCanvas.renderAll();
+            }
+        }
+
+        function updateBrush() {
+            if(!fCanvas) return;
+            const color = document.getElementById('brushColor').value;
+            const width = parseInt(document.getElementById('brushSize').value, 10);
+            
+            // อัปเดตสีและความหนาของโหมดวาดอิสระ
+            fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas);
+            fCanvas.freeDrawingBrush.color = color;
+            fCanvas.freeDrawingBrush.width = width;
+
+            // หากมีการคลิกเลือกรูปทรงอยู่ ให้เปลี่ยนสีของรูปทรงนั้นด้วย
+            const activeObj = fCanvas.getActiveObject();
+            if (activeObj && activeObj.type !== 'path') { // ไม่ให้แก้สีของเส้นวาดอิสระเก่า
+                 activeObj.set('stroke', color);
+                 activeObj.set('strokeWidth', width);
+                 if(activeObj.type === 'path-arrow') {
+                      activeObj.set('fill', color);
+                 }
+                 fCanvas.renderAll();
+            }
+        }
+
+        function setDrawingMode(mode) {
+            if(!fCanvas) return;
+            const btnDraw = document.getElementById('btnToolDraw');
+            const btnSelect = document.getElementById('btnToolSelect');
+            
+            if (mode === 'draw') {
+                fCanvas.isDrawingMode = true;
+                btnDraw.classList.add('bg-indigo-100', 'text-indigo-600');
+                btnDraw.classList.remove('text-slate-500', 'hover:bg-slate-100');
+                btnSelect.classList.remove('bg-indigo-100', 'text-indigo-600');
+                btnSelect.classList.add('text-slate-500', 'hover:bg-slate-100');
+            } else {
+                fCanvas.isDrawingMode = false;
+                btnSelect.classList.add('bg-indigo-100', 'text-indigo-600');
+                btnSelect.classList.remove('text-slate-500', 'hover:bg-slate-100');
+                btnDraw.classList.remove('bg-indigo-100', 'text-indigo-600');
+                btnDraw.classList.add('text-slate-500', 'hover:bg-slate-100');
+            }
+        }
+
+        function addShape(type) {
+            if(!fCanvas) return;
+            
+            // เมื่อกดเพิ่มรูปทรง ให้เปลี่ยนเป็นโหมด "เลือก/ย้าย" ทันที เพื่อให้ผู้ใช้ย้ายรูปทรงได้
+            setDrawingMode('select');
+            
+            const color = document.getElementById('brushColor').value;
+            const strokeW = parseInt(document.getElementById('brushSize').value, 10);
+            const center = fCanvas.getCenter();
+            
+            let obj;
+            if (type === 'rect') {
+                obj = new fabric.Rect({
+                    left: center.left, top: center.top,
+                    width: 150, height: 150,
+                    fill: 'transparent', stroke: color, strokeWidth: strokeW,
+                    originX: 'center', originY: 'center',
+                    cornerColor: '#4f46e5', borderColor: '#4f46e5', transparentCorners: false
+                });
+            } else if (type === 'circle') {
+                obj = new fabric.Circle({
+                    left: center.left, top: center.top,
+                    radius: 75,
+                    fill: 'transparent', stroke: color, strokeWidth: strokeW,
+                    originX: 'center', originY: 'center',
+                    cornerColor: '#4f46e5', borderColor: '#4f46e5', transparentCorners: false
+                });
+            } else if (type === 'arrow') {
+                // สร้าง Path สำหรับรูปทรงลูกศรชี้ขวา
+                const arrowPath = 'M 0 10 L 60 10 L 60 -5 L 90 15 L 60 35 L 60 20 L 0 20 Z';
+                obj = new fabric.Path(arrowPath, {
+                    left: center.left, top: center.top,
+                    fill: color, stroke: color, strokeWidth: 1,
+                    originX: 'center', originY: 'center',
+                    cornerColor: '#4f46e5', borderColor: '#4f46e5', transparentCorners: false,
+                    type: 'path-arrow' // ชื่อ type ไว้สำหรับดักตอนเปลี่ยนสี
+                });
+            }
+            
+            fCanvas.add(obj);
+            fCanvas.setActiveObject(obj);
+        }
+
+        function deleteSelectedObject() {
+            if(!fCanvas) return;
+            const activeObj = fCanvas.getActiveObject();
+            if (activeObj) {
+                fCanvas.remove(activeObj);
+            }
+        }
+        // 🌟 🌟 🌟 🌟 🌟
 
         function prepareDocumentForPrint(isNative = false) {
             window.scrollTo(0, 0); 
@@ -2414,7 +2770,6 @@
                 input.classList.add('hidden', 'tmp-hidden-element');
             });
 
-            // 🌟 จัดการ textarea (Description) ตอน Print ให้ความสูงยืดหยุ่นตามข้อความ
             document.querySelectorAll('textarea.paper-textarea').forEach(textarea => {
                 const span = document.createElement('span');
                 span.className = textarea.className + ' print-text-span !bg-transparent !border-none !p-0 !min-h-0 block whitespace-pre-wrap break-words';
@@ -2463,14 +2818,12 @@
             blocks.forEach(selector => {
                 document.querySelectorAll(selector).forEach(block => {
                     const grid = block.querySelector('.grid');
-                    // 🌟 แบ่งหน้าให้พอดี 6 รูป ตามไฟล์ต้นฉบับ
                     if (grid && selector.includes('contact')) splitGridForPrint(grid, 8, 8);
                     else if (grid && !selector.includes('grounding')) splitGridForPrint(grid, 6, 6); 
                     else if (grid) splitGridForPrint(grid, 4, 8);
                 });
             });
 
-            // 🌟 อัปเดตตารางสารบัญ (Content) ทันทีหลังจากแยกหน้าเสร็จ
             updateTOC();
         }
 
@@ -2550,7 +2903,6 @@
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = '';
 
-            // รีเซ็ตหน้าสารบัญกลับมาเป็นข้อความปกติหลังจากพริ้นต์เสร็จ
             const tocList = document.getElementById('tocList');
             if (tocList) {
                 tocList.innerHTML = `
@@ -2561,13 +2913,18 @@
                 `;
             }
 
-            // คืนค่าปุ่ม Print ให้กดได้อีกครั้ง
             const printBtn = document.querySelector('button[onclick="generateNativePDF()"]');
             if (printBtn && printBtn.hasAttribute('data-original-text')) {
                 printBtn.innerHTML = printBtn.getAttribute('data-original-text');
                 printBtn.disabled = false;
                 printBtn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
+        }
+
+        function drawPoly(pdf, pts, color) {
+            pdf.setFillColor(color[0], color[1], color[2]);
+            pdf.triangle(pts[0], pts[1], pts[2], pts[3], pts[6], pts[7], 'F');
+            pdf.triangle(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7], 'F');
         }
 
         function drawNativeHeaderFooter(pdf) {
@@ -2679,53 +3036,69 @@
                 return;
             }
             
+            const btn = document.querySelector('button[onclick="generateNativePDF()"]');
+            if (btn) {
+                btn.setAttribute('data-original-text', btn.innerHTML);
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> เตรียมเอกสาร...';
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            }
+            
             const wrapper = document.querySelector('.a4-wrapper');
             const originalWidth = wrapper.style.width;
             
             prepareDocumentForPrint(true);
             wrapper.style.width = '210mm'; 
             
-            requestAnimationFrame(() => {
-                const tableWrapper = document.getElementById('printLayoutTable');
-                const td = tableWrapper.querySelector('tbody td');
-                
-                const ghostSpacer = document.createElement('div');
-                ghostSpacer.style.height = '1px';
-                ghostSpacer.style.clear = 'both';
-                ghostSpacer.id = 'ghostSpacerHacker';
-                td.appendChild(ghostSpacer);
+            setTimeout(() => {
+                try {
+                    const tableWrapper = document.getElementById('printLayoutTable');
+                    if (tableWrapper) {
+                        const td = tableWrapper.querySelector('tbody td');
+                        
+                        const ghostSpacer = document.createElement('div');
+                        ghostSpacer.style.height = '1px';
+                        ghostSpacer.style.clear = 'both';
+                        ghostSpacer.id = 'ghostSpacerHacker';
+                        if (td) td.appendChild(ghostSpacer);
 
-                const mmNode = document.createElement("div");
-                mmNode.style.height = "100mm";
-                mmNode.style.position = "absolute";
-                document.body.appendChild(mmNode);
-                const pxPerMm = mmNode.offsetHeight / 100;
-                document.body.removeChild(mmNode);
-                
-                const tableHeight = tableWrapper.offsetHeight;
-                const a4HeightPx = 297 * pxPerMm;
-                
-                let calculatedPages = Math.ceil((tableHeight - (5 * pxPerMm)) / a4HeightPx);
-                if (calculatedPages < 1) calculatedPages = 1;
-                
-                const activeBreaks = Array.from(td.querySelectorAll('.pdf-page-break')).filter(el => el.offsetParent !== null);
-                const explicitPages = activeBreaks.length + 1;
-                
-                const totalPages = Math.max(calculatedPages, explicitPages);
-                
-                const pageNumContainer = document.createElement('div');
-                pageNumContainer.id = 'nativePageNumbers';
-                pageNumContainer.className = 'absolute top-0 left-0 w-full pointer-events-none z-[9999] hidden print:block';
-                
-                for (let i = 1; i <= totalPages; i++) {
-                    const pageNum = document.createElement('div');
-                    pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1 z-[10001] print:block'; 
-                    pageNum.style.top = `calc(${(i + 1) * 297}mm - 8mm)`; 
-                    pageNum.innerText = `Page ${i} of ${totalPages}`; 
-                    pageNumContainer.appendChild(pageNum);
+                        const mmNode = document.createElement("div");
+                        mmNode.style.height = "100mm";
+                        mmNode.style.position = "absolute";
+                        document.body.appendChild(mmNode);
+                        const pxPerMm = mmNode.offsetHeight / 100;
+                        document.body.removeChild(mmNode);
+                        
+                        const tableHeight = tableWrapper.offsetHeight;
+                        const a4HeightPx = 297 * pxPerMm;
+                        
+                        let calculatedPages = Math.ceil((tableHeight - (5 * pxPerMm)) / a4HeightPx);
+                        if (calculatedPages < 1) calculatedPages = 1;
+                        
+                        let activeBreaks = [];
+                        if (td) activeBreaks = Array.from(td.querySelectorAll('.pdf-page-break')).filter(el => el.offsetParent !== null);
+                        const explicitPages = activeBreaks.length + 1;
+                        
+                        const totalPages = Math.max(calculatedPages, explicitPages);
+                        
+                        const pageNumContainer = document.createElement('div');
+                        pageNumContainer.id = 'nativePageNumbers';
+                        pageNumContainer.className = 'absolute top-0 left-0 w-full pointer-events-none z-[9999] hidden print:block';
+                        
+                        for (let i = 1; i <= totalPages; i++) {
+                            const pageNum = document.createElement('div');
+                            pageNum.className = 'absolute right-[15mm] text-[10.5px] font-bold text-slate-100 px-1 z-[10001] print:block'; 
+                            pageNum.style.top = `calc(${(i + 1) * 297}mm - 8mm)`; 
+                            pageNum.innerText = `Page ${i} of ${totalPages}`; 
+                            pageNumContainer.appendChild(pageNum);
+                        }
+                        
+                        document.body.appendChild(pageNumContainer);
+                    }
+                } catch (e) {
+                    console.error("Pagination Error:", e);
                 }
                 
-                document.body.appendChild(pageNumContainer);
                 wrapper.style.width = originalWidth;
                 
                 window.addEventListener('afterprint', function cleanupGhost() {
@@ -2734,10 +3107,13 @@
                     window.removeEventListener('afterprint', cleanupGhost);
                 }, { once: true });
 
+                window.print();
+                
                 setTimeout(() => {
-                    window.print();
-                }, 100);
-            });
+                    restoreDocumentAfterPrint();
+                }, 1500);
+
+            }, 800);
         }
 
         window.addEventListener('afterprint', () => {
