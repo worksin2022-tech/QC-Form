@@ -830,6 +830,7 @@
         let tripCount = 0;
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
         let reorderSortable = null;
+        let isGridCollapsed = false;
 
         // ตัวแปรสำหรับ Fabric.js Canvas
         let fCanvas = null;
@@ -952,6 +953,21 @@
                 }
             });
             
+            let lastScrollY = window.scrollY;
+            window.isGridScrollLocked = false;
+            
+            window.addEventListener('scroll', () => {
+                if (window.isGridScrollLocked) return;
+                
+                const currentScrollY = window.scrollY;
+                if (currentScrollY > 200 && currentScrollY > lastScrollY + 10 && !isGridCollapsed) {
+                    executeToggleGrid(true);
+                } else if (currentScrollY < 50 && isGridCollapsed) {
+                    executeToggleGrid(false);
+                }
+                lastScrollY = currentScrollY;
+            });
+            
             setInterval(saveDraft, 3000); 
             
             document.getElementById('exportWrapper').addEventListener('input', () => {
@@ -961,6 +977,7 @@
             initDrawingCanvas();
         });
 
+        // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
         function syncCoverInputs() {
             const valProject = document.getElementById('coverInputProject').value;
             const valDate = document.getElementById('coverInputDate').value;
@@ -970,6 +987,7 @@
             if(pInput) pInput.value = valProject;
             if(dInput) dInput.value = valDate;
 
+            // 🌟 ซิงค์หัวกระดาษของทุกหน้าอัตโนมัติ
             const reportTypeInput = document.getElementById('coverInputReportType');
             if (reportTypeInput) {
                 let headerText = reportTypeInput.value.trim().toUpperCase();
@@ -980,6 +998,38 @@
                 
                 const webH = document.getElementById('webViewHeaderTitle');
                 if (webH) webH.innerText = headerText;
+            }
+        }
+
+        function toggleModuleGrid() {
+            window.isGridScrollLocked = true;
+            executeToggleGrid(!isGridCollapsed);
+            setTimeout(() => { window.isGridScrollLocked = false; }, 500); 
+        }
+
+        function executeToggleGrid(forceCollapse) {
+            if (isGridCollapsed === forceCollapse) return;
+            
+            const wrapper = document.getElementById('moduleGridWrapper');
+            const icon = document.getElementById('toggleGridIcon');
+            const text = document.getElementById('toggleGridText');
+            
+            isGridCollapsed = forceCollapse;
+            
+            if (isGridCollapsed) {
+                wrapper.style.maxHeight = '0px';
+                wrapper.style.opacity = '0';
+                wrapper.style.transform = 'scaleY(0)';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                text.innerText = 'ขยายเมนูหัวข้อ';
+            } else {
+                wrapper.style.maxHeight = '500px';
+                wrapper.style.opacity = '1';
+                wrapper.style.transform = 'scaleY(1)';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                text.innerText = 'พับเก็บเมนู';
             }
         }
 
@@ -1059,7 +1109,18 @@
                                 blockTitle = titleInput.value.trim() || titleInput.getAttribute('value');
                             } else {
                                 const baseTitleSpan = subBlock.querySelector('.block-base-title');
-                                if (baseTitleSpan) blockTitle = baseTitleSpan.innerText.trim();
+                                if (baseTitleSpan) {
+                                    blockTitle = baseTitleSpan.innerText.trim();
+                                    
+                                    // 🌟 ดึงค่า Before/After ของ Insulation มาต่อท้ายชื่อ 🌟
+                                    const phaseInput = subBlock.querySelector('h3 input.paper-input');
+                                    if (phaseInput) {
+                                        let phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
+                                        if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
+                                            blockTitle += ` (${phaseVal})`;
+                                        }
+                                    }
+                                }
                             }
                             if (!blockTitle || blockTitle === 'undefined') {
                                 blockTitle = moduleTitles[modId] || 'Inspection';
@@ -1665,7 +1726,8 @@
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
                                 <span class="block-base-title">Insulation Resistance Test</span>
                                 <span class="text-slate-500 font-normal ml-1">(</span>
-                                <input type="text" placeholder="ระบุช่วง..." value="Before" class="paper-input text-lg font-bold text-orange-600 w-28 text-center px-1">
+                                <!-- 🌟 เพิ่มเหตุการณ์ oninput เพื่อให้อัปเดตสถานะแบบเรียลไทม์ 🌟 -->
+                                <input type="text" placeholder="ระบุช่วง..." value="Before" class="paper-input text-lg font-bold text-orange-600 w-28 text-center px-1" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                                 <span class="text-slate-500 font-normal">)</span>
                             </h3>
                         </div>
@@ -2482,6 +2544,21 @@
                                 const baseTitleSpan = block.querySelector('.block-base-title');
                                 if (baseTitleSpan) {
                                     title = baseTitleSpan.innerText.trim();
+                                    
+                                    // 🌟 ดึงค่า Before/After ของ Insulation มาต่อท้ายชื่อ 🌟
+                                    const phaseInput = block.querySelector('h3 input.paper-input');
+                                    if (phaseInput) {
+                                        let phaseVal = '';
+                                        const span = phaseInput.previousElementSibling;
+                                        if (span && span.classList.contains('print-text-span')) {
+                                            phaseVal = span.textContent.trim();
+                                        } else {
+                                            phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
+                                        }
+                                        if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
+                                            title += ` (${phaseVal})`;
+                                        }
+                                    }
                                 }
                             }
                             
@@ -2539,7 +2616,6 @@
             const el = document.getElementById(elementId);
             if (!el) return null;
 
-            // 🌟 แก้ไข: เปลี่ยนจาก 1 เป็น 0 เพื่อหักลบหน้าปกออกจากการนับ 🌟
             let pageCount = 0; 
             
             const allBreaks = document.querySelectorAll('.pdf-page-break');
@@ -2892,7 +2968,6 @@
             const nativePageNums = document.getElementById('nativePageNumbers');
             if (nativePageNums) nativePageNums.remove();
 
-            // ล้างค่า relative ที่เราตั้งไว้ตอนพิมพ์
             const exportWrapper = document.getElementById('exportWrapper');
             if (exportWrapper) exportWrapper.style.position = '';
 
@@ -3132,7 +3207,6 @@
                         
                         const totalPages = Math.max(calculatedPages, explicitPages);
                         
-                        // 🌟 สร้างระบบเลขหน้าด้วย Inline Style แบบบังคับแสดงผล 🌟
                         const pageNumContainer = document.createElement('div');
                         pageNumContainer.id = 'nativePageNumbers';
                         pageNumContainer.setAttribute('style', 'position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 99999; display: block;');
@@ -3140,7 +3214,6 @@
                         for (let i = 1; i <= totalPages; i++) {
                             const pageNum = document.createElement('div');
                             pageNum.innerText = `Page ${i} of ${totalPages}`; 
-                            // คำนวณพิกัดให้อยู่ตรงมุมขวาล่างของแถบ Footer (ห่างจากขอบล่าง 9mm)
                             pageNum.setAttribute('style', `position: absolute; right: 15mm; top: ${((i + 1) * 297) - 9}mm; font-size: 10.5px; font-weight: bold; color: #f8fafc; font-family: sans-serif; z-index: 100000; display: block;`);
                             pageNumContainer.appendChild(pageNum);
                         }
