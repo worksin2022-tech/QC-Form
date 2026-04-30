@@ -706,7 +706,7 @@
                                             </div>
 
                                             <div id="mod_calibration" class="mb-10 hidden pt-4 pdf-page-break">
-                                                <div class="w-full h-[150mm] flex flex-col items-center justify-center rounded-2xl mt-4">
+                                                <div class="w-full h-[250mm] flex flex-col items-center justify-center rounded-2xl mt-4">
                                                     <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
                                                     <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
                                                     <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
@@ -1338,6 +1338,7 @@
         }
 
         function patchOldPhotoBoxes() {
+            // 1. Patch สำหรับรูปภาพ
             document.querySelectorAll('.photo-box').forEach(box => {
                 if (!box.querySelector('.edit-photo-btn')) {
                     const imgInp = box.querySelector('input[type="file"]');
@@ -1358,6 +1359,30 @@
                             imgInp.setAttribute('onchange', `handleMultiUpload(event, '${gridId}', '${prefix}', ${i})`);
                         }
                     }
+                }
+            });
+
+            // 2. Patch สำหรับกล่อง Insulation เก่าให้รองรับคลาสใหม่
+            document.querySelectorAll('.insulation-block h3 input.paper-input').forEach(inp => {
+                if (!inp.classList.contains('phase-status-input')) {
+                    inp.classList.add('phase-status-input');
+                    inp.setAttribute('oninput', "this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)");
+                }
+            });
+
+            // 3. Patch สำหรับหัวตาราง Contact จัดระเบียบ Observation ให้อยู่บรรทัดเดียวกัน
+            document.querySelectorAll('.contact-block th').forEach(th => {
+                if (th.textContent.includes('Observation') && th.querySelector('select') && !th.querySelector('div.flex')) {
+                    const sel = th.querySelector('select');
+                    sel.classList.remove('text-slate-700');
+                    sel.classList.add('!w-auto', 'text-[#475569]');
+                    th.innerHTML = `
+                        <div class="flex items-center justify-center gap-1 whitespace-nowrap">
+                            Observation 
+                            ${sel.outerHTML}
+                        </div>
+                    `;
+                    th.classList.remove('whitespace-nowrap');
                 }
             });
         }
@@ -1743,7 +1768,7 @@
                         <tr>
                             <th class="w-[25%] text-left pl-4">Test connection</th>
                             <th class="w-[20%]">Voltage test</th>
-                            <th class="w-[20%]">Observation <span class="normal-case">(MΩ)</span></th>
+                            <th class="w-[20%]">Observation <span class="normal-case">(Ω)</span></th>
                             <th class="w-[20%]">Reference</th>
                             <th class="w-[15%]">Result</th>
                         </tr>
@@ -1948,11 +1973,13 @@
                                 <th class="w-[15%]">Phase</th>
                                 <th class="w-[20%]">Test Current</th>
                                 <th class="w-[25%]">
-                                    Observation 
-                                    <select class="bg-transparent outline-none cursor-pointer normal-case font-bold text-slate-600 text-center hover:bg-slate-200 rounded px-1 transition-colors">
-                                        <option value="(µΩ)">(µΩ)</option>
-                                        <option value="(mΩ)">(mΩ)</option>
-                                    </select>
+                                    <div class="flex items-center justify-center gap-1 whitespace-nowrap">
+                                        Observation 
+                                        <select class="bg-transparent outline-none cursor-pointer normal-case font-bold text-[#475569] text-center hover:bg-slate-200 rounded px-1 transition-colors !w-auto">
+                                            <option value="(µΩ)">(µΩ)</option>
+                                            <option value="(mΩ)">(mΩ)</option>
+                                        </select>
+                                    </div>
                                 </th>
                                 <th class="w-[20%]">Result</th>
                                 <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
@@ -2910,12 +2937,12 @@
                 
                 if (selectedOpt) {
                     span.classList.remove('text-emerald-600', 'text-red-600', 'text-slate-400');
-                    if (selectedOpt.classList.contains('text-red-600')) {
-                        span.classList.add('text-red-600');
-                    } else if (selectedOpt.classList.contains('text-slate-400')) {
-                        span.classList.add('text-slate-400');
-                    } else {
+                    if (selectedOpt.value === 'Pass') {
                         span.classList.add('text-emerald-600');
+                    } else if (selectedOpt.value === 'Fail') {
+                        span.classList.add('text-red-600');
+                    } else if (selectedOpt.value === 'N/A') {
+                        span.classList.add('text-slate-400');
                     }
                 }
                 
