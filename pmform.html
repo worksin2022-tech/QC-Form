@@ -149,7 +149,69 @@
         /* 🌟 CSS สำหรับโหมด Native Print (PDF แก้ไขข้อความได้) 🌟 */
         /* ========================================================= */
         @media print {
-            @page { size: A4 portrait; margin: 0 !important; }
+            /* 🌟 @page margin-bottom: 12mm เพื่อเปิดพื้นที่ให้ @bottom-right แสดงเลขหน้า
+               Chrome รองรับ counter(page)/counter(pages) เฉพาะใน @page margin box เท่านั้น
+               เนื้อหาที่ตั้งความสูงเป็น 297mm จะถูกชดเชยให้เป็น 285mm ด้านล่าง */
+            @page { 
+                size: A4 portrait; 
+                margin: 0 0 12mm 0 !important;
+                /* 🌟 Footer mirror ของ header:
+                   โซนเทา 30% จากซ้าย = 63mm ของ A4 (210mm)
+                   Chrome แบ่ง box เป็น 70mm/70mm/70mm:
+                   - @bottom-left (0-70mm): เทา 0-63mm + น้ำเงิน 63-70mm
+                   - @bottom-center (70-140mm): น้ำเงินทั้งกล่อง
+                   - @bottom-right (140-210mm): น้ำเงินทั้งกล่อง */
+                @bottom-left {
+                    /* 🌟 ข้อความจัดกึ่งกลางโซนเทา (59.5% ของ box)
+                       ใช้ padding-right ขนาดใหญ่เพื่อบีบ text ให้อยู่ในโซนเทา
+                       padding-right = (100% - 59.5%) ของ box = 40.5% → ใช้ค่า mm โดยประมาณ
+                       padding-left ปรับให้สมดุล (กึ่งกลาง) */
+                    content: "AVATAR ELECTRIC CO., LTD.";
+                    font-family: sans-serif;
+                    font-size: 8pt;
+                    font-weight: bold;
+                    letter-spacing: 0.08em;
+                    color: #f8fafc;
+                    background:
+                        linear-gradient(to bottom, #f97316 0%, #f97316 10%, transparent 10%, transparent 100%),
+                        linear-gradient(to right, #334155 0%, #334155 59.5%, #0f172a 59.5%, #0f172a 100%);
+                    margin: 0;
+                    padding: 4mm 40.5% 3mm 0;
+                    text-align: center;
+                    vertical-align: middle;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                @bottom-center {
+                    content: "";
+                    background: linear-gradient(to bottom, #f97316 0%, #f97316 10%, #0f172a 10%, #0f172a 100%);
+                    margin: 0;
+                    padding: 0;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                @bottom-right {
+                    content: "Page " counter(page) " of " counter(pages);
+                    font-family: sans-serif;
+                    font-size: 9pt;
+                    font-weight: bold;
+                    color: #f8fafc;
+                    background: linear-gradient(to bottom, #f97316 0%, #f97316 10%, #0f172a 10%, #0f172a 100%);
+                    margin: 0;
+                    padding: 4mm 15mm 3mm 0;
+                    text-align: right;
+                    vertical-align: middle;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            }
+            /* 🌟 หน้าแรก (หน้าปก): margin = 0 (ใช้พื้นที่เต็ม 297mm) + ซ่อน footer ทุกช่อง */
+            @page :first {
+                margin: 0 !important;
+                @bottom-left { content: none; background: none; }
+                @bottom-center { content: none; background: none; }
+                @bottom-right { content: none; background: none; }
+            }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             
             body, html, main, #a4ScrollArea { 
@@ -174,7 +236,9 @@
                 display: block !important;
             }
 
-            /* บังคับหน้าปกให้แสดงเต็มแผ่น */
+            /* บังคับหน้าปกให้แสดงเต็มแผ่น 
+               🌟 ใช้ 297mm เต็ม เพราะ @page :first ตั้ง margin: 0 (ไม่มี footer margin)
+               หน้าอื่นๆ ที่มี @page margin-bottom: 12mm จะใช้เนื้อหา 285mm อัตโนมัติผ่าน pagination */
             .native-print-mode #coverPage {
                 height: 297mm !important;
                 max-height: 297mm !important;
@@ -188,9 +252,11 @@
             
             .no-print { display: none !important; }
 
-            /* ล็อคกราฟิกหัวและท้ายกระดาษให้อยู่ตายตัวเสมอ */
+            /* ล็อคกราฟิกหัวให้อยู่ตายตัวเสมอ
+               🌟 footer SVG ถูกซ่อนใน print mode — ใช้ @page margin box (@bottom-left/center/right) แทน
+               เพราะ Chrome ตัด element ที่อยู่นอก printable area ทิ้ง */
             .print-fixed-header { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
-            .print-fixed-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 12mm; background: transparent; z-index: 9998; }
+            .print-fixed-footer { display: none !important; }
 
             .native-print-mode #moduleContainer { display: block !important; }
             .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
@@ -249,15 +315,18 @@
     <!-- 🌟 NATIVE PRINT HEADER -->
     <div id="nativePrintHeader" class="hidden print-fixed-header">
         <div class="absolute top-0 left-0 w-full h-[12mm] pointer-events-none">
+            <!-- 🌟 Header design: โซนเทา 30% (63 หน่วย จาก 210) + น้ำเงิน 70% + เส้นส้มขอบล่าง -->
             <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+                <!-- พื้นหลังหลัก น้ำเงินเข้ม -->
+                <rect x="0" y="0" width="210" height="12" fill="#0f172a" />
+                <!-- accent ซ้าย เทาเข้ม (63 หน่วย = 30% ของ A4) -->
+                <rect x="0" y="0" width="63" height="12" fill="#334155" />
+                <!-- เส้น accent สีส้มที่ขอบล่าง -->
+                <rect x="0" y="10.8" width="210" height="1.2" fill="#f97316" />
             </svg>
         </div>
-        <div class="absolute bottom-[2mm] right-[15mm] z-10">
-            <span id="nativePrintHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
+        <div class="absolute top-[3mm] right-[15mm] z-10">
+            <span id="nativePrintHeaderTitle" style="font-size: 11pt; letter-spacing: 0.12em;" class="font-bold text-slate-100 uppercase leading-none drop-shadow-md">PREVENTIVE MAINTENANCE REPORT</span>
         </div>
     </div>
 
@@ -598,9 +667,9 @@
                                         <!-- 🌟 TOC SECTION (สารบัญ) -->
                                         <div id="tocSection" class="mb-10 mt-12 pb-8 no-print-bg">
                                             <div class="flex flex-col justify-center items-center mb-12">
-                                                <h2 class="text-[32px] font-extrabold text-slate-800 uppercase tracking-widest text-center relative px-6">
-                                                    Content
-                                                    <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 h-[5px] bg-orange-500 rounded-full"></div>
+                                                <h2 class="text-[28px] font-extrabold text-slate-800 uppercase tracking-wider text-center relative px-6">
+                                                    Table of Contents
+                                                    <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-32 h-[5px] bg-orange-500 rounded-full"></div>
                                                 </h2>
                                             </div>
                                             <div class="w-[85%] mx-auto max-w-3xl relative z-10 print:w-[90%]">
@@ -2619,31 +2688,71 @@
                 });
             }
 
-            items.forEach((item, index) => {
-                const pageNum = calculatePageNumber(item.id);
-                const displayNum = pageNum !== null ? String(pageNum).padStart(2, '0') : '-';
-                const indexStr = String(index + 1).padStart(2, '0');
+            // 🌟 Render TOC แบบ inline function — สามารถเรียกซ้ำได้ด้วย offset ที่ต่างกัน
+            function renderTocRows(tocOffset) {
+                tocList.innerHTML = '';
+                items.forEach((item, index) => {
+                    const pageNum = calculatePageNumber(item.id);
+                    const adjustedPageNum = pageNum !== null ? pageNum + tocOffset : null;
+                    const displayNum = adjustedPageNum !== null ? String(adjustedPageNum).padStart(2, '0') : '-';
+                    const indexStr = String(index + 1).padStart(2, '0');
+                    
+                    const row = document.createElement('div');
+                    row.className = 'flex w-full items-end py-1.5 group';
+                    row.innerHTML = `
+                        <div class="font-bold text-slate-700 text-[16px] tracking-wide whitespace-nowrap">
+                            <span class="text-orange-500 font-black mr-3 text-[16px]">${indexStr}.</span>${item.title}
+                        </div>
+                        <div class="flex-grow border-b-[2px] border-dotted border-slate-300 mx-4 relative top-[-6px] opacity-70 group-hover:opacity-100 transition-opacity min-w-[20px]"></div>
+                        <div class="font-black text-orange-600 text-[18px] whitespace-nowrap">
+                            ${displayNum}
+                        </div>
+                    `;
+                    tocList.appendChild(row);
+                });
+            }
+
+            // 🌟 2-pass: render รอบแรกด้วย offset=0, วัดความสูง TOC, ถ้าเกิน 1 หน้าก็ rebuild ด้วย offset เพิ่ม
+            // หน้า TOC พื้นที่จริงประมาณ 240mm (297mm - หัว-ท้าย 24mm - margin หน้า Content 33mm)
+            // ใช้ค่า threshold ที่ปลอดภัย: ถ้า tocSection สูงเกินค่านี้ → TOC กิน 2 หน้า
+            renderTocRows(0);
+
+            // วัดความสูงของ tocSection หลัง render
+            // tocSection มี mt-12 (48px) + content + mb-10 (40px) + pb-8 (32px)
+            // ถ้าสูงเกิน ~900px (≈ 240mm) → กินมากกว่า 1 หน้า
+            setTimeout(() => {
+                const tocSection = document.getElementById('tocSection');
+                if (!tocSection) return;
                 
-                const row = document.createElement('div');
-                row.className = 'flex w-full items-end py-1.5 group';
-                row.innerHTML = `
-                    <div class="font-bold text-slate-700 text-[16px] tracking-wide whitespace-nowrap">
-                        <span class="text-orange-500 font-black mr-3 text-[16px]">${indexStr}.</span>${item.title}
-                    </div>
-                    <div class="flex-grow border-b-[2px] border-dotted border-slate-300 mx-4 relative top-[-6px] opacity-70 group-hover:opacity-100 transition-opacity min-w-[20px]"></div>
-                    <div class="font-black text-orange-600 text-[18px] whitespace-nowrap">
-                        ${displayNum}
-                    </div>
-                `;
-                tocList.appendChild(row);
-            });
+                // หา pxPerMm
+                const mmNode = document.createElement("div");
+                mmNode.style.cssText = "height: 100mm; position: absolute; visibility: hidden; top: 0;";
+                document.body.appendChild(mmNode);
+                const pxPerMm = mmNode.offsetHeight / 100;
+                document.body.removeChild(mmNode);
+                
+                const tocHeight = tocSection.offsetHeight;
+                // พื้นที่จริงที่ TOC ใช้ได้ในหน้าเดียว ≈ 240mm
+                const onePageTocHeight = 240 * pxPerMm;
+                
+                // คำนวณว่า TOC กินกี่หน้า (ปัดขึ้น)
+                const tocPages = Math.max(1, Math.ceil(tocHeight / onePageTocHeight));
+                const extraTocPages = tocPages - 1;  // หน้าเกินจาก 1 หน้าปกติ
+                
+                if (extraTocPages > 0) {
+                    // re-render ด้วย offset = หน้าเกินของ TOC
+                    renderTocRows(extraTocPages);
+                }
+            }, 100);
         }
 
         function calculatePageNumber(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return null;
 
-            let pageCount = 0; 
+            // 🌟 เริ่มจาก 1 เพราะหน้าปก = หน้า 1 (และทุก element อยู่หลังหน้าปก)
+            // จำนวน .pdf-page-break ที่อยู่ก่อน el = จำนวนหน้าเพิ่มเติมก่อนถึง el
+            let pageCount = 1; 
             
             const allBreaks = document.querySelectorAll('.pdf-page-break');
             for (let i = 0; i < allBreaks.length; i++) {
@@ -3215,39 +3324,9 @@
                         ghostSpacer.id = 'ghostSpacerHacker';
                         if (td) td.appendChild(ghostSpacer);
 
-                        const mmNode = document.createElement("div");
-                        mmNode.style.height = "100mm";
-                        mmNode.style.position = "absolute";
-                        document.body.appendChild(mmNode);
-                        const pxPerMm = mmNode.offsetHeight / 100;
-                        document.body.removeChild(mmNode);
-                        
-                        const tableHeight = tableWrapper.offsetHeight;
-                        const a4HeightPx = 297 * pxPerMm;
-                        
-                        let calculatedPages = Math.ceil((tableHeight - (5 * pxPerMm)) / a4HeightPx);
-                        if (calculatedPages < 1) calculatedPages = 1;
-                        
-                        let activeBreaks = [];
-                        if (td) activeBreaks = Array.from(td.querySelectorAll('.pdf-page-break')).filter(el => el.offsetParent !== null);
-                        const explicitPages = activeBreaks.length + 1;
-                        
-                        const totalPages = Math.max(calculatedPages, explicitPages);
-                        
-                        const pageNumContainer = document.createElement('div');
-                        pageNumContainer.id = 'nativePageNumbers';
-                        pageNumContainer.setAttribute('style', 'position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 99999; display: block;');
-                        
-                        for (let i = 1; i <= totalPages; i++) {
-                            const pageNum = document.createElement('div');
-                            pageNum.innerText = `Page ${i} of ${totalPages}`; 
-                            pageNum.setAttribute('style', `position: absolute; right: 15mm; top: ${((i + 1) * 297) - 9}mm; font-size: 10.5px; font-weight: bold; color: #f8fafc; font-family: sans-serif; z-index: 100000; display: block;`);
-                            pageNumContainer.appendChild(pageNum);
-                        }
-                        
-                        const exportWrapper = document.getElementById('exportWrapper');
-                        exportWrapper.style.position = 'relative'; 
-                        exportWrapper.appendChild(pageNumContainer);
+                        // 🌟 ไม่สร้างเลขหน้าด้วย JS แล้ว
+                        // ใช้ข้อความคงที่ "PM Report" ใน nativePrintFooter (position: fixed)
+                        // → Chrome render ทุกหน้าที่ตำแหน่งเดียวกันเป๊ะ ไม่ drift
                     }
                 } catch (e) {
                     console.error("Pagination Error:", e);
