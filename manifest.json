@@ -1,0 +1,31 @@
+{
+  "name": "Quality Control Forms",
+  "short_name": "QC Forms",
+  "description": "แอพรวมฟอร์ม Quality Control ของ Avatar Electric — Missing Item, Equipment Claim, Trip Unit Test, PM Report",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1f2937",
+  "lang": "th",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
