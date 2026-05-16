@@ -335,6 +335,13 @@
         .no-print th, .no-print td, td.no-print, th.no-print { border: none !important; background: transparent !important; }
         .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
         .section-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+        /* 🌟 ซ่อน mod_xxx shell ที่ถูกล้างหลัง applyReorder — ทั้งใน screen และ print */
+        .reorder-hidden { display: none !important; }
+
+        /* 🌟 ปุ่ม + เล็กข้าง checkbox ใน sidebar */
+        .sidebar-quick-add-btn { margin-right: 0.6rem; }
+        .sidebar-quick-add-btn:hover { transform: scale(1.08); }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden bg-slate-100">
@@ -498,7 +505,7 @@
                 </label>
             </div>
         </div>
-        
+
         <!-- Sidebar Footer -->
         <div class="p-4 border-t border-slate-200 bg-white text-center">
             <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Avatar Electric Co., Ltd.</p>
@@ -739,73 +746,43 @@
                                         <!-- 🌟 MODULE CONTAINER -->
                                         <div id="moduleContainer" class="w-full flex flex-col z-10 relative">
                                             <div id="mod_before" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addPhotoGroup('bf')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Before</button>
-                                                </div>
                                                 <div id="bf_container"></div>
                                             </div>
 
                                             <div id="mod_cleaning" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addPhotoGroup('cl')" class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: Cleaning</button>
-                                                </div>
                                                 <div id="cl_container"></div>
                                             </div>
 
                                             <div id="mod_after" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addPhotoGroup('af')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Photograph: After</button>
-                                                </div>
                                                 <div id="af_container"></div>
                                             </div>
 
                                             <div id="mod_general" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addGeneralCheckBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดตาราง General Check</button>
-                                                </div>
                                                 <div id="gen_container"></div>
                                             </div>
 
                                             <div id="mod_insulation" class="mb-10 hidden pt-4 pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addInsulationBlock()" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Insulation</button>
-                                                </div>
                                                 <div id="ins_container"></div>
                                             </div>
 
                                             <div id="mod_dielectric" class="mb-10 hidden pt-4 pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addDielectricBlock()" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Dielectric</button>
-                                                </div>
                                                 <div id="die_container"></div>
                                             </div>
 
                                             <div id="mod_grounding" class="mb-10 hidden pt-4 pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addGroundingBlock()" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Grounding</button>
-                                                </div>
                                                 <div id="gro_container"></div>
                                             </div>
 
                                             <div id="mod_contact" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addContactBlock()" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Contact</button>
-                                                </div>
                                                 <div id="ct_container"></div>
                                             </div>
 
                                             <div id="mod_trip" class="mb-10 hidden pt-4 pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addTripBlock()" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุดทดสอบ Trip Unit</button>
-                                                </div>
                                                 <div id="trip_container"></div>
                                             </div>
 
                                             <!-- 🌟 โมดูล Blank -->
                                             <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
-                                                <div class="flex justify-end mb-4 pb-4 border-b border-slate-200 no-print">
-                                                    <button onclick="addBlankGroup('blk')" class="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มชุด Blank (Custom)</button>
-                                                </div>
                                                 <div id="blk_container"></div>
                                             </div>
 
@@ -863,7 +840,7 @@
                 </button>
             </div>
             <div class="p-4 bg-slate-100 flex-grow overflow-y-auto max-h-[60vh]">
-                <p class="text-xs text-slate-500 mb-3 text-center">แตะค้างที่รายการแล้วลากขึ้น-ลง เพื่อสลับตำแหน่ง</p>
+                <p class="text-xs text-slate-500 mb-3 text-center">ลากรายการขึ้น-ลงเพื่อจัดเรียง — แถบสีด้านซ้ายบอกกลุ่ม</p>
                 <ul id="reorderList" class="space-y-2">
                     <!-- รายการจะถูกแทรกที่นี่ด้วย JS -->
                 </ul>
@@ -1046,6 +1023,9 @@
                 addPhotoGroup('af');
             }
 
+            // 🌟 อัปเดต sidebar quick-add buttons
+            renderSidebarQuickAdd();
+
             document.querySelectorAll('select').forEach(updateResultColor);
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
@@ -1166,117 +1146,226 @@
             return map[modId];
         }
 
+        // 🌟 Helper: ใส่ block ใหม่ในที่ที่ถูกต้อง
+        //    - ถ้า sub-container (เช่น ins_container) ยังอยู่ใน DOM → ใส่ที่นั่น (โครงสร้างเดิม)
+        //    - ถ้าไม่อยู่แล้ว (ถูกลบหลังจัดเรียง) → ใส่ต่อท้าย moduleContainer
+        //    คืนค่า container element ที่ใช้จริง — เผื่อโค้ดเดิมต้องการ reference
+        function getOrFallbackContainer(subContainerId) {
+            let target = document.getElementById(subContainerId);
+            if (target && document.body.contains(target)) return target;
+            // fallback: ใส่ต่อท้าย moduleContainer
+            return document.getElementById('moduleContainer');
+        }
+
+        // 🌟 สีประจำกลุ่ม (badge) เพื่อให้แยกแยะที่มาของแต่ละรายการได้ง่าย
+        const moduleBadgeColors = {
+            'mod_before':      { bg: 'bg-sky-100',     text: 'text-sky-700',     border: 'border-sky-200' },
+            'mod_cleaning':    { bg: 'bg-cyan-100',    text: 'text-cyan-700',    border: 'border-cyan-200' },
+            'mod_after':       { bg: 'bg-teal-100',    text: 'text-teal-700',    border: 'border-teal-200' },
+            'mod_general':     { bg: 'bg-slate-100',   text: 'text-slate-700',   border: 'border-slate-200' },
+            'mod_insulation':  { bg: 'bg-amber-100',   text: 'text-amber-700',   border: 'border-amber-200' },
+            'mod_dielectric':  { bg: 'bg-orange-100',  text: 'text-orange-700',  border: 'border-orange-200' },
+            'mod_grounding':   { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' },
+            'mod_contact':     { bg: 'bg-purple-100',  text: 'text-purple-700',  border: 'border-purple-200' },
+            'mod_trip':        { bg: 'bg-pink-100',    text: 'text-pink-700',    border: 'border-pink-200' },
+            'mod_blank':       { bg: 'bg-indigo-100',  text: 'text-indigo-700',  border: 'border-indigo-200' },
+            'mod_calibration': { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' }
+        };
+
+        function getReorderItemLabel(modId, subBlock) {
+            // 🌟 ใช้ logic เดียวกับ updateTOC เพื่อให้ชื่อใน "จัดเรียง" ตรงกับสารบัญ
+            let blockTitle = '';
+            const titleInput = subBlock.querySelector('input.photo-group-title-input');
+            if (titleInput) {
+                const span = titleInput.previousElementSibling;
+                if (span && span.classList.contains('print-text-span')) {
+                    blockTitle = span.textContent.trim();
+                } else {
+                    blockTitle = titleInput.value.trim() || titleInput.getAttribute('value');
+                }
+            } else {
+                const baseTitleSpan = subBlock.querySelector('.block-base-title');
+                if (baseTitleSpan) {
+                    blockTitle = baseTitleSpan.innerText.trim();
+                    const phaseInput = subBlock.querySelector('h3 input.paper-input');
+                    if (phaseInput) {
+                        let phaseVal = '';
+                        const span = phaseInput.previousElementSibling;
+                        if (span && span.classList.contains('print-text-span')) {
+                            phaseVal = span.textContent.trim();
+                        } else {
+                            phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
+                        }
+                        if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
+                            blockTitle += ` (${phaseVal})`;
+                        }
+                    }
+                }
+            }
+            if (!blockTitle || blockTitle === 'undefined') {
+                blockTitle = moduleTitles[modId] || 'Inspection';
+            }
+
+            const eqInput = subBlock.querySelector('input.eq-panel-input');
+            let eqName = '';
+            if (eqInput) {
+                const span = eqInput.previousElementSibling;
+                let val = '';
+                if (span && span.classList.contains('print-text-span')) {
+                    val = span.textContent.trim();
+                } else {
+                    val = eqInput.value.trim() || eqInput.getAttribute('value');
+                }
+                if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
+                    eqName = ` (${val})`;
+                }
+            }
+            return `${blockTitle}${eqName}`;
+        }
+
+        // 🌟 หา modId จาก sub-block element โดยดูจาก class
+        function getModIdFromSubBlock(subBlock) {
+            if (subBlock.classList.contains('insulation-block')) return 'mod_insulation';
+            if (subBlock.classList.contains('dielectric-block')) return 'mod_dielectric';
+            if (subBlock.classList.contains('grounding-block')) return 'mod_grounding';
+            if (subBlock.classList.contains('contact-block')) return 'mod_contact';
+            if (subBlock.classList.contains('trip-block')) return 'mod_trip';
+            if (subBlock.classList.contains('general-block')) return 'mod_general';
+            if (subBlock.classList.contains('photo-group-block')) {
+                // photo-group-block ใช้ใน before/cleaning/after/blank — ดูจาก id prefix
+                const id = subBlock.id || '';
+                if (id.startsWith('block_bf_')) return 'mod_before';
+                if (id.startsWith('block_cl_')) return 'mod_cleaning';
+                if (id.startsWith('block_af_')) return 'mod_after';
+                if (id.startsWith('block_blk_')) return 'mod_blank';
+            }
+            return null;
+        }
+
+        const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block';
+
         function openReorderModal() {
             const list = document.getElementById('reorderList');
             list.innerHTML = '';
             const container = document.getElementById('moduleContainer');
-            const activeModules = Array.from(container.children).filter(el => !el.classList.contains('hidden'));
-            
-            if(activeModules.length === 0) {
+
+            // 🌟 รวบรวม "รายการ" ตามลำดับ DOM จริง โดย walk ผ่าน moduleContainer
+            //    - sub-block ที่อยู่ใน sub-container (โครงสร้างเดิม) จะถูกอ่านตามลำดับนั้น
+            //    - sub-block ที่อยู่เป็น direct child ของ moduleContainer (หลังจัดเรียงข้ามกลุ่ม) จะถูกอ่านในตำแหน่งของมัน
+            //    - mod_xxx ที่ไม่มี sub-block ในตัวเอง และไม่มี sub-block อื่นใน moduleContainer ที่เป็นของกลุ่มนี้
+            //      → ใส่เป็น kind=module (รายการเดียว)
+
+            // ขั้นที่ 1: รวบรวมรายการตามลำดับ DOM
+            const flatItems = []; // [{kind, modId, subBlock?}]
+            const modsWithSubBlocks = new Set();
+
+            Array.from(container.children).forEach(child => {
+                if (child.classList.contains('hidden')) return;
+
+                // กรณี 1: เป็น sub-block ที่อยู่ใน moduleContainer โดยตรง
+                if (child.matches(SUB_BLOCK_SELECTOR)) {
+                    const modId = getModIdFromSubBlock(child);
+                    if (modId) {
+                        flatItems.push({ kind: 'sub', modId, subBlock: child });
+                        modsWithSubBlocks.add(modId);
+                    }
+                    return;
+                }
+
+                // กรณี 2: เป็น mod_xxx parent — อ่าน sub-block ภายในตามลำดับ
+                if (child.id && child.id.startsWith('mod_')) {
+                    const modId = child.id;
+                    const subBlocks = child.querySelectorAll(SUB_BLOCK_SELECTOR);
+                    if (subBlocks.length > 0) {
+                        subBlocks.forEach(sb => {
+                            flatItems.push({ kind: 'sub', modId, subBlock: sb });
+                            modsWithSubBlocks.add(modId);
+                        });
+                    } else if (modId === 'mod_calibration') {
+                        // mod_calibration เป็น module ที่ไม่มี sub-block (Certificate of Calibration)
+                        flatItems.push({ kind: 'module', modId });
+                    }
+                    // 🌟 mod_xxx อื่นๆ ที่ไม่มี sub-block (shell ว่าง) — ข้ามไป
+                    //    เพราะ shell เหล่านี้เป็นแค่ wrapper ของปุ่ม "เพิ่ม" เท่านั้น ไม่มี content จริง
+                }
+            });
+
+            if (flatItems.length === 0) {
                 alert('ยังไม่มีหัวข้อที่เปิดใช้งาน กรุณาเลือกจากแถบเมนูด้านซ้ายก่อนครับ');
                 return;
             }
 
-            activeModules.forEach(mod => {
-                const modId = mod.id;
+            // ขั้นที่ 2: render <li> สำหรับแต่ละ flatItem
+            // 🌟 Map สีของ border-left ให้ตรงกับสี theme ของแต่ละกลุ่ม
+            const moduleBorderColors = {
+                'mod_before':      'border-l-sky-400',
+                'mod_cleaning':    'border-l-cyan-400',
+                'mod_after':       'border-l-teal-400',
+                'mod_general':     'border-l-slate-400',
+                'mod_insulation':  'border-l-amber-400',
+                'mod_dielectric':  'border-l-orange-400',
+                'mod_grounding':   'border-l-emerald-400',
+                'mod_contact':     'border-l-purple-400',
+                'mod_trip':        'border-l-pink-400',
+                'mod_blank':       'border-l-indigo-400',
+                'mod_calibration': 'border-l-rose-400'
+            };
+
+            flatItems.forEach(item => {
+                const borderColor = moduleBorderColors[item.modId] || 'border-l-slate-400';
+                const groupLabel = moduleTitles[item.modId] || item.modId;
+
                 const li = document.createElement('li');
-                li.className = 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-2';
-                li.setAttribute('data-id', modId);
-                
-                let html = `
-                    <div class="p-2 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors group">
-                        <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full p-1">
-                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors pointer-events-none shrink-0">
-                                <i class="fa-solid fa-grip-vertical"></i>
-                            </div>
-                            <span class="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors pointer-events-none">${moduleTitles[modId]}</span>
-                        </div>
-                        <button onclick="scrollToElement('${modId}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่ส่วนนี้">
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </button>
-                    </div>
-                `;
+                li.className = `bg-white p-2 rounded-lg border border-slate-200 border-l-[5px] ${borderColor} shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-colors`;
+                li.setAttribute('data-mod-id', item.modId);
 
-                const subInfo = getSubContainerInfo(modId);
-                if (subInfo) {
-                    const subContainer = document.getElementById(subInfo.id);
-                    // 🌟 เปลี่ยนให้แสดงรายการย่อยเสมอ (> 0) เพื่อให้เห็นชื่อตู้ที่พิมพ์แก้ไขใหม่ได้ทันที
-                    if (subContainer && subContainer.children.length > 0) {
-                        html += `<ul class="sub-reorder-list bg-slate-50 p-2 space-y-2 border-t border-slate-100 pl-10" data-parent="${subInfo.id}" data-class="${subInfo.cls}">`;
-                        Array.from(subContainer.children).forEach((subBlock, index) => {
-                            if (!subBlock.id) return;
-                            
-                            // 🌟 ดึงชื่อที่ถูกแก้ไข (เช่น Before MDB) และชื่อตู้ มาแสดงให้ตรงกับสารบัญ 🌟
-                            let blockTitle = '';
-                            const titleInput = subBlock.querySelector('input.photo-group-title-input');
-                            if (titleInput) {
-                                blockTitle = titleInput.value.trim() || titleInput.getAttribute('value');
-                            } else {
-                                const baseTitleSpan = subBlock.querySelector('.block-base-title');
-                                if (baseTitleSpan) {
-                                    blockTitle = baseTitleSpan.innerText.trim();
-                                    
-                                    // 🌟 ดึงค่า Before/After ของ Insulation มาต่อท้ายชื่อ 🌟
-                                    const phaseInput = subBlock.querySelector('h3 input.paper-input');
-                                    if (phaseInput) {
-                                        let phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
-                                        if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
-                                            blockTitle += ` (${phaseVal})`;
-                                        }
-                                    }
-                                }
-                            }
-                            if (!blockTitle || blockTitle === 'undefined') {
-                                blockTitle = moduleTitles[modId] || 'Inspection';
-                            }
-
-                            const panelInput = subBlock.querySelector('input.eq-panel-input');
-                            let eqName = '';
-                            if (panelInput && panelInput.value.trim() !== '') {
-                                eqName = ` (${panelInput.value.trim()})`;
-                            }
-
-                            let subTitle = `${blockTitle}${eqName}`;
-
-                            html += `
-                                <li class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300" data-id="${subBlock.id}">
-                                    <div class="flex items-center gap-3 cursor-grab active:cursor-grabbing w-full overflow-hidden">
-                                        <i class="fa-solid fa-bars text-slate-300 pointer-events-none text-xs shrink-0"></i>
-                                        <span class="text-sm font-semibold text-slate-600 pointer-events-none truncate" title="${subTitle}">${subTitle}</span>
-                                    </div>
-                                    <button onclick="scrollToElement('${subBlock.id}')" class="go-to-btn text-slate-400 hover:text-blue-600 hover:bg-blue-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่ตู้ใบนี้">
-                                        <i class="fa-solid fa-arrow-right"></i>
-                                    </button>
-                                </li>
-                            `;
-                        });
-                        html += `</ul>`;
+                if (item.kind === 'sub') {
+                    const subInfo = getSubContainerInfo(item.modId);
+                    const itemLabel = getReorderItemLabel(item.modId, item.subBlock);
+                    li.setAttribute('data-kind', 'sub');
+                    if (subInfo) {
+                        li.setAttribute('data-parent', subInfo.id);
+                        li.setAttribute('data-class', subInfo.cls);
                     }
+                    li.setAttribute('data-sub-id', item.subBlock.id);
+                    li.innerHTML = `
+                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
+                            <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
+                            <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${itemLabel}">${itemLabel}</span>
+                        </div>
+                        <button onclick="scrollToElement('${item.subBlock.id}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่รายการนี้">
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    `;
+                } else {
+                    li.setAttribute('data-kind', 'module');
+                    li.innerHTML = `
+                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
+                            <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
+                            <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${groupLabel}">${groupLabel}</span>
+                        </div>
+                        <button onclick="scrollToElement('${item.modId}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่หัวข้อนี้">
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    `;
                 }
-                li.innerHTML = html;
                 list.appendChild(li);
             });
 
             document.getElementById('reorderModal').classList.remove('hidden');
             document.getElementById('reorderModal').classList.add('flex');
 
-            if(reorderSortable) reorderSortable.destroy();
+            if (reorderSortable) reorderSortable.destroy();
             reorderSortable = new Sortable(list, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                filter: '.sub-reorder-list, .go-to-btn',
-                preventOnFilter: false
-            });
-
-            document.querySelectorAll('.sub-reorder-list').forEach(subList => {
-                new Sortable(subList, {
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    filter: '.go-to-btn',
-                    preventOnFilter: false,
-                    fallbackOnBody: true,
-                    swapThreshold: 0.65
-                });
+                handle: '.reorder-handle',
+                draggable: 'li',
+                forceFallback: true,
+                fallbackTolerance: 5,
+                onEnd: function(evt) {
+                    console.log('[Sortable] drag end: moved from', evt.oldIndex, 'to', evt.newIndex);
+                }
             });
         }
 
@@ -1287,35 +1376,118 @@
 
         function applyReorder() {
             const list = document.getElementById('reorderList');
-            const newOrderIds = Array.from(list.children).map(li => li.getAttribute('data-id'));
+            const items = Array.from(list.children);
             const container = document.getElementById('moduleContainer');
-            newOrderIds.forEach(id => {
-                const mod = document.getElementById(id);
-                if (mod) container.appendChild(mod);
+
+            console.log('========== applyReorder() ==========');
+            console.log('[applyReorder] flat list count:', items.length);
+
+            // 🌟 รวบรวมข้อมูลจาก flat list
+            const orderedItems = []; // [{kind, modId, subBlockId, parentContainerId, cls}, ...]
+            items.forEach(li => {
+                orderedItems.push({
+                    kind: li.getAttribute('data-kind'),
+                    modId: li.getAttribute('data-mod-id'),
+                    subBlockId: li.getAttribute('data-sub-id'),
+                    parentContainerId: li.getAttribute('data-parent'),
+                    cls: li.getAttribute('data-class')
+                });
             });
 
-            document.querySelectorAll('.sub-reorder-list').forEach(subList => {
-                const parentId = subList.getAttribute('data-parent');
-                const blockClass = subList.getAttribute('data-class');
-                const parentContainer = document.getElementById(parentId);
-                
-                if (parentContainer) {
-                    const subItemIds = Array.from(subList.children).map(li => li.getAttribute('data-id'));
-                    subItemIds.forEach(id => {
-                        const subBlock = document.getElementById(id);
-                        if (subBlock) parentContainer.appendChild(subBlock);
-                    });
+            // 🌟 รวบรวมรายชื่อ module ที่ active (ทั้งที่มี sub-block และที่เป็น kind=module)
+            const activeMods = new Set();
+            orderedItems.forEach(it => { if (it.modId) activeMods.add(it.modId); });
 
-                    const blocks = Array.from(parentContainer.querySelectorAll('.' + blockClass));
-                    blocks.forEach((block, index) => {
-                        if(index === 0) {
-                            block.classList.remove('pdf-page-break', 'pt-3');
-                        } else {
-                            block.classList.add('pdf-page-break', 'pt-3');
-                        }
-                    });
+            // 🌟 สำหรับแต่ละ module: ย้ายปุ่ม "เพิ่ม" (header bar) ไว้ใน mod_xxx ตามเดิม
+            //    แต่ sub-block ทั้งหมดจะถูกย้ายมาเป็น direct child ของ moduleContainer ตามลำดับ flat list
+            //    mod_xxx parent ยังคงอยู่ใน moduleContainer แต่จะแสดงเฉพาะแถบปุ่ม (sub-container ภายในจะว่าง)
+
+            // ขั้นที่ 1: เก็บ reference ของ sub-block ทุกอันก่อน (เพราะจะย้าย DOM)
+            const subBlocksByModId = {}; // { modId: { subBlockId: element } }
+            orderedItems.forEach(it => {
+                if (it.kind === 'sub' && it.subBlockId) {
+                    const el = document.getElementById(it.subBlockId);
+                    if (el) {
+                        if (!subBlocksByModId[it.modId]) subBlocksByModId[it.modId] = {};
+                        subBlocksByModId[it.modId][it.subBlockId] = el;
+                    }
                 }
             });
+
+            // ขั้นที่ 2: เก็บ mod_xxx parent reference
+            const modElements = {};
+            activeMods.forEach(modId => {
+                const el = document.getElementById(modId);
+                if (el) modElements[modId] = el;
+            });
+
+            // ขั้นที่ 3: ตัด sub-block ออกจาก parent เดิม (detach)
+            Object.values(subBlocksByModId).forEach(byId => {
+                Object.values(byId).forEach(el => {
+                    if (el.parentNode) el.parentNode.removeChild(el);
+                });
+            });
+
+            // ขั้นที่ 4: ตัด mod_xxx ออกจาก moduleContainer ด้วย (จะนำกลับมาใส่ตามลำดับใหม่)
+            Object.values(modElements).forEach(el => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+
+            // ขั้นที่ 5: 🌟 ซ่อน mod_xxx shell (ไม่ลบทิ้ง เพราะ toggleModule ต้องใช้)
+            //          เพิ่ม class .reorder-hidden ที่ทำให้ display:none ใน PDF/preview
+            //          mod_calibration จะถูกใส่ตามตำแหน่งใน flat list ในขั้นที่ 6
+            Object.entries(modElements).forEach(([modId, el]) => {
+                if (modId === 'mod_calibration') return; // skip — ใส่ใน ขั้น 6
+                el.classList.add('reorder-hidden');
+                container.appendChild(el); // ใส่กลับท้าย container เพื่อให้ DOM order ถูกต้อง (ซ่อนอยู่)
+            });
+
+            // ขั้นที่ 6: append sub-block ทั้งหมดตามลำดับ flat list มาเป็น direct child ของ moduleContainer
+            //           + ใส่ mod_calibration ตามตำแหน่งของมันใน flat list ด้วย
+            const subBlocksByCls = {}; // เก็บไว้สำหรับจัด page-break ภายในกลุ่มเดียวกัน
+            const calibInsertedFlag = { done: false };
+            const calibEl = modElements['mod_calibration'];
+            orderedItems.forEach(it => {
+                if (it.kind === 'sub' && it.subBlockId) {
+                    const el = subBlocksByModId[it.modId]?.[it.subBlockId];
+                    if (el) {
+                        container.appendChild(el);
+                        if (it.cls) {
+                            if (!subBlocksByCls[it.cls]) subBlocksByCls[it.cls] = [];
+                            subBlocksByCls[it.cls].push(el);
+                        }
+                    }
+                } else if (it.kind === 'module' && it.modId === 'mod_calibration' && !calibInsertedFlag.done) {
+                    // ใส่ mod_calibration ตามตำแหน่งของมันใน flat list
+                    if (calibEl) {
+                        container.appendChild(calibEl);
+                        calibInsertedFlag.done = true;
+                    }
+                }
+            });
+
+            // ถ้า user ติ๊ก mod_calibration แต่ไม่เคยถูก include ใน flat list → ใส่ท้าย
+            if (calibEl && !calibInsertedFlag.done && !calibEl.classList.contains('hidden')) {
+                container.appendChild(calibEl);
+            }
+
+            // ขั้นที่ 7: จัด page-break — ทุก sub-block ที่ย้ายมาอยู่ใน moduleContainer โดยตรง
+            //          ให้ทุกอัน "มี" page-break เพื่อขึ้นหน้าใหม่
+            //          ยกเว้นอันแรกในเอกสาร
+            Object.values(subBlocksByCls).flat().forEach((block) => {
+                block.classList.add('pdf-page-break', 'pt-3');
+            });
+            // อันแรกของทั้ง moduleContainer ไม่ต้องมี page-break
+            const allBlocks = container.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block');
+            if (allBlocks.length > 0) {
+                allBlocks[0].classList.remove('pdf-page-break', 'pt-3');
+            }
+
+            // 🌟 อัปเดต sidebar quick-add buttons
+            if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
+
+            console.log('[applyReorder] moduleContainer children:', Array.from(container.children).map(c => c.id || c.className));
+            console.log('========== applyReorder() done ==========');
 
             saveDraft();
             closeReorderModal();
@@ -1439,6 +1611,9 @@
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
             syncCoverInputs(); 
+
+            // 🌟 อัปเดต sidebar quick-add buttons หลังโหลด draft
+            if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
         }
 
         // 🌟 Rebuild Layout — สร้าง HTML ของ moduleContainer ใหม่จาก template ปัจจุบัน
@@ -1819,14 +1994,27 @@
             if (!moduleDiv) return;
 
             if (isChecked) {
+                // 🌟 ถ้า module ถูกซ่อนด้วย reorder-hidden — เอาออก (user ต้องการเปิดใช้ใหม่)
+                moduleDiv.classList.remove('reorder-hidden');
                 insertModuleInDefaultOrder(moduleId);
                 moduleDiv.classList.remove('hidden');
                 if (!selectedModules.includes(moduleId)) { selectedModules.push(moduleId); }
 
                 const subInfo = getSubContainerInfo(moduleId);
                 if (subInfo) {
-                    const container = document.getElementById(subInfo.id);
-                    if (container && container.children.length === 0) {
+                    // ตรวจสอบว่ามี sub-block ของ module นี้อยู่แล้วไหม
+                    // (อาจถูกย้ายออกมาอยู่ใน moduleContainer โดยตรงหลัง applyReorder)
+                    const existingBlocks = document.querySelectorAll('.' + subInfo.cls);
+                    const hasAny = Array.from(existingBlocks).some(b => {
+                        if (subInfo.cls === 'photo-group-block') {
+                            // photo-group-block ถูกใช้หลาย module — เช็ค prefix
+                            const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[moduleId];
+                            return prefix && b.id && b.id.startsWith(prefix);
+                        }
+                        return true;
+                    });
+
+                    if (!hasAny) {
                         if (moduleId === 'mod_before') addPhotoGroup('bf');
                         else if (moduleId === 'mod_cleaning') addPhotoGroup('cl');
                         else if (moduleId === 'mod_after') addPhotoGroup('af');
@@ -1842,7 +2030,102 @@
             } else {
                 moduleDiv.classList.add('hidden');
                 selectedModules = selectedModules.filter(item => item !== moduleId);
+
+                // 🌟 ซ่อน sub-block ของ module นี้ที่อยู่ใน moduleContainer โดยตรงด้วย
+                const subInfo = getSubContainerInfo(moduleId);
+                if (subInfo) {
+                    document.querySelectorAll('.' + subInfo.cls).forEach(b => {
+                        let belongs = true;
+                        if (subInfo.cls === 'photo-group-block') {
+                            const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[moduleId];
+                            belongs = prefix && b.id && b.id.startsWith(prefix);
+                        }
+                        if (belongs && b.parentNode && b.parentNode.id === 'moduleContainer') {
+                            b.classList.add('reorder-hidden');
+                        }
+                    });
+                }
             }
+
+            // 🌟 อัปเดตปุ่ม sidebar
+            renderSidebarQuickAdd();
+        }
+
+        // 🌟 Mapping ของแต่ละ module กับฟังก์ชัน "เพิ่มชุดทดสอบ"
+        //    ใช้ static Tailwind classes (CDN ไม่รองรับ dynamic class)
+        const moduleAddActions = {
+            'mod_before':     { fn: () => addPhotoGroup('bf'),       label: 'Photograph: Before',  cls: 'bg-sky-100 hover:bg-sky-200 text-sky-700' },
+            'mod_cleaning':   { fn: () => addPhotoGroup('cl'),       label: 'Photograph: Cleaning',cls: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700' },
+            'mod_after':      { fn: () => addPhotoGroup('af'),       label: 'Photograph: After',   cls: 'bg-teal-100 hover:bg-teal-200 text-teal-700' },
+            'mod_general':    { fn: () => addGeneralCheckBlock(),    label: 'General Check',       cls: 'bg-slate-100 hover:bg-slate-200 text-slate-700' },
+            'mod_insulation': { fn: () => addInsulationBlock(),      label: 'Insulation',          cls: 'bg-amber-100 hover:bg-amber-200 text-amber-700' },
+            'mod_dielectric': { fn: () => addDielectricBlock(),      label: 'Dielectric',          cls: 'bg-orange-100 hover:bg-orange-200 text-orange-700' },
+            'mod_grounding':  { fn: () => addGroundingBlock(),       label: 'Grounding',           cls: 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700' },
+            'mod_contact':    { fn: () => addContactBlock(),         label: 'Contact',             cls: 'bg-purple-100 hover:bg-purple-200 text-purple-700' },
+            'mod_trip':       { fn: () => addTripBlock(),            label: 'Trip Unit',           cls: 'bg-pink-100 hover:bg-pink-200 text-pink-700' },
+            'mod_blank':      { fn: () => addBlankGroup('blk'),      label: 'Blank Page',          cls: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700' }
+        };
+
+        // 🌟 Toast แจ้งเตือนหลังกดปุ่ม "+"
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('quickAddToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'quickAddToast';
+                toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[100000] px-5 py-3 rounded-xl shadow-2xl font-bold text-[14px] flex items-center gap-2.5 pointer-events-none opacity-0 transition-all duration-300 no-print';
+                toast.style.transform = 'translate(-50%, -20px)';
+                document.body.appendChild(toast);
+            }
+            const palette = type === 'success'
+                ? 'bg-emerald-500 text-white border-2 border-emerald-400'
+                : 'bg-slate-700 text-white border-2 border-slate-600';
+            toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[100000] px-5 py-3 rounded-xl shadow-2xl font-bold text-[14px] flex items-center gap-2.5 pointer-events-none transition-all duration-300 no-print ${palette}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-lg"></i> ${message}`;
+            // แสดง
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            });
+            // ซ่อนอัตโนมัติ
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -20px)';
+            }, 1800);
+        }
+
+        // 🌟 Inject ปุ่ม "+" เล็กข้าง checkbox ของแต่ละ row ใน sidebar
+        //    - แสดงเฉพาะ module ที่ active (checkbox ติ๊ก)
+        //    - กดแล้วเพิ่ม sub-block + แสดง toast
+        function renderSidebarQuickAdd() {
+            // ลบปุ่มเก่าที่อาจค้างอยู่
+            document.querySelectorAll('.sidebar-quick-add-btn').forEach(b => b.remove());
+
+            // หา checkbox ทุกตัวที่ผูกกับ toggleModule
+            document.querySelectorAll('input[type="checkbox"][onchange*="toggleModule"]').forEach(cb => {
+                const onchange = cb.getAttribute('onchange') || '';
+                const m = onchange.match(/toggleModule\('([^']+)'/);
+                if (!m) return;
+                const modId = m[1];
+                const action = moduleAddActions[modId];
+                if (!action) return; // mod_calibration ไม่มีปุ่มเพิ่ม
+                if (!selectedModules.includes(modId)) return; // แสดงเฉพาะ module ที่ active
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `sidebar-quick-add-btn w-6 h-6 rounded-md ${action.cls} text-[11px] font-black flex items-center justify-center transition-colors shadow-sm shrink-0`;
+                btn.innerHTML = '<i class="fa-solid fa-plus text-[10px]"></i>';
+                btn.title = `เพิ่ม ${action.label}`;
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    action.fn();
+                    saveDraft();
+                    showToast(`เพิ่ม ${action.label} แล้ว`);
+                });
+                // แทรกก่อน checkbox (อยู่ข้างซ้ายของ checkbox)
+                cb.parentNode.insertBefore(btn, cb);
+            });
         }
 
         function insertModuleInDefaultOrder(moduleId) {
@@ -1908,7 +2191,7 @@
         function addPhotoGroup(type) {
             groupCounts[type]++;
             const id = groupCounts[type];
-            const container = document.getElementById(`${type}_container`);
+            const container = getOrFallbackContainer(`${type}_container`);
             const prefix = `${type}_${id}`;
             
             let config = {
@@ -1961,7 +2244,7 @@
         function addBlankGroup(type) {
             groupCounts[type]++;
             const id = groupCounts[type];
-            const container = document.getElementById(`${type}_container`);
+            const container = getOrFallbackContainer(`${type}_container`);
             const prefix = `${type}_${id}`;
             
             let currentTitle = 'Custom Section';
@@ -2017,7 +2300,7 @@
         function addGeneralCheckBlock() {
             genCount++;
             const id = genCount;
-            const container = document.getElementById('gen_container');
+            const container = getOrFallbackContainer('gen_container');
             const prefix = `gen_${id}`;
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
 
@@ -2105,7 +2388,7 @@
         function addInsulationBlock() {
             insCount++;
             const id = insCount;
-            const container = document.getElementById('ins_container');
+            const container = getOrFallbackContainer('ins_container');
             const prefix = `ins_${id}`;
             const color = 'slate';
             
@@ -2182,7 +2465,7 @@
         function addDielectricBlock() {
             dieCount++;
             const id = dieCount;
-            const container = document.getElementById('die_container');
+            const container = getOrFallbackContainer('die_container');
             const prefix = `die_${id}`;
             const color = 'slate';
             
@@ -2253,7 +2536,7 @@
         function addGroundingBlock() {
             groCount++;
             const id = groCount;
-            const container = document.getElementById('gro_container');
+            const container = getOrFallbackContainer('gro_container');
             const prefix = `gro_${id}`;
             const color = 'slate';
             
@@ -2312,7 +2595,7 @@
         function addContactBlock() {
             ctCount++;
             const id = ctCount;
-            const container = document.getElementById('ct_container');
+            const container = getOrFallbackContainer('ct_container');
             const prefix = `ct_block_${id}`;
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
 
@@ -2381,7 +2664,7 @@
         function addTripBlock() {
             tripCount++;
             const id = tripCount;
-            const container = document.getElementById('trip_container');
+            const container = getOrFallbackContainer('trip_container');
             const prefix = `trip_${id}`;
             const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
 
@@ -2912,77 +3195,82 @@
 
             const container = document.getElementById('moduleContainer');
             if (container) {
-                const activeModules = Array.from(container.children)
-                    .filter(el => el.id && el.id.startsWith('mod_') && !el.classList.contains('hidden') && window.getComputedStyle(el).display !== 'none');
-                
-                activeModules.forEach(mod => {
-                    if (mod.id === 'mod_calibration') {
-                        items.push({ title: 'Certificate of Calibration', id: mod.id });
+                // 🌟 Helper: ดึง title และ eqName จาก block หนึ่งอัน — ใช้ logic เดิม
+                function extractBlockTitle(block, fallbackModId) {
+                    let title = '';
+                    const titleInput = block.querySelector('input.photo-group-title-input');
+                    if (titleInput) {
+                        const span = titleInput.previousElementSibling;
+                        if (span && span.classList.contains('print-text-span')) {
+                            title = span.textContent.trim();
+                        } else {
+                            title = titleInput.value.trim() || titleInput.getAttribute('value');
+                        }
+                    } else {
+                        const baseTitleSpan = block.querySelector('.block-base-title');
+                        if (baseTitleSpan) {
+                            title = baseTitleSpan.innerText.trim();
+                            const phaseInput = block.querySelector('h3 input.paper-input');
+                            if (phaseInput) {
+                                let phaseVal = '';
+                                const span = phaseInput.previousElementSibling;
+                                if (span && span.classList.contains('print-text-span')) {
+                                    phaseVal = span.textContent.trim();
+                                } else {
+                                    phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
+                                }
+                                if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
+                                    title += ` (${phaseVal})`;
+                                }
+                            }
+                        }
+                    }
+                    if (!title || title === 'undefined') {
+                        title = moduleTitles[fallbackModId] || 'Inspection';
+                    }
+                    const eqInput = block.querySelector('input.eq-panel-input');
+                    let eqName = '';
+                    if (eqInput) {
+                        const span = eqInput.previousElementSibling;
+                        let val = '';
+                        if (span && span.classList.contains('print-text-span')) {
+                            val = span.textContent.trim();
+                        } else {
+                            val = eqInput.value.trim() || eqInput.getAttribute('value');
+                        }
+                        if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
+                            eqName = ` (${val})`;
+                        }
+                    }
+                    return `${title}${eqName}`;
+                }
+
+                // 🌟 Walk ผ่าน moduleContainer ตามลำดับ DOM
+                //    - sub-block ที่อยู่ใน moduleContainer โดยตรง → ใส่ใน TOC ตามลำดับนั้น
+                //    - sub-block ที่อยู่ใน mod_xxx → ใส่ตามลำดับเช่นกัน
+                //    - mod_xxx ที่ไม่มี sub-block (เช่น calibration) → ใส่เป็นรายการเดียว
+                Array.from(container.children).forEach(child => {
+                    if (child.classList.contains('hidden') || window.getComputedStyle(child).display === 'none') return;
+
+                    if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block')) {
+                        const modId = getModIdFromSubBlock(child) || 'mod_general';
+                        items.push({ title: extractBlockTitle(child, modId), id: child.id });
                         return;
                     }
 
-                    const blocks = Array.from(mod.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block'));
-                    
-                    if (blocks.length > 0) {
-                        blocks.forEach(block => {
-                            let title = '';
-                            
-                            const titleInput = block.querySelector('input.photo-group-title-input');
-                            if (titleInput) {
-                                const span = titleInput.previousElementSibling;
-                                if (span && span.classList.contains('print-text-span')) {
-                                    title = span.textContent.trim();
-                                } else {
-                                    title = titleInput.value.trim() || titleInput.getAttribute('value');
-                                }
-                            } else {
-                                const baseTitleSpan = block.querySelector('.block-base-title');
-                                if (baseTitleSpan) {
-                                    title = baseTitleSpan.innerText.trim();
-                                    
-                                    // 🌟 ดึงค่า Before/After ของ Insulation มาต่อท้ายชื่อ 🌟
-                                    const phaseInput = block.querySelector('h3 input.paper-input');
-                                    if (phaseInput) {
-                                        let phaseVal = '';
-                                        const span = phaseInput.previousElementSibling;
-                                        if (span && span.classList.contains('print-text-span')) {
-                                            phaseVal = span.textContent.trim();
-                                        } else {
-                                            phaseVal = phaseInput.value.trim() || phaseInput.getAttribute('value') || '';
-                                        }
-                                        if (phaseVal && phaseVal !== 'ระบุช่วง...' && phaseVal !== '-') {
-                                            title += ` (${phaseVal})`;
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if (!title || title === 'undefined') {
-                                title = moduleTitles[mod.id] || 'Inspection';
-                            }
-
-                            const eqInput = block.querySelector('input.eq-panel-input');
-                            let eqName = '';
-                            if (eqInput) {
-                                const span = eqInput.previousElementSibling;
-                                let val = '';
-                                if (span && span.classList.contains('print-text-span')) {
-                                    val = span.textContent.trim();
-                                } else {
-                                    val = eqInput.value.trim() || eqInput.getAttribute('value');
-                                }
-                                
-                                if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
-                                    eqName = ` (${val})`;
-                                }
-                            }
-
-                            items.push({ title: `${title}${eqName}`, id: block.id });
-                        });
-                    } else {
-                        let fallbackTitle = moduleTitles[mod.id] || mod.id;
-                        if (fallbackTitle === 'undefined') fallbackTitle = 'Inspection';
-                        items.push({ title: fallbackTitle, id: mod.id });
+                    if (child.id && child.id.startsWith('mod_')) {
+                        if (child.id === 'mod_calibration') {
+                            items.push({ title: 'Certificate of Calibration', id: child.id });
+                            return;
+                        }
+                        const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block'));
+                        if (blocks.length > 0) {
+                            blocks.forEach(block => {
+                                items.push({ title: extractBlockTitle(block, child.id), id: block.id });
+                            });
+                        }
+                        // ถ้า mod_xxx ไม่มี sub-block ก็ไม่ต้องใส่ใน TOC
+                        // (เพราะแถบปุ่ม "เพิ่ม" ไม่ใช่ section จริง)
                     }
                 });
             }
