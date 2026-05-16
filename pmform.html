@@ -526,43 +526,60 @@
                 <a href="index.html" class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 text-slate-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-colors shrink-0" title="กลับหน้าแรก">
                     <i class="fa-solid fa-house"></i>
                 </a>
-                <div class="hidden sm:block">
-                    <h2 class="text-lg font-bold text-slate-700 leading-tight">ระบบสร้างรายงาน (PM)</h2>
-                </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
                 <!-- 🌟 แก้ไข: เปลี่ยนจาก xl:flex เป็น md:flex เพื่อให้ปุ่มกลับมาแสดงบนหน้าจอทั่วไป 🌟 -->
-                <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-2 shadow-inner">
-                    <button onclick="exportData()" class="bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
+                <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-1.5 shadow-inner">
+                    <button onclick="exportData()" class="whitespace-nowrap bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
                         <i class="fa-solid fa-download"></i> นำออก
                     </button>
-                    <button onclick="document.getElementById('importFile').click()" class="bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
+                    <button onclick="document.getElementById('importFile').click()" class="whitespace-nowrap bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
                         <i class="fa-solid fa-upload"></i> นำเข้า
                     </button>
                     <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
                     <div class="w-px bg-slate-300 mx-1 my-1"></div>
-                    <!-- 🌟 ปุ่ม Rebuild Layout — กดหลังโหลดไฟล์ JSON เก่าเพื่อ apply โครงสร้างใหม่ (มีบั๊กฟิกซ์) -->
-                    <button onclick="rebuildLayout()" class="bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
+                    <button onclick="rebuildLayout()" class="whitespace-nowrap bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
                         <i class="fa-solid fa-arrows-rotate"></i> Rebuild
                     </button>
                     <div class="w-px bg-slate-300 mx-1 my-1"></div>
-                    <button onclick="clearDraft()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
+                    <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
                         <i class="fa-solid fa-trash-can"></i> ล้าง
                     </button>
                 </div>
 
-                <button onclick="openReorderModal()" class="justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-sort"></i> <span class="hidden sm:inline">จัดเรียง</span>
+                <!-- 🌟 ปุ่มบันทึกและประวัติรายงาน -->
+                <button onclick="openSaveToHistoryModal()" class="whitespace-nowrap no-print justify-center bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="บันทึกรายงานนี้ไว้ดูและแก้ไขภายหลัง">
+                    <i class="fa-solid fa-bookmark"></i> <span class="hidden lg:inline">บันทึก</span>
                 </button>
-                <button id="previewBtn" onclick="generatePDF('preview')" class="justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-eye"></i> <span class="hidden sm:inline">พรีวิว</span>
+                <button onclick="openHistoryModal()" class="whitespace-nowrap no-print justify-center bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-slate-700 text-slate-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="ดูรายงานที่บันทึกไว้">
+                    <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline">ประวัติ</span>
                 </button>
-                <button onclick="generateNativePDF()" class="justify-center bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
-                    <i class="fa-solid fa-print"></i> พิมพ์ / PDF
+
+                <button onclick="openReorderModal()" class="whitespace-nowrap justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="จัดเรียงลำดับหัวข้อ">
+                    <i class="fa-solid fa-sort"></i> <span class="hidden lg:inline">จัดเรียง</span>
+                </button>
+                <button id="previewBtn" onclick="generatePDF('preview')" class="whitespace-nowrap justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="พรีวิวเอกสาร">
+                    <i class="fa-solid fa-eye"></i> <span class="hidden lg:inline">พรีวิว</span>
+                </button>
+                <button onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2" title="พิมพ์ / บันทึกเป็น PDF">
+                    <i class="fa-solid fa-print"></i> <span class="hidden md:inline">พิมพ์ / PDF</span>
                 </button>
             </div>
         </header>
+
+        <!-- 🌟 แถบ "กำลังแก้รายงาน" — แสดงใต้ header เฉพาะตอนที่ link กับ history -->
+        <div id="currentHistoryIndicator" class="no-print bg-indigo-50 border-b border-indigo-100 px-4 py-1.5 text-xs text-slate-600 flex items-center justify-between gap-3 shrink-0" style="display:none;">
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fa-solid fa-bookmark text-indigo-500 shrink-0"></i>
+                <span class="shrink-0">กำลังแก้รายงาน:</span>
+                <span id="currentHistoryName" class="font-bold text-indigo-700 truncate"></span>
+                <span class="hidden sm:inline text-slate-400 shrink-0">• sync อัตโนมัติทุก 3 วินาที</span>
+            </div>
+            <button onclick="detachFromHistory()" class="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold flex items-center gap-1 shrink-0" title="ยกเลิกการ sync — รายงานจะแยกออกจากประวัติ">
+                <i class="fa-solid fa-link-slash"></i> <span class="hidden sm:inline">ปลดล็อก</span>
+            </button>
+        </div>
 
         <!-- 📜 A4 SCROLL AREA (พื้นที่แสดงกระดาษรายงาน) -->
         <div class="flex-1 overflow-y-auto w-full custom-scrollbar pb-16" id="a4ScrollArea">
@@ -1008,6 +1025,12 @@
         ];
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // 🌟 โหลด currentHistoryId ก่อน — เพื่อให้ saveDraft รู้ว่าต้อง sync เข้า history ตัวไหน
+            try {
+                const savedId = await localforage.getItem(CURRENT_ID_KEY);
+                if (savedId) currentHistoryId = savedId;
+            } catch {}
+
             const isLoaded = await loadDraft(); 
             
             if (!isLoaded) {
@@ -1025,6 +1048,9 @@
 
             // 🌟 อัปเดต sidebar quick-add buttons
             renderSidebarQuickAdd();
+
+            // 🌟 แสดง indicator "กำลังแก้: [ชื่อ]" ถ้ามี currentHistoryId
+            updateCurrentHistoryIndicator();
 
             document.querySelectorAll('select').forEach(updateResultColor);
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
@@ -1533,12 +1559,271 @@
 
             try {
                 await localforage.setItem('smart_pm_draft', draft);
+
+                // 🌟 ถ้ารายงานปัจจุบันถูก "บันทึก" เข้า history แล้ว → sync เข้า history ทุกครั้งด้วย
+                if (currentHistoryId !== null) {
+                    await syncCurrentToHistory(draft);
+                }
+
                 const time = new Date().toLocaleTimeString('th-TH');
                 showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกล่าสุด ${time}`);
             } catch (e) {
                 console.error("Save error:", e);
                 showSaveStatus(`<i class="fa-solid fa-circle-exclamation"></i> บันทึกไม่สำเร็จ`, false);
             }
+        }
+
+        // ============================================================
+        // 🌟 HISTORY — บันทึก/โหลด/ลบ รายงานย้อนหลัง (สูงสุด 5 รายการ)
+        //   + auto-sync รายงานที่ "กำลังเปิดอยู่" ทุก 3 วิ ผ่าน saveDraft()
+        // ============================================================
+        const HISTORY_KEY = 'smart_pm_history';
+        const HISTORY_MAX = 5;
+        const CURRENT_ID_KEY = 'smart_pm_current_history_id'; // เก็บ id ของรายงานที่กำลังเปิด ข้าม session
+
+        // ตัวแปร state — id ของ history item ที่กำลังถูกแก้ไขอยู่ (null = รายงานใหม่ ยังไม่ได้บันทึก)
+        let currentHistoryId = null;
+
+        async function getHistory() {
+            try {
+                return (await localforage.getItem(HISTORY_KEY)) || [];
+            } catch { return []; }
+        }
+
+        async function saveHistory(list) {
+            await localforage.setItem(HISTORY_KEY, list);
+        }
+
+        async function setCurrentHistoryId(id) {
+            currentHistoryId = id;
+            try {
+                if (id === null) await localforage.removeItem(CURRENT_ID_KEY);
+                else await localforage.setItem(CURRENT_ID_KEY, id);
+            } catch (e) { console.warn('setCurrentHistoryId failed', e); }
+            updateCurrentHistoryIndicator();
+        }
+
+        // sync รายงานปัจจุบันเข้า history item ที่ตรงกับ currentHistoryId
+        async function syncCurrentToHistory(draft) {
+            const history = await getHistory();
+            const idx = history.findIndex(h => h.id === currentHistoryId);
+            if (idx < 0) {
+                // item ถูกลบไปแล้ว → reset
+                currentHistoryId = null;
+                try { await localforage.removeItem(CURRENT_ID_KEY); } catch {}
+                updateCurrentHistoryIndicator();
+                return;
+            }
+            history[idx].globals = draft.globals;
+            history[idx].html = draft.html;
+            history[idx].savedAt = new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+            await saveHistory(history);
+        }
+
+        // แสดง/ซ่อนแถบ "กำลังแก้รายงาน" ใต้ header
+        async function updateCurrentHistoryIndicator() {
+            const indicator = document.getElementById('currentHistoryIndicator');
+            const nameEl = document.getElementById('currentHistoryName');
+            if (!indicator || !nameEl) return;
+            if (currentHistoryId === null) {
+                indicator.style.display = 'none';
+                nameEl.textContent = '';
+                return;
+            }
+            const history = await getHistory();
+            const item = history.find(h => h.id === currentHistoryId);
+            if (!item) {
+                indicator.style.display = 'none';
+                return;
+            }
+            indicator.style.display = 'flex';
+            nameEl.textContent = item.name;
+            nameEl.title = item.name;
+        }
+
+        // ปลดล็อก — แยกรายงานปัจจุบันออกจาก history (ไม่ลบ history item)
+        async function detachFromHistory() {
+            if (currentHistoryId === null) return;
+            if (!confirm('ยกเลิกการ sync รายงานปัจจุบันออกจากประวัติ?\n\n• รายงานในประวัติยังคงอยู่ (เป็น snapshot ล่าสุด)\n• การแก้ไขจากนี้ไปจะไม่ถูก sync เข้ารายงานนั้นอีก\n• อยากให้ sync ต่อ ต้องกดปุ่ม "บันทึก" ใหม่')) return;
+            await setCurrentHistoryId(null);
+            showToast('ปลดล็อกจากประวัติแล้ว');
+        }
+
+        // เปิด modal ตั้งชื่อก่อนบันทึก
+        async function openSaveToHistoryModal() {
+            const input = document.getElementById('historyNameInput');
+            // ดึงชื่อโครงการจากหน้าปกเป็น default
+            const projectInput = document.querySelector('input[placeholder*="โครงการ"], input[placeholder*="Project"]');
+            const siteInput = document.querySelector('input[placeholder*="สถานที่"], input[placeholder*="Site"]');
+            let suggest = '';
+            if (projectInput && projectInput.value.trim()) suggest = projectInput.value.trim();
+            if (siteInput && siteInput.value.trim()) suggest += (suggest ? ' — ' : '') + siteInput.value.trim();
+            input.value = suggest;
+            document.getElementById('historyNameError').classList.add('hidden');
+
+            // 🌟 แจ้ง user ถ้ากำลังแก้รายงานที่บันทึกอยู่แล้ว
+            const noteEl = document.getElementById('historyModalNote');
+            if (currentHistoryId !== null) {
+                const history = await getHistory();
+                const cur = history.find(h => h.id === currentHistoryId);
+                noteEl.innerHTML = cur
+                    ? `<i class="fa-solid fa-circle-info text-indigo-400"></i> รายงานปัจจุบัน <strong class="text-indigo-700">"${cur.name}"</strong> sync อัตโนมัติอยู่แล้ว — ตั้งชื่อใหม่และกด <strong>บันทึก</strong> ด้านล่างเพื่อสร้าง <strong>สำเนาแยก</strong>เป็นรายงานอีกฉบับ`
+                    : '';
+                noteEl.classList.toggle('hidden', !cur);
+            } else {
+                noteEl.classList.add('hidden');
+                noteEl.innerHTML = '';
+            }
+
+            document.getElementById('saveHistoryModal').classList.remove('hidden');
+            document.getElementById('saveHistoryModal').classList.add('flex');
+            setTimeout(() => { input.focus(); input.select(); }, 100);
+        }
+
+        function closeSaveToHistoryModal() {
+            document.getElementById('saveHistoryModal').classList.add('hidden');
+            document.getElementById('saveHistoryModal').classList.remove('flex');
+        }
+
+        async function confirmSaveToHistory() {
+            const input = document.getElementById('historyNameInput');
+            const name = input.value.trim();
+            if (!name) {
+                document.getElementById('historyNameError').classList.remove('hidden');
+                input.focus();
+                return;
+            }
+
+            // เตรียม draft snapshot ณ ตอนนี้
+            syncDOMValues();
+            const scopeItemsData = [];
+            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
+                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
+            });
+            const snapshot = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                name,
+                savedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+                globals: {
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
+                    groCount, genCount, ctCount, tripCount, photoCounters, moduleTitles,
+                    customScopes: scopeItemsData
+                },
+                html: document.getElementById('exportWrapper').innerHTML
+            };
+
+            let history = await getHistory();
+            // ถ้ามีชื่อซ้ำ ให้ overwrite แทน push ใหม่
+            const dupIdx = history.findIndex(h => h.name === name);
+            if (dupIdx >= 0) {
+                if (!confirm(`มีรายงานชื่อ "${name}" อยู่แล้ว ต้องการเขียนทับหรือไม่?`)) return;
+                snapshot.id = history[dupIdx].id; // คงเดิม id ไว้
+                history[dupIdx] = snapshot;
+            } else {
+                history.unshift(snapshot);
+                if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+            }
+
+            await saveHistory(history);
+            // 🌟 ผูกรายงานปัจจุบันเข้ากับ id นี้ → ทุก 3 วินาทีจะ auto-sync เข้า history เอง
+            await setCurrentHistoryId(snapshot.id);
+            closeSaveToHistoryModal();
+            showToast(`บันทึก "${name}" แล้ว — แก้ไขต่อ ระบบจะ sync อัตโนมัติ`);
+        }
+
+        // เปิด modal ประวัติรายงาน
+        async function openHistoryModal() {
+            await renderHistoryList();
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyModal').classList.add('flex');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+            document.getElementById('historyModal').classList.remove('flex');
+        }
+
+        async function renderHistoryList() {
+            const list = document.getElementById('historyList');
+            const history = await getHistory();
+
+            if (history.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-inbox text-4xl mb-3 opacity-40"></i>
+                        <p class="font-semibold text-sm">ยังไม่มีรายงานที่บันทึกไว้</p>
+                        <p class="text-xs mt-1">กดปุ่ม <i class="fa-solid fa-bookmark"></i> บันทึก เพื่อเก็บรายงานปัจจุบัน</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            history.forEach((item, idx) => {
+                const isCurrent = item.id === currentHistoryId;
+                const div = document.createElement('div');
+                div.className = isCurrent
+                    ? 'bg-indigo-50 border-2 border-indigo-300 rounded-xl shadow-sm overflow-hidden transition-colors'
+                    : 'bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden hover:border-indigo-300 transition-colors';
+                div.innerHTML = `
+                    <div class="p-4 flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-xs font-bold text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full shrink-0">#${history.length - idx}</span>
+                                <span class="font-bold text-slate-800 text-sm truncate" title="${item.name}">${item.name}</span>
+                                ${isCurrent ? '<span class="text-[10px] font-bold text-white bg-indigo-500 px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">กำลังแก้</span>' : ''}
+                            </div>
+                            <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock"></i> ${item.savedAt}
+                            </p>
+                        </div>
+                        <div class="flex gap-1.5 shrink-0">
+                            ${isCurrent ? '' : `<button onclick="loadFromHistory(${item.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-rotate-left"></i> โหลด</button>`}
+                            <button onclick="deleteFromHistory(${item.id})"
+                                class="bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors border border-red-100">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>`;
+                list.appendChild(div);
+            });
+
+            // แสดงข้อความบอกจำนวนที่เหลือ
+            const remaining = HISTORY_MAX - history.length;
+            const footer = document.createElement('p');
+            footer.className = 'text-center text-xs text-slate-400 mt-2 pb-1';
+            footer.textContent = remaining > 0
+                ? `บันทึกได้อีก ${remaining} รายงาน (สูงสุด ${HISTORY_MAX})`
+                : `เต็มแล้ว (${HISTORY_MAX}/${HISTORY_MAX}) — บันทึกใหม่จะแทนที่รายการเก่าสุด`;
+            list.appendChild(footer);
+        }
+
+        async function loadFromHistory(id) {
+            const history = await getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item) return;
+
+            if (!confirm(`โหลดรายงาน "${item.name}" มาแก้ไขต่อหรือไม่?\n\n• การแก้ไขจะถูกบันทึกลงรายงานนี้อัตโนมัติทุก 3 วินาที\n• รายงานปัจจุบัน (ถ้ายังไม่ได้บันทึก) จะหายไป`)) return;
+
+            applyDataToDOM(item);
+            // 🌟 ผูกรายงานปัจจุบันเข้ากับ id นี้ → auto-sync เข้า history ทุก 3 วิ
+            await setCurrentHistoryId(id);
+            await saveDraft();
+            closeHistoryModal();
+            showToast(`โหลด "${item.name}" แล้ว — แก้ไขได้เลย`);
+        }
+
+        async function deleteFromHistory(id) {
+            const history = await getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item) return;
+            if (!confirm(`ลบรายงาน "${item.name}" ออกจากประวัติหรือไม่?`)) return;
+            const newHistory = history.filter(h => h.id !== id);
+            await saveHistory(newHistory);
+            // 🌟 ถ้าลบรายงานที่กำลังแก้อยู่ → reset currentHistoryId
+            if (currentHistoryId === id) {
+                await setCurrentHistoryId(null);
+            }
+            await renderHistoryList();
         }
 
         async function loadDraft() {
@@ -1970,9 +2255,11 @@
                     const draft = JSON.parse(e.target.result);
                     if(!draft.globals || !draft.html) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
                     if (confirm('คุณต้องการนำเข้าข้อมูลนี้ใช่หรือไม่? ข้อมูลที่อยู่บนจอขณะนี้จะถูกลบและเขียนทับทันที')) {
+                        // 🌟 สำคัญ: detach ออกจาก history ก่อน เพื่อไม่ให้ auto-sync เอาข้อมูลใหม่ไปทับรายงานเก่าใน history
+                        await setCurrentHistoryId(null);
                         applyDataToDOM(draft);
                         await saveDraft();
-                        alert("นำเข้าข้อมูลสำเร็จ!");
+                        alert("นำเข้าข้อมูลสำเร็จ!\n\nหากต้องการเก็บเป็นรายงานใน \"ประวัติ\" กรุณากดปุ่ม \"บันทึก\" และตั้งชื่อใหม่");
                     }
                 } catch(error) {
                     alert("ไฟล์ข้อมูลไม่ถูกต้อง หรือเสียหาย: " + error.message);
@@ -1983,8 +2270,9 @@
         }
 
         async function clearDraft() {
-            if(confirm('ยืนยันการล้างข้อมูลทั้งหมด?\n(ข้อความและรูปภาพทั้งหมดจะถูกลบและเริ่มใหม่)')) {
+            if(confirm('ยืนยันการล้างข้อมูลทั้งหมด?\n(ข้อความและรูปภาพทั้งหมดจะถูกลบและเริ่มใหม่)\n\n* รายงานที่บันทึกใน "ประวัติ" จะไม่ถูกลบ — เริ่มจากกระดาษเปล่าใหม่')) {
                 await localforage.removeItem('smart_pm_draft');
+                await localforage.removeItem(CURRENT_ID_KEY);
                 location.reload();
             }
         }
@@ -3946,5 +4234,57 @@
             modal.classList.remove('flex');
         }
     </script>
+    <!-- ====================================================== -->
+    <!-- 🌟 MODAL: บันทึกรายงาน                                 -->
+    <!-- ====================================================== -->
+    <div id="saveHistoryModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+            <div class="flex justify-between items-center p-5 border-b bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark text-indigo-500"></i> บันทึกรายงาน
+                </h3>
+                <button onclick="closeSaveToHistoryModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-5">
+                <p class="text-sm text-slate-500 mb-4">ตั้งชื่อรายงานเพื่อบันทึกไว้ดูและแก้ไขภายหลัง (สูงสุด 5 รายงาน)</p>
+                <p id="historyModalNote" class="hidden text-xs bg-indigo-50 border border-indigo-100 text-slate-600 rounded-lg p-2.5 mb-3"></p>
+                <input id="historyNameInput" type="text" maxlength="60"
+                    class="w-full border-2 border-slate-200 focus:border-indigo-400 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-colors mb-1"
+                    placeholder="เช่น MDB สาขาลาดพร้าว, DB-1 ชั้น 3 อาคาร A ..."
+                    onkeydown="if(event.key==='Enter') confirmSaveToHistory()">
+                <p id="historyNameError" class="text-xs text-red-500 hidden mb-3">กรุณาตั้งชื่อรายงานก่อนครับ</p>
+            </div>
+            <div class="p-4 pt-0 flex gap-2 justify-end">
+                <button onclick="closeSaveToHistoryModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm">ยกเลิก</button>
+                <button onclick="confirmSaveToHistory()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark"></i> บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- 🌟 MODAL: ประวัติรายงาน                                 -->
+    <!-- ====================================================== -->
+    <div id="historyModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200" style="max-height: 85vh;">
+            <div class="flex justify-between items-center p-5 border-b bg-slate-50 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> ประวัติรายงาน
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-4">
+                <div id="historyList" class="flex flex-col gap-3">
+                    <!-- รายการจะถูก render โดย renderHistoryList() -->
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
