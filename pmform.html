@@ -290,6 +290,17 @@
             }
             
             .native-print-mode #moduleContainer > div:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
+            
+            /* 🌟 แก้ปัญหา "หน้าเปล่าเกินมา 1 หน้า" ที่ Chrome print
+               สาเหตุ: element ที่ล้นเล็กน้อยที่ขอบล่างของเอกสารทำให้ Chrome คิดว่ามีหน้าใหม่
+               วิธีแก้: บีบ block สุดท้าย + ลบ ghostSpacer ใน print mode */
+            .native-print-mode #moduleContainer > div:last-child > div:last-child { 
+                margin-bottom: 0 !important; 
+                padding-bottom: 0 !important; 
+                border-bottom: none !important;
+            }
+            .native-print-mode #ghostSpacerHacker { display: none !important; }
+            
             .native-print-mode #printLayoutTable { margin-bottom: 0 !important; }
             .native-print-mode table.mb-6 { margin-bottom: 12px !important; }
             .native-print-mode table th, .native-print-mode table td { padding: 4px 6px !important; line-height: 1.2 !important; }
@@ -523,6 +534,11 @@
                         <i class="fa-solid fa-upload"></i> นำเข้า
                     </button>
                     <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                    <div class="w-px bg-slate-300 mx-1 my-1"></div>
+                    <!-- 🌟 ปุ่ม Rebuild Layout — กดหลังโหลดไฟล์ JSON เก่าเพื่อ apply โครงสร้างใหม่ (มีบั๊กฟิกซ์) -->
+                    <button onclick="rebuildLayout()" class="bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
+                        <i class="fa-solid fa-arrows-rotate"></i> Rebuild
+                    </button>
                     <div class="w-px bg-slate-300 mx-1 my-1"></div>
                     <button onclick="clearDraft()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
                         <i class="fa-solid fa-trash-can"></i> ล้าง
@@ -1423,6 +1439,270 @@
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
             syncCoverInputs(); 
+        }
+
+        // 🌟 Rebuild Layout — สร้าง HTML ของ moduleContainer ใหม่จาก template ปัจจุบัน
+        // ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน
+        // หลักการ: เก็บ values → clear DOM → เรียก add*Block ใหม่ตามจำนวนเดิม → restore values
+        async function rebuildLayout() {
+            if (!confirm('สร้าง Layout ใหม่จาก template ล่าสุด?\n\nการทำงาน:\n• เก็บข้อมูลทั้งหมดที่กรอกไว้\n• สร้าง HTML ของ block ทั้งหมดใหม่ (โครงสร้างจากโค้ดล่าสุด)\n• ใส่ข้อมูลกลับเข้าที่เดิม\n\nใช้เมื่อ: โหลดไฟล์ JSON เก่าและพบบั๊กที่ถูกแก้แล้วในโค้ดใหม่')) return;
+
+            showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้าง Layout ใหม่...');
+            syncDOMValues();
+
+            // ════════════════════════════════════════════════════════════
+            // 1. เก็บ snapshot ของแต่ละ module — order ของ block + values ในแต่ละ block
+            // ════════════════════════════════════════════════════════════
+            const snapshot = {
+                modules: []  // [{moduleId, blocks: [{type, values: [], photos: [], selects: [], extraRows: 0}]}]
+            };
+
+            // เก็บลำดับ modules จริง (ตาม DOM order, ไม่ใช่ selectedModules array)
+            const moduleContainer = document.getElementById('moduleContainer');
+            const moduleNodes = Array.from(moduleContainer.children).filter(m => !m.classList.contains('hidden'));
+
+            moduleNodes.forEach(modNode => {
+                const moduleId = modNode.id;
+                const moduleData = { moduleId, blocks: [] };
+                
+                // หา blocks ทั้งหมดใน module นี้ (insulation-block, photo-group-block, etc.)
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block, .general-block, .photo-group-block, .blank-group-block';
+                const blocks = modNode.querySelectorAll(blockSelectors);
+                
+                blocks.forEach(block => {
+                    const blockData = captureBlockData(block);
+                    moduleData.blocks.push(blockData);
+                });
+
+                snapshot.modules.push(moduleData);
+            });
+
+            // ════════════════════════════════════════════════════════════
+            // 2. Clear moduleContainer + reset counters
+            // ════════════════════════════════════════════════════════════
+            insCount = 0; dieCount = 0; groCount = 0; ctCount = 0; tripCount = 0; genCount = 0;
+            groupCounts = { bf: 0, cl: 0, af: 0, blk: 0 };
+            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, ct: 0, trip: 0, blk: 0 };
+
+            // ลบ blocks ทั้งหมดออกจาก container ของแต่ละ module (แต่เก็บโครง module ไว้)
+            ['ins_container', 'die_container', 'gro_container', 'ct_container', 'trip_container', 
+             'gen_container', 'bf_container', 'cl_container', 'af_container', 'blk_container'].forEach(containerId => {
+                const c = document.getElementById(containerId);
+                if (c) c.innerHTML = '';
+            });
+
+            // ════════════════════════════════════════════════════════════
+            // 3. Rebuild — เรียก add*Block() ตามจำนวนเดิม (สร้าง HTML จาก template ปัจจุบัน)
+            // ════════════════════════════════════════════════════════════
+            const adderMap = {
+                'insulation-block': addInsulationBlock,
+                'dielectric-block': addDielectricBlock,
+                'grounding-block': addGroundingBlock,
+                'contact-block': addContactBlock,
+                'trip-block': addTripBlock,
+                'general-block': addGeneralCheckBlock,
+                'photo-group-block': null,  // ใช้ addPhotoGroup ที่ต้องการ type argument
+                'blank-group-block': null,  // ใช้ addBlankGroup
+            };
+
+            snapshot.modules.forEach(moduleData => {
+                moduleData.blocks.forEach(blockData => {
+                    if (blockData.type === 'photo-group-block') {
+                        addPhotoGroup(blockData.photoGroupType);
+                    } else if (blockData.type === 'blank-group-block') {
+                        addBlankGroup('blk');
+                    } else {
+                        const adder = adderMap[blockData.type];
+                        if (adder) adder();
+                    }
+                });
+            });
+
+            // ════════════════════════════════════════════════════════════
+            // 4. Restore values — ใส่ค่ากลับเข้า block ใหม่ที่ตำแหน่งเดียวกัน
+            // ════════════════════════════════════════════════════════════
+            await new Promise(r => setTimeout(r, 100));  // รอ DOM render
+
+            snapshot.modules.forEach(moduleData => {
+                const modNode = document.getElementById(moduleData.moduleId);
+                if (!modNode) return;
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block, .general-block, .photo-group-block, .blank-group-block';
+                const newBlocks = modNode.querySelectorAll(blockSelectors);
+                
+                moduleData.blocks.forEach((blockData, idx) => {
+                    const newBlock = newBlocks[idx];
+                    if (newBlock) restoreBlockData(newBlock, blockData);
+                });
+            });
+
+            await saveDraft();
+            showSaveStatus('<i class="fa-solid fa-check-circle"></i> สร้าง Layout ใหม่สำเร็จ');
+        }
+
+        // เก็บ values ของ block — generic ตามประเภท HTML element
+        function captureBlockData(block) {
+            const blockData = {
+                type: detectBlockType(block),
+                inputs: [],     // [{idx, value}]
+                selects: [],    // [{idx, value}]
+                checkboxes: [], // [{idx, checked}]
+                photos: [],     // [{idx, src}]  // base64
+                photoGroupType: null,
+                generalRows: 0, // จำนวน row พิเศษใน general check (เกิน default)
+            };
+
+            // เก็บ inputs (รวม type=text, number, etc. — ไม่รวม file)
+            block.querySelectorAll('input:not([type="file"]):not([type="checkbox"])').forEach((inp, idx) => {
+                blockData.inputs.push({ idx, value: inp.value });
+            });
+
+            // เก็บ checkboxes
+            block.querySelectorAll('input[type="checkbox"]').forEach((cb, idx) => {
+                blockData.checkboxes.push({ idx, checked: cb.checked });
+            });
+
+            // เก็บ selects
+            block.querySelectorAll('select').forEach((sel, idx) => {
+                blockData.selects.push({ idx, value: sel.value });
+            });
+
+            // เก็บ textarea
+            blockData.textareas = [];
+            block.querySelectorAll('textarea').forEach((ta, idx) => {
+                blockData.textareas.push({ idx, value: ta.value });
+            });
+
+            // เก็บรูป — รองรับ 2 รูปแบบ:
+            //   (1) <div class="photo-image"> ที่มี style="background-image: url(data:...)"  (template ปัจจุบัน)
+            //   (2) <img class="photo-image" src="data:..."> (HTML แบบเก่า)
+            block.querySelectorAll('.photo-box .photo-image').forEach((el, idx) => {
+                let src = '';
+                if (el.tagName === 'IMG') {
+                    if (el.src && el.src.startsWith('data:')) src = el.src;
+                } else {
+                    // div with background-image
+                    const bg = el.style.backgroundImage || '';
+                    // bg = url("data:image/...") — extract URL
+                    const m = bg.match(/url\(['"]?(data:[^'")]+)['"]?\)/);
+                    if (m) src = m[1];
+                }
+                if (src) blockData.photos.push({ idx, src });
+            });
+
+            // photo-group-block: detect type จาก id หรือ class
+            if (blockData.type === 'photo-group-block') {
+                const id = block.id || '';
+                if (id.includes('_bf_') || id.startsWith('group_bf')) blockData.photoGroupType = 'bf';
+                else if (id.includes('_cl_') || id.startsWith('group_cl')) blockData.photoGroupType = 'cl';
+                else if (id.includes('_af_') || id.startsWith('group_af')) blockData.photoGroupType = 'af';
+                else blockData.photoGroupType = 'bf';  // fallback
+            }
+
+            // general-block: นับ rows ที่เกิน default
+            if (blockData.type === 'general-block') {
+                const rows = block.querySelectorAll('tbody tr');
+                blockData.generalRows = Math.max(0, rows.length);
+            }
+
+            // photo count (จำนวนรูปจริงใน grid — รวมที่ไม่มีรูป)
+            const photoBoxes = block.querySelectorAll('.photo-box');
+            blockData.photoBoxCount = photoBoxes.length;
+
+            return blockData;
+        }
+
+        function detectBlockType(block) {
+            const types = ['insulation-block', 'dielectric-block', 'grounding-block', 'contact-block', 
+                          'trip-block', 'general-block', 'photo-group-block', 'blank-group-block'];
+            for (const t of types) {
+                if (block.classList.contains(t)) return t;
+            }
+            return 'unknown';
+        }
+
+        // ใส่ values กลับเข้า block ใหม่
+        function restoreBlockData(newBlock, blockData) {
+            // เพิ่ม photo box ให้ครบจำนวน (ถ้าเกิน default 6)
+            const currentPhotos = newBlock.querySelectorAll('.photo-box').length;
+            const targetPhotos = blockData.photoBoxCount;
+            if (targetPhotos > currentPhotos) {
+                const grid = newBlock.querySelector('[id^="grid_"]');
+                if (grid) {
+                    const prefix = grid.id.replace('grid_', '').split('_')[0]; // ins, die, etc.
+                    for (let i = currentPhotos; i < targetPhotos; i++) {
+                        addPhotoBox(grid.id, prefix);
+                    }
+                }
+            }
+
+            // เพิ่ม general check rows ที่เกิน default
+            if (blockData.type === 'general-block' && blockData.generalRows > 0) {
+                const tbody = newBlock.querySelector('tbody');
+                const currentRows = tbody ? tbody.querySelectorAll('tr').length : 0;
+                const need = blockData.generalRows - currentRows;
+                if (need > 0 && tbody) {
+                    for (let i = 0; i < need; i++) {
+                        addGeneralCheckRow(tbody.id);
+                    }
+                }
+            }
+
+            // Restore inputs ตาม index
+            const inputs = newBlock.querySelectorAll('input:not([type="file"]):not([type="checkbox"])');
+            blockData.inputs.forEach(({ idx, value }) => {
+                if (inputs[idx]) {
+                    inputs[idx].value = value;
+                    inputs[idx].setAttribute('value', value);
+                }
+            });
+
+            // Restore checkboxes
+            const checkboxes = newBlock.querySelectorAll('input[type="checkbox"]');
+            blockData.checkboxes.forEach(({ idx, checked }) => {
+                if (checkboxes[idx]) checkboxes[idx].checked = checked;
+            });
+
+            // Restore selects
+            const selects = newBlock.querySelectorAll('select');
+            blockData.selects.forEach(({ idx, value }) => {
+                if (selects[idx]) {
+                    selects[idx].value = value;
+                    if (typeof updateResultColor === 'function') updateResultColor(selects[idx]);
+                }
+            });
+
+            // Restore textareas
+            const textareas = newBlock.querySelectorAll('textarea');
+            (blockData.textareas || []).forEach(({ idx, value }) => {
+                if (textareas[idx]) textareas[idx].value = value;
+            });
+
+            // Restore รูป — template ปัจจุบันใช้ <div class="photo-image"> + background-image
+            const photoElements = newBlock.querySelectorAll('.photo-box .photo-image');
+            blockData.photos.forEach(({ idx, src }) => {
+                const el = photoElements[idx];
+                if (!el) return;
+                
+                if (el.tagName === 'IMG') {
+                    // กรณี (เก่า) — ใช้ src
+                    el.src = src;
+                } else {
+                    // กรณี (ปัจจุบัน) — ใช้ background-image
+                    el.style.backgroundImage = `url("${src}")`;
+                }
+                el.classList.remove('hidden');
+                
+                // ซ่อน placeholder + แสดงปุ่มต่างๆ
+                const box = el.closest('.photo-box');
+                if (box) {
+                    // ซ่อน placeholder (ไอคอน + ขึ้นข้อความ "อัปโหลดรูปภาพ")
+                    box.querySelectorAll('.text-slate-400').forEach(ph => {
+                        if (ph.querySelector('.fa-plus')) ph.classList.add('hidden');
+                    });
+                    // แสดงปุ่ม "ลบรูป" และ "วาด"
+                    box.querySelectorAll('.delete-photo-btn, .edit-photo-btn').forEach(btn => btn.classList.remove('hidden'));
+                }
+            });
         }
 
         function patchOldPhotoBoxes() {
