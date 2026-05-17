@@ -328,6 +328,23 @@
         .photo-box:hover .edit-photo-btn { opacity: 1; }
         .edit-photo-btn:hover { background: #4338ca; transform: scale(1.05); }
 
+        /* 🌟 ปุ่ม Crop รูปภาพ 🌟 */
+        .crop-photo-btn { position: absolute; bottom: 8px; left: 8px; background: #0d9488; color: white; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .photo-box:hover .crop-photo-btn { opacity: 1; }
+        .crop-photo-btn:hover { background: #0f766e; transform: scale(1.05); }
+
+        /* 🌟 Crop Modal — Stage และ Overlay 🌟 */
+        #cropStage { position: relative; width: 100%; height: 100%; overflow: hidden; background: #1e293b; user-select: none; touch-action: none; cursor: grab; }
+        #cropStage.is-panning { cursor: grabbing; }
+        #cropImage { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; max-width: none; }
+        /* Overlay: มืดล้อมรอบ + ช่องใส (กรอบ crop) ตรงกลาง */
+        #cropOverlay { position: absolute; inset: 0; pointer-events: none; }
+        #cropFrame { position: absolute; box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.65); border: 2px solid #fff; box-sizing: border-box; pointer-events: none; }
+        /* เส้น grid 3x3 ภายในกรอบ crop */
+        #cropFrame::before, #cropFrame::after { content: ''; position: absolute; background: rgba(255,255,255,0.4); }
+        #cropFrame::before { left: 33.333%; right: 33.333%; top: 0; bottom: 0; border-left: 1px solid rgba(255,255,255,0.4); border-right: 1px solid rgba(255,255,255,0.4); background: transparent; }
+        #cropFrame::after { top: 33.333%; bottom: 33.333%; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.4); background: transparent; }
+
         table { border-collapse: collapse; width: 100%; background-color: #ffffff; }
         th, td { border: 1px solid #cbd5e1 !important; padding: 6px; background-clip: padding-box !important; }
         th { background-color: #f1f5f9 !important; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: bold; }
@@ -915,6 +932,75 @@
         </div>
     </div>
 
+    <!-- 💬 MODAL กลางสำหรับ Confirm / Alert (แทน window.confirm / window.alert) -->
+    <div id="dialogModal" class="fixed inset-0 z-[100000] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 w-full max-w-md transform transition-transform" id="dialogBox">
+            <!-- Header / Icon -->
+            <div class="flex items-start gap-4 p-5 sm:p-6">
+                <div id="dialogIcon" class="shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-circle-question"></i>
+                </div>
+                <div class="flex-grow min-w-0 pt-1">
+                    <h3 id="dialogTitle" class="text-lg font-bold text-slate-800 mb-1">ยืนยัน</h3>
+                    <p id="dialogMessage" class="text-sm text-slate-600 whitespace-pre-line leading-relaxed"></p>
+                </div>
+            </div>
+            <!-- Buttons -->
+            <div class="px-5 sm:px-6 pb-5 sm:pb-6 flex flex-col-reverse sm:flex-row justify-end gap-2">
+                <button type="button" id="dialogCancel" class="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200">ยกเลิก</button>
+                <button type="button" id="dialogConfirm" class="px-5 py-2.5 rounded-xl font-bold text-white shadow-md transition-all">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✂️ MODAL สำหรับ Crop รูปภาพ (ซูม + ลากเลื่อน) -->
+    <div id="cropModal" class="fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 w-full" style="max-width: 1000px; height: 90vh;">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-4 border-b bg-slate-50 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-crop-simple text-teal-600"></i> ครอบตัดรูปภาพ
+                </h3>
+                <span class="text-xs text-slate-500 hidden sm:block">ลากเพื่อเลื่อนตำแหน่ง • ใช้สไลด์เดอร์เพื่อซูม</span>
+            </div>
+
+            <!-- Crop Stage -->
+            <div class="flex-grow w-full bg-slate-200 relative overflow-hidden flex items-center justify-center">
+                <div id="cropStage">
+                    <img id="cropImage" alt="" draggable="false">
+                    <div id="cropOverlay">
+                        <div id="cropFrame"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zoom Slider -->
+            <div class="p-4 border-t bg-slate-50 shrink-0">
+                <div class="flex items-center gap-3 max-w-2xl mx-auto">
+                    <button type="button" onclick="cropAdjustZoom(-0.1)" class="w-9 h-9 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm flex items-center justify-center" title="ย่อ">
+                        <i class="fa-solid fa-magnifying-glass-minus"></i>
+                    </button>
+                    <input type="range" id="cropZoom" min="100" max="400" value="100" step="1" class="flex-grow accent-teal-600" oninput="cropOnZoomChange()">
+                    <button type="button" onclick="cropAdjustZoom(0.1)" class="w-9 h-9 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm flex items-center justify-center" title="ขยาย">
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </button>
+                    <span id="cropZoomLabel" class="text-sm font-mono text-slate-600 w-14 text-right">100%</span>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t bg-white flex justify-end gap-3 shrink-0">
+                <button onclick="cropResetView()" class="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> รีเซ็ต
+                </button>
+                <button onclick="closeCropModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">ยกเลิก</button>
+                <button onclick="saveCrop()" class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-xl font-bold shadow-md transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 🧠 JAVASCRIPT LOGIC -->
     <script>
         let selectedModules = []; 
@@ -1270,7 +1356,7 @@
 
         const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .contact-block, .trip-block';
 
-        function openReorderModal() {
+        async function openReorderModal() {
             const list = document.getElementById('reorderList');
             list.innerHTML = '';
             const container = document.getElementById('moduleContainer');
@@ -1317,7 +1403,11 @@
             });
 
             if (flatItems.length === 0) {
-                alert('ยังไม่มีหัวข้อที่เปิดใช้งาน กรุณาเลือกจากแถบเมนูด้านซ้ายก่อนครับ');
+                await showAlert({
+                    title: 'ยังไม่มีหัวข้อ',
+                    message: 'ยังไม่มีหัวข้อที่เปิดใช้งาน กรุณาเลือกจากแถบเมนูด้านซ้ายก่อนครับ',
+                    variant: 'info'
+                });
                 return;
             }
 
@@ -1644,7 +1734,12 @@
         // ปลดล็อก — แยกรายงานปัจจุบันออกจาก history (ไม่ลบ history item)
         async function detachFromHistory() {
             if (currentHistoryId === null) return;
-            if (!confirm('ยกเลิกการ sync รายงานปัจจุบันออกจากประวัติ?\n\n• รายงานในประวัติยังคงอยู่ (เป็น snapshot ล่าสุด)\n• การแก้ไขจากนี้ไปจะไม่ถูก sync เข้ารายงานนั้นอีก\n• อยากให้ sync ต่อ ต้องกดปุ่ม "บันทึก" ใหม่')) return;
+            if (!await showConfirm({
+                title: 'ยกเลิกการ sync รายงานนี้?',
+                message: '• รายงานในประวัติยังคงอยู่ (เป็น snapshot ล่าสุด)\n• การแก้ไขจากนี้ไปจะไม่ถูก sync เข้ารายงานนั้นอีก\n• อยากให้ sync ต่อ ต้องกดปุ่ม "บันทึก" ใหม่',
+                confirmText: 'ยกเลิก sync',
+                variant: 'warning'
+            })) return;
             await setCurrentHistoryId(null);
             showToast('ปลดล็อกจากประวัติแล้ว');
         }
@@ -1716,7 +1811,12 @@
             // ถ้ามีชื่อซ้ำ ให้ overwrite แทน push ใหม่
             const dupIdx = history.findIndex(h => h.name === name);
             if (dupIdx >= 0) {
-                if (!confirm(`มีรายงานชื่อ "${name}" อยู่แล้ว ต้องการเขียนทับหรือไม่?`)) return;
+                if (!await showConfirm({
+                    title: 'เขียนทับรายงานเดิม?',
+                    message: `มีรายงานชื่อ "${name}" อยู่แล้วในประวัติ ต้องการเขียนทับหรือไม่?`,
+                    confirmText: 'เขียนทับ',
+                    variant: 'warning'
+                })) return;
                 snapshot.id = history[dupIdx].id; // คงเดิม id ไว้
                 history[dupIdx] = snapshot;
             } else {
@@ -1802,7 +1902,12 @@
             const item = history.find(h => h.id === id);
             if (!item) return;
 
-            if (!confirm(`โหลดรายงาน "${item.name}" มาแก้ไขต่อหรือไม่?\n\n• การแก้ไขจะถูกบันทึกลงรายงานนี้อัตโนมัติทุก 3 วินาที\n• รายงานปัจจุบัน (ถ้ายังไม่ได้บันทึก) จะหายไป`)) return;
+            if (!await showConfirm({
+                title: 'โหลดรายงานนี้มาแก้ไข?',
+                message: `รายงาน: "${item.name}"\n\n• การแก้ไขจะถูกบันทึกลงรายงานนี้อัตโนมัติทุก 3 วินาที\n• รายงานปัจจุบัน (ถ้ายังไม่ได้บันทึก) จะหายไป`,
+                confirmText: 'โหลดรายงาน',
+                variant: 'info'
+            })) return;
 
             applyDataToDOM(item);
             // 🌟 ผูกรายงานปัจจุบันเข้ากับ id นี้ → auto-sync เข้า history ทุก 3 วิ
@@ -1816,7 +1921,12 @@
             const history = await getHistory();
             const item = history.find(h => h.id === id);
             if (!item) return;
-            if (!confirm(`ลบรายงาน "${item.name}" ออกจากประวัติหรือไม่?`)) return;
+            if (!await showConfirm({
+                title: 'ลบรายงานออกจากประวัติ?',
+                message: `รายงาน: "${item.name}"\n\nการลบนี้ไม่สามารถยกเลิกได้`,
+                confirmText: 'ลบรายงาน',
+                variant: 'danger'
+            })) return;
             const newHistory = history.filter(h => h.id !== id);
             await saveHistory(newHistory);
             // 🌟 ถ้าลบรายงานที่กำลังแก้อยู่ → reset currentHistoryId
@@ -1826,16 +1936,108 @@
             await renderHistoryList();
         }
 
+        // 💬 ระบบ Dialog กลาง — แทน window.confirm และ window.alert
+        // ใช้: const ok = await showConfirm({ title, message, confirmText, cancelText, variant });
+        //     await showAlert({ title, message, variant });
+        // variant: 'danger' (แดง), 'warning' (เหลือง), 'info' (น้ำเงิน), 'success' (เขียว)
+        let _dialogResolver = null;
+
+        function showConfirm(opts = {}) {
+            return _openDialog({
+                title: opts.title || 'ยืนยัน',
+                message: opts.message || '',
+                confirmText: opts.confirmText || 'ตกลง',
+                cancelText: opts.cancelText || 'ยกเลิก',
+                variant: opts.variant || 'warning',
+                showCancel: true
+            });
+        }
+
+        function showAlert(opts = {}) {
+            return _openDialog({
+                title: opts.title || 'แจ้งเตือน',
+                message: opts.message || '',
+                confirmText: opts.confirmText || 'ตกลง',
+                cancelText: '',
+                variant: opts.variant || 'info',
+                showCancel: false
+            });
+        }
+
+        function _openDialog(config) {
+            return new Promise((resolve) => {
+                _dialogResolver = resolve;
+
+                const modal = document.getElementById('dialogModal');
+                const iconBox = document.getElementById('dialogIcon');
+                const titleEl = document.getElementById('dialogTitle');
+                const msgEl = document.getElementById('dialogMessage');
+                const okBtn = document.getElementById('dialogConfirm');
+                const cancelBtn = document.getElementById('dialogCancel');
+
+                titleEl.textContent = config.title;
+                msgEl.textContent = config.message;
+                okBtn.textContent = config.confirmText;
+                cancelBtn.textContent = config.cancelText;
+
+                // ปรับสี + ไอคอน ตาม variant
+                const variants = {
+                    danger:  { icBg: 'bg-red-100',    icColor: 'text-red-600',    icon: 'fa-circle-exclamation', btn: 'bg-red-600 hover:bg-red-700' },
+                    warning: { icBg: 'bg-amber-100',  icColor: 'text-amber-600',  icon: 'fa-triangle-exclamation', btn: 'bg-amber-600 hover:bg-amber-700' },
+                    info:    { icBg: 'bg-sky-100',    icColor: 'text-sky-600',    icon: 'fa-circle-info', btn: 'bg-indigo-600 hover:bg-indigo-700' },
+                    success: { icBg: 'bg-emerald-100',icColor: 'text-emerald-600',icon: 'fa-circle-check', btn: 'bg-emerald-600 hover:bg-emerald-700' }
+                };
+                const v = variants[config.variant] || variants.warning;
+                iconBox.className = `shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl ${v.icBg} ${v.icColor}`;
+                iconBox.innerHTML = `<i class="fa-solid ${v.icon}"></i>`;
+                okBtn.className = `px-5 py-2.5 rounded-xl font-bold text-white shadow-md transition-all ${v.btn}`;
+
+                cancelBtn.style.display = config.showCancel ? '' : 'none';
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                // โฟกัสปุ่ม OK เพื่อให้กด Enter ได้เลย
+                setTimeout(() => okBtn.focus(), 50);
+            });
+        }
+
+        function _closeDialog(result) {
+            const modal = document.getElementById('dialogModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (_dialogResolver) {
+                const r = _dialogResolver;
+                _dialogResolver = null;
+                r(result);
+            }
+        }
+
+        // ผูก event ครั้งเดียวตอนโหลดเสร็จ — ทำผ่าน DOMContentLoaded เพื่อให้แน่ใจว่า element พร้อม
+        document.addEventListener('DOMContentLoaded', () => {
+            const okBtn = document.getElementById('dialogConfirm');
+            const cancelBtn = document.getElementById('dialogCancel');
+            const modal = document.getElementById('dialogModal');
+            if (okBtn) okBtn.addEventListener('click', () => _closeDialog(true));
+            if (cancelBtn) cancelBtn.addEventListener('click', () => _closeDialog(false));
+            // คลิกพื้นที่นอกกล่อง = ยกเลิก
+            if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) _closeDialog(false); });
+            // Esc = ยกเลิก, Enter = ตกลง (เฉพาะเมื่อ modal กำลังเปิด)
+            window.addEventListener('keydown', (e) => {
+                if (modal.classList.contains('hidden')) return;
+                if (e.key === 'Escape') { e.preventDefault(); _closeDialog(false); }
+                if (e.key === 'Enter') { e.preventDefault(); _closeDialog(true); }
+            });
+        });
+
         async function loadDraft() {
             try {
                 const draft = await localforage.getItem('smart_pm_draft');
                 if (draft) {
-                    if (confirm('พบข้อมูลรายงานที่ค้างไว้ล่าสุด คุณต้องการโหลดข้อมูลเดิมกลับมาหรือไม่?\n(กด Cancel เพื่อเริ่มกระดาษเปล่า)')) {
-                        applyDataToDOM(draft);
-                        return true;
-                    } else {
-                        await localforage.removeItem('smart_pm_draft'); 
-                    }
+                    // 🌟 โหลดงานเดิมอัตโนมัติ — ไม่ถามผู้ใช้เพื่อกันการกดพลาดเสียงาน
+                    // ถ้าต้องการเริ่มใหม่ ให้ใช้ปุ่ม "ล้างข้อมูล" ที่มีอยู่แล้ว
+                    applyDataToDOM(draft);
+                    return true;
                 }
             } catch (e) {
                 console.error("โหลดข้อมูลล้มเหลว", e);
@@ -1905,7 +2107,12 @@
         // ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน
         // หลักการ: เก็บ values → clear DOM → เรียก add*Block ใหม่ตามจำนวนเดิม → restore values
         async function rebuildLayout() {
-            if (!confirm('สร้าง Layout ใหม่จาก template ล่าสุด?\n\nการทำงาน:\n• เก็บข้อมูลทั้งหมดที่กรอกไว้\n• สร้าง HTML ของ block ทั้งหมดใหม่ (โครงสร้างจากโค้ดล่าสุด)\n• ใส่ข้อมูลกลับเข้าที่เดิม\n\nใช้เมื่อ: โหลดไฟล์ JSON เก่าและพบบั๊กที่ถูกแก้แล้วในโค้ดใหม่')) return;
+            if (!await showConfirm({
+                title: 'สร้าง Layout ใหม่จาก template?',
+                message: 'การทำงาน:\n• เก็บข้อมูลทั้งหมดที่กรอกไว้\n• สร้าง HTML ของ block ทั้งหมดใหม่ (โครงสร้างจากโค้ดล่าสุด)\n• ใส่ข้อมูลกลับเข้าที่เดิม\n\nใช้เมื่อ: โหลดไฟล์ JSON เก่าและพบบั๊กที่ถูกแก้แล้วในโค้ดใหม่',
+                confirmText: 'สร้างใหม่',
+                variant: 'info'
+            })) return;
 
             showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้าง Layout ใหม่...');
             syncDOMValues();
@@ -2159,8 +2366,8 @@
                     box.querySelectorAll('.text-slate-400').forEach(ph => {
                         if (ph.querySelector('.fa-plus')) ph.classList.add('hidden');
                     });
-                    // แสดงปุ่ม "ลบรูป" และ "วาด"
-                    box.querySelectorAll('.delete-photo-btn, .edit-photo-btn').forEach(btn => btn.classList.remove('hidden'));
+                    // แสดงปุ่ม "ลบรูป", "วาด" และ "Crop"
+                    box.querySelectorAll('.delete-photo-btn, .edit-photo-btn, .crop-photo-btn').forEach(btn => btn.classList.remove('hidden'));
                 }
             });
         }
@@ -2185,6 +2392,24 @@
                             imgInp.setAttribute('multiple', 'multiple');
                             const gridId = box.parentElement.id;
                             imgInp.setAttribute('onchange', `handleMultiUpload(event, '${gridId}', '${prefix}', ${i})`);
+                        }
+                    }
+                }
+
+                // ✂️ Patch ปุ่ม Crop ให้กับ photo-box ที่ยังไม่มี
+                if (!box.querySelector('.crop-photo-btn')) {
+                    const imgInp = box.querySelector('input[type="file"]');
+                    if (imgInp) {
+                        const parts = imgInp.id.split('_');
+                        if (parts.length >= 3) {
+                            const prefix = parts[1];
+                            const i = parts[2];
+                            const isHidden = box.querySelector('.photo-image').classList.contains('hidden') ? 'hidden' : '';
+                            box.insertAdjacentHTML('beforeend', `
+                                <div class="crop-photo-btn no-print ${isHidden}" onclick="event.stopPropagation(); openCropModal('prev_${prefix}_${i}')" title="ครอบตัดรูป">
+                                    <i class="fa-solid fa-crop-simple"></i>
+                                </div>
+                            `);
                         }
                     }
                 }
@@ -2254,15 +2479,29 @@
                 try {
                     const draft = JSON.parse(e.target.result);
                     if(!draft.globals || !draft.html) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
-                    if (confirm('คุณต้องการนำเข้าข้อมูลนี้ใช่หรือไม่? ข้อมูลที่อยู่บนจอขณะนี้จะถูกลบและเขียนทับทันที')) {
+                    const ok = await showConfirm({
+                        title: 'นำเข้าข้อมูล?',
+                        message: 'ข้อมูลที่อยู่บนจอขณะนี้จะถูกลบและเขียนทับทันที\n\nต้องการดำเนินการต่อหรือไม่?',
+                        confirmText: 'นำเข้า',
+                        variant: 'warning'
+                    });
+                    if (ok) {
                         // 🌟 สำคัญ: detach ออกจาก history ก่อน เพื่อไม่ให้ auto-sync เอาข้อมูลใหม่ไปทับรายงานเก่าใน history
                         await setCurrentHistoryId(null);
                         applyDataToDOM(draft);
                         await saveDraft();
-                        alert("นำเข้าข้อมูลสำเร็จ!\n\nหากต้องการเก็บเป็นรายงานใน \"ประวัติ\" กรุณากดปุ่ม \"บันทึก\" และตั้งชื่อใหม่");
+                        await showAlert({
+                            title: 'นำเข้าสำเร็จ',
+                            message: 'หากต้องการเก็บเป็นรายงานใน "ประวัติ" กรุณากดปุ่ม "บันทึก" และตั้งชื่อใหม่',
+                            variant: 'success'
+                        });
                     }
                 } catch(error) {
-                    alert("ไฟล์ข้อมูลไม่ถูกต้อง หรือเสียหาย: " + error.message);
+                    await showAlert({
+                        title: 'ไฟล์เสียหาย',
+                        message: 'ไฟล์ข้อมูลไม่ถูกต้อง หรือเสียหาย: ' + error.message,
+                        variant: 'danger'
+                    });
                 }
                 event.target.value = '';
             };
@@ -2270,7 +2509,14 @@
         }
 
         async function clearDraft() {
-            if(confirm('ยืนยันการล้างข้อมูลทั้งหมด?\n(ข้อความและรูปภาพทั้งหมดจะถูกลบและเริ่มใหม่)\n\n* รายงานที่บันทึกใน "ประวัติ" จะไม่ถูกลบ — เริ่มจากกระดาษเปล่าใหม่')) {
+            const ok = await showConfirm({
+                title: 'ล้างข้อมูลทั้งหมด?',
+                message: 'ข้อความและรูปภาพทั้งหมดบนรายงานนี้จะถูกลบและเริ่มจากกระดาษเปล่าใหม่\n\n* รายงานที่บันทึกไว้ใน "ประวัติ" จะไม่ถูกลบ',
+                confirmText: 'ล้างทั้งหมด',
+                cancelText: 'ยกเลิก',
+                variant: 'danger'
+            });
+            if (ok) {
                 await localforage.removeItem('smart_pm_draft');
                 await localforage.removeItem(CURRENT_ID_KEY);
                 location.reload();
@@ -3288,6 +3534,11 @@
                 <div class="edit-photo-btn no-print hidden absolute bottom-2 right-2 bg-indigo-600 text-white rounded-lg p-2 flex items-center justify-center font-bold text-xs cursor-pointer z-20 hover:bg-indigo-700 shadow-md transition-all group-hover:opacity-100 opacity-0" onclick="event.stopPropagation(); openDrawingModal('prev_${prefix}_${i}')">
                     <i class="fa-solid fa-paintbrush mr-1"></i> วาด
                 </div>
+
+                <!-- ✂️ ปุ่ม Crop รูปภาพ -->
+                <div class="crop-photo-btn no-print hidden" onclick="event.stopPropagation(); openCropModal('prev_${prefix}_${i}')" title="ครอบตัดรูป">
+                    <i class="fa-solid fa-crop-simple"></i>
+                </div>
             `;
             grid.appendChild(box);
         }
@@ -3365,6 +3616,8 @@
                         
                         const editBtn = box.querySelector('.edit-photo-btn');
                         if(editBtn) editBtn.classList.remove('hidden');
+                        const cropBtn = box.querySelector('.crop-photo-btn');
+                        if(cropBtn) cropBtn.classList.remove('hidden');
                         
                         showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
                         
@@ -3393,6 +3646,8 @@
                     if(box) {
                         const editBtn = box.querySelector('.edit-photo-btn');
                         if(editBtn) editBtn.classList.remove('hidden');
+                        const cropBtn = box.querySelector('.crop-photo-btn');
+                        if(cropBtn) cropBtn.classList.remove('hidden');
                     }
                     
                     showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
@@ -3412,6 +3667,8 @@
             if(box) {
                 const editBtn = box.querySelector('.edit-photo-btn');
                 if(editBtn) editBtn.classList.add('hidden');
+                const cropBtn = box.querySelector('.crop-photo-btn');
+                if(cropBtn) cropBtn.classList.add('hidden');
             }
         }
 
@@ -3645,6 +3902,319 @@
                 }
             }
             return pageCount;
+        }
+
+        // ✂️ ✂️ ระบบครอบตัดรูปภาพ (Crop / Pan / Zoom) ✂️ ✂️
+        // — ใช้ CSS transform ในการ pan/zoom รูป + กรอบ crop ที่ลอยอยู่ตรงกลาง stage
+        // — กรอบ crop ใช้สัดส่วน 3:2 (ตรงกับ photo-box aspect-ratio)
+        // — เก็บค่า scale, offsetX, offsetY ในตัวแปร state แล้วค่อย apply ทีเดียว
+        const cropState = {
+            previewId: null,
+            naturalW: 0,
+            naturalH: 0,
+            stageW: 0,
+            stageH: 0,
+            frameW: 0,
+            frameH: 0,
+            frameLeft: 0,
+            frameTop: 0,
+            minScale: 1,    // ขั้นต่ำ — รูปต้องไม่เล็กกว่ากรอบ crop
+            scale: 1,       // ขนาดปัจจุบัน (1 = minScale)
+            offsetX: 0,     // ตำแหน่ง pan (พิกัด CSS ของรูปต้นทาง บน stage)
+            offsetY: 0,
+            isPanning: false,
+            startPointerX: 0,
+            startPointerY: 0,
+            startOffsetX: 0,
+            startOffsetY: 0
+        };
+
+        function openCropModal(previewId) {
+            const imgElement = document.getElementById(previewId);
+            if (!imgElement) return;
+            const bgImage = imgElement.style.backgroundImage;
+            if (!bgImage || bgImage === 'none') return;
+
+            const url = bgImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+
+            cropState.previewId = previewId;
+            const modal = document.getElementById('cropModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // โหลดรูปก่อน เพื่อรู้ขนาดจริง
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                cropState.naturalW = img.naturalWidth;
+                cropState.naturalH = img.naturalHeight;
+                // รอ frame ถัดไป เพื่อให้ stage มีขนาดจริง (modal flex layout settled)
+                requestAnimationFrame(() => {
+                    setupCropStage(url);
+                });
+            };
+            img.onerror = () => {
+                closeCropModal();
+                showAlert({
+                    title: 'โหลดรูปไม่สำเร็จ',
+                    message: 'ไม่สามารถโหลดรูปภาพได้ กรุณาลองอัปโหลดใหม่อีกครั้ง',
+                    variant: 'danger'
+                });
+            };
+            img.src = url;
+        }
+
+        function setupCropStage(url) {
+            const stage = document.getElementById('cropStage');
+            const cropImg = document.getElementById('cropImage');
+            const frame = document.getElementById('cropFrame');
+
+            const rect = stage.getBoundingClientRect();
+            cropState.stageW = rect.width;
+            cropState.stageH = rect.height;
+
+            // กำหนดกรอบ crop ให้เป็น 3:2 และพอดีกับ stage (เว้น padding รอบนอก)
+            const padding = 24;
+            const availW = cropState.stageW - padding * 2;
+            const availH = cropState.stageH - padding * 2;
+            const targetRatio = 3 / 2;
+
+            let frameW = availW;
+            let frameH = frameW / targetRatio;
+            if (frameH > availH) {
+                frameH = availH;
+                frameW = frameH * targetRatio;
+            }
+
+            cropState.frameW = frameW;
+            cropState.frameH = frameH;
+            cropState.frameLeft = (cropState.stageW - frameW) / 2;
+            cropState.frameTop = (cropState.stageH - frameH) / 2;
+
+            frame.style.width = frameW + 'px';
+            frame.style.height = frameH + 'px';
+            frame.style.left = cropState.frameLeft + 'px';
+            frame.style.top = cropState.frameTop + 'px';
+
+            // คำนวณ minScale: รูปต้นทาง (naturalW × naturalH) ต้องครอบกรอบ crop ได้พอดี
+            // — เลือก scale ที่ทำให้ทั้งกว้าง/สูงของรูป >= ขนาดกรอบ
+            const scaleW = frameW / cropState.naturalW;
+            const scaleH = frameH / cropState.naturalH;
+            cropState.minScale = Math.max(scaleW, scaleH);
+            cropState.scale = 1; // 1 = minScale (รูปพอดีกรอบ)
+
+            // เริ่มต้นวางรูปให้กึ่งกลางอยู่ที่กึ่งกลางกรอบ
+            const renderedW = cropState.naturalW * cropState.minScale * cropState.scale;
+            const renderedH = cropState.naturalH * cropState.minScale * cropState.scale;
+            cropState.offsetX = cropState.frameLeft + (frameW - renderedW) / 2;
+            cropState.offsetY = cropState.frameTop + (frameH - renderedH) / 2;
+
+            cropImg.src = url;
+            cropImg.style.width = cropState.naturalW + 'px';
+            cropImg.style.height = cropState.naturalH + 'px';
+
+            // รีเซ็ต slider
+            document.getElementById('cropZoom').value = 100;
+            document.getElementById('cropZoomLabel').textContent = '100%';
+
+            applyCropTransform();
+            attachCropPanListeners();
+        }
+
+        function applyCropTransform() {
+            // เคลื่อน + ซูม รูปด้วย CSS transform
+            const cropImg = document.getElementById('cropImage');
+            const totalScale = cropState.minScale * cropState.scale;
+            cropImg.style.transform = `translate(${cropState.offsetX}px, ${cropState.offsetY}px) scale(${totalScale})`;
+        }
+
+        function clampCropOffsets() {
+            // ห้ามลากจนรูปหลุดกรอบ crop — รูปต้องครอบกรอบเสมอ
+            const renderedW = cropState.naturalW * cropState.minScale * cropState.scale;
+            const renderedH = cropState.naturalH * cropState.minScale * cropState.scale;
+            const frameRight = cropState.frameLeft + cropState.frameW;
+            const frameBottom = cropState.frameTop + cropState.frameH;
+
+            // ขอบซ้ายของรูป (offsetX) ต้อง <= frameLeft
+            // ขอบขวาของรูป (offsetX + renderedW) ต้อง >= frameRight
+            const maxX = cropState.frameLeft;
+            const minX = frameRight - renderedW;
+            if (cropState.offsetX > maxX) cropState.offsetX = maxX;
+            if (cropState.offsetX < minX) cropState.offsetX = minX;
+
+            const maxY = cropState.frameTop;
+            const minY = frameBottom - renderedH;
+            if (cropState.offsetY > maxY) cropState.offsetY = maxY;
+            if (cropState.offsetY < minY) cropState.offsetY = minY;
+        }
+
+        function cropOnZoomChange() {
+            const slider = document.getElementById('cropZoom');
+            const pct = parseInt(slider.value, 10);
+            document.getElementById('cropZoomLabel').textContent = pct + '%';
+            applyZoomKeepCenter(pct / 100);
+        }
+
+        function cropAdjustZoom(delta) {
+            const slider = document.getElementById('cropZoom');
+            let v = parseInt(slider.value, 10) + delta * 100;
+            v = Math.max(parseInt(slider.min, 10), Math.min(parseInt(slider.max, 10), Math.round(v)));
+            slider.value = v;
+            cropOnZoomChange();
+        }
+
+        function applyZoomKeepCenter(newScale) {
+            // ซูมโดยให้จุดกึ่งกลางกรอบ crop คงตำแหน่งเดิมในรูป
+            const oldTotal = cropState.minScale * cropState.scale;
+            const newTotal = cropState.minScale * newScale;
+
+            // หาพิกัดในรูปต้นทาง (natural coords) ที่อยู่ตรงกึ่งกลางกรอบ
+            const frameCenterX = cropState.frameLeft + cropState.frameW / 2;
+            const frameCenterY = cropState.frameTop + cropState.frameH / 2;
+            const naturalCenterX = (frameCenterX - cropState.offsetX) / oldTotal;
+            const naturalCenterY = (frameCenterY - cropState.offsetY) / oldTotal;
+
+            cropState.scale = newScale;
+
+            // ปรับ offset ให้พิกัดเดิมในรูปยังอยู่ตรงกึ่งกลางกรอบ
+            cropState.offsetX = frameCenterX - naturalCenterX * newTotal;
+            cropState.offsetY = frameCenterY - naturalCenterY * newTotal;
+
+            clampCropOffsets();
+            applyCropTransform();
+        }
+
+        function attachCropPanListeners() {
+            const stage = document.getElementById('cropStage');
+            // ผูก listener ครั้งเดียวเท่านั้น (ใช้ flag กันซ้ำ — เพราะ state ใช้ตัวแปร global เลยใช้ซ้ำได้)
+            if (stage.dataset.cropListenersAttached === '1') return;
+            stage.dataset.cropListenersAttached = '1';
+
+            const onPointerDown = (e) => {
+                if (!cropState.previewId) return;
+                cropState.isPanning = true;
+                stage.classList.add('is-panning');
+                cropState.startPointerX = e.clientX;
+                cropState.startPointerY = e.clientY;
+                cropState.startOffsetX = cropState.offsetX;
+                cropState.startOffsetY = cropState.offsetY;
+                try { stage.setPointerCapture && stage.setPointerCapture(e.pointerId); } catch(_) {}
+            };
+            const onPointerMove = (e) => {
+                if (!cropState.isPanning) return;
+                const dx = e.clientX - cropState.startPointerX;
+                const dy = e.clientY - cropState.startPointerY;
+                cropState.offsetX = cropState.startOffsetX + dx;
+                cropState.offsetY = cropState.startOffsetY + dy;
+                clampCropOffsets();
+                applyCropTransform();
+            };
+            const onPointerUp = (e) => {
+                if (!cropState.isPanning) return;
+                cropState.isPanning = false;
+                stage.classList.remove('is-panning');
+                try { stage.releasePointerCapture && stage.releasePointerCapture(e.pointerId); } catch(_) {}
+            };
+
+            stage.addEventListener('pointerdown', onPointerDown);
+            stage.addEventListener('pointermove', onPointerMove);
+            stage.addEventListener('pointerup', onPointerUp);
+            stage.addEventListener('pointercancel', onPointerUp);
+            stage.addEventListener('pointerleave', onPointerUp);
+
+            // รองรับการซูมด้วยล้อเมาส์
+            stage.addEventListener('wheel', (e) => {
+                if (!cropState.previewId) return;
+                e.preventDefault();
+                const slider = document.getElementById('cropZoom');
+                const direction = e.deltaY < 0 ? 1 : -1;
+                let v = parseInt(slider.value, 10) + direction * 10;
+                v = Math.max(parseInt(slider.min, 10), Math.min(parseInt(slider.max, 10), v));
+                slider.value = v;
+                document.getElementById('cropZoomLabel').textContent = v + '%';
+                applyZoomKeepCenter(v / 100);
+            }, { passive: false });
+        }
+
+        function cropResetView() {
+            // กลับไปขนาดเริ่มต้น (รูปพอดีกรอบ + อยู่กึ่งกลาง)
+            cropState.scale = 1;
+            const renderedW = cropState.naturalW * cropState.minScale;
+            const renderedH = cropState.naturalH * cropState.minScale;
+            cropState.offsetX = cropState.frameLeft + (cropState.frameW - renderedW) / 2;
+            cropState.offsetY = cropState.frameTop + (cropState.frameH - renderedH) / 2;
+            document.getElementById('cropZoom').value = 100;
+            document.getElementById('cropZoomLabel').textContent = '100%';
+            applyCropTransform();
+        }
+
+        function closeCropModal() {
+            const modal = document.getElementById('cropModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            cropState.previewId = null;
+            cropState.isPanning = false;
+            // เคลียร์รูปออกเพื่อประหยัด memory
+            const cropImg = document.getElementById('cropImage');
+            if (cropImg) {
+                cropImg.removeAttribute('src');
+                cropImg.style.transform = '';
+            }
+        }
+
+        function saveCrop() {
+            if (!cropState.previewId) return;
+
+            // แปลงพิกัดบน stage → พิกัดบนรูปต้นทาง (natural coords)
+            const totalScale = cropState.minScale * cropState.scale;
+            const sx = (cropState.frameLeft - cropState.offsetX) / totalScale;
+            const sy = (cropState.frameTop - cropState.offsetY) / totalScale;
+            const sw = cropState.frameW / totalScale;
+            const sh = cropState.frameH / totalScale;
+
+            // วาดบน canvas — output ขนาดสูงสุด 1200 ฝั่งกว้าง (เพื่อให้ขนาดไฟล์เหมาะสม)
+            const maxOutW = 1200;
+            let outW = Math.round(sw);
+            let outH = Math.round(sh);
+            if (outW > maxOutW) {
+                const r = maxOutW / outW;
+                outW = maxOutW;
+                outH = Math.round(outH * r);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outW;
+            canvas.height = outH;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, outW, outH);
+
+            const src = new Image();
+            src.crossOrigin = 'anonymous';
+            src.onload = () => {
+                ctx.drawImage(src, sx, sy, sw, sh, 0, 0, outW, outH);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                const imgElement = document.getElementById(cropState.previewId);
+                if (imgElement) {
+                    imgElement.style.backgroundImage = `url('${dataUrl}')`;
+                    imgElement.classList.remove('hidden');
+                }
+                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                closeCropModal();
+            };
+            src.onerror = () => {
+                closeCropModal();
+                showAlert({
+                    title: 'บันทึกรูปไม่สำเร็จ',
+                    message: 'เกิดข้อผิดพลาดในการบันทึกรูป กรุณาลองใหม่อีกครั้ง',
+                    variant: 'danger'
+                });
+            };
+            // ใช้รูปจาก style.backgroundImage ของ preview เป็น source (เพื่อให้ได้รูปต้นฉบับ)
+            const imgElement = document.getElementById(cropState.previewId);
+            const bg = imgElement.style.backgroundImage;
+            src.src = bg.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
         }
 
         // 🌟 🌟 ระบบกระดานวาดรูปและรูปทรง (Fabric.js Image Annotation) 🌟 🌟
@@ -4104,7 +4674,11 @@
 
         function generatePDF(action) {
             if(selectedModules.length === 0) {
-                alert('กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ');
+                showAlert({
+                    title: 'ยังไม่ได้เลือกหัวข้อ',
+                    message: 'กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ',
+                    variant: 'info'
+                });
                 return;
             }
 
@@ -4146,7 +4720,11 @@
                     btn.innerHTML = originalText;
                 }).catch(function(err) {
                     console.error("PDF Generation Error:", err);
-                    alert("เกิดข้อผิดพลาดในการสร้างพรีวิว\nตรวจสอบใน Console สำหรับรายละเอียด");
+                    showAlert({
+                        title: 'สร้างพรีวิวไม่สำเร็จ',
+                        message: 'เกิดข้อผิดพลาดในการสร้างพรีวิว PDF\nตรวจสอบใน Console สำหรับรายละเอียด',
+                        variant: 'danger'
+                    });
                     document.getElementById('pdfLoading').classList.add('hidden');
                     closePreview();
                     restoreDocumentAfterPrint();
@@ -4160,7 +4738,11 @@
                     btn.innerHTML = originalText;
                 }).catch(function(err) {
                     console.error("PDF Save Error:", err);
-                    alert("เกิดข้อผิดพลาดในการบันทึก PDF");
+                    showAlert({
+                        title: 'บันทึก PDF ไม่สำเร็จ',
+                        message: 'เกิดข้อผิดพลาดในการบันทึก PDF กรุณาลองใหม่อีกครั้ง',
+                        variant: 'danger'
+                    });
                     restoreDocumentAfterPrint();
                     btn.innerHTML = originalText;
                 });
@@ -4169,7 +4751,11 @@
 
         function generateNativePDF() {
             if(selectedModules.length === 0) {
-                alert('กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ');
+                showAlert({
+                    title: 'ยังไม่ได้เลือกหัวข้อ',
+                    message: 'กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ',
+                    variant: 'info'
+                });
                 return;
             }
             
