@@ -587,7 +587,7 @@
                 <button onclick="openReorderModal()" class="whitespace-nowrap justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="จัดเรียงลำดับหัวข้อ">
                     <i class="fa-solid fa-sort"></i> <span class="hidden lg:inline">จัดเรียง</span>
                 </button>
-                <button id="previewBtn" onclick="generatePDF('preview')" class="whitespace-nowrap justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="พรีวิวเอกสาร">
+                <button id="previewBtn" onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="พรีวิว / พิมพ์เอกสาร (Ctrl+P)">
                     <i class="fa-solid fa-eye"></i> <span class="hidden lg:inline">พรีวิว</span>
                 </button>
                 <button onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2" title="พิมพ์ / บันทึกเป็น PDF">
@@ -858,26 +858,6 @@
             </div>
         </div>
     </main>
-
-    <!-- 🖼️ MODAL สำหรับพรีวิว PDF ภาพ -->
-    <div id="pdfModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-2 sm:p-6 transition-opacity">
-        <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col h-[95vh] overflow-hidden border border-slate-200">
-            <div class="flex justify-between items-center p-5 border-b bg-slate-50">
-                <h3 class="text-xl font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-pdf text-red-500 mr-3 text-2xl"></i> พรีวิวเอกสาร PDF</h3>
-                <button onclick="closePreview()" class="text-slate-500 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 px-5 py-2 rounded-xl font-bold transition-all shadow-sm">
-                    ปิดหน้าต่าง ✕
-                </button>
-            </div>
-            <div class="flex-grow w-full bg-slate-200 relative">
-                <iframe id="pdfIframe" class="w-full h-full border-0"></iframe>
-                <div id="pdfLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10">
-                    <i class="fa-solid fa-circle-notch fa-spin text-5xl text-blue-600 mb-5"></i>
-                    <p class="text-xl font-bold text-slate-800">กำลังจัดเรียงหน้ากระดาษ...</p>
-                    <p class="text-sm text-slate-500 mt-2">กรุณารอสักครู่ (ประมาณ 3-5 วินาที)</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 🔄 MODAL สำหรับจัดเรียงหัวข้อ -->
     <div id="reorderModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4 transition-opacity">
@@ -1283,9 +1263,45 @@
         //    คืนค่า container element ที่ใช้จริง — เผื่อโค้ดเดิมต้องการ reference
         function getOrFallbackContainer(subContainerId) {
             let target = document.getElementById(subContainerId);
-            if (target && document.body.contains(target)) return target;
-            // fallback: ใส่ต่อท้าย moduleContainer
-            return document.getElementById('moduleContainer');
+            if (!target || !document.body.contains(target)) {
+                // fallback: ใส่ต่อท้าย moduleContainer
+                return document.getElementById('moduleContainer');
+            }
+
+            // 🌟 ตรวจ: sub-container อยู่ใน module wrapper ที่ถูก reorder-hidden หรือเปล่า
+            //    ถ้าใช่ — block ใหม่จะถูกซ่อนด้วย ทำให้ user กดปุ่ม + แล้วไม่เห็นอะไรเพิ่ม
+            //    แก้: ใส่ block ใหม่ใน moduleContainer โดยตรง ที่ตำแหน่งใกล้ block อื่นในกลุ่มเดียวกัน
+            const wrapper = target.closest('[id^="mod_"]');
+            if (wrapper && wrapper.classList.contains('reorder-hidden')) {
+                return document.getElementById('moduleContainer');
+            }
+
+            return target;
+        }
+
+        // 🌟 Helper: หาตำแหน่งที่ดีที่สุดให้ block ใหม่ใน moduleContainer
+        //    เมื่อ wrapper ถูก reorder-hidden แล้ว blocks จะถูกย้ายออกมาเป็น direct children
+        //    ของ moduleContainer ตามลำดับที่ user จัดเรียง
+        //    block ใหม่ที่กด "+" ควรถูกใส่ "ต่อจาก block สุดท้ายของกลุ่มเดียวกัน" ไม่ใช่ไปท้ายสุด
+        //    cls = class ของ block (เช่น 'photo-group-block'), prefix = id prefix (เช่น 'block_bf_')
+        function insertBlockAfterLastInGroup(container, blockHtml, cls, prefix) {
+            // กรณีปกติ (ใส่ใน sub-container) — แค่ append
+            if (container.id !== 'moduleContainer') {
+                container.insertAdjacentHTML('beforeend', blockHtml);
+                return;
+            }
+            // กรณี moduleContainer — หา block สุดท้ายของกลุ่มเดียวกัน แล้วใส่หลังมัน
+            const sameGroupBlocks = Array.from(container.children).filter(c => {
+                if (!c.classList.contains(cls)) return false;
+                if (prefix && c.id && !c.id.startsWith(prefix)) return false;
+                return true;
+            });
+            if (sameGroupBlocks.length > 0) {
+                sameGroupBlocks[sameGroupBlocks.length - 1].insertAdjacentHTML('afterend', blockHtml);
+            } else {
+                // ไม่มี block ในกลุ่ม → ใส่ท้าย container (fallback)
+                container.insertAdjacentHTML('beforeend', blockHtml);
+            }
         }
 
         // 🌟 สีประจำกลุ่ม (badge) เพื่อให้แยกแยะที่มาของแต่ละรายการได้ง่าย
@@ -2101,10 +2117,39 @@
                 if (oldToc && document.getElementById('tocSection')) document.getElementById('tocSection').innerHTML = oldToc.innerHTML;
             }
 
+            // 🌟 Self-heal: เติม module containers ที่ขาดหายไปใน draft เก่า
+            //    บั๊กเดิม: ถ้า user save draft ไว้ก่อนที่จะเพิ่ม module ใหม่ (เช่น mod_gc) draft.html
+            //    จะไม่มี <div id="mod_gc"> ทำให้ getOrFallbackContainer('gc_container') คืน
+            //    moduleContainer แทน gc_container → block ใหม่ไปอยู่ผิดที่และไม่ผูกกับ module
+            ensureAllModuleContainers();
+
             document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
             selectedModules.forEach(modId => {
                 const cb = document.querySelector(`input[onchange="toggleModule('${modId}', this.checked)"]`);
                 if(cb) cb.checked = true;
+
+                // 🌟 ล้าง reorder-hidden ที่อาจค้างอยู่กับ module ที่ active
+                //    บั๊ก: ตอน save draft ถ้า user เคย uncheck แล้ว recheck (หรือ draft ถูก save
+                //    ตอน module ซ่อนอยู่) wrapper จะมี class reorder-hidden ค้างมา
+                //    ผลคือ <div id="mod_xxx"> ถูก display:none → blocks ข้างในไม่ render
+                //    user เห็นว่ากดปุ่ม + แล้ว block ใหม่ "หาย"
+                const modDiv = document.getElementById(modId);
+                if (modDiv) {
+                    modDiv.classList.remove('reorder-hidden');
+                    modDiv.classList.remove('hidden');
+                    // ล้าง reorder-hidden จาก sub-blocks ที่เป็นของ module นี้ด้วย
+                    const subInfo = getSubContainerInfo(modId);
+                    if (subInfo) {
+                        document.querySelectorAll('.' + subInfo.cls + '.reorder-hidden').forEach(b => {
+                            let belongs = true;
+                            if (subInfo.cls === 'photo-group-block') {
+                                const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
+                                belongs = prefix && b.id && b.id.startsWith(prefix);
+                            }
+                            if (belongs) b.classList.remove('reorder-hidden');
+                        });
+                    }
+                }
             });
 
             const listUl = document.getElementById('dynamicScopeList');
@@ -2561,6 +2606,17 @@
 
                 const subInfo = getSubContainerInfo(moduleId);
                 if (subInfo) {
+                    // 🌟 ลบ reorder-hidden ออกจาก sub-blocks ของ module นี้ด้วย
+                    //    (ตอน uncheck เคยใส่ไว้กับทั้ง sub-blocks ที่อยู่ใน moduleContainer ระดับบนสุด)
+                    document.querySelectorAll('.' + subInfo.cls + '.reorder-hidden').forEach(b => {
+                        let belongs = true;
+                        if (subInfo.cls === 'photo-group-block') {
+                            const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[moduleId];
+                            belongs = prefix && b.id && b.id.startsWith(prefix);
+                        }
+                        if (belongs) b.classList.remove('reorder-hidden');
+                    });
+
                     // ตรวจสอบว่ามี sub-block ของ module นี้อยู่แล้วไหม
                     // (อาจถูกย้ายออกมาอยู่ใน moduleContainer โดยตรงหลัง applyReorder)
                     const existingBlocks = document.querySelectorAll('.' + subInfo.cls);
@@ -2709,6 +2765,153 @@
             }
         }
 
+        // 🌟 Self-heal: เติม <div id="mod_xxx"><div id="xxx_container"></div></div>
+        //    ให้กับ module ที่ defined ใน getSubContainerInfo แต่ไม่มีอยู่ใน DOM
+        //    เกิดเมื่อ draft เก่าถูก save ก่อนที่จะมี module ใหม่ในโค้ด — restore แล้ว DOM ขาด
+        //    เรียกหลัง applyDataToDOM restore HTML เสร็จ
+        function ensureAllModuleContainers() {
+            const container = document.getElementById('moduleContainer');
+            if (!container) return;
+            // module ที่ใช้ pattern <div id="mod_xxx"><div id="xxx_container"></div></div>
+            // (mod_calibration ไม่ใช้ pattern นี้ จึงไม่อยู่ใน list)
+            const expected = [
+                { modId: 'mod_grounding', containerId: 'gro_container' },
+                { modId: 'mod_gc',        containerId: 'gc_container' },
+                { modId: 'mod_contact',   containerId: 'ct_container' },
+                { modId: 'mod_trip',      containerId: 'trip_container' },
+                { modId: 'mod_insulation',containerId: 'ins_container' },
+                { modId: 'mod_dielectric',containerId: 'die_container' },
+                { modId: 'mod_general',   containerId: 'gen_container' },
+                { modId: 'mod_before',    containerId: 'bf_container' },
+                { modId: 'mod_cleaning',  containerId: 'cl_container' },
+                { modId: 'mod_after',     containerId: 'af_container' },
+                { modId: 'mod_blank',     containerId: 'blk_container' }
+            ];
+            expected.forEach(({ modId, containerId }) => {
+                if (document.getElementById(modId)) return; // มีอยู่แล้ว
+                // สร้างใหม่
+                const wrap = document.createElement('div');
+                wrap.id = modId;
+                wrap.className = 'mb-10 hidden pt-4 pdf-page-break';
+                const inner = document.createElement('div');
+                inner.id = containerId;
+                wrap.appendChild(inner);
+                container.appendChild(wrap);
+                // จัดตำแหน่งให้ถูกตาม defaultModuleOrder
+                insertModuleInDefaultOrder(modId);
+            });
+
+            // 🌟 mod_calibration ใช้ pattern พิเศษ (content ในตัว ไม่ใช้ container) — heal แยก
+            if (!document.getElementById('mod_calibration')) {
+                const wrap = document.createElement('div');
+                wrap.id = 'mod_calibration';
+                wrap.className = 'mb-10 hidden pt-4 pdf-page-break';
+                wrap.innerHTML = `
+                    <div class="w-full h-[250mm] flex flex-col items-center justify-center rounded-2xl mt-4">
+                        <i class="fa-solid fa-file-signature text-6xl text-slate-200 mb-6 no-print"></i>
+                        <h1 class="text-4xl font-extrabold text-slate-300 uppercase tracking-widest text-center" style="letter-spacing: 0.1em;">Certificate of Calibration</h1>
+                        <p class="text-slate-400 mt-4 font-medium text-lg text-center no-print">ส่วนนี้จะแสดงเป็นหน้าว่างที่มีข้อความตรงกลาง<br>เพื่อให้คุณนำไฟล์ PDF ของ Certificate มาต่อท้ายได้เลยครับ</p>
+                    </div>
+                `;
+                container.appendChild(wrap);
+                insertModuleInDefaultOrder('mod_calibration');
+            }
+
+            // 🌟 Dedup zombie blocks
+            //   บั๊กเก่า: ตอน reorder + uncheck/recheck module ทำให้ block ถูก clone ไป
+            //   วางใน moduleContainer โดยตรง (ในขณะที่ตัวจริงยังอยู่ใน sub-container)
+            //   ผลคือ DOM มี id ซ้ำ ทำให้ querySelector หาเจอตัวผิด user สับสน
+            //   วิธีแก้: ถ้าพบ block id ที่ซ้ำ ให้เก็บตัวที่อยู่ใน sub-container ลบตัว zombie ใน moduleContainer
+            // 🌟 Cleanup pdf-page-break จาก orphan blocks ที่ติด reorder-hidden
+            //    เกิดจาก bug เก่า: ตอน uncheck module ที่ blocks ถูก reorder ออกมาจาก sub-container
+            //    blocks พวกนั้นจะถูกใส่ reorder-hidden ค้างไว้ใน moduleContainer
+            //    ผลคือ: ใน PDF print, Chrome ยัง honor page-break-before ของ hidden elements
+            //    → ได้หน้ากระดาษว่างเปล่าระหว่าง section
+            //    วิธีแก้: ลบเฉพาะ class pdf-page-break ออกจาก orphan ที่ hidden อยู่
+            //    (ไม่ลบตัว block — ถ้า user check module กลับมา block จะกลับมาแสดงได้ตามปกติ)
+            let cleanedOrphans = 0;
+            container.querySelectorAll(SUB_BLOCK_SELECTOR).forEach(b => {
+                if (b.parentNode === container && b.classList.contains('reorder-hidden') && b.classList.contains('pdf-page-break')) {
+                    b.classList.remove('pdf-page-break');
+                    cleanedOrphans++;
+                }
+            });
+            if (cleanedOrphans > 0) {
+                console.log(`[ensureAllModuleContainers] ลบ pdf-page-break จาก orphan blocks ที่ hidden จำนวน ${cleanedOrphans} ตัว`);
+            }
+
+            const seenIds = new Map(); // id → element ตัวแรกที่เจอ (priority: ตัวใน sub-container)
+            const allBlocks = container.querySelectorAll(SUB_BLOCK_SELECTOR);
+            // รอบแรก: เก็บตัวที่อยู่ใน sub-container ก่อน (parent ≠ moduleContainer)
+            allBlocks.forEach(b => {
+                if (!b.id) return;
+                if (b.parentNode !== container) {
+                    if (!seenIds.has(b.id)) seenIds.set(b.id, b);
+                }
+            });
+            // รอบสอง: เจอตัวใน moduleContainer ถ้า id ตรงกับใน seenIds → zombie ลบทิ้ง
+            //         ถ้ายังไม่มี id นี้ → ตัวนี้เป็น orphan จริง (จาก reorder ที่ตั้งใจ) เก็บไว้
+            const toRemove = [];
+            allBlocks.forEach(b => {
+                if (!b.id) return;
+                if (b.parentNode === container) {
+                    if (seenIds.has(b.id)) {
+                        toRemove.push(b); // zombie
+                    } else {
+                        seenIds.set(b.id, b); // orphan ที่ valid
+                    }
+                }
+            });
+            toRemove.forEach(b => b.remove());
+            if (toRemove.length > 0) {
+                console.log(`[ensureAllModuleContainers] ลบ zombie blocks ${toRemove.length} ตัว`);
+            }
+
+            // 🌟 Sync counters ให้ตรงกับ id สูงสุดที่มีอยู่จริงใน DOM
+            //    บั๊ก: draft อาจเก็บ groupCounts.bf = 2 แต่ใน DOM มี block_bf_3 (orphan ค้าง)
+            //    ถ้าไม่ sync → addPhotoGroup('bf') จะสร้าง block_bf_3 ตัวที่สอง → id ชน → block ใหม่
+            //    ไม่ render หรือซ้อนทับตัวเก่า → user เห็นว่ากดปุ่ม + แล้วไม่มีอะไรเพิ่ม
+            const counterRefs = {
+                'block_bf_':   { obj: () => groupCounts,    key: 'bf',  set: v => { groupCounts.bf = v; } },
+                'block_cl_':   { obj: () => groupCounts,    key: 'cl',  set: v => { groupCounts.cl = v; } },
+                'block_af_':   { obj: () => groupCounts,    key: 'af',  set: v => { groupCounts.af = v; } },
+                'block_blk_':  { obj: () => groupCounts,    key: 'blk', set: v => { groupCounts.blk = v; } },
+                'block_gen_':  { obj: () => ({ genCount }), key: 'genCount',  set: v => { genCount = v; } },
+                'block_ins_':  { obj: () => ({ insCount }), key: 'insCount',  set: v => { insCount = v; } },
+                'block_die_':  { obj: () => ({ dieCount }), key: 'dieCount',  set: v => { dieCount = v; } },
+                'block_gro_':  { obj: () => ({ groCount }), key: 'groCount',  set: v => { groCount = v; } },
+                'block_gc_':   { obj: () => ({ gcCount }),  key: 'gcCount',   set: v => { gcCount = v; } },
+                'block_ct_block_': { obj: () => ({ ctCount }),   key: 'ctCount',   set: v => { ctCount = v; } },
+                'block_trip_': { obj: () => ({ tripCount }), key: 'tripCount', set: v => { tripCount = v; } }
+            };
+
+            const allBlocksAfterDedup = container.querySelectorAll(SUB_BLOCK_SELECTOR);
+            const maxIdPerPrefix = {};
+            allBlocksAfterDedup.forEach(b => {
+                if (!b.id) return;
+                Object.keys(counterRefs).forEach(prefix => {
+                    if (b.id.startsWith(prefix)) {
+                        const num = parseInt(b.id.substring(prefix.length), 10);
+                        if (!isNaN(num)) {
+                            if (!maxIdPerPrefix[prefix] || num > maxIdPerPrefix[prefix]) {
+                                maxIdPerPrefix[prefix] = num;
+                            }
+                        }
+                    }
+                });
+            });
+
+            Object.entries(maxIdPerPrefix).forEach(([prefix, maxNum]) => {
+                const ref = counterRefs[prefix];
+                if (!ref) return;
+                const current = ref.obj()[ref.key];
+                if (current < maxNum) {
+                    console.log(`[ensureAllModuleContainers] sync ${ref.key}: ${current} → ${maxNum}`);
+                    ref.set(maxNum);
+                }
+            });
+        }
+
         function addCustomScope(text = "") {
             const listUl = document.getElementById('dynamicScopeList');
             const emptyText = document.getElementById('emptyScopeText');
@@ -2793,7 +2996,7 @@
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'photo-group-block', `block_${type}_`);
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, type); }
         }
 
@@ -2843,7 +3046,7 @@
                     <div id="desc_container_${prefix}" class="w-full flex flex-col gap-2 mt-2"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'photo-group-block', `block_${type}_`);
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, type); }
         }
 
@@ -2895,7 +3098,7 @@
                     </table>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'general-block', 'block_gen_');
             defaultGeneralTasks.forEach(task => addGeneralCheckRow(`tbody_${prefix}`, task));
         }
 
@@ -3014,7 +3217,7 @@
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'insulation-block', 'block_ins_');
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'ins'); }
         }
 
@@ -3085,7 +3288,7 @@
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'dielectric-block', 'block_die_');
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'die'); }
         }
 
@@ -3144,7 +3347,7 @@
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'grounding-block', 'block_gro_');
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'gro'); }
         }
 
@@ -3211,7 +3414,7 @@
                     <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'gc-block', 'block_gc_');
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'gc'); }
         }
 
@@ -3278,7 +3481,7 @@
                     </div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'contact-block', 'block_ct_block_');
             
             addBreakerRow(`tbody_${prefix}`, `photoSec_${prefix}`);
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }
@@ -3523,7 +3726,7 @@
                     </table>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', blockHtml);
+            insertBlockAfterLastInGroup(container, blockHtml, 'trip-block', 'block_trip_');
         }
 
         function removeTripBlock(prefix) {
@@ -4555,6 +4758,55 @@
                 }
             });
 
+            // 🌟 ลบ class pdf-page-break ออกจาก element ที่ถูกซ่อนชั่วคราว (hidden / reorder-hidden)
+            //    เพราะ Chrome ยัง honor page-break-before: always ของ element ที่ display:none
+            //    ทำให้ได้หน้ากระดาษว่างเปล่าใน PDF
+            //    เราใส่ marker class กลับคืนใน restoreDocumentAfterPrint
+            document.querySelectorAll('.pdf-page-break').forEach(el => {
+                if (el.classList.contains('hidden') || el.classList.contains('reorder-hidden')) {
+                    el.classList.remove('pdf-page-break');
+                    el.setAttribute('data-restore-pdf-page-break', '1');
+                }
+            });
+
+            // 🌟 ลบ pdf-page-break จาก module wrappers ที่ visible แต่ "ว่างเปล่า"
+            //    เกิดจากกรณีที่ user เคย reorder block ออกจาก sub-container ของ wrapper
+            //    ทำให้ block ตัวจริงไปอยู่ใน moduleContainer โดยตรง ส่วน wrapper เหลือเปล่าๆ
+            //    wrapper เปล่าๆ ที่มี pdf-page-break = หน้ากระดาษว่างใน PDF
+            //    ทดสอบความว่าง: ภายใน wrapper ไม่มี sub-block ใดๆ ที่ visible เลย
+            document.querySelectorAll('#moduleContainer > [id^="mod_"]').forEach(wrapper => {
+                if (wrapper.classList.contains('hidden') || wrapper.classList.contains('reorder-hidden')) return;
+                if (wrapper.id === 'mod_calibration') return; // mod_calibration มี content ในตัว ไม่ใช้ sub-block
+                if (!wrapper.classList.contains('pdf-page-break')) return;
+                
+                // หา sub-block ที่ visible ภายใน wrapper
+                const innerBlocks = wrapper.querySelectorAll(SUB_BLOCK_SELECTOR);
+                const hasVisibleBlock = Array.from(innerBlocks).some(b => 
+                    !b.classList.contains('hidden') && !b.classList.contains('reorder-hidden')
+                );
+                
+                if (!hasVisibleBlock) {
+                    wrapper.classList.remove('pdf-page-break');
+                    wrapper.setAttribute('data-restore-pdf-page-break', '1');
+                }
+            });
+
+            // 🌟 ใส่ pdf-page-break ให้ direct-child sub-blocks ของ moduleContainer
+            //    หลัง reorder, blocks ตัวจริง (เช่น block_ins_1) ถูกย้ายออกมาเป็น direct child
+            //    ของ moduleContainer ส่วน wrapper ถูก reorder-hidden — เราลบ pdf-page-break ของ wrapper ไป
+            //    ผล: block ตัวแรกของแต่ละกลุ่ม (id=1) ที่ปกติ "ไม่มี" pdf-page-break (เพราะ wrapper รับหน้าที่)
+            //    จะติดหน้าเดียวกับหัวข้อก่อนหน้า (Scope of Work) → user เห็นว่าหัวข้อเลื่อนไปติดกัน
+            //    วิธีแก้: ใส่ pdf-page-break ชั่วคราวให้ทุก direct-child block ของ moduleContainer
+            //    (เพราะหลัง reorder blocks เหล่านี้คือ "หัวข้อใหม่" ทุกตัว)
+            //    เก็บ marker ไว้ restore ทีหลัง
+            document.querySelectorAll('#moduleContainer > .photo-group-block, #moduleContainer > .general-block, #moduleContainer > .insulation-block, #moduleContainer > .dielectric-block, #moduleContainer > .grounding-block, #moduleContainer > .gc-block, #moduleContainer > .contact-block, #moduleContainer > .trip-block').forEach(b => {
+                if (b.classList.contains('hidden') || b.classList.contains('reorder-hidden')) return;
+                if (!b.classList.contains('pdf-page-break')) {
+                    b.classList.add('pdf-page-break');
+                    b.setAttribute('data-remove-pdf-page-break-on-restore', '1');
+                }
+            });
+
             document.querySelectorAll('input.paper-input').forEach(input => {
                 const span = document.createElement('span');
                 span.className = input.className + ' print-text-span';
@@ -4648,6 +4900,18 @@
 
             const ghost = document.getElementById('ghostSpacerHacker');
             if (ghost) ghost.remove();
+
+            // 🌟 ใส่ class pdf-page-break กลับให้ element ที่ถูกเก็บไว้ก่อน print
+            document.querySelectorAll('[data-restore-pdf-page-break]').forEach(el => {
+                el.classList.add('pdf-page-break');
+                el.removeAttribute('data-restore-pdf-page-break');
+            });
+
+            // 🌟 ลบ class pdf-page-break ออกจาก element ที่เราใส่ชั่วคราว (orphan blocks หลัง reorder)
+            document.querySelectorAll('[data-remove-pdf-page-break-on-restore]').forEach(el => {
+                el.classList.remove('pdf-page-break');
+                el.removeAttribute('data-remove-pdf-page-break-on-restore');
+            });
 
             document.querySelectorAll('.no-print').forEach(el => {
                 if(!el.closest('.no-print-bg')) {
@@ -4766,83 +5030,6 @@
             }
         }
 
-        function generatePDF(action) {
-            if(selectedModules.length === 0) {
-                showAlert({
-                    title: 'ยังไม่ได้เลือกหัวข้อ',
-                    message: 'กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ',
-                    variant: 'info'
-                });
-                return;
-            }
-
-            const btnId = action === 'preview' ? 'previewBtn' : 'downloadBtn';
-            const btn = document.getElementById(btnId);
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังประมวลผล...';
-
-            if (action === 'preview') {
-                document.getElementById('pdfModal').classList.remove('hidden');
-                document.getElementById('pdfModal').classList.add('flex');
-                document.getElementById('pdfLoading').classList.remove('hidden');
-                document.getElementById('pdfIframe').src = ""; 
-            }
-
-            prepareDocumentForPrint(false); 
-
-            const element = document.getElementById('exportWrapper'); 
-            
-            const opt = {
-                margin:       [0, 0, 0, 0], 
-                filename:     `PM_Report_${document.getElementById('coverInputProject').value || 'Untitled'}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 }, 
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'], before: '.pdf-page-break' }
-            };
-
-            const worker = html2pdf().set(opt).from(element);
-
-            if (action === 'preview') {
-                worker.toPdf().get('pdf').then(function(pdf) {
-                    drawNativeHeaderFooter(pdf);
-                }).output('blob').then(function(pdfBlob) {
-                    const blobUrl = URL.createObjectURL(pdfBlob);
-                    document.getElementById('pdfIframe').src = blobUrl;
-                    document.getElementById('pdfLoading').classList.add('hidden'); 
-                    restoreDocumentAfterPrint(); 
-                    btn.innerHTML = originalText;
-                }).catch(function(err) {
-                    console.error("PDF Generation Error:", err);
-                    showAlert({
-                        title: 'สร้างพรีวิวไม่สำเร็จ',
-                        message: 'เกิดข้อผิดพลาดในการสร้างพรีวิว PDF\nตรวจสอบใน Console สำหรับรายละเอียด',
-                        variant: 'danger'
-                    });
-                    document.getElementById('pdfLoading').classList.add('hidden');
-                    closePreview();
-                    restoreDocumentAfterPrint();
-                    btn.innerHTML = originalText;
-                });
-            } else {
-                worker.toPdf().get('pdf').then(function(pdf) {
-                    drawNativeHeaderFooter(pdf);
-                }).save().then(() => {
-                    restoreDocumentAfterPrint(); 
-                    btn.innerHTML = originalText;
-                }).catch(function(err) {
-                    console.error("PDF Save Error:", err);
-                    showAlert({
-                        title: 'บันทึก PDF ไม่สำเร็จ',
-                        message: 'เกิดข้อผิดพลาดในการบันทึก PDF กรุณาลองใหม่อีกครั้ง',
-                        variant: 'danger'
-                    });
-                    restoreDocumentAfterPrint();
-                    btn.innerHTML = originalText;
-                });
-            }
-        }
-
         function generateNativePDF() {
             if(selectedModules.length === 0) {
                 showAlert({
@@ -4908,11 +5095,7 @@
             restoreDocumentAfterPrint();
         });
 
-        function closePreview() {
-            const modal = document.getElementById('pdfModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+        // (ลบ closePreview แล้ว — ไม่ใช้ pdfModal อีกต่อไป)
     </script>
     <!-- ====================================================== -->
     <!-- 🌟 MODAL: บันทึกรายงาน                                 -->
