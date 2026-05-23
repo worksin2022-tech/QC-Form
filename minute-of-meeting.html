@@ -1,0 +1,2857 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Minute of Meeting · Avatar Electric</title>
+
+<!-- ===== PWA / iPad standalone app meta ===== -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MoM Avatar">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f2744">
+<meta name="format-detection" content="telephone=no">
+
+<!-- iOS home screen icon (inline SVG → data URL) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGYyNzQ0Ii8+PHBhdGggZD0iTTQwIDE0MCBMOTAgNDAgTDE0MCAxNDAgWiIgZmlsbD0iI2Y1YTYyMyIvPjxjaXJjbGUgY3g9IjkwIiBjeT0iMTA1IiByPSIxNiIgZmlsbD0iIzBmMjc0NCIvPjwvc3ZnPg==">
+
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0f2744;
+    --navy-2:#1f3a5f;
+    --orange:#f5a623;
+    --orange-2:#ff8a00;
+    --ink:#0b1220;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --bg:#f6f7fb;
+    --before:#3b82f6;
+    --before-soft:#dbeafe;
+    --after:#10b981;
+    --after-soft:#d1fae5;
+  }
+  *{font-family:'Sarabun','Inter',sans-serif;}
+  html,body{background:var(--bg);color:var(--ink);}
+
+  /* iPad standalone PWA mode — respect safe areas + better UX */
+  html{
+    height:100%;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-text-size-adjust:100%;
+  }
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+    overscroll-behavior-y:none; /* no bounce when scrolling document */
+    -webkit-overflow-scrolling:touch;
+  }
+  /* Prevent text selection on UI chrome (but allow it in inputs/textareas) */
+  .sidebar, .topbar, .fab, .mode-switch, .icon-btn, .sb-btn, .top-btn{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  input, textarea, .cmt-text, .cat-name-input{
+    -webkit-user-select:text;
+    user-select:text;
+  }
+
+  /* === App shell layout === */
+  .app{
+    display:grid;
+    grid-template-columns:288px 1fr;
+    min-height:100vh;
+  }
+
+  /* === Sidebar === */
+  .sidebar{
+    background:linear-gradient(180deg, #0b1d36 0%, #11264a 100%);
+    color:#e2e8f0;
+    padding:22px 18px;
+    position:sticky;top:0;height:100vh;
+    overflow-y:auto;
+    border-right:1px solid rgba(255,255,255,0.06);
+  }
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+
+  .brand{
+    display:flex;align-items:center;gap:12px;
+    padding-bottom:18px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    margin-bottom:18px;
+  }
+  .brand-logo{
+    width:42px;height:42px;border-radius:11px;
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px -4px rgba(245,166,35,.45);
+  }
+  .brand-name{font-weight:800;font-size:15px;color:white;letter-spacing:.2px;}
+  .brand-sub{font-size:11px;color:#94a3b8;font-weight:500;letter-spacing:.5px;text-transform:uppercase;}
+
+  .sb-section{margin-bottom:22px;}
+  .sb-title{
+    font-size:10.5px;font-weight:700;color:#7c93b3;
+    letter-spacing:1.2px;text-transform:uppercase;
+    margin-bottom:10px;padding:0 4px;
+  }
+
+  .sb-btn{
+    display:flex;align-items:center;gap:10px;
+    width:100%;padding:9px 12px;margin-bottom:5px;
+    border-radius:9px;font-size:13px;font-weight:500;
+    color:#cbd5e1;background:transparent;
+    border:1px solid transparent;
+    cursor:pointer;transition:all .15s;
+    text-align:left;
+  }
+  .sb-btn:hover{background:rgba(255,255,255,.05);color:white;}
+  .sb-btn .icon{
+    width:18px;height:18px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    color:#94a3b8;
+  }
+  .sb-btn:hover .icon{color:var(--orange);}
+
+  .sb-btn.primary{
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    color:white;font-weight:600;
+    box-shadow:0 4px 12px -2px rgba(245,166,35,.4);
+  }
+  .sb-btn.primary:hover{
+    background:linear-gradient(135deg,var(--orange-2) 0%,#e07400 100%);
+    color:white;transform:translateY(-1px);
+  }
+  .sb-btn.primary .icon{color:white;}
+
+  .sb-btn.danger{color:#fca5a5;}
+  .sb-btn.danger:hover{background:rgba(239,68,68,.1);color:#fecaca;}
+  .sb-btn.danger .icon{color:#f87171;}
+
+  /* TOC */
+  .toc-cat{
+    font-size:11px;font-weight:700;color:#94a3b8;
+    margin-top:10px;margin-bottom:4px;padding:0 4px;
+    letter-spacing:.5px;
+  }
+  .toc-item{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 10px;border-radius:7px;
+    font-size:12px;color:#cbd5e1;
+    cursor:pointer;margin-bottom:2px;
+    transition:all .12s;
+    border-left:3px solid transparent;
+  }
+  .toc-item:hover{background:rgba(255,255,255,.05);color:white;}
+  .toc-item.before{border-left-color:var(--before);}
+  .toc-item.after{border-left-color:var(--after);}
+  .toc-num{
+    background:rgba(255,255,255,.08);
+    color:#cbd5e1;
+    width:24px;height:20px;border-radius:5px;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:700;flex-shrink:0;
+    font-family:'Inter',sans-serif;
+  }
+  .toc-mode-tag{
+    font-size:9px;font-weight:800;
+    padding:2px 5px;border-radius:4px;
+    font-family:'Inter',sans-serif;
+    letter-spacing:.5px;
+  }
+  .toc-mode-tag.before{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .toc-mode-tag.after{background:rgba(16,185,129,.15);color:#86efac;}
+
+  /* === Main area === */
+  .main{
+    padding:0;
+    display:flex;flex-direction:column;
+    min-width:0;
+  }
+
+  /* Top bar */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:rgba(246,247,251,.85);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+    padding:14px 28px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+  }
+  .topbar-title{
+    display:flex;align-items:center;gap:14px;
+  }
+  .topbar-title h1{
+    font-size:18px;font-weight:800;color:var(--ink);
+    letter-spacing:-.2px;
+  }
+  .topbar-title .badge{
+    font-size:10px;font-weight:700;
+    padding:3px 8px;border-radius:5px;
+    background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+    color:#92400e;letter-spacing:.5px;
+    font-family:'Inter',sans-serif;
+  }
+  .topbar-actions{display:flex;align-items:center;gap:8px;}
+  .save-indicator{
+    font-size:11.5px;color:var(--muted);
+    display:flex;align-items:center;gap:6px;
+    font-weight:500;
+  }
+  .save-indicator .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--after);
+  }
+  .save-indicator.saving .dot{background:var(--orange);animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.3;}}
+
+  .top-btn{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:8px 14px;font-size:13px;font-weight:600;
+    border-radius:8px;cursor:pointer;
+    transition:all .15s;border:1px solid var(--line);
+    background:white;color:var(--ink);
+  }
+  .top-btn:hover{background:#f8fafc;border-color:#cbd5e1;}
+  .top-btn.primary{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+    color:white;border-color:transparent;
+    box-shadow:0 4px 12px -2px rgba(15,39,68,.3);
+  }
+  .top-btn.primary:hover{
+    background:linear-gradient(135deg,var(--navy-2) 0%,#2a4a75 100%);
+  }
+
+  /* Content scroll area */
+  .content-scroll{
+    flex:1;
+    padding:24px 28px 100px 28px;
+    overflow-y:auto;
+  }
+
+  /* Meta panel inside the document paper */
+  .meta-panel{
+    background:#fafbfc;
+    border-bottom:1px solid var(--line);
+    padding:18px 28px;
+    display:grid;grid-template-columns:1fr 1fr 1fr 110px;
+    gap:22px;
+  }
+
+  /* ============================================================
+     COVER PAGE
+     ============================================================ */
+  .cover-page{
+    background:white;
+    border-radius:14px;
+    box-shadow:0 4px 20px -6px rgba(15,39,68,.12),
+               0 1px 3px rgba(15,39,68,.06);
+    overflow:hidden;
+    margin-bottom:24px;
+    position:relative;
+    /* Match A4 proportions on screen */
+    min-height:calc(297mm * 0.75); /* scaled */
+    display:flex;flex-direction:column;
+  }
+  .cover-header{
+    position:relative;
+    width:100%;
+    height:16mm;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .cover-header svg{display:block;width:100%;height:100%;}
+
+  .cover-body{
+    flex:1;
+    padding:40px 60px 40px 60px;
+    display:flex;flex-direction:column;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* Decorative geometric background */
+  .cover-bg-decoration{
+    position:absolute;inset:0;
+    pointer-events:none;
+    opacity:.04;
+    background-image:
+      radial-gradient(circle at 90% 10%, var(--orange) 0%, transparent 30%),
+      radial-gradient(circle at 10% 90%, var(--navy) 0%, transparent 35%);
+  }
+
+  .cover-brand{
+    display:flex;align-items:center;gap:18px;
+    margin-bottom:36px;
+    position:relative;
+  }
+  .cover-brand-mark{
+    width:72px;height:72px;border-radius:16px;
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 24px -6px rgba(245,166,35,.5);
+    flex-shrink:0;
+  }
+  .cover-brand-text .name{
+    font-size:24px;font-weight:800;color:var(--navy);
+    letter-spacing:.3px;line-height:1.1;
+  }
+  .cover-brand-text .sub{
+    font-size:12px;font-weight:600;color:var(--muted);
+    letter-spacing:1.5px;text-transform:uppercase;
+    margin-top:4px;font-family:'Inter',sans-serif;
+  }
+
+  .cover-title-block{
+    margin-top:30px;margin-bottom:40px;
+    position:relative;
+  }
+  .cover-eyebrow{
+    display:inline-block;
+    font-size:11px;font-weight:800;
+    color:var(--orange-2);
+    letter-spacing:2.5px;text-transform:uppercase;
+    margin-bottom:14px;
+    font-family:'Inter',sans-serif;
+    padding:5px 12px;
+    background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+    border-radius:5px;
+  }
+  .cover-title{
+    font-size:56px;font-weight:800;
+    color:var(--navy);
+    letter-spacing:-1.5px;line-height:1;
+    margin-bottom:14px;
+  }
+  .cover-title .accent{
+    color:var(--orange);
+    position:relative;
+  }
+  .cover-subtitle{
+    font-size:18px;font-weight:500;color:var(--muted);
+    letter-spacing:.3px;
+  }
+
+  .cover-divider{
+    height:3px;width:80px;
+    background:linear-gradient(90deg,var(--orange) 0%,var(--orange-2) 100%);
+    margin:24px 0;border-radius:2px;
+  }
+
+  /* Project info grid */
+  .cover-info-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    margin-top:36px;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:white;
+  }
+  .cover-info-cell{
+    padding:20px 24px;
+    border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line);
+    background:linear-gradient(180deg, #fafbfc 0%, white 100%);
+    transition:background .15s;
+  }
+  .cover-info-cell:hover{background:#fffbeb;}
+  .cover-info-cell:nth-child(2n){border-right:none;}
+  .cover-info-cell:nth-last-child(-n+2){border-bottom:none;}
+  .cover-info-cell.full{
+    grid-column:span 2;
+    border-right:none;
+  }
+  .cover-info-cell label{
+    display:flex;align-items:center;gap:8px;
+    font-size:10.5px;font-weight:800;
+    color:var(--muted);letter-spacing:1.5px;
+    text-transform:uppercase;
+    margin-bottom:10px;
+    font-family:'Inter',sans-serif;
+  }
+  .cover-info-cell label .ico{
+    width:18px;height:18px;border-radius:5px;
+    background:var(--orange);
+    color:white;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;
+  }
+  .cover-info-cell input{
+    width:100%;
+    font-size:18px;font-weight:700;color:var(--navy);
+    background:transparent;
+    border:none;outline:none;
+    padding:2px 0;
+  }
+  .cover-info-cell input::placeholder{
+    color:#cbd5e1;font-weight:500;
+  }
+
+  .cover-footer{
+    margin-top:auto;
+    padding-top:30px;
+    border-top:1px dashed var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;color:var(--muted);
+    font-family:'Inter',sans-serif;letter-spacing:.5px;
+  }
+  .cover-footer .left{
+    display:flex;align-items:center;gap:8px;
+    font-weight:600;
+  }
+  .cover-footer .doctype{
+    background:var(--navy);color:white;
+    padding:5px 12px;border-radius:5px;
+    font-size:10px;font-weight:800;letter-spacing:1.5px;
+  }
+
+  .cover-footer-band{
+    position:relative;
+    width:100%;height:10mm;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .cover-footer-band svg{display:block;width:100%;height:100%;}
+  .meta-field label{
+    display:block;font-size:11px;color:var(--muted);
+    font-weight:700;margin-bottom:6px;
+    letter-spacing:.6px;text-transform:uppercase;
+    font-family:'Inter',sans-serif;
+  }
+  .meta-field input{
+    width:100%;padding:7px 0;
+    font-size:14.5px;font-weight:600;color:var(--ink);
+    background:transparent;
+    border:none;border-bottom:1.5px solid var(--line);
+    outline:none;transition:border-color .15s;
+  }
+  .meta-field input:focus{border-bottom-color:var(--orange);}
+  .meta-field input::placeholder{color:#cbd5e1;font-weight:400;}
+
+  /* Document container ─ shown as a paper */
+  .document-paper{
+    background:white;
+    border-radius:14px;
+    box-shadow:0 4px 20px -6px rgba(15,39,68,.12),
+               0 1px 3px rgba(15,39,68,.06);
+    overflow:hidden;
+    margin-bottom:20px;
+  }
+  /* Header — SVG-based so it prints reliably in Chrome.
+     Uses viewBox 0 0 210 16  (units = mm on A4). */
+  .doc-header{
+    position:relative;
+    width:100%;
+    height:16mm;
+    color:white;
+    overflow:hidden;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .doc-header svg{
+    display:block;width:100%;height:100%;
+  }
+  .doc-header-text{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 8mm;
+    pointer-events:none;
+  }
+  .doc-header-text .title{
+    font-weight:800;font-size:11px;letter-spacing:1.5px;
+    text-transform:uppercase;color:white;
+  }
+  .doc-header-text .right{
+    font-weight:600;font-size:10px;color:#e2e8f0;
+    letter-spacing:.5px;
+  }
+
+  .doc-body{padding:28px 32px 24px 32px;}
+
+  /* Section ribbon (the orange chevron from PDF) */
+  .ribbon-wrap{
+    display:flex;align-items:center;
+    margin:8px 0 22px 0;
+  }
+  .ribbon-line{flex:1;height:5px;border-radius:2px;
+    background:linear-gradient(to right,#dde2e9 0%,#7c8a98 100%);}
+  .ribbon-line.right{background:linear-gradient(to right,#7c8a98 0%,#dde2e9 100%);}
+  .ribbon-arrow{
+    position:relative;
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    color:white;font-weight:700;
+    padding:8px 32px 8px 26px;
+    font-size:16px;letter-spacing:.5px;
+    clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+    box-shadow:0 4px 12px -2px rgba(245,166,35,.4);
+  }
+
+  .intro-line{
+    font-size:14px;color:#475569;
+    background:#f8fafc;border-left:3px solid var(--orange);
+    padding:12px 16px;border-radius:0 8px 8px 0;
+    margin-bottom:24px;
+  }
+
+  /* === Category block === */
+  .category-block{
+    margin-bottom:22px;
+    border:1px solid var(--line);
+    border-radius:11px;
+    overflow:hidden;
+    background:white;
+    transition:box-shadow .18s;
+  }
+  .category-block:hover{
+    box-shadow:0 4px 16px -4px rgba(15,39,68,.08);
+  }
+  .category-head{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 16px;
+    background:linear-gradient(180deg,#fafbfc 0%,#f4f6f9 100%);
+    border-bottom:1px solid var(--line);
+  }
+  .cat-num{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+    color:white;
+    width:30px;height:30px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;flex-shrink:0;
+    font-family:'Inter',sans-serif;
+    box-shadow:0 2px 6px -1px rgba(15,39,68,.25);
+  }
+  .cat-name-input{
+    flex:1;font-size:17px;font-weight:800;
+    color:var(--navy);background:transparent;
+    border:none;outline:none;
+    letter-spacing:.3px;text-transform:uppercase;
+  }
+  .cat-name-input::placeholder{color:#cbd5e1;font-weight:600;}
+
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:#94a3b8;
+    background:transparent;border:1px solid transparent;
+    transition:all .15s;
+  }
+  .icon-btn:hover{
+    background:white;color:#ef4444;
+    border-color:var(--line);
+  }
+  .icon-btn.add-cmt{
+    width:auto;padding:0 12px;
+    font-size:12px;font-weight:700;
+    background:var(--before-soft);color:#1d4ed8;
+    font-family:'Inter',sans-serif;letter-spacing:.3px;
+  }
+  .icon-btn.add-cmt:hover{
+    background:#bfdbfe;color:#1e40af;border-color:transparent;
+  }
+
+  .comments-container{padding:14px 16px 4px 16px;}
+
+  /* === Comment card === */
+  .comment-card{
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:white;
+    margin-bottom:14px;
+    overflow:hidden;
+    transition:all .18s;
+  }
+  .comment-card:hover{
+    border-color:#cbd5e1;
+    box-shadow:0 2px 8px -2px rgba(15,39,68,.06);
+  }
+  .comment-card.mode-after{
+    border-color:#a7f3d0;
+    background:linear-gradient(180deg,#f0fdf4 0%,white 35%);
+  }
+  .comment-card.mode-before{
+    border-color:#bfdbfe;
+    background:linear-gradient(180deg,#eff6ff 0%,white 35%);
+  }
+
+  .cmt-head{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;
+    border-bottom:1px solid #f1f5f9;
+  }
+  .drag-handle{
+    cursor:grab;color:#cbd5e1;user-select:none;
+    padding:4px 2px;font-size:14px;letter-spacing:-2px;
+    transition:color .12s;
+  }
+  .drag-handle:hover{color:#64748b;}
+  .drag-handle:active{cursor:grabbing;}
+
+  .cmt-num{
+    font-weight:800;color:var(--navy);
+    font-size:13px;flex-shrink:0;
+    font-family:'Inter',sans-serif;
+    background:#f1f5f9;
+    padding:3px 9px;border-radius:6px;
+  }
+  .cmt-text{
+    flex:1;font-size:14px;font-weight:500;
+    border:none;outline:none;background:transparent;
+    padding:6px 4px;color:var(--ink);
+  }
+  .cmt-text::placeholder{color:#cbd5e1;}
+
+  /* === Mode toggle (pill switch) === */
+  .mode-switch{
+    display:inline-flex;
+    background:#f1f5f9;
+    padding:3px;border-radius:9px;
+    position:relative;
+    flex-shrink:0;
+  }
+  .mode-switch button{
+    position:relative;z-index:2;
+    padding:5px 14px;font-size:11.5px;font-weight:700;
+    color:#64748b;background:transparent;border:none;
+    cursor:pointer;border-radius:6px;
+    font-family:'Inter',sans-serif;letter-spacing:.5px;
+    transition:color .2s;
+    display:flex;align-items:center;gap:5px;
+  }
+  .mode-switch button.active{color:white;}
+  .mode-switch button.active.before{
+    background:var(--before);
+    box-shadow:0 2px 6px -1px rgba(59,130,246,.45);
+  }
+  .mode-switch button.active.after{
+    background:var(--after);
+    box-shadow:0 2px 6px -1px rgba(16,185,129,.45);
+  }
+  .mode-switch .dot-ind{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;opacity:.6;
+  }
+  .mode-switch button.active .dot-ind{opacity:1;background:white;}
+
+  /* Fix-by row */
+  .fix-by-row{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;
+    background:#fafbfc;
+    border-bottom:1px solid #f1f5f9;
+    font-size:13px;
+  }
+  .fix-by-row .lbl{
+    font-weight:700;color:#475569;font-size:12px;
+    flex-shrink:0;font-family:'Inter',sans-serif;
+    letter-spacing:.3px;
+  }
+  .fix-by-row input{
+    flex:1;border:none;outline:none;background:transparent;
+    border-bottom:1px dashed #cbd5e1;
+    padding:3px 0;font-size:13px;
+  }
+  .fix-by-row input:focus{border-bottom-color:var(--orange);border-bottom-style:solid;}
+
+  /* === Photo grid === */
+  .photo-grid{
+    display:grid;gap:10px;
+    padding:14px;
+  }
+  .photo-grid.mode-before{grid-template-columns:repeat(2,1fr);}
+  .photo-grid.mode-after{grid-template-columns:repeat(3,1fr);}
+
+  /* Photo cell wraps the image-area + label below */
+  .photo-cell{
+    display:flex;flex-direction:column;gap:0;
+  }
+
+  .photo-slot{
+    position:relative;
+    aspect-ratio:4/3;
+    border:2px dashed #cbd5e1;
+    border-radius:8px 8px 0 0;
+    background:#f8fafc;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;overflow:hidden;
+    transition:all .2s;
+    border-bottom:none;
+  }
+  .photo-slot:hover{
+    border-color:#94a3b8;background:#f1f5f9;
+    transform:translateY(-1px);
+  }
+  .photo-slot.has-image{
+    border-style:solid;border-color:#e2e8f0;cursor:default;
+    background:#0b1220;
+  }
+  .photo-slot.has-image:hover{transform:none;}
+  .photo-slot img{width:100%;height:100%;object-fit:cover;}
+
+  .photo-slot .placeholder{
+    color:#94a3b8;font-size:12px;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    font-weight:500;
+  }
+  .photo-slot .placeholder svg{color:#cbd5e1;}
+
+  /* Label strip below the image */
+  .photo-label{
+    padding:5px 10px;
+    font-size:10.5px;font-weight:800;
+    letter-spacing:1.2px;
+    font-family:'Inter',sans-serif;
+    text-align:center;
+    border-radius:0 0 8px 8px;
+    border:2px solid transparent;
+    border-top:none;
+    margin-top:-2px; /* hide the slot's bottom edge cleanly */
+  }
+  .photo-label.before{
+    background:linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+    color:#1e3a8a;
+    border-color:#bfdbfe;
+  }
+  .photo-label.after{
+    background:linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%);
+    color:#065f46;
+    border-color:#a7f3d0;
+  }
+
+  .photo-slot .remove-btn{
+    position:absolute;top:6px;right:6px;
+    width:26px;height:26px;border-radius:7px;
+    background:rgba(0,0,0,.6);color:white;
+    display:none;align-items:center;justify-content:center;
+    font-size:14px;cursor:pointer;
+    backdrop-filter:blur(6px);
+  }
+  .photo-slot.has-image:hover .remove-btn{display:flex;}
+  .photo-slot.has-image:hover img{opacity:.9;}
+
+  /* Bottom add-comment line within category */
+  .add-cmt-line{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 14px 14px 14px;
+    cursor:pointer;color:var(--muted);
+    font-size:13px;font-weight:600;
+    border-top:1px dashed transparent;
+    transition:all .15s;
+  }
+  .add-cmt-line:hover{
+    color:var(--orange);
+    border-top-color:var(--line);
+    background:#fffbeb;
+  }
+  .add-cmt-line .plus{
+    width:22px;height:22px;border-radius:6px;
+    background:#f1f5f9;color:#64748b;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:14px;
+    transition:all .15s;
+  }
+  .add-cmt-line:hover .plus{
+    background:var(--orange);color:white;
+  }
+
+  /* Empty state */
+  .empty-state{
+    text-align:center;padding:60px 20px;
+    color:var(--muted);
+  }
+  .empty-state .icon{
+    width:64px;height:64px;border-radius:16px;
+    background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+    color:var(--orange-2);
+    display:inline-flex;align-items:center;justify-content:center;
+    margin-bottom:16px;
+  }
+  .empty-state h3{
+    font-weight:800;color:var(--ink);font-size:18px;
+    margin-bottom:6px;
+  }
+  .empty-state p{font-size:13.5px;margin-bottom:20px;}
+
+  /* Signature table */
+  .sig-table{
+    width:100%;border-collapse:collapse;
+    margin-top:14px;font-size:13px;
+    border:1px solid var(--line);border-radius:8px;
+    overflow:hidden;
+  }
+  .sig-table td{
+    border:1px solid var(--line);
+    height:60px;
+    vertical-align:bottom;text-align:center;
+    padding:6px;
+  }
+  .sig-table .sig-label{
+    height:auto;
+    background:linear-gradient(180deg,#fafbfc 0%,#f4f6f9 100%);
+    font-weight:700;color:#475569;
+    padding:9px 6px;font-size:12px;
+    letter-spacing:.4px;
+    font-family:'Inter',sans-serif;
+  }
+  .sig-table .sig-best{
+    text-align:left;padding-left:14px;
+    font-weight:700;color:var(--orange-2);
+    font-size:14px;letter-spacing:.3px;
+    font-family:'Inter',sans-serif;
+  }
+
+  /* Doc footer band — SVG-based (for screen).
+     The print footer is rendered by @page margin box (see print rules). */
+  .doc-footer{
+    position:relative;
+    width:100%;
+    height:10mm;
+    overflow:hidden;
+    color:#e2e8f0;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .doc-footer svg{display:block;width:100%;height:100%;}
+  .doc-footer-text{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 8mm;
+    font-size:9px;font-weight:600;letter-spacing:.5px;
+    color:#e2e8f0;
+    pointer-events:none;
+  }
+
+  /* === Modal === */
+  .modal-bg{
+    position:fixed;inset:0;
+    background:rgba(11,18,32,.55);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    z-index:100;display:none;align-items:center;justify-content:center;
+    animation:fadeIn .2s ease;
+  }
+  .modal-bg.open{display:flex;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  .modal-box{
+    background:white;border-radius:16px;
+    width:min(92vw,540px);max-height:85vh;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.4);
+    animation:slideUp .25s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  .modal-head{
+    padding:18px 22px;
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+    color:white;font-weight:700;font-size:15px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .modal-head .close-btn{
+    width:30px;height:30px;border-radius:7px;
+    background:rgba(255,255,255,.08);color:white;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:18px;
+    transition:background .15s;
+  }
+  .modal-head .close-btn:hover{background:rgba(255,255,255,.18);}
+  .modal-body{padding:20px 22px;overflow-y:auto;flex:1;}
+  .modal-foot{
+    padding:14px 22px;
+    border-top:1px solid var(--line);
+    display:flex;gap:10px;justify-content:flex-end;
+    background:#fafbfc;
+  }
+  .reorder-list{list-style:none;padding:0;margin:0;}
+  .reorder-list li{
+    background:white;border:1px solid var(--line);
+    border-left-width:5px;border-radius:9px;
+    padding:11px 14px;margin-bottom:8px;
+    display:flex;align-items:center;gap:10px;
+    font-size:13px;cursor:grab;
+    transition:all .15s;
+  }
+  .reorder-list li:hover{box-shadow:0 2px 8px -2px rgba(0,0,0,.08);}
+  .reorder-list li.before-mode{border-left-color:var(--before);background:linear-gradient(90deg,#eff6ff 0%,white 30%);}
+  .reorder-list li.after-mode{border-left-color:var(--after);background:linear-gradient(90deg,#f0fdf4 0%,white 30%);}
+  .reorder-list li:active{cursor:grabbing;}
+  .sortable-ghost{opacity:.4;background:#fef3c7 !important;}
+
+  /* Toast */
+  #toast{
+    position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:white;
+    padding:11px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    box-shadow:0 10px 30px -6px rgba(0,0,0,.35);
+    opacity:0;transition:all .25s;pointer-events:none;
+    z-index:200;display:flex;align-items:center;gap:8px;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #toast .toast-icon{
+    width:20px;height:20px;border-radius:50%;
+    background:var(--after);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;flex-shrink:0;
+  }
+
+  /* Floating action button */
+  .fab{
+    position:fixed;bottom:28px;right:28px;
+    width:56px;height:56px;border-radius:16px;
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    color:white;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 25px -5px rgba(245,166,35,.5);
+    cursor:pointer;z-index:30;
+    transition:all .2s;
+  }
+  .fab:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 15px 30px -5px rgba(245,166,35,.6);}
+  .fab:active{transform:translateY(0) scale(.98);}
+
+  /* Responsive */
+  @media (max-width:920px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{position:relative;height:auto;}
+    .meta-panel{grid-template-columns:1fr 1fr;}
+  }
+
+  /* ============================================================
+     iPad PORTRAIT (~768-834px) — touch-friendly drawer layout
+     ============================================================ */
+  @media (max-width:1024px){
+    /* Sidebar becomes a slide-in drawer instead of fixed column */
+    .app{grid-template-columns:1fr;}
+
+    .sidebar{
+      position:fixed !important;
+      top:0;left:0;bottom:0;
+      width:300px;height:100vh;
+      z-index:90;
+      transform:translateX(-100%);
+      transition:transform .25s ease;
+      box-shadow:8px 0 24px -8px rgba(0,0,0,.25);
+    }
+    .sidebar.open{ transform:translateX(0); }
+
+    /* Backdrop when drawer is open */
+    .drawer-backdrop{
+      display:none;
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.4);
+      z-index:80;
+      backdrop-filter:blur(2px);
+    }
+    .drawer-backdrop.open{ display:block; }
+
+    /* Hamburger button in top bar */
+    .menu-btn{ display:flex !important; }
+
+    /* Larger touch targets in topbar */
+    .topbar{ padding:14px 18px; }
+    .topbar-title h1{ font-size:16px; }
+    .top-btn{
+      padding:11px 16px;
+      font-size:14px;
+      min-height:44px;
+    }
+    .save-indicator .text{ display:none; }
+
+    .content-scroll{ padding:18px 16px 120px 16px; }
+
+    /* Cover page scales down */
+    .cover-page{
+      min-height:auto;
+    }
+    .cover-body{ padding:30px 32px 24px 32px; }
+    .cover-title{ font-size:42px; }
+    .cover-info-grid{
+      grid-template-columns:1fr;
+    }
+    .cover-info-cell{
+      border-right:none !important;
+      border-bottom:1px solid var(--line) !important;
+      padding:16px 20px;
+    }
+    .cover-info-cell:last-child{ border-bottom:none !important; }
+    .cover-info-cell input{ font-size:17px; padding:6px 0; }
+    .cover-info-cell.full{ grid-column:auto; }
+
+    /* Category — bigger touch targets */
+    .category-head{ padding:14px 14px; }
+    .cat-num{ width:34px; height:34px; font-size:14px; }
+    .cat-name-input{ font-size:18px; padding:6px 0; }
+    .icon-btn{
+      width:40px;height:40px;
+      min-width:40px;min-height:40px;
+    }
+    .icon-btn.add-cmt{
+      padding:0 14px;height:40px;
+      min-width:auto;
+    }
+
+    /* Comment card — bigger and easier to tap */
+    .comments-container{ padding:14px 12px 6px 12px; }
+    .cmt-head{
+      padding:12px 14px;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .cmt-num{ font-size:14px; padding:4px 10px; }
+    .cmt-text{
+      font-size:15px;
+      padding:8px 4px;
+      min-width:0;
+      flex:1 1 200px;
+    }
+    .mode-switch{
+      order:5;
+      width:100%;
+      justify-content:center;
+      padding:4px;
+      margin-top:4px;
+    }
+    .mode-switch button{
+      flex:1;
+      padding:9px 14px;
+      font-size:13px;
+      min-height:40px;
+      justify-content:center;
+    }
+    .fix-by-row{
+      padding:12px 14px;
+    }
+    .fix-by-row input{
+      font-size:14px;
+      padding:6px 0;
+      min-height:30px;
+    }
+
+    /* Photo slots — taller and easier to tap */
+    .photo-grid{ padding:14px; gap:12px; }
+    .photo-grid.mode-before{ grid-template-columns:1fr 1fr; }
+    .photo-grid.mode-after{ grid-template-columns:1fr 1fr 1fr; }
+    .photo-slot{ min-height:140px; }
+    .photo-slot .placeholder span{ font-size:13px; }
+    .photo-slot .remove-btn{
+      display:flex !important;
+      width:34px;height:34px;
+      background:rgba(0,0,0,.7);
+    }
+    .photo-slot.has-image .edit-btn{
+      display:flex !important;
+      width:34px;height:34px;left:6px;right:auto;
+      background:rgba(0,0,0,.7);
+    }
+    .photo-label{
+      padding:8px 10px;
+      font-size:11px;
+    }
+
+    /* Add comment line — bigger */
+    .add-cmt-line{
+      padding:14px;
+      font-size:14px;
+      min-height:50px;
+    }
+    .add-cmt-line .plus{
+      width:28px;height:28px;font-size:17px;
+    }
+
+    /* FAB — bigger on touch */
+    .fab{
+      width:62px;height:62px;
+      bottom:24px;right:20px;
+    }
+
+    /* Sidebar buttons — bigger touch */
+    .sb-btn{
+      padding:13px 14px;
+      font-size:14px;
+      min-height:48px;
+    }
+    .sb-btn .icon svg{ width:20px;height:20px; }
+
+    /* Modal — full-width on iPad */
+    .modal-box{ width:min(94vw,580px); }
+    .reorder-list li{ padding:14px; font-size:14px; }
+    .reorder-list li .cat-select{
+      font-size:13px;
+      padding:4px 8px;
+      min-height:30px;
+    }
+  }
+
+  /* Even smaller screens (iPad portrait with split view, or phones) */
+  @media (max-width:640px){
+    .cover-title{ font-size:34px; }
+    .photo-grid.mode-after{ grid-template-columns:1fr; }
+    .photo-grid.mode-before{ grid-template-columns:1fr; }
+  }
+
+  /* === Photo edit (pencil) button === */
+  .photo-slot .edit-btn{
+    position:absolute;top:6px;left:6px;
+    width:26px;height:26px;border-radius:7px;
+    background:rgba(0,0,0,.6);color:white;
+    display:none;align-items:center;justify-content:center;
+    cursor:pointer;backdrop-filter:blur(6px);
+  }
+  .photo-slot.has-image:hover .edit-btn{display:flex;}
+
+  /* === Photo Editor modal === */
+  .pe-box{
+    background:white;border-radius:16px;
+    width:min(96vw,560px);max-height:94vh;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.45);
+    animation:slideUp .25s ease;
+  }
+  .pe-head{
+    padding:14px 18px;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+    color:white;font-weight:700;font-size:15px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .pe-close{cursor:pointer;font-size:20px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(255,255,255,.1);}
+  .pe-close:hover{background:rgba(255,255,255,.2);}
+  .pe-modes{display:flex;gap:8px;padding:12px 16px 0 16px;}
+  .pe-mode{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:white;font-weight:700;font-size:13px;cursor:pointer;color:#64748b;}
+  .pe-mode.active{background:var(--navy);color:white;border-color:transparent;}
+  .pe-stage{display:flex;justify-content:center;align-items:center;background:#0b1220;margin:12px 16px;border-radius:10px;padding:10px;}
+  #peCanvas{max-width:100%;height:auto;touch-action:none;background:#fff;border-radius:6px;}
+  .pe-tools{display:flex;align-items:center;gap:8px;padding:0 16px 12px 16px;flex-wrap:wrap;}
+  .pe-tlabel{font-size:12px;font-weight:700;color:#475569;}
+  .pe-slider{flex:1;min-width:120px;accent-color:var(--orange);}
+  .pe-hint{font-size:11px;color:#94a3b8;width:100%;}
+  .pe-tool{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#475569;}
+  .pe-tool:hover{background:#f8fafc;}
+  .pe-tool.active{background:var(--orange);color:white;border-color:transparent;}
+  .pe-sep{width:1px;height:26px;background:var(--line);margin:0 2px;}
+  .pe-colors{display:flex;gap:7px;align-items:center;}
+  .pe-sw{width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;}
+  .pe-sw.active{box-shadow:0 0 0 2px var(--navy);transform:scale(1.12);}
+  .pe-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fafbfc;}
+</style>
+</head>
+<body>
+
+<div class="drawer-backdrop no-print" id="drawerBackdrop" onclick="toggleDrawer()"></div>
+
+<div class="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar no-print">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/>
+          <circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Avatar Electric</div>
+        <div class="brand-sub">Minute of Meeting</div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">การทำงาน</div>
+      <button class="sb-btn primary" onclick="addComment()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </span>
+        เพิ่มคอมเม้นใหม่
+      </button>
+      <button class="sb-btn" onclick="addCategory()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+        </span>
+        เพิ่มหมวด (Panel)
+      </button>
+      <button class="sb-btn" onclick="openReorderModal()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+          </svg>
+        </span>
+        จัดเรียงคอมเม้น
+      </button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">เอกสาร</div>
+      <button class="sb-btn" onclick="exportPDF()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </span>
+        Export PDF
+      </button>
+      <button class="sb-btn" onclick="window.print()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+          </svg>
+        </span>
+        พิมพ์ (Browser)
+      </button>
+      <button class="sb-btn" onclick="exportData()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </span>
+        Export JSON
+      </button>
+      <button class="sb-btn" onclick="document.getElementById('importFile').click()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </span>
+        Import JSON
+      </button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="sb-btn danger" onclick="resetAll()">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+          </svg>
+        </span>
+        ล้างทั้งหมด
+      </button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">สารบัญ</div>
+      <div id="tocList"></div>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN ========== -->
+  <main class="main">
+
+    <!-- TOP BAR -->
+    <div class="topbar no-print">
+      <div class="topbar-title">
+        <button class="top-btn" onclick="window.location.href='index.html'" style="padding:9px 11px;" title="กลับหน้าแรก (Home)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
+          </svg>
+        </button>
+        <button class="top-btn menu-btn" id="menuBtn" onclick="toggleDrawer()" style="display:none;padding:9px 11px;" title="เมนู">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <h1>Minute of Meeting</h1>
+        <span class="badge">FAT REPORT</span>
+        <span class="save-indicator" id="saveIndicator">
+          <span class="dot"></span>
+          <span class="text">บันทึกอัตโนมัติ</span>
+        </span>
+      </div>
+      <div class="topbar-actions">
+        <button class="top-btn" onclick="openReorderModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+          </svg>
+          จัดเรียง
+        </button>
+        <button class="top-btn primary" onclick="exportPDF()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+          </svg>
+          Export PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="content-scroll">
+
+      <!-- ============ COVER PAGE ============ -->
+      <div class="cover-page" id="coverPage">
+        <div class="cover-header">
+          <svg viewBox="0 0 210 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <rect x="0" y="0" width="125" height="16" fill="#0f2744"/>
+            <rect x="125" y="0" width="3" height="16" fill="#f5a623"/>
+            <rect x="128" y="0" width="82" height="16" fill="#1f3a5f"/>
+            <rect x="0" y="15" width="210" height="1" fill="#f5a623"/>
+          </svg>
+        </div>
+
+        <div class="cover-body">
+          <div class="cover-bg-decoration"></div>
+
+          <div class="cover-brand">
+            <div class="cover-brand-mark">
+              <img id="coverLogoImg" alt="logo" style="display:none;width:100%;height:100%;object-fit:contain;">
+              <svg id="coverLogoFallback" width="40" height="40" viewBox="0 0 24 24" fill="none">
+                <path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/>
+                <circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/>
+              </svg>
+            </div>
+            <div class="cover-brand-text">
+              <div class="name">Avatar Electric</div>
+              <div class="sub">Company Limited · Quality Control</div>
+            </div>
+          </div>
+
+          <div class="cover-title-block">
+            <span class="cover-eyebrow">Factory Acceptance Test</span>
+            <h1 class="cover-title">Minute of <span class="accent">Meeting</span></h1>
+            <div class="cover-subtitle">บันทึกการประชุมและรายการแก้ไขจากการทดสอบ FAT</div>
+            <div class="cover-divider"></div>
+          </div>
+
+          <div class="cover-info-grid">
+            <div class="cover-info-cell full">
+              <label><span class="ico">P</span> Project Name</label>
+              <input id="meeting_name" placeholder="ระบุชื่อโครงการ...">
+            </div>
+            <div class="cover-info-cell">
+              <label><span class="ico">C</span> Customer</label>
+              <input id="cover_customer" placeholder="ลูกค้า...">
+            </div>
+            <div class="cover-info-cell">
+              <label><span class="ico">D</span> Meeting Date</label>
+              <input id="meeting_date" placeholder="วันที่ประชุม...">
+            </div>
+            <div class="cover-info-cell">
+              <label><span class="ico">L</span> Location</label>
+              <input id="cover_location" placeholder="สถานที่ประชุม...">
+            </div>
+            <div class="cover-info-cell">
+              <label><span class="ico">R</span> Revision</label>
+              <input id="cover_rev" placeholder="01" value="01">
+            </div>
+          </div>
+
+          <div class="cover-footer">
+            <div class="left">
+              <span class="doctype">QC-MOM</span>
+              <span>Quality Control Department</span>
+            </div>
+            <div>www.avatar-electric.com</div>
+          </div>
+        </div>
+
+        <div class="cover-footer-band">
+          <svg viewBox="0 0 210 10" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <rect x="0" y="0" width="210" height="1" fill="#f5a623"/>
+            <rect x="0" y="1" width="125" height="9" fill="#0f2744"/>
+            <rect x="125" y="1" width="3" height="9" fill="#f5a623"/>
+            <rect x="128" y="1" width="82" height="9" fill="#1f3a5f"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- DOCUMENT PAPER (content pages) -->
+      <div class="document-paper">
+
+        <div class="doc-header">
+          <svg viewBox="0 0 210 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <!-- Dark gray section left (0 → 125mm) -->
+            <rect x="0" y="0" width="125" height="16" fill="#0f2744"/>
+            <!-- Orange divider -->
+            <rect x="125" y="0" width="3" height="16" fill="#f5a623"/>
+            <!-- Navy section right -->
+            <rect x="128" y="0" width="82" height="16" fill="#1f3a5f"/>
+            <!-- Bottom orange accent line -->
+            <rect x="0" y="15" width="210" height="1" fill="#f5a623"/>
+          </svg>
+          <div class="doc-header-text">
+            <span class="title">Avatar Electric Co., Ltd.</span>
+            <span class="right">Minute of Meeting · Quality Control</span>
+          </div>
+        </div>
+
+        <div class="doc-body">
+
+          <!-- Ribbon -->
+          <div class="ribbon-wrap">
+            <div class="ribbon-line"></div>
+            <div class="ribbon-arrow">Minute of Meeting</div>
+            <div class="ribbon-line right"></div>
+          </div>
+
+          <!-- Categories -->
+          <div id="categoriesContainer"></div>
+
+          <!-- Empty state -->
+          <div id="emptyState" class="empty-state" style="display:none;">
+            <div class="icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <h3>ยังไม่มีคอมเม้น</h3>
+            <p>เริ่มต้นด้วยการเพิ่มหมวด (เช่น MDB PANEL) แล้วเพิ่มคอมเม้นในหมวด</p>
+            <button class="top-btn primary" onclick="addCategory()" style="margin:0 auto;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              เริ่มต้นใช้งาน
+            </button>
+          </div>
+
+          <!-- Signature -->
+          <table class="sig-table">
+            <tr>
+              <td class="sig-best">Best Regards,</td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr>
+              <td class="sig-label">Quality Control</td>
+              <td class="sig-label">Witnessed</td>
+              <td class="sig-label">Witnessed</td>
+              <td class="sig-label">Witnessed</td>
+            </tr>
+          </table>
+
+        </div>
+
+        <div class="doc-footer">
+          <svg viewBox="0 0 210 10" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <!-- Top orange accent line -->
+            <rect x="0" y="0" width="210" height="1" fill="#f5a623"/>
+            <!-- Dark gray section left -->
+            <rect x="0" y="1" width="125" height="9" fill="#0f2744"/>
+            <!-- Orange divider -->
+            <rect x="125" y="1" width="3" height="9" fill="#f5a623"/>
+            <!-- Navy section right -->
+            <rect x="128" y="1" width="82" height="9" fill="#1f3a5f"/>
+          </svg>
+          <div class="doc-footer-text">
+            <span>www.avatar-electric.com</span>
+            <span>Quality Control</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Floating Action Button -->
+<button class="fab no-print" onclick="addComment()" title="เพิ่มคอมเม้นใหม่">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- ========== REORDER MODAL ========== -->
+<div class="modal-bg no-print" id="reorderModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>จัดเรียงคอมเม้น</span>
+      <span class="close-btn" onclick="closeReorderModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <p class="text-xs text-slate-500 mb-3">ลากเพื่อจัดเรียงลำดับคอมเม้น (จะยังอยู่ในหมวดเดิม)</p>
+      <ul class="reorder-list" id="reorderList"></ul>
+    </div>
+    <div class="modal-foot">
+      <button onclick="closeReorderModal()" class="top-btn">ยกเลิก</button>
+      <button onclick="applyReorder()" class="top-btn primary">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PHOTO EDITOR MODAL ========== -->
+<div class="modal-bg no-print" id="photoEditorModal">
+  <div class="pe-box">
+    <div class="pe-head">
+      <span>แก้ไขรูปภาพ</span>
+      <span class="pe-close" id="peClose">×</span>
+    </div>
+    <div class="pe-modes">
+      <button class="pe-mode active" id="peModeCrop">Crop / ซูม</button>
+      <button class="pe-mode" id="peModeDraw">วาด</button>
+    </div>
+    <div class="pe-stage">
+      <canvas id="peCanvas" width="480" height="360"></canvas>
+    </div>
+
+    <!-- Crop tools -->
+    <div class="pe-tools" id="peCropTools">
+      <span class="pe-tlabel">ซูม</span>
+      <input type="range" id="peZoom" class="pe-slider" min="1" max="3" step="0.01" value="1">
+      <span class="pe-hint">ลากรูปเพื่อเลื่อนตำแหน่ง • เลื่อนแถบเพื่อซูมเข้า/ออก</span>
+    </div>
+
+    <!-- Draw tools -->
+    <div class="pe-tools" id="peDrawTools" style="display:none;">
+      <button class="pe-tool active" data-tool="select" title="เลือก / ย้าย / ยืดหด">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2l7 18 2.5-7L20 11 4 2z"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="arrow" title="ลูกศร">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="9 5 19 5 19 15"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="rect" title="สี่เหลี่ยม">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="circle" title="วงกลม">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <span class="pe-sep"></span>
+      <span class="pe-colors">
+        <button class="pe-sw active" data-color="#ef4444" style="background:#ef4444"></button>
+        <button class="pe-sw" data-color="#facc15" style="background:#facc15"></button>
+        <button class="pe-sw" data-color="#22c55e" style="background:#22c55e"></button>
+        <button class="pe-sw" data-color="#2563eb" style="background:#2563eb"></button>
+        <button class="pe-sw" data-color="#0b1220" style="background:#0b1220"></button>
+      </span>
+      <span class="pe-sep"></span>
+      <button class="pe-tool" id="peDelete" title="ลบรูปทรงที่เลือก">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+    </div>
+
+    <div class="pe-foot">
+      <button class="top-btn" id="peCancel">ยกเลิก</button>
+      <button class="top-btn primary" id="peSave">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span class="toast-icon">✓</span><span id="toastMsg"></span></div>
+
+<script>
+/* ========================================================================
+   STATE
+   ======================================================================== */
+const STORAGE_KEY = 'avatar_minute_of_meeting_v2';
+
+let state = {
+  meeting: { name:'', customer:'', date:'', rev:'01', location:'' },
+  categories: []
+};
+
+function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+/* ========================================================================
+   RENDER
+   ======================================================================== */
+function render(){
+  const container = document.getElementById('categoriesContainer');
+  const empty = document.getElementById('emptyState');
+  container.innerHTML = '';
+
+  const hasContent = state.categories.length > 0;
+  empty.style.display = hasContent ? 'none' : 'block';
+  container.style.display = hasContent ? 'block' : 'none';
+
+  state.categories.forEach((cat, ci) => {
+    const catEl = document.createElement('div');
+    catEl.className = 'category-block';
+    catEl.dataset.catId = cat.id;
+    catEl.innerHTML = `
+      <div class="category-head">
+        <div class="cat-num">${ci+1}</div>
+        <input class="cat-name-input" value="${escapeHtml(cat.name)}" placeholder="ชื่อหมวด เช่น MDB PANEL" data-cat-name="${cat.id}">
+        <button class="icon-btn add-cmt no-print" onclick="addCommentToCategory('${cat.id}', true)" title="เพิ่มคอมเม้นในหมวดนี้">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          คอมเม้น
+        </button>
+        <button class="icon-btn no-print" onclick="removeCategory('${cat.id}')" title="ลบหมวด">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="comments-container" data-cat-comments="${cat.id}"></div>
+      <div class="add-cmt-line no-print" onclick="addCommentToCategory('${cat.id}', true)">
+        <span class="plus">+</span>
+        <span>เพิ่มคอมเม้นในหมวด "${escapeHtml(cat.name || 'นี้')}"</span>
+      </div>
+    `;
+    const cmtContainer = catEl.querySelector('[data-cat-comments]');
+    cat.comments.forEach((cmt, idx) => {
+      const cmtEl = buildCommentEl(cat, cmt, ci+1, idx+1);
+      if(idx === 0) cmtEl.classList.add('first-in-category');
+      cmtContainer.appendChild(cmtEl);
+    });
+    container.appendChild(catEl);
+  });
+
+  // category name listeners
+  document.querySelectorAll('[data-cat-name]').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const cid = e.target.dataset.catName;
+      const cat = state.categories.find(c=>c.id===cid);
+      if(cat){ cat.name = e.target.value; updateTOC(); debouncedSave(); }
+    });
+  });
+
+  updateTOC();
+}
+
+function buildCommentEl(cat, cmt, catNum, cmtNum){
+  const el = document.createElement('div');
+  el.className = `comment-card mode-${cmt.mode}`;
+  el.dataset.commentId = cmt.id;
+
+  const photoSlotsHtml = cmt.mode === 'after'
+    ? buildPhotoSlot(cmt, 'before', 0) + buildPhotoSlot(cmt, 'before', 1) + buildPhotoSlot(cmt, 'after', 0)
+    : buildPhotoSlot(cmt, 'before', 0) + buildPhotoSlot(cmt, 'before', 1);
+
+  el.innerHTML = `
+    <div class="cmt-head">
+      <span class="drag-handle no-print" title="ลาก">⋮⋮</span>
+      <span class="cmt-num">${catNum}.${cmtNum}</span>
+      <input class="cmt-text" placeholder="ระบุรายการแก้ไข เช่น แก้ไขสายไฟ Phase R..." value="${escapeHtml(cmt.text)}" data-cmt-text="${cmt.id}">
+      <div class="mode-switch no-print">
+        <button class="${cmt.mode==='before'?'active before':''}" data-set-mode="before" data-cmt="${cmt.id}">
+          <span class="dot-ind"></span>BEFORE
+        </button>
+        <button class="${cmt.mode==='after'?'active after':''}" data-set-mode="after" data-cmt="${cmt.id}">
+          <span class="dot-ind"></span>AFTER
+        </button>
+      </div>
+      <button class="icon-btn no-print" onclick="removeComment('${cat.id}','${cmt.id}')" title="ลบคอมเม้น">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="fix-by-row">
+      <span class="lbl">แก้ไขโดย</span>
+      <input value="${escapeHtml(cmt.fixedBy)}" placeholder="ชื่อผู้รับผิดชอบ..." data-cmt-fixed="${cmt.id}">
+    </div>
+    <div class="photo-grid mode-${cmt.mode}">
+      ${photoSlotsHtml}
+    </div>
+  `;
+
+  // mode toggle
+  el.querySelectorAll('[data-set-mode]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const newMode = e.currentTarget.dataset.setMode;
+      const cmtId = e.currentTarget.dataset.cmt;
+      setCommentMode(cat.id, cmtId, newMode);
+    });
+  });
+
+  el.querySelector(`[data-cmt-text="${cmt.id}"]`).addEventListener('input', e=>{
+    cmt.text = e.target.value;
+    updateTOC();
+    debouncedSave();
+  });
+
+  el.querySelector(`[data-cmt-fixed="${cmt.id}"]`).addEventListener('input', e=>{
+    cmt.fixedBy = e.target.value;
+    debouncedSave();
+  });
+
+  el.querySelectorAll('.photo-slot').forEach(slot=>{
+    const which = slot.dataset.which;
+    const sidx = parseInt(slot.dataset.sidx, 10);
+    slot.addEventListener('click', ()=>{
+      if(slot.classList.contains('has-image')) return;
+      const finput = document.createElement('input');
+      finput.type = 'file'; finput.accept = 'image/*';
+      finput.onchange = ev=>{
+        const file = ev.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = e2=>{
+          if(!cmt.photos[which]) cmt.photos[which] = [];
+          cmt.photos[which][sidx] = { dataUrl: e2.target.result };
+          render(); saveDraft();
+        };
+        reader.readAsDataURL(file);
+      };
+      finput.click();
+    });
+    const removeBtn = slot.querySelector('.remove-btn');
+    if(removeBtn){
+      removeBtn.addEventListener('click', e=>{
+        e.stopPropagation();
+        if(cmt.photos[which]) cmt.photos[which][sidx] = null;
+        render(); saveDraft();
+      });
+    }
+    const editBtn = slot.querySelector('.edit-btn');
+    if(editBtn){
+      editBtn.addEventListener('click', e=>{
+        e.stopPropagation();
+        PhotoEditor.open(cmt, which, sidx);
+      });
+    }
+  });
+
+  return el;
+}
+
+function buildPhotoSlot(cmt, which, sidx){
+  const photo = cmt.photos[which] && cmt.photos[which][sidx];
+  const labelTxt = which === 'before' ? `BEFORE ${sidx+1}` : 'AFTER';
+  const inner = (photo && photo.dataUrl) ? `
+      <div class="photo-slot has-image" data-which="${which}" data-sidx="${sidx}">
+        <img src="${photo.dataUrl}" alt="${labelTxt}">
+        <span class="edit-btn no-print" title="แก้ไขรูป (crop / วาด)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+        </span>
+        <span class="remove-btn no-print" title="ลบรูป">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </span>
+      </div>` : `
+      <div class="photo-slot" data-which="${which}" data-sidx="${sidx}">
+        <div class="placeholder">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <circle cx="9" cy="11" r="2"/>
+            <path d="M3 17l5-5 4 4 3-3 6 6"/>
+          </svg>
+          <span>คลิกเพื่อเพิ่มรูป</span>
+        </div>
+      </div>`;
+  return `<div class="photo-cell">${inner}<div class="photo-label ${which}">${labelTxt}</div></div>`;
+}
+
+/* ========================================================================
+   ACTIONS
+   ======================================================================== */
+function addCategory(name=''){
+  state.categories.push({
+    id: uid('cat'),
+    name: name || `PANEL ${state.categories.length + 1}`,
+    comments: []
+  });
+  addCommentToCategory(state.categories[state.categories.length-1].id, false);
+  render(); saveDraft();
+  showToast('เพิ่มหมวดใหม่');
+  scrollToBottom();
+}
+
+function addComment(){
+  if(state.categories.length===0){
+    state.categories.push({ id: uid('cat'), name: 'MDB PANEL', comments: [] });
+  }
+  const lastCat = state.categories[state.categories.length-1];
+  addCommentToCategory(lastCat.id, false);
+  render(); saveDraft();
+  showToast('เพิ่มคอมเม้นใหม่');
+  scrollToBottom();
+}
+
+function addCommentToCategory(catId, doRender=true){
+  const cat = state.categories.find(c=>c.id===catId);
+  if(!cat) return;
+  cat.comments.push({
+    id: uid('cmt'),
+    mode: 'before',
+    text: '',
+    fixedBy: '',
+    photos: { before: [null, null], after: [null] }
+  });
+  if(doRender){
+    render(); saveDraft();
+    showToast('เพิ่มคอมเม้นใหม่');
+    // scroll to the newly added comment
+    setTimeout(()=>{
+      const lastCmt = cat.comments[cat.comments.length-1];
+      const el = document.querySelector(`[data-comment-id="${lastCmt.id}"]`);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 50);
+  }
+}
+
+function scrollToBottom(){
+  setTimeout(()=>{
+    const sc = document.querySelector('.content-scroll');
+    if(sc) sc.scrollTo({top: sc.scrollHeight, behavior:'smooth'});
+  }, 100);
+}
+
+function removeCategory(catId){
+  const cat = state.categories.find(c=>c.id===catId);
+  const cmtCount = cat?.comments.length || 0;
+  if(cmtCount > 0 && !confirm(`ลบหมวด "${cat.name}" และคอมเม้น ${cmtCount} รายการ?`)) return;
+  state.categories = state.categories.filter(c=>c.id!==catId);
+  render(); saveDraft();
+  showToast('ลบหมวดแล้ว');
+}
+
+function removeComment(catId, cmtId){
+  if(!confirm('ลบคอมเม้นนี้?')) return;
+  const cat = state.categories.find(c=>c.id===catId);
+  if(!cat) return;
+  cat.comments = cat.comments.filter(c=>c.id!==cmtId);
+  render(); saveDraft();
+  showToast('ลบคอมเม้นแล้ว');
+}
+
+function setCommentMode(catId, cmtId, newMode){
+  const cat = state.categories.find(c=>c.id===catId);
+  if(!cat) return;
+  const cmt = cat.comments.find(c=>c.id===cmtId);
+  if(!cmt) return;
+  cmt.mode = newMode;
+  if(!cmt.photos.before) cmt.photos.before = [null,null];
+  if(!cmt.photos.after) cmt.photos.after = [null];
+  render(); saveDraft();
+}
+
+/* ========================================================================
+   REORDER MODAL
+   ======================================================================== */
+let reorderSortable = null;
+
+function openReorderModal(){
+  const list = document.getElementById('reorderList');
+  list.innerHTML = '';
+  const flat = [];
+  state.categories.forEach((cat, ci)=>{
+    cat.comments.forEach((cmt, idx)=>{
+      flat.push({ cat, cmt, ci, idx });
+    });
+  });
+  if(flat.length===0){
+    list.innerHTML = '<p class="text-sm text-slate-400 italic text-center py-4">ยังไม่มีคอมเม้นให้จัดเรียง</p>';
+  } else {
+    // build category options once
+    const catOptions = state.categories
+      .map(c => `<option value="${c.id}">${escapeHtml(c.name || '(ไม่ระบุ)')}</option>`)
+      .join('');
+
+    flat.forEach(({cat,cmt,ci,idx})=>{
+      const li = document.createElement('li');
+      li.className = cmt.mode === 'after' ? 'after-mode' : 'before-mode';
+      li.dataset.cmtId = cmt.id;
+      li.innerHTML = `
+        <span class="text-slate-400 text-lg leading-none reorder-handle" style="cursor:grab;">⋮⋮</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-slate-800 truncate">${escapeHtml(cmt.text||'(ยังไม่ได้กรอก)')}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+            <span class="${cmt.mode==='after'?'text-emerald-600':'text-blue-600'} font-bold">${cmt.mode.toUpperCase()}</span>
+            <span>·</span>
+            <span>หมวด:</span>
+            <select class="cat-select text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none focus:border-orange-400" data-cmt-target="${cmt.id}">
+              ${catOptions}
+            </select>
+          </div>
+        </div>
+      `;
+      list.appendChild(li);
+      // set selected
+      li.querySelector('.cat-select').value = cat.id;
+    });
+  }
+  if(reorderSortable) reorderSortable.destroy();
+  reorderSortable = new Sortable(list, {
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    handle: '.reorder-handle',
+    draggable: 'li',
+    forceFallback: true,
+    fallbackTolerance: 5
+  });
+  document.getElementById('reorderModal').classList.add('open');
+}
+function closeReorderModal(){
+  document.getElementById('reorderModal').classList.remove('open');
+}
+function applyReorder(){
+  // Read items in their NEW visual order from the DOM
+  const items = Array.from(document.querySelectorAll('#reorderList li'));
+
+  if(items.length === 0){
+    closeReorderModal();
+    return;
+  }
+
+  // Build a lookup of comment objects
+  const cmtById = {};
+  state.categories.forEach(cat=>{
+    cat.comments.forEach(cmt=>{ cmtById[cmt.id] = cmt; });
+  });
+
+  // Clear all category comment lists
+  state.categories.forEach(cat=> cat.comments = []);
+
+  // For each item in the new visual order, append it to its chosen target category
+  // This is what makes ORDER + CROSS-CATEGORY MOVE actually apply.
+  items.forEach(li => {
+    const cmtId = li.dataset.cmtId;
+    const targetCatId = li.querySelector('.cat-select')?.value;
+    const cmt = cmtById[cmtId];
+    if(!cmt) return;
+    const targetCat = state.categories.find(c => c.id === targetCatId)
+                   || state.categories[0]; // fallback
+    if(targetCat) targetCat.comments.push(cmt);
+  });
+
+  closeReorderModal();
+  render(); saveDraft();
+  showToast('จัดเรียงเรียบร้อย');
+}
+
+/* ========================================================================
+   TOC
+   ======================================================================== */
+function updateTOC(){
+  const toc = document.getElementById('tocList');
+  toc.innerHTML = '';
+  let total = 0;
+  state.categories.forEach((cat, ci)=>{
+    const catLabel = document.createElement('div');
+    catLabel.className = 'toc-cat';
+    catLabel.textContent = `${ci+1}. ${cat.name || '(ไม่ระบุชื่อ)'}`;
+    toc.appendChild(catLabel);
+    cat.comments.forEach((cmt, idx)=>{
+      total++;
+      const item = document.createElement('div');
+      item.className = `toc-item ${cmt.mode}`;
+      item.innerHTML = `
+        <span class="toc-num">${ci+1}.${idx+1}</span>
+        <span class="flex-1 truncate">${escapeHtml(cmt.text || '(ว่าง)')}</span>
+        <span class="toc-mode-tag ${cmt.mode}">${cmt.mode==='after'?'A':'B'}</span>
+      `;
+      item.onclick = ()=>{
+        const el = document.querySelector(`[data-comment-id="${cmt.id}"]`);
+        if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+      };
+      toc.appendChild(item);
+    });
+  });
+  if(total===0){
+    toc.innerHTML = '<div class="text-xs text-slate-500 italic px-2 py-2">ยังไม่มีคอมเม้น</div>';
+  }
+}
+
+/* ========================================================================
+   PERSISTENCE
+   ======================================================================== */
+let saveTimer = null;
+function debouncedSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 400);
+}
+
+function captureMetaFromUI(){
+  state.meeting.name = document.getElementById('meeting_name').value;
+  state.meeting.customer = document.getElementById('cover_customer').value;
+  state.meeting.date = document.getElementById('meeting_date').value;
+  state.meeting.rev = document.getElementById('cover_rev').value;
+  state.meeting.location = document.getElementById('cover_location').value;
+}
+function applyMetaToUI(){
+  document.getElementById('meeting_name').value = state.meeting.name || '';
+  document.getElementById('cover_customer').value = state.meeting.customer || '';
+  document.getElementById('meeting_date').value = state.meeting.date || '';
+  document.getElementById('cover_rev').value = state.meeting.rev || '01';
+  document.getElementById('cover_location').value = state.meeting.location || '';
+}
+
+async function saveDraft(showMsg=false){
+  captureMetaFromUI();
+  const indicator = document.getElementById('saveIndicator');
+  indicator.classList.add('saving');
+  indicator.querySelector('.text').textContent = 'กำลังบันทึก...';
+  try{
+    await localforage.setItem(STORAGE_KEY, state);
+    setTimeout(()=>{
+      indicator.classList.remove('saving');
+      indicator.querySelector('.text').textContent = 'บันทึกแล้ว';
+    }, 300);
+    if(showMsg) showToast('บันทึก draft แล้ว');
+  }catch(err){
+    console.error(err);
+    indicator.querySelector('.text').textContent = 'บันทึกไม่สำเร็จ';
+  }
+}
+
+async function loadDraft(){
+  try{
+    const data = await localforage.getItem(STORAGE_KEY);
+    if(data){
+      state = data;
+      applyMetaToUI();
+      render();
+      return true;
+    }
+  }catch(err){console.error(err);}
+  return false;
+}
+
+function exportData(){
+  captureMetaFromUI();
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `MoM_${state.meeting.name || 'project'}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('ส่งออกข้อมูลแล้ว');
+}
+
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      state = JSON.parse(e.target.result);
+      // backwards-compat: ignore old "cover" key if present
+      if(state.cover && !state.meeting){
+        state.meeting = state.cover;
+      }
+      applyMetaToUI();
+      render();
+      saveDraft();
+      showToast('นำเข้าข้อมูลแล้ว');
+    }catch(err){
+      showToast('ไฟล์ไม่ถูกต้อง');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetAll(){
+  if(!confirm('ล้างข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  state = {
+    meeting:{ name:'', customer:'', date:'', rev:'01' },
+    categories:[]
+  };
+  applyMetaToUI();
+  addCategory('MDB PANEL');
+  showToast('ล้างข้อมูลแล้ว');
+}
+
+/* ========================================================================
+   UTILITIES
+   ======================================================================== */
+function escapeHtml(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg){
+  document.getElementById('toastMsg').textContent = msg;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function setupMetaListeners(){
+  ['meeting_name','cover_customer','meeting_date','cover_rev','cover_location'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', debouncedSave);
+  });
+}
+
+/* ========================================================================
+   PDF EXPORT — FIXED ASPECT RATIO (PIXEL-PERFECT)
+   ======================================================================== */
+function showPdfProgress(msg){
+  let el = document.getElementById('pdfProgress');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'pdfProgress';
+    el.style.cssText = `
+      position:fixed;inset:0;
+      background:rgba(11,18,32,.7);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      z-index:300;
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:14px;
+      color:white;
+    `;
+    el.innerHTML = `
+      <div style="width:50px;height:50px;border:4px solid rgba(255,255,255,.2);border-top-color:#f5a623;border-radius:50%;animation:spin 1s linear infinite;"></div>
+      <div id="pdfProgressMsg" style="font-size:14px;font-weight:600;font-family:'Sarabun',sans-serif;text-align:center;padding:0 20px;"></div>
+      <style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+    `;
+    document.body.appendChild(el);
+  }
+  document.getElementById('pdfProgressMsg').textContent = msg;
+  el.style.display = 'flex';
+}
+
+function hidePdfProgress(){
+  const el = document.getElementById('pdfProgress');
+  if(el) el.style.display = 'none';
+}
+
+async function exportPDF() {
+  if (state.categories.length === 0) {
+    showToast('ไม่มีข้อมูลให้ export');
+    return;
+  }
+
+  // อัพเดทข้อมูลลง Storage ก่อน Export
+  captureMetaFromUI();
+  await saveDraft();
+
+  showPdfProgress('กำลังเตรียม...');
+
+  try {
+    // บังคับขนาด Container เป็น px ตายตัว (A4 ที่ 96 DPI = 794x1123)
+    const RENDER_W_PX = 794;
+    const RENDER_H_PX = 1123;
+    const SCALE = 3; // ความคมชัด x3 (ภาพคมขึ้น เห็นรายละเอียดมากขึ้น)
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    // สร้าง Container สำหรับ Render แบบไม่ให้เห็นบนจอ
+    const renderContainer = document.createElement('div');
+    renderContainer.style.cssText = `
+      position:fixed;
+      left:-99999px;top:0;
+      width:${RENDER_W_PX}px;
+      height:${RENDER_H_PX}px;
+      background:white;
+      z-index:-1;
+    `;
+    document.body.appendChild(renderContainer);
+
+    // ฟังก์ชันช่วยแคปภาพ
+    const renderToImage = async (node) => {
+      renderContainer.innerHTML = '';
+      renderContainer.appendChild(node);
+      await delay(100); // รอภาพโหลดและ layout จัดเรียง
+
+      // ย่อรูปให้พอดีกรอบ (เห็นเต็มใบ) ก่อน เพราะ html2canvas บน iOS ไม่รองรับ object-fit/background cover
+      await prepareFitPhotos(node, SCALE);
+
+      const canvas = await html2canvas(node, {
+        scale: SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: RENDER_W_PX,
+        height: RENDER_H_PX,
+        windowWidth: RENDER_W_PX,
+        windowHeight: RENDER_H_PX
+      });
+      return {
+        imgData: canvas.toDataURL('image/jpeg', 0.95),
+        width: canvas.width,
+        height: canvas.height
+      };
+    };
+
+    // ฟังก์ชันช่วยแอดภาพลง pdf โดยคำนวณสัดส่วนจริงให้ไม่บีบ
+    const addImageToPdf = (result, isFirstPage) => {
+      if(!isFirstPage) pdf.addPage();
+      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pdfHeight = (result.height * pdfWidth) / result.width; 
+      pdf.addImage(result.imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    };
+
+    // === PAGE 1: COVER ===
+    showPdfProgress('กำลังสร้างหน้าปก...');
+    const coverNode = buildCoverPageForPdf(RENDER_W_PX, RENDER_H_PX);
+    const coverResult = await renderToImage(coverNode);
+    addImageToPdf(coverResult, true);
+
+    // === แบ่งคอมเม้นต์เป็นหน้าละ 3 ข้อ (ทั้งโหมด before/after พอดี 1 หน้า ไม่ล้นไปหน้าอื่น) ===
+    const COMMENTS_PER_PAGE = 3;
+    const pageDefs = [];
+    state.categories.forEach((cat, ci) => {
+      const comments = cat.comments || [];
+      if (comments.length === 0) {
+        pageDefs.push({ cat, ci, chunk: [], start: 0 });
+      } else {
+        for (let i = 0; i < comments.length; i += COMMENTS_PER_PAGE) {
+          pageDefs.push({ cat, ci, chunk: comments.slice(i, i + COMMENTS_PER_PAGE), start: i });
+        }
+      }
+    });
+    const totalPages = pageDefs.length + 1;
+
+    for (let p = 0; p < pageDefs.length; p++) {
+      const { cat, ci, chunk, start } = pageDefs[p];
+      const pageNum = p + 2;
+      showPdfProgress(`กำลังสร้างหน้า ${pageNum}/${totalPages}... (${escapeHtml(cat.name)})`);
+      const catNode = buildCategoryPageForPdf(cat, ci, chunk, start, pageNum, totalPages, RENDER_W_PX, RENDER_H_PX);
+      const catResult = await renderToImage(catNode);
+      addImageToPdf(catResult, false);
+    }
+
+    // Cleanup
+    document.body.removeChild(renderContainer);
+
+    // Save
+    const filename = `MoM_${(state.meeting.name || 'project').replace(/[^a-zA-Z0-9ก-๙_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    showPdfProgress('กำลังบันทึก...');
+    pdf.save(filename);
+
+    hidePdfProgress();
+    showToast('สร้าง PDF เรียบร้อย');
+  } catch (err) {
+    console.error(err);
+    hidePdfProgress();
+    showToast('สร้าง PDF ไม่สำเร็จ: ' + err.message);
+  }
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* วาดรูปแบบ contain ลง canvas ที่อัตราส่วน = กรอบพอดี (เห็นรูปเต็มใบ ไม่ตัดส่วนใดออก)
+   แล้วคืนเป็น dataURL — html2canvas แค่วาดรูปที่สัดส่วนถูกต้องอยู่แล้ว ไม่ต้องพึ่ง object-fit (กัน iOS บีบ/ตัดรูป) */
+function fitImageToDataUrl(src, boxW, boxH, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const targetW = Math.max(1, Math.round(boxW * scale));
+        const targetH = Math.max(1, Math.round(boxH * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        // contain: ย่อรูปทั้งใบให้พอดีกรอบ ไม่ตัดอะไรออก แล้วจัดกึ่งกลาง
+        const r = Math.min(targetW / iw, targetH / ih);
+        const dw = iw * r, dh = ih * r;
+        const dx = (targetW - dw) / 2, dy = (targetH - dh) / 2;
+        ctx.fillStyle = '#ffffff';                 // พื้นที่ว่าง (letterbox) เป็นสีขาว
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
+      } catch (e) { reject(e); }
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/* แปลงทุก .pdf-photo-box[data-src] ในหน้าให้เป็น <img> ที่ย่อพอดีกรอบแล้ว */
+async function prepareFitPhotos(root, scale) {
+  const boxes = root.querySelectorAll('.pdf-photo-box[data-src]');
+  for (const box of boxes) {
+    const src = box.getAttribute('data-src');
+    const w = box.clientWidth, h = box.clientHeight;
+    if (!src || !w || !h) continue;
+    try {
+      const fitted = await fitImageToDataUrl(src, w, h, scale);
+      const im = document.createElement('img');
+      im.src = fitted;
+      im.style.cssText = 'width:100%;height:100%;display:block;';
+      box.innerHTML = '';
+      box.appendChild(im);
+      box.removeAttribute('data-src');
+    } catch (e) { /* ปล่อยกรอบว่างไว้ ดีกว่าทำ PDF พัง */ }
+  }
+}
+
+/* ----- Build cover page DOM for PDF rendering (PIXELS) ----- */
+/* ---- โลโก้บริษัท (วางไฟล์ไว้โฟลเดอร์เดียวกับ HTML นี้)
+   preload เป็น dataURL เพื่อให้ html2canvas ได้รูปฝังพร้อมเสมอ; fallback เป็นไอคอนสีส้มเดิม ---- */
+const LOGO_SRC = 'Logo Avatar เล็ก.png';
+let LOGO_DATAURL = null;
+function preloadLogo(){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        LOGO_DATAURL = c.toDataURL('image/png');
+      }catch(e){ LOGO_DATAURL = encodeURI(LOGO_SRC); }  // tainted (เปิดแบบ file://) → ใช้ URL ตรงๆ
+      resolve(true);
+    };
+    img.onerror = ()=>{ LOGO_DATAURL = null; resolve(false); };
+    img.src = encodeURI(LOGO_SRC);
+  });
+}
+function applyLogoToCover(){
+  if(!LOGO_DATAURL) return;
+  const im = document.getElementById('coverLogoImg');
+  const fb = document.getElementById('coverLogoFallback');
+  const mark = document.querySelector('.cover-brand-mark');
+  if(im){ im.src = LOGO_DATAURL; im.style.display = 'block'; }
+  if(fb) fb.style.display = 'none';
+  if(mark){ mark.style.background = 'transparent'; mark.style.boxShadow = 'none'; }
+}
+
+function buildCoverPageForPdf(widthPx, heightPx) {
+  const m = state.meeting;
+  const logoHtml = LOGO_DATAURL
+    ? `<img src="${LOGO_DATAURL}" alt="logo" style="width:72px;height:64px;object-fit:contain;display:block;">`
+    : `<div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#f5a623 0%,#ff8a00 100%);display:flex;align-items:center;justify-content:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/><circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/></svg></div>`;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `
+    width:${widthPx}px;height:${heightPx}px;
+    min-width:${widthPx}px;min-height:${heightPx}px;
+    max-width:${widthPx}px;max-height:${heightPx}px;
+    background:white;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    font-family:'Sarabun',sans-serif;
+    color:#0b1220;
+    box-sizing:border-box;
+  `;
+  wrap.innerHTML = `
+    <div style="height:60px;width:100%;flex-shrink:0;">
+      <svg viewBox="0 0 794 60" style="display:block;width:100%;height:100%;">
+        <rect x="0" y="0" width="473" height="60" fill="#0f2744"/>
+        <rect x="473" y="0" width="11" height="60" fill="#f5a623"/>
+        <rect x="484" y="0" width="310" height="60" fill="#1f3a5f"/>
+        <rect x="0" y="56" width="794" height="4" fill="#f5a623"/>
+      </svg>
+    </div>
+    <div style="flex:1;padding:53px 68px 30px 68px;display:flex;flex-direction:column;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:53px;">
+        ${logoHtml}
+        <div>
+          <div style="font-size:30px;font-weight:800;color:#0f2744;line-height:1.1;">Avatar Electric</div>
+          <div style="font-size:14px;font-weight:600;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;">Company Limited · Quality Control</div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;margin-bottom:30px;">
+        <svg width="285" height="28" viewBox="0 0 285 28" style="display:block;margin-bottom:10px;">
+          <defs>
+            <linearGradient id="ebGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#fef3c7"/>
+              <stop offset="1" stop-color="#fde68a"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="285" height="28" rx="5" fill="url(#ebGrad)"/>
+          <text x="142" y="14" dy="0.35em" text-anchor="middle" fill="#ff8a00" font-size="14" font-weight="800" letter-spacing="2.5" font-family="Arial,Helvetica,sans-serif">FACTORY ACCEPTANCE TEST</text>
+        </svg>
+        <h1 style="font-size:64px;font-weight:800;color:#0f2744;letter-spacing:-1.5px;line-height:1;margin:0 0 10px 0;">
+          Minute of <span style="color:#f5a623;">Meeting</span>
+        </h1>
+        <div style="font-size:18px;font-weight:500;color:#64748b;letter-spacing:.3px;">บันทึกการประชุมและรายการแก้ไขจากการทดสอบ FAT</div>
+        <div style="height:4px;width:100px;background:linear-gradient(90deg,#f5a623 0%,#ff8a00 100%);margin:20px 0;border-radius:2px;"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-top:23px;">
+        ${coverCell('P', 'Project Name', m.name, true)}
+        ${coverCell('C', 'Customer', m.customer, false)}
+        ${coverCell('D', 'Meeting Date', m.date, false)}
+        ${coverCell('L', 'Location', m.location, false)}
+        ${coverCell('R', 'Revision', m.rev || '01', false)}
+      </div>
+
+      <div style="margin-top:auto;padding-top:20px;border-top:1px dashed #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#64748b;font-weight:500;">
+        <svg width="300" height="22" viewBox="0 0 300 22" style="display:block;">
+          <rect x="0" y="0" width="78" height="22" rx="5" fill="#0f2744"/>
+          <text x="39" y="11" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800" letter-spacing="1.5" font-family="Arial,Helvetica,sans-serif">QC-MOM</text>
+          <text x="90" y="11" dy="0.35em" fill="#64748b" font-size="13" font-weight="500" font-family="Arial,Helvetica,sans-serif">Quality Control Department</text>
+        </svg>
+        <div>www.avatar-electric.com</div>
+      </div>
+    </div>
+    <div style="height:38px;width:100%;flex-shrink:0;">
+      <svg viewBox="0 0 794 38" style="display:block;width:100%;height:100%;">
+        <rect x="0" y="0" width="794" height="4" fill="#f5a623"/>
+        <rect x="0" y="4" width="473" height="34" fill="#0f2744"/>
+        <rect x="473" y="4" width="11" height="34" fill="#f5a623"/>
+        <rect x="484" y="4" width="310" height="34" fill="#1f3a5f"/>
+      </svg>
+    </div>
+  `;
+  return wrap;
+}
+
+function coverCell(icon, label, value, isFull) {
+  return `
+    <div style="padding:14px 20px;background:#fafbfc;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;${isFull ? 'grid-column:span 2;border-right:none;' : ''}">
+      <div style="margin-bottom:8px;">
+        <svg width="260" height="22" viewBox="0 0 260 22" style="display:block;">
+          <rect x="0" y="1" width="20" height="20" rx="5" fill="#f5a623"/>
+          <text x="10" y="11" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800" font-family="Arial,Helvetica,sans-serif">${escapeHtml(icon)}</text>
+          <text x="30" y="11" dy="0.35em" fill="#64748b" font-size="13" font-weight="800" letter-spacing="1.5" font-family="Arial,Helvetica,sans-serif">${escapeHtml((label||'').toUpperCase())}</text>
+        </svg>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:#0f2744;min-height:24px;">${escapeHtml(value || '—')}</div>
+    </div>
+  `;
+}
+
+/* ----- Build category page DOM for PDF rendering (PIXELS) ----- */
+/* วัดความกว้างข้อความ (px) ด้วย canvas เพื่อย่อฟอนต์ให้พอดีพื้นที่ */
+function _measureTextW(text, fontPx, weight, family, letterSpacing){
+  const c = _measureTextW._c || (_measureTextW._c = document.createElement('canvas').getContext('2d'));
+  c.font = `${weight} ${fontPx}px ${family}`;
+  let w = c.measureText(text || '').width;
+  if(letterSpacing) w += Math.max(0, (text || '').length - 1) * letterSpacing;
+  return w;
+}
+/* คืนค่า font-size ที่ทำให้ text กว้างไม่เกิน maxWidth (ย่อลงอัตโนมัติ ไม่ต่ำกว่า minFont) */
+function fitFontSize(text, maxWidth, maxFont, minFont, weight, family, letterSpacing){
+  const w = _measureTextW(text, maxFont, weight, family, letterSpacing || 0);
+  return (w <= maxWidth) ? maxFont : Math.max(minFont, maxFont * maxWidth / w);
+}
+
+function buildCategoryPageForPdf(cat, catIdx, comments, startIdx, pageNum, totalPages, widthPx, heightPx) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `
+    width:${widthPx}px;height:${heightPx}px;
+    min-width:${widthPx}px;min-height:${heightPx}px;
+    max-width:${widthPx}px;max-height:${heightPx}px;
+    background:white;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    font-family:'Sarabun',sans-serif;
+    color:#0b1220;
+    box-sizing:border-box;
+    position:relative;
+  `;
+
+  const commentsHtml = comments.map((cmt, idx) => buildCommentForPdf(cat, cmt, catIdx + 1, startIdx + idx + 1)).join('');
+
+  // header มุมซ้ายบน = ชื่อโปรเจค (ย่อฟอนต์อัตโนมัติถ้ายาวเกิน)
+  const hdrName = (state.meeting.name || 'AVATAR ELECTRIC CO., LTD.');
+  const hdrFont = fitFontSize(hdrName, 470, 13, 8, '800', "'Sarabun',Arial,sans-serif", 0.5);
+
+  // ชื่อ panel: ถ้าเป็นไทยใช้ HTML (ฟอนต์ไทยครบ), ถ้าอังกฤษใช้ SVG เดิม (จัดกับเลขได้เป๊ะ)
+  const panelName = (cat.name || 'PANEL');
+  const panelIsThai = /[฀-๿]/.test(panelName);
+  const badgeSvg = `<svg width="34" height="34" viewBox="0 0 34 34" style="display:block;flex-shrink:0;"><rect x="0" y="0" width="34" height="34" rx="8" fill="#1f3a5f"/><text x="17" y="17" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="800" font-family="Arial,Helvetica,sans-serif">${catIdx + 1}</text></svg>`;
+  const catHeaderHtml = panelIsThai
+    ? `<div style="padding:12px 18px;background:#f4f6f9;border-bottom:1px solid #cbd5e1;display:flex;align-items:center;gap:14px;">
+         ${badgeSvg}
+         <span style="font-size:20px;font-weight:800;color:#0f2744;letter-spacing:.3px;line-height:1.25;font-family:'Sarabun',sans-serif;">${escapeHtml(panelName)}</span>
+       </div>`
+    : `<div style="padding:12px 18px;background:#f4f6f9;border-bottom:1px solid #cbd5e1;">
+         <svg width="600" height="34" viewBox="0 0 600 34" style="display:block;max-width:100%;">
+           <rect x="0" y="0" width="34" height="34" rx="8" fill="#1f3a5f"/>
+           <text x="17" y="17" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="800" font-family="Arial,Helvetica,sans-serif">${catIdx + 1}</text>
+           <text x="48" y="17" dy="0.35em" fill="#0f2744" font-size="20" font-weight="800" letter-spacing="0.3" font-family="Arial,Helvetica,sans-serif">${escapeHtml(panelName.toUpperCase())}</text>
+         </svg>
+       </div>`;
+
+  wrap.innerHTML = `
+    <div style="height:53px;width:100%;flex-shrink:0;position:relative;">
+      <svg viewBox="0 0 794 53" style="display:block;width:100%;height:100%;">
+        <rect x="0" y="0" width="473" height="53" fill="#0f2744"/>
+        <rect x="473" y="0" width="11" height="53" fill="#f5a623"/>
+        <rect x="484" y="0" width="310" height="53" fill="#1f3a5f"/>
+        <rect x="0" y="49" width="794" height="4" fill="#f5a623"/>
+        <text x="764" y="24" dy="0.35em" text-anchor="end" fill="#e2e8f0" font-size="12" font-weight="600" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">Minute of Meeting · Quality Control</text>
+      </svg>
+      <div style="position:absolute;left:30px;top:0;height:40px;display:flex;align-items:center;max-width:470px;overflow:hidden;">
+        <span style="color:#ffffff;font-weight:800;font-size:${hdrFont.toFixed(1)}px;letter-spacing:0.5px;line-height:1.25;font-family:'Sarabun',Arial,sans-serif;white-space:nowrap;">${escapeHtml(hdrName)}</span>
+      </div>
+    </div>
+
+    <div style="flex:1;padding:16px 53px 12px 53px;overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;margin:4px 0 14px 0;">
+        <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(to right,#dde2e9 0%,#7c8a98 100%);"></div>
+        <div style="flex-shrink:0;width:300px;height:44px;">
+          <svg viewBox="0 0 300 44" width="300" height="44" style="display:block;">
+            <defs>
+              <linearGradient id="ribGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#f5a623"/>
+                <stop offset="1" stop-color="#ff8a00"/>
+              </linearGradient>
+            </defs>
+            <polygon points="0,0 284,0 300,22 284,44 0,44 16,22" fill="url(#ribGrad)"/>
+            <text x="150" y="22" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">Minute of Meeting</text>
+          </svg>
+        </div>
+        <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(to right,#7c8a98 0%,#dde2e9 100%);"></div>
+      </div>
+
+      <div style="border:1px solid #cbd5e1;background:white;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+        ${catHeaderHtml}
+        <div style="padding:12px;flex:1;display:flex;flex-direction:column;gap:8px;">
+          ${commentsHtml || '<div style="text-align:center;color:#94a3b8;font-size:14px;padding:30px;">ยังไม่มีคอมเม้น</div>'}
+        </div>
+      </div>
+    </div>
+
+    <div style="height:38px;width:100%;flex-shrink:0;">
+      <svg viewBox="0 0 794 38" style="display:block;width:100%;height:100%;">
+        <rect x="0" y="0" width="794" height="4" fill="#f5a623"/>
+        <rect x="0" y="4" width="473" height="34" fill="#0f2744"/>
+        <rect x="473" y="4" width="11" height="34" fill="#f5a623"/>
+        <rect x="484" y="4" width="310" height="34" fill="#1f3a5f"/>
+        <text x="30" y="22" dy="0.35em" fill="#e2e8f0" font-size="11" font-weight="600" letter-spacing="0.4" font-family="Arial,Helvetica,sans-serif">www.avatar-electric.com</text>
+        <text x="764" y="22" dy="0.35em" text-anchor="end" fill="#e2e8f0" font-size="11" font-weight="600" letter-spacing="0.4" font-family="Arial,Helvetica,sans-serif">Page ${pageNum} of ${totalPages}</text>
+      </svg>
+    </div>
+  `;
+  return wrap;
+}
+
+function buildCommentForPdf(cat, cmt, catNum, cmtNum) {
+  const bg = cmt.mode === 'after' ? '#f0fdf4' : '#eff6ff';
+  const borderColor = cmt.mode === 'after' ? '#a7f3d0' : '#bfdbfe';
+  const photos = cmt.mode === 'after'
+    ? [buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
+       buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe'),
+       buildPhotoForPdf(cmt, 'after', 0, '#a7f3d0')]
+    : [buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
+       buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe')];
+       
+  const gridCols = cmt.mode === 'after' ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
+  const photoHeight = cmt.mode === 'after' ? '120px' : '150px';
+
+  const numStr = `${catNum}.${cmtNum}`;
+
+  return `
+    <div style="border:1px solid ${borderColor};background:${bg};overflow:hidden;">
+      <div style="padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:15px;color:#0b1220;">
+        <span style="font-weight:800;color:#0f2744;">${numStr}</span>&nbsp;&nbsp;<span style="font-weight:500;">${escapeHtml(cmt.text || '—')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 14px;background:#fafbfc;font-size:13px;color:#475569;border-bottom:1px solid #f1f5f9;">
+        <span style="font-weight:700;">แก้ไขโดย:</span>
+        <span style="flex:1;border-bottom:1px dotted #94a3b8;padding-bottom:2px;">${cmt.fixedBy ? escapeHtml(cmt.fixedBy) : '&nbsp;'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:${gridCols};gap:8px;padding:10px 12px;">
+        ${photos.map(p => `<div style="display:flex;flex-direction:column;">
+          <div class="pdf-photo-box"${p.hasImg ? ` data-src="${p.src}"` : ''} style="height:${photoHeight};border:1px solid #e2e8f0;background:${p.hasImg ? '#ffffff' : '#fafbfc'};border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            ${p.hasImg ? '' : `<div style="color:#cbd5e1;font-size:12px;">ไม่มีรูป</div>`}
+          </div>
+          <div style="height:24px;background:${p.labelBg};border-radius:0 0 6px 6px;text-align:center;overflow:hidden;line-height:0;">
+            <svg width="120" height="24" viewBox="0 0 120 24" style="display:inline-block;vertical-align:top;">
+              <text x="60" y="12" dy="0.35em" text-anchor="middle" fill="${p.labelColor}" font-size="11" font-weight="800" letter-spacing="1" font-family="Arial,Helvetica,sans-serif">${escapeHtml(p.label)}</text>
+            </svg>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function buildPhotoForPdf(cmt, which, sidx, labelBg) {
+  const photo = cmt.photos[which] && cmt.photos[which][sidx];
+  const label = which === 'before' ? `BEFORE ${sidx + 1}` : 'AFTER';
+  const labelBgFinal = which === 'before' ? '#dbeafe' : '#d1fae5';
+  const labelColor = which === 'before' ? '#1e3a8a' : '#065f46';
+  return {
+    hasImg: !!(photo && photo.dataUrl),
+    src: photo?.dataUrl || '',
+    label,
+    labelBg: labelBgFinal,
+    labelColor
+  };
+}
+
+/* ========================================================================
+   DRAWER (iPad / mobile)
+   ======================================================================== */
+function toggleDrawer(){
+  const sb = document.querySelector('.sidebar');
+  const bd = document.getElementById('drawerBackdrop');
+  const isOpen = sb.classList.toggle('open');
+  bd.classList.toggle('open', isOpen);
+}
+function closeDrawerIfMobile(){
+  if(window.matchMedia('(max-width:1024px)').matches){
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('drawerBackdrop').classList.remove('open');
+  }
+}
+
+/* ========================================================================
+   PHOTO EDITOR — crop/zoom + draw (arrow / rect / circle), movable & resizable.
+   Stores photo.original + photo.edit{crop, annotations} so edits are re-openable;
+   photo.dataUrl holds the flattened result used on screen and in the PDF.
+   ======================================================================== */
+const PhotoEditor = (function(){
+  const FRAME_W = 480, FRAME_H = 360;   // editing canvas (4:3)
+  const OUT_W = 1024, OUT_H = 768;      // saved output resolution (4:3)
+  const HANDLE = 11;                    // handle hit radius (canvas px)
+  const COLORS = ['#ef4444','#facc15','#22c55e','#2563eb','#0b1220'];
+
+  let modal, canvas, ctx, zoomSlider, cropTools, drawTools;
+  let target=null, img=null;
+  let mode='crop', tool='select', color=COLORS[0];
+  let crop={zoom:1, ox:0, oy:0}, baseScale=1;
+  let anns=[], selected=-1, drag=null;
+
+  function init(){
+    modal = document.getElementById('photoEditorModal');
+    if(!modal) return;
+    canvas = document.getElementById('peCanvas');
+    ctx = canvas.getContext('2d');
+    zoomSlider = document.getElementById('peZoom');
+    cropTools = document.getElementById('peCropTools');
+    drawTools = document.getElementById('peDrawTools');
+
+    document.getElementById('peModeCrop').onclick = ()=> setMode('crop');
+    document.getElementById('peModeDraw').onclick = ()=> setMode('draw');
+    document.getElementById('peClose').onclick = close;
+    document.getElementById('peCancel').onclick = close;
+    document.getElementById('peSave').onclick = save;
+    document.getElementById('peDelete').onclick = deleteSelected;
+
+    zoomSlider.addEventListener('input', ()=>{
+      zoomAround(FRAME_W/2, FRAME_H/2, parseFloat(zoomSlider.value));
+      draw();
+    });
+    drawTools.querySelectorAll('.pe-tool[data-tool]').forEach(b=>{
+      b.onclick = ()=> setTool(b.dataset.tool);
+    });
+    modal.querySelectorAll('.pe-sw').forEach(s=>{
+      s.onclick = ()=>{
+        color = s.dataset.color;
+        modal.querySelectorAll('.pe-sw').forEach(x=> x.classList.toggle('active', x===s));
+        if(selected>=0){ anns[selected].color = color; draw(); }
+      };
+    });
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
+  }
+
+  function open(cmt, which, sidx){
+    const photo = cmt.photos && cmt.photos[which] && cmt.photos[which][sidx];
+    if(!photo || !photo.dataUrl){ return; }
+    target = { photo };
+    const src = photo.original || photo.dataUrl;
+    anns = (photo.edit && Array.isArray(photo.edit.annotations))
+      ? JSON.parse(JSON.stringify(photo.edit.annotations)) : [];
+    const savedCrop = photo.edit && photo.edit.crop;
+    color = COLORS[0]; tool='select'; selected=-1; drag=null;
+    modal.querySelectorAll('.pe-sw').forEach(x=> x.classList.toggle('active', x.dataset.color===color));
+    img = new Image();
+    img.onload = ()=>{
+      baseScale = Math.min(FRAME_W/img.naturalWidth, FRAME_H/img.naturalHeight);
+      if(savedCrop){ crop = {zoom:savedCrop.zoom||1, ox:savedCrop.ox||0, oy:savedCrop.oy||0}; }
+      else { crop = {zoom:1, ox:0, oy:0}; centerImage(); }
+      zoomSlider.value = crop.zoom;
+      setMode('crop');
+      draw();
+    };
+    img.onerror = ()=> showToast('โหลดรูปไม่สำเร็จ');
+    img.src = src;
+    modal.classList.add('open');
+  }
+
+  function close(){ modal.classList.remove('open'); target=null; img=null; anns=[]; selected=-1; drag=null; }
+
+  function setMode(m){
+    mode=m;
+    document.getElementById('peModeCrop').classList.toggle('active', m==='crop');
+    document.getElementById('peModeDraw').classList.toggle('active', m==='draw');
+    cropTools.style.display = m==='crop' ? 'flex' : 'none';
+    drawTools.style.display = m==='draw' ? 'flex' : 'none';
+    if(m==='crop'){ selected=-1; canvas.style.cursor='grab'; }
+    else { setTool(tool); }
+    draw();
+  }
+
+  function setTool(t){
+    tool=t;
+    drawTools.querySelectorAll('.pe-tool[data-tool]').forEach(b=> b.classList.toggle('active', b.dataset.tool===t));
+    canvas.style.cursor = t==='select' ? 'default' : 'crosshair';
+  }
+
+  function centerImage(){
+    const s = baseScale*crop.zoom;
+    crop.ox = (FRAME_W - img.naturalWidth*s)/2;
+    crop.oy = (FRAME_H - img.naturalHeight*s)/2;
+  }
+  function zoomAround(cx, cy, nz){
+    const os = baseScale*crop.zoom, ns = baseScale*nz;
+    const ix=(cx-crop.ox)/os, iy=(cy-crop.oy)/os;
+    crop.ox = cx-ix*ns; crop.oy = cy-iy*ns; crop.zoom = nz;
+  }
+  function toCanvas(e){
+    const r = canvas.getBoundingClientRect();
+    return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
+  }
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+  function distToSeg(px,py,x1,y1,x2,y2){
+    const dx=x2-x1, dy=y2-y1, l2=dx*dx+dy*dy;
+    if(l2===0) return Math.hypot(px-x1,py-y1);
+    let t=((px-x1)*dx+(py-y1)*dy)/l2; t=Math.max(0,Math.min(1,t));
+    return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,FRAME_W,FRAME_H);
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,FRAME_W,FRAME_H);
+    if(img){
+      const s = baseScale*crop.zoom;
+      ctx.drawImage(img, crop.ox, crop.oy, img.naturalWidth*s, img.naturalHeight*s);
+    }
+    anns.forEach(a=> drawShape(ctx, a, FRAME_W, FRAME_H, 3));
+    if(mode==='draw' && selected>=0){
+      const pts = handlePoints(anns[selected]);
+      ctx.save(); ctx.fillStyle='#fff'; ctx.strokeStyle='#0f2744'; ctx.lineWidth=2;
+      pts.forEach(p=>{ ctx.beginPath(); ctx.rect(p.x-5,p.y-5,10,10); ctx.fill(); ctx.stroke(); });
+      ctx.restore();
+    }
+  }
+
+  function drawShape(c,a,W,H,lw){
+    const x1=a.x1*W,y1=a.y1*H,x2=a.x2*W,y2=a.y2*H;
+    c.save();
+    c.strokeStyle=a.color; c.fillStyle=a.color; c.lineWidth=lw; c.lineJoin='round'; c.lineCap='round';
+    if(a.type==='rect'){
+      c.strokeRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
+    } else if(a.type==='circle'){
+      const cx=(x1+x2)/2, cy=(y1+y2)/2;
+      c.beginPath(); c.ellipse(cx,cy,Math.max(1,Math.abs(x2-x1)/2),Math.max(1,Math.abs(y2-y1)/2),0,0,Math.PI*2); c.stroke();
+    } else {
+      c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+      const ang=Math.atan2(y2-y1,x2-x1), len=Math.max(lw*3.2, 0.03*W);
+      c.beginPath(); c.moveTo(x2,y2);
+      c.lineTo(x2-len*Math.cos(ang-0.42), y2-len*Math.sin(ang-0.42));
+      c.lineTo(x2-len*Math.cos(ang+0.42), y2-len*Math.sin(ang+0.42));
+      c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+
+  function handlePoints(a){
+    const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
+    if(a.type==='arrow') return [{x:x1,y:y1,h:'p1'},{x:x2,y:y2,h:'p2'}];
+    return [{x:x1,y:y1,h:'p1'},{x:x2,y:y1,h:'x2y1'},{x:x2,y:y2,h:'p2'},{x:x1,y:y2,h:'x1y2'}];
+  }
+  function hitTest(cx,cy){
+    if(selected>=0){
+      for(const p of handlePoints(anns[selected]))
+        if(Math.hypot(p.x-cx,p.y-cy)<=HANDLE) return {idx:selected, kind:'resize', handle:p.h};
+    }
+    for(let i=anns.length-1;i>=0;i--) if(bodyHit(anns[i],cx,cy)) return {idx:i, kind:'move'};
+    return null;
+  }
+  function bodyHit(a,cx,cy){
+    const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
+    if(a.type==='arrow') return distToSeg(cx,cy,x1,y1,x2,y2)<=8;
+    if(a.type==='rect'){
+      return cx>=Math.min(x1,x2)-6&&cx<=Math.max(x1,x2)+6&&cy>=Math.min(y1,y2)-6&&cy<=Math.max(y1,y2)+6;
+    }
+    const cxx=(x1+x2)/2,cyy=(y1+y2)/2,rx=Math.abs(x2-x1)/2+5,ry=Math.abs(y2-y1)/2+5;
+    if(rx<2||ry<2) return false;
+    const dx=(cx-cxx)/rx,dy=(cy-cyy)/ry; return dx*dx+dy*dy<=1.2;
+  }
+
+  function onDown(e){
+    if(!img) return;
+    e.preventDefault();
+    if(canvas.setPointerCapture) try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+    const {x,y}=toCanvas(e);
+    if(mode==='crop'){ drag={kind:'pan',sx:x,sy:y,ox:crop.ox,oy:crop.oy}; canvas.style.cursor='grabbing'; return; }
+    if(tool==='select'){
+      const hit=hitTest(x,y);
+      if(hit){
+        selected=hit.idx;
+        if(hit.kind==='resize') drag={kind:'resize',handle:hit.handle};
+        else { const a=anns[selected]; drag={kind:'move',sx:x,sy:y,ox1:a.x1,oy1:a.y1,ox2:a.x2,oy2:a.y2}; }
+      } else selected=-1;
+      draw();
+    } else {
+      const nx=x/FRAME_W, ny=y/FRAME_H;
+      anns.push({type:tool, x1:nx, y1:ny, x2:nx, y2:ny, color});
+      selected=anns.length-1;
+      drag={kind:'resize',handle:'p2'};
+      draw();
+    }
+  }
+  function onMove(e){
+    if(!drag) return;
+    const {x,y}=toCanvas(e);
+    if(drag.kind==='pan'){ crop.ox=drag.ox+(x-drag.sx); crop.oy=drag.oy+(y-drag.sy); draw(); return; }
+    const a=anns[selected]; if(!a) return;
+    if(drag.kind==='move'){
+      const dx=(x-drag.sx)/FRAME_W, dy=(y-drag.sy)/FRAME_H;
+      a.x1=drag.ox1+dx; a.y1=drag.oy1+dy; a.x2=drag.ox2+dx; a.y2=drag.oy2+dy;
+    } else {
+      const nx=clamp01(x/FRAME_W), ny=clamp01(y/FRAME_H), h=drag.handle;
+      if(h==='p1'){ a.x1=nx; a.y1=ny; }
+      else if(h==='p2'){ a.x2=nx; a.y2=ny; }
+      else if(h==='x2y1'){ a.x2=nx; a.y1=ny; }
+      else if(h==='x1y2'){ a.x1=nx; a.y2=ny; }
+    }
+    draw();
+  }
+  function onUp(){
+    if(!drag) return;
+    if(drag.kind!=='pan' && tool!=='select'){
+      const a=anns[selected];
+      if(a && Math.abs(a.x2-a.x1)<0.02 && Math.abs(a.y2-a.y1)<0.02){
+        a.x2=clamp01(a.x1+0.18); a.y2=clamp01(a.y1+0.14);
+      }
+      setTool('select');
+    }
+    if(drag.kind==='pan') canvas.style.cursor = mode==='crop'?'grab':'default';
+    drag=null; draw();
+  }
+  function deleteSelected(){ if(selected>=0){ anns.splice(selected,1); selected=-1; draw(); } }
+
+  function save(){
+    if(!target || !img) return;
+    const out=document.createElement('canvas'); out.width=OUT_W; out.height=OUT_H;
+    const o=out.getContext('2d');
+    o.fillStyle='#fff'; o.fillRect(0,0,OUT_W,OUT_H);
+    const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
+    o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
+    anns.forEach(a=> drawShape(o, a, OUT_W, OUT_H, 3*sx));
+    const photo=target.photo;
+    photo.original = img.src;
+    photo.dataUrl = out.toDataURL('image/jpeg', 0.95);
+    photo.edit = { crop:{zoom:crop.zoom, ox:crop.ox, oy:crop.oy}, annotations: JSON.parse(JSON.stringify(anns)) };
+    close(); render(); saveDraft(); showToast('บันทึกรูปแล้ว');
+  }
+
+  return { init, open };
+})();
+
+/* ========================================================================
+   BOOT
+   ======================================================================== */
+window.addEventListener('DOMContentLoaded', async ()=>{
+  setupMetaListeners();
+  PhotoEditor.init();
+  await preloadLogo();
+  applyLogoToCover();
+
+  // Auto-close drawer when any sidebar button is tapped (iPad/mobile only)
+  document.querySelectorAll('.sidebar .sb-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      // small delay so the action runs first, then drawer closes
+      setTimeout(closeDrawerIfMobile, 80);
+    });
+  });
+
+  // ESC closes drawer
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape') closeDrawerIfMobile();
+  });
+
+  const loaded = await loadDraft();
+  if(!loaded){
+    state.meeting.date = new Date().toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
+    applyMetaToUI();
+    addCategory('MDB PANEL');
+  }
+});
+</script>
+</body>
+</html>
