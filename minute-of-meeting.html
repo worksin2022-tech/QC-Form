@@ -1343,6 +1343,17 @@
             </div>
           </div>
 
+          <!-- Signature block (shows on cover + in exported PDF) -->
+          <div style="margin-top:22px;border:1px solid var(--line);border-radius:10px;padding:18px 24px 16px 24px;background:linear-gradient(180deg,#fafbfc 0%,white 100%);">
+            <div style="font-size:14px;font-weight:700;color:var(--orange-2);letter-spacing:.3px;font-family:'Inter',sans-serif;margin-bottom:26px;">Best Regards,</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:18px;">
+              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Quality Control</div></div>
+              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+            </div>
+          </div>
+
           <div class="cover-footer">
             <div class="left">
               <span class="doctype">QC-MOM</span>
@@ -1410,20 +1421,6 @@
               เริ่มต้นใช้งาน
             </button>
           </div>
-
-          <!-- Signature -->
-          <table class="sig-table">
-            <tr>
-              <td class="sig-best">Best Regards,</td>
-              <td></td><td></td><td></td>
-            </tr>
-            <tr>
-              <td class="sig-label">Quality Control</td>
-              <td class="sig-label">Witnessed</td>
-              <td class="sig-label">Witnessed</td>
-              <td class="sig-label">Witnessed</td>
-            </tr>
-          </table>
 
         </div>
 
@@ -2100,6 +2097,29 @@ function hidePdfProgress(){
   if(el) el.style.display = 'none';
 }
 
+/* iPad/iOS: แสดงปุ่มให้กดเพื่อเปิด share sheet (จำเป็นต้องเป็น user gesture ใหม่)
+   → "บันทึกลงไฟล์ (Save to Files)" จะได้ชื่อไฟล์ตรงกับบนคอม */
+function showPdfSaveButton(file, filename){
+  showPdfProgress('');
+  const el = document.getElementById('pdfProgress');
+  el.innerHTML = `
+    <div style="background:white;color:#0b1220;border-radius:16px;padding:24px 22px;max-width:360px;width:88vw;text-align:center;font-family:'Sarabun',sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.5);">
+      <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px;">สร้าง PDF เสร็จแล้ว</div>
+      <div style="font-size:12px;color:#64748b;word-break:break-all;margin-bottom:18px;">${escapeHtml(filename)}</div>
+      <button id="pdfShareBtn" style="width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#0f2744,#1f3a5f);color:white;font-weight:700;font-size:15px;font-family:'Sarabun',sans-serif;cursor:pointer;">บันทึก / แชร์ PDF</button>
+      <button id="pdfShareCancel" style="width:100%;padding:11px;margin-top:8px;border:none;border-radius:10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:14px;font-family:'Sarabun',sans-serif;cursor:pointer;">ปิด</button>
+    </div>`;
+  el.style.display = 'flex';
+  document.getElementById('pdfShareBtn').onclick = async ()=>{
+    try { await navigator.share({ files:[file], title: filename }); hidePdfProgress(); showToast('บันทึก PDF แล้ว'); }
+    catch(e){ /* ผู้ใช้กดยกเลิก หรือแชร์ไม่สำเร็จ — overlay ค้างไว้ให้กดใหม่/ปิดเองได้ */ }
+  };
+  document.getElementById('pdfShareCancel').onclick = ()=> hidePdfProgress();
+}
+
 async function exportPDF() {
   if (state.categories.length === 0) {
     showToast('ไม่มีข้อมูลให้ export');
@@ -2204,13 +2224,34 @@ async function exportPDF() {
     // Cleanup
     document.body.removeChild(renderContainer);
 
-    // Save
+    // Save — desktop ใช้ pdf.save() (ชื่อไฟล์ถูกต้องอยู่แล้ว);
+    // iOS Safari ไม่เคารพชื่อไฟล์ใน save() → ใช้ Web Share ส่งเป็นไฟล์ที่มีชื่อ ("Save to Files" จะได้ชื่อตรงกัน)
     const filename = `MoM_${(state.meeting.name || 'project').replace(/[^a-zA-Z0-9ก-๙_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const titleNoExt = filename.replace(/\.pdf$/i, '');
+    try { pdf.setProperties({ title: titleNoExt }); } catch(_) {}   // ตั้งชื่อใน metadata ของ PDF ด้วย
     showPdfProgress('กำลังบันทึก...');
-    pdf.save(filename);
 
-    hidePdfProgress();
-    showToast('สร้าง PDF เรียบร้อย');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+                  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let shareFile = null;
+    try { shareFile = new File([pdf.output('blob')], filename, { type: 'application/pdf' }); } catch(_) {}
+
+    if (isIOS && shareFile && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+      // HTTPS (เช่น GitHub Pages): ใช้ Web Share → "Save to Files" ได้ชื่อไฟล์ตรง
+      showPdfSaveButton(shareFile, filename);
+    } else if (isIOS) {
+      // iOS บน HTTP (Web Share ใช้ไม่ได้): iOS ตั้งชื่อไฟล์จาก document.title → ตั้งชั่วคราวให้ตรงกับชื่อไฟล์
+      const prevTitle = document.title;
+      document.title = titleNoExt;
+      pdf.save(filename);
+      setTimeout(()=>{ document.title = prevTitle; }, 2500);
+      hidePdfProgress();
+      showToast('สร้าง PDF เรียบร้อย');
+    } else {
+      pdf.save(filename);
+      hidePdfProgress();
+      showToast('สร้าง PDF เรียบร้อย');
+    }
   } catch (err) {
     console.error(err);
     hidePdfProgress();
@@ -2358,6 +2399,17 @@ function buildCoverPageForPdf(widthPx, heightPx) {
         ${coverCell('D', 'Meeting Date', m.date, false)}
         ${coverCell('L', 'Location', m.location, false)}
         ${coverCell('R', 'Revision', m.rev || '01', false)}
+      </div>
+
+      <!-- Signature block -->
+      <div style="margin-top:22px;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px 16px 24px;background:linear-gradient(180deg,#fafbfc 0%,white 100%);">
+        <div style="font-size:14px;font-weight:700;color:#ff8a00;letter-spacing:.3px;font-family:'Inter',Arial,sans-serif;margin-bottom:26px;">Best Regards,</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:18px;">
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Quality Control</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+        </div>
       </div>
 
       <div style="margin-top:auto;padding-top:20px;border-top:1px dashed #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#64748b;font-weight:500;">
