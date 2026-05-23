@@ -2226,7 +2226,8 @@ async function exportPDF() {
 
     // Save — desktop ใช้ pdf.save() (ชื่อไฟล์ถูกต้องอยู่แล้ว);
     // iOS Safari ไม่เคารพชื่อไฟล์ใน save() → ใช้ Web Share ส่งเป็นไฟล์ที่มีชื่อ ("Save to Files" จะได้ชื่อตรงกัน)
-    const filename = `MoM_${(state.meeting.name || 'project').replace(/[^a-zA-Z0-9ก-๙_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const safeName = (state.meeting.name || 'project').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+    const filename = `Minute of Meeting ${safeName} ${new Date().toISOString().slice(0, 10)}.pdf`;
     const titleNoExt = filename.replace(/\.pdf$/i, '');
     try { pdf.setProperties({ title: titleNoExt }); } catch(_) {}   // ตั้งชื่อใน metadata ของ PDF ด้วย
     showPdfProgress('กำลังบันทึก...');
