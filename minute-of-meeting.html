@@ -1142,6 +1142,18 @@
   .pe-sw{width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;}
   .pe-sw.active{box-shadow:0 0 0 2px var(--navy);transform:scale(1.12);}
   .pe-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fafbfc;}
+
+  /* === History / save-slots modal === */
+  .hist-list{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;}
+  .hist-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:white;transition:box-shadow .15s;}
+  .hist-item:hover{box-shadow:0 2px 8px -2px rgba(0,0,0,.08);}
+  .hist-info{flex:1;cursor:pointer;min-width:0;}
+  .hist-name{font-weight:700;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-date{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .hist-tag{font-size:9px;font-weight:800;color:#92400e;background:linear-gradient(135deg,#fef3c7,#fde68a);padding:2px 6px;border-radius:4px;margin-left:6px;}
+  .hist-del{border:none;background:#fef2f2;color:#ef4444;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .hist-del:hover{background:#fee2e2;}
+  .hist-continue{width:100%;text-align:left;border:none;border-radius:11px;padding:13px 16px;cursor:pointer;color:white;background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);box-shadow:0 4px 12px -2px rgba(245,166,35,.4);}
 </style>
 </head>
 <body>
@@ -1195,6 +1207,14 @@
 
     <div class="sb-section">
       <div class="sb-title">เอกสาร</div>
+      <button class="sb-btn" onclick="showStartupModal(true)">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/><polyline points="12 7 12 12 15 14"/>
+          </svg>
+        </span>
+        งานที่บันทึกไว้
+      </button>
       <button class="sb-btn" onclick="exportPDF()">
         <span class="icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1540,6 +1560,7 @@ let state = {
   meeting: { name:'', customer:'', date:'', rev:'01', location:'' },
   categories: []
 };
+let isDirty = false;   // มีการแก้ไขที่ยังไม่ได้บันทึกลงประวัติหรือไม่
 
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 
@@ -1670,9 +1691,10 @@ function buildCommentEl(cat, cmt, catNum, cmtNum){
         const file = ev.target.files[0];
         if(!file) return;
         const reader = new FileReader();
-        reader.onload = e2=>{
+        reader.onload = async e2=>{
+          const small = await downscaleDataUrl(e2.target.result, 2000);
           if(!cmt.photos[which]) cmt.photos[which] = [];
-          cmt.photos[which][sidx] = { dataUrl: e2.target.result };
+          cmt.photos[which][sidx] = { dataUrl: small };
           render(); saveDraft();
         };
         reader.readAsDataURL(file);
@@ -1697,6 +1719,44 @@ function buildCommentEl(cat, cmt, catNum, cmtNum){
   });
 
   return el;
+}
+
+/* ย่อรูปให้ด้านยาวสุดไม่เกิน maxDim (กัน iPad decode ไม่ไหว/หน่วยความจำเต็ม → ภาพหาย/ขาว)
+   รูปจากกล้อง iPad ใหญ่มาก (~12MP) — ย่อเหลือ ~2000px ยังคมพอสำหรับ PDF */
+function downscaleDataUrl(src, maxDim){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if(!w || !h){ resolve(src); return; }
+      if(Math.max(w, h) <= maxDim){ resolve(src); return; }   // เล็กพออยู่แล้ว
+      const s = maxDim / Math.max(w, h);
+      w = Math.round(w * s); h = Math.round(h * s);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      try { resolve(c.toDataURL('image/jpeg', 0.9)); } catch(e){ resolve(src); }
+    };
+    img.onerror = ()=> resolve(src);
+    img.src = src;
+  });
+}
+
+/* ย่อรูปเดิมที่เคยอัปไว้แบบเต็มความละเอียด (ทีละรูป กันหน่วยความจำพีค) */
+async function downscaleExistingPhotos(){
+  let changed = false;
+  for(const cat of state.categories)
+    for(const cmt of (cat.comments || []))
+      for(const which of ['before','after']){
+        const arr = cmt.photos && cmt.photos[which];
+        if(!Array.isArray(arr)) continue;
+        for(const p of arr){
+          if(p && p.dataUrl){
+            const small = await downscaleDataUrl(p.dataUrl, 2000);
+            if(small !== p.dataUrl){ p.dataUrl = small; changed = true; }
+          }
+        }
+      }
+  if(changed){ await saveDraft(); isDirty = false; render(); }
 }
 
 function buildPhotoSlot(cmt, which, sidx){
@@ -1784,17 +1844,29 @@ function scrollToBottom(){
   }, 100);
 }
 
-function removeCategory(catId){
+async function removeCategory(catId){
   const cat = state.categories.find(c=>c.id===catId);
   const cmtCount = cat?.comments.length || 0;
-  if(cmtCount > 0 && !confirm(`ลบหมวด "${cat.name}" และคอมเม้น ${cmtCount} รายการ?`)) return;
+  if(cmtCount > 0){
+    const ok = await confirmDialog({
+      title: 'ลบหมวด (Panel)',
+      message: `ต้องการลบหมวด "<b>${escapeHtml(cat.name||'')}</b>" และคอมเม้น ${cmtCount} รายการใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
+      confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
+    });
+    if(!ok) return;
+  }
   state.categories = state.categories.filter(c=>c.id!==catId);
   render(); saveDraft();
   showToast('ลบหมวดแล้ว');
 }
 
-function removeComment(catId, cmtId){
-  if(!confirm('ลบคอมเม้นนี้?')) return;
+async function removeComment(catId, cmtId){
+  const ok = await confirmDialog({
+    title: 'ลบคอมเม้น',
+    message: 'ต้องการลบคอมเม้นนี้ใช่ไหม?',
+    confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
+  });
+  if(!ok) return;
   const cat = state.categories.find(c=>c.id===catId);
   if(!cat) return;
   cat.comments = cat.comments.filter(c=>c.id!==cmtId);
@@ -1966,6 +2038,7 @@ function applyMetaToUI(){
 
 async function saveDraft(showMsg=false){
   captureMetaFromUI();
+  isDirty = true;   // มีการเปลี่ยนแปลง (จะถูกรีเซ็ตเมื่อบันทึกลงประวัติ/โหลดงาน)
   const indicator = document.getElementById('saveIndicator');
   indicator.classList.add('saving');
   indicator.querySelector('.text').textContent = 'กำลังบันทึก...';
@@ -1993,6 +2066,239 @@ async function loadDraft(){
     }
   }catch(err){console.error(err);}
   return false;
+}
+
+/* ========================================================================
+   HISTORY (เก็บได้ 5 งาน, บันทึกอัตโนมัติตอน export, เลือกตอนเปิดแอป)
+   ======================================================================== */
+const HISTORY_KEY = 'avatar_mom_history_v1';
+const MAX_HISTORY = 5;
+
+async function getHistory(){ try{ return (await localforage.getItem(HISTORY_KEY)) || []; }catch(e){ return []; } }
+async function setHistory(list){ try{ await localforage.setItem(HISTORY_KEY, list); }catch(e){ console.error(e); } }
+
+function photosExist(cm){
+  if(!cm || !cm.photos) return false;
+  return ['before','after'].some(w => Array.isArray(cm.photos[w]) && cm.photos[w].some(p=>p&&p.dataUrl));
+}
+function draftHasContent(){
+  if(state.meeting && (state.meeting.name||'').trim()) return true;
+  return (state.categories||[]).some(c => (c.comments||[]).some(cm => (cm.text&&cm.text.trim()) || (cm.fixedBy&&cm.fixedBy.trim()) || photosExist(cm)));
+}
+
+function startNewProject(){
+  state = {
+    meeting: { name:'', customer:'', date:new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}), rev:'01', location:'' },
+    categories: [],
+    _histId: null
+  };
+  applyMetaToUI();
+  addCategory('MDB PANEL');   // render + saveDraft
+  isDirty = false;
+  showToast('เริ่มงานใหม่');
+}
+function loadStateIntoApp(s){
+  state = s;
+  if(typeof state._histId === 'undefined') state._histId = null;
+  applyMetaToUI();
+  render();
+  saveDraft();
+  isDirty = false;
+}
+
+/* บันทึกงานปัจจุบันลงประวัติ (อัปเดต slot เดิมถ้าเคยบันทึกแล้ว / เพิ่มใหม่ / ถ้าเต็มถามว่าจะลบอันไหน)
+   คืนค่า true ถ้าบันทึกสำเร็จ — ใช้ทั้งตอน export และตอนกด "บันทึก" ก่อนเปลี่ยนงาน */
+async function saveCurrentToHistory(){
+  captureMetaFromUI();
+  const id = state._histId || uid('hist');
+  state._histId = id;
+  await saveDraft();
+  const snap = {
+    id,
+    name: (state.meeting.name||'').trim() || 'ไม่ระบุชื่อโครงการ',
+    date: new Date().toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    ts: Date.now(),
+    state: JSON.parse(JSON.stringify(state))
+  };
+  let list = await getHistory();
+  const idx = list.findIndex(h=>h.id===id);
+  let saved = true;
+  if(idx >= 0){ list[idx] = snap; await setHistory(list); }
+  else if(list.length < MAX_HISTORY){ list.push(snap); await setHistory(list); }
+  else { saved = await showHistoryFullModal(list, snap); }   // รอผู้ใช้เลือกว่าจะลบอันไหน
+  if(saved) isDirty = false;
+  return saved;
+}
+
+/* ป๊อบอัพเตือน "ยังไม่ได้บันทึก" → คืน 'save' | 'discard' | 'cancel' */
+function confirmUnsavedChanges(){
+  return new Promise(resolve=>{
+    const bg = buildModalOverlay(`
+      <div class="modal-head"><span>ยังไม่ได้บันทึก</span></div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:#475569;line-height:1.6;">งานปัจจุบันมีการแก้ไขที่ยังไม่ได้บันทึก<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p>
+      </div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <button class="top-btn" id="unsCancel">ยกเลิก</button>
+        <button class="top-btn" id="unsDiscard" style="color:#ef4444;border-color:#fecaca;">ไม่บันทึก</button>
+        <button class="top-btn primary" id="unsSave">บันทึก</button>
+      </div>
+    `);
+    bg.style.zIndex = 420;
+    const done = v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#unsCancel').onclick = ()=> done('cancel');
+    bg.querySelector('#unsDiscard').onclick = ()=> done('discard');
+    bg.querySelector('#unsSave').onclick = ()=> done('save');
+    bg.addEventListener('click', e=>{ if(e.target===bg) done('cancel'); });
+  });
+}
+
+/* ตรวจก่อนเปลี่ยนงาน: ถ้ามีการแก้ไขค้างไว้ → ถามบันทึก/ไม่บันทึก/ยกเลิก
+   คืน true ถ้าให้ดำเนินการต่อได้ (false = ยกเลิก) */
+async function proceedSwitch(){
+  if(isDirty && draftHasContent()){
+    const c = await confirmUnsavedChanges();
+    if(c === 'cancel') return false;
+    if(c === 'save'){
+      const ok = await saveCurrentToHistory();
+      if(!ok) return false;   // ผู้ใช้ยกเลิกตอนเลือกลบ (ประวัติเต็ม) → ไม่เปลี่ยนงาน
+    }
+  }
+  return true;
+}
+
+function buildModalOverlay(innerHTML){
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg open no-print';
+  bg.style.zIndex = 400;
+  bg.innerHTML = `<div class="modal-box" style="width:min(94vw,460px);">${innerHTML}</div>`;
+  document.body.appendChild(bg);
+  return bg;
+}
+
+/* dialog ยืนยันสวยๆ ในแอป (ใช้แทน confirm()) — message เป็น HTML ได้ → คืน true/false */
+function confirmDialog({title='ยืนยัน', message='', confirmText='ตกลง', cancelText='ยกเลิก', danger=false, icon=true}={}){
+  return new Promise(resolve=>{
+    const iconHtml = icon ? `
+      <div style="width:52px;height:52px;border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;background:${danger?'#fef2f2':'#eff6ff'};color:${danger?'#ef4444':'#2563eb'};">
+        ${danger
+          ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+          : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'}
+      </div>` : '';
+    const bg = buildModalOverlay(`
+      <div class="modal-body" style="text-align:center;padding:24px 22px 8px;">
+        ${iconHtml}
+        <div style="font-weight:800;font-size:17px;color:var(--ink);margin-bottom:8px;">${escapeHtml(title)}</div>
+        <div style="font-size:13.5px;color:#475569;line-height:1.6;">${message}</div>
+      </div>
+      <div class="modal-foot" style="justify-content:stretch;gap:10px;">
+        <button class="top-btn" id="cdCancel" style="flex:1;justify-content:center;">${escapeHtml(cancelText)}</button>
+        <button class="top-btn ${danger?'':'primary'}" id="cdOk" style="flex:1;justify-content:center;${danger?'background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border-color:transparent;':''}">${escapeHtml(confirmText)}</button>
+      </div>
+    `);
+    bg.style.zIndex = 440;
+    const done = v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#cdOk').onclick = ()=> done(true);
+    bg.querySelector('#cdCancel').onclick = ()=> done(false);
+    bg.addEventListener('click', e=>{ if(e.target===bg) done(false); });
+  });
+}
+
+/* ประวัติเต็ม 5 → เลือกลบ 1 อันแล้วบันทึกอันใหม่ */
+function showHistoryFullModal(list, snap){
+  return new Promise(resolve=>{
+    const sorted = list.slice().sort((a,b)=>b.ts-a.ts);
+    const itemsHtml = sorted.map(h=>`
+      <label class="hist-item" style="cursor:pointer;">
+        <input type="radio" name="histDel" value="${h.id}" style="width:18px;height:18px;flex-shrink:0;accent-color:#ef4444;">
+        <div class="hist-info" style="cursor:pointer;"><div class="hist-name">${escapeHtml(h.name)}</div><div class="hist-date">${escapeHtml(h.date)}</div></div>
+      </label>`).join('');
+    const bg = buildModalOverlay(`
+      <div class="modal-head"><span>ประวัติเต็ม (5/5)</span></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#475569;margin-bottom:12px;">กำลังบันทึกงานใหม่ "<b>${escapeHtml(snap.name)}</b>" — เลือกงานเก่าที่จะลบออก 1 งาน</p>
+        <div class="hist-list">${itemsHtml}</div>
+      </div>
+      <div class="modal-foot">
+        <button class="top-btn" id="histFullCancel">ไม่บันทึกประวัติ</button>
+        <button class="top-btn primary" id="histFullConfirm">ลบแล้วบันทึก</button>
+      </div>
+    `);
+    const close = ()=> bg.remove();
+    bg.querySelector('#histFullCancel').onclick = ()=>{ close(); resolve(false); };
+    bg.querySelector('#histFullConfirm').onclick = async ()=>{
+      const sel = bg.querySelector('input[name="histDel"]:checked');
+      if(!sel){ showToast('เลือกงานที่จะลบก่อน'); return; }
+      let l = await getHistory();
+      l = l.filter(x=>x.id!==sel.value);
+      l.push(snap);
+      await setHistory(l);
+      close(); resolve(true);
+      showToast('บันทึกประวัติแล้ว');
+    };
+  });
+}
+
+/* ป๊อบอัพตอนเปิดแอป: เลือกทำงานต่อ / เปิดงานที่บันทึกไว้ / เริ่มงานใหม่ */
+async function showStartupModal(force){
+  const list = (await getHistory()).sort((a,b)=>b.ts-a.ts);
+  const hasDraft = draftHasContent();
+  if(!force && list.length === 0 && !hasDraft) return;   // ตอนเปิดแอปครั้งแรกจริงๆ ไม่ต้องถาม
+
+  const continueHtml = hasDraft ? `
+    <button class="hist-continue" id="histContinue">
+      <div style="font-weight:800;font-size:14px;">▶ ทำงานต่อ (ล่าสุด)</div>
+      <div style="font-size:12px;opacity:.9;margin-top:2px;">${escapeHtml((state.meeting.name||'').trim() || 'งานที่ค้างไว้')}</div>
+    </button>
+    <div style="height:1px;background:var(--line);margin:14px 0;"></div>` : '';
+
+  const itemsHtml = list.length ? list.map(h=>`
+      <div class="hist-item">
+        <div class="hist-info" data-open="${h.id}">
+          <div class="hist-name">${escapeHtml(h.name)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
+          <div class="hist-date">${escapeHtml(h.date)}</div>
+        </div>
+        <button class="hist-del" data-del="${h.id}" title="ลบ">🗑</button>
+      </div>`).join('')
+    : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานที่บันทึกไว้</div>`;
+
+  const bg = buildModalOverlay(`
+    <div class="modal-head"><span>เลือกงานที่จะทำต่อ</span><span class="close-btn" id="histClose">×</span></div>
+    <div class="modal-body">
+      ${continueHtml}
+      <div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">งานที่บันทึกไว้ (${list.length}/${MAX_HISTORY})</div>
+      <div class="hist-list">${itemsHtml}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="top-btn primary" id="histNew" style="width:100%;justify-content:center;">+ เริ่มงานใหม่</button>
+    </div>
+  `);
+  const close = ()=> bg.remove();
+  bg.querySelector('#histClose').onclick = close;
+  bg.addEventListener('click', e=>{ if(e.target===bg) close(); });   // คลิกพื้นหลังเพื่อปิด
+  const cont = bg.querySelector('#histContinue');
+  if(cont) cont.onclick = close;   // ทำงานต่อจาก draft ที่โหลดมาแล้ว
+  bg.querySelector('#histNew').onclick = async ()=>{ if(!(await proceedSwitch())) return; close(); startNewProject(); };
+  bg.querySelectorAll('[data-open]').forEach(el=> el.onclick = async ()=>{
+    if(!(await proceedSwitch())) return;
+    const h = list.find(x=>x.id===el.dataset.open);
+    if(h && h.state){ loadStateIntoApp(JSON.parse(JSON.stringify(h.state))); showToast('เปิดงานแล้ว'); }
+    close();
+  });
+  bg.querySelectorAll('[data-del]').forEach(el=> el.onclick = async (e)=>{
+    e.stopPropagation();
+    const h = list.find(x=>x.id===el.dataset.del);
+    const ok = await confirmDialog({
+      title: 'ลบงานที่บันทึก',
+      message: `ต้องการลบงาน "<b>${escapeHtml(h ? h.name : '')}</b>" ออกจากประวัติใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
+      confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
+    });
+    if(!ok) return;
+    let l = await getHistory();
+    await setHistory(l.filter(x=>x.id!==el.dataset.del));
+    close();
+    showStartupModal(true);   // เปิดใหม่ให้เห็นรายการอัปเดต
+  });
 }
 
 function exportData(){
@@ -2030,14 +2336,21 @@ function importData(event){
   event.target.value = '';
 }
 
-function resetAll(){
-  if(!confirm('ล้างข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+async function resetAll(){
+  const ok = await confirmDialog({
+    title: 'ล้างข้อมูลทั้งหมด',
+    message: 'ต้องการล้างงานปัจจุบันทั้งหมดใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การกระทำนี้ย้อนกลับไม่ได้ (ไม่กระทบงานที่บันทึกไว้ในประวัติ)</span>',
+    confirmText: 'ล้างทั้งหมด', cancelText: 'ยกเลิก', danger: true
+  });
+  if(!ok) return;
   state = {
     meeting:{ name:'', customer:'', date:'', rev:'01' },
-    categories:[]
+    categories:[],
+    _histId: null
   };
   applyMetaToUI();
   addCategory('MDB PANEL');
+  isDirty = false;
   showToast('ล้างข้อมูลแล้ว');
 }
 
@@ -2223,6 +2536,10 @@ async function exportPDF() {
 
     // Cleanup
     document.body.removeChild(renderContainer);
+
+    // บันทึกประวัติอัตโนมัติ (ถ้าเต็ม 5 จะถามว่าจะลบงานไหนก่อน)
+    hidePdfProgress();
+    await saveCurrentToHistory();
 
     // Save — desktop ใช้ pdf.save() (ชื่อไฟล์ถูกต้องอยู่แล้ว);
     // iOS Safari ไม่เคารพชื่อไฟล์ใน save() → ใช้ Web Share ส่งเป็นไฟล์ที่มีชื่อ ("Save to Files" จะได้ชื่อตรงกัน)
@@ -2903,7 +3220,14 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     state.meeting.date = new Date().toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
     applyMetaToUI();
     addCategory('MDB PANEL');
+  } else {
+    // ย่อรูปเดิมที่อัปไว้ความละเอียดสูง (one-time migration, ทำเบื้องหลัง)
+    downscaleExistingPhotos();
   }
+
+  // ป๊อบอัพเลือกงานที่จะทำต่อ / เริ่มงานใหม่
+  isDirty = false;   // งานที่เพิ่งโหลดมายังไม่นับว่าแก้ไข
+  await showStartupModal();
 });
 </script>
 </body>
