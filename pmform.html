@@ -1169,6 +1169,12 @@
             });
 
             initDrawingCanvas();
+
+            // 🌟 popup ตอนเปิดแอป — เลือกทำงานต่อ / เปิดงานเก่า / เริ่มงานใหม่
+            //    ข้าม popup ถ้าเพิ่งกด "เริ่มงานใหม่" / "ล้างข้อมูล" (reload มาเอง)
+            let skipStartup = false;
+            try { skipStartup = sessionStorage.getItem('pm_skip_startup') === '1'; sessionStorage.removeItem('pm_skip_startup'); } catch {}
+            if (!skipStartup) await showStartupModal(false);
         });
 
         // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
@@ -1827,26 +1833,8 @@
                 return;
             }
 
-            // เตรียม draft snapshot ณ ตอนนี้
-            syncDOMValues();
-            const scopeItemsData = [];
-            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
-                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
-            });
-            const snapshot = {
-                id: Date.now() + Math.floor(Math.random() * 1000),
-                name,
-                savedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
-                globals: {
-                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, photoCounters, moduleTitles,
-                    customScopes: scopeItemsData
-                },
-                html: document.getElementById('exportWrapper').innerHTML
-            };
-
-            let history = await getHistory();
-            // ถ้ามีชื่อซ้ำ ให้ overwrite แทน push ใหม่
+            // ถ้ามีชื่อซ้ำ ให้ถามก่อนเขียนทับ
+            const history = await getHistory();
             const dupIdx = history.findIndex(h => h.name === name);
             if (dupIdx >= 0) {
                 if (!await showConfirm({
@@ -1855,16 +1843,10 @@
                     confirmText: 'เขียนทับ',
                     variant: 'warning'
                 })) return;
-                snapshot.id = history[dupIdx].id; // คงเดิม id ไว้
-                history[dupIdx] = snapshot;
-            } else {
-                history.unshift(snapshot);
-                if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
             }
 
-            await saveHistory(history);
-            // 🌟 ผูกรายงานปัจจุบันเข้ากับ id นี้ → ทุก 3 วินาทีจะ auto-sync เข้า history เอง
-            await setCurrentHistoryId(snapshot.id);
+            // 🌟 commitSnapshot จัดการ overwrite-ถ้าชื่อซ้ำ, จำกัดจำนวน, และผูก currentHistoryId
+            await commitSnapshot(name);
             closeSaveToHistoryModal();
             showToast(`บันทึก "${name}" แล้ว — แก้ไขต่อ ระบบจะ sync อัตโนมัติ`);
         }
@@ -1936,23 +1918,9 @@
         }
 
         async function loadFromHistory(id) {
-            const history = await getHistory();
-            const item = history.find(h => h.id === id);
-            if (!item) return;
-
-            if (!await showConfirm({
-                title: 'โหลดรายงานนี้มาแก้ไข?',
-                message: `รายงาน: "${item.name}"\n\n• การแก้ไขจะถูกบันทึกลงรายงานนี้อัตโนมัติทุก 3 วินาที\n• รายงานปัจจุบัน (ถ้ายังไม่ได้บันทึก) จะหายไป`,
-                confirmText: 'โหลดรายงาน',
-                variant: 'info'
-            })) return;
-
-            applyDataToDOM(item);
-            // 🌟 ผูกรายงานปัจจุบันเข้ากับ id นี้ → auto-sync เข้า history ทุก 3 วิ
-            await setCurrentHistoryId(id);
-            await saveDraft();
-            closeHistoryModal();
-            showToast(`โหลด "${item.name}" แล้ว — แก้ไขได้เลย`);
+            // 🌟 กันงานปัจจุบันที่ยังไม่ได้บันทึกหาย — เสนอบันทึกก่อนถ้าจำเป็น
+            if (!(await proceedSwitch())) return;
+            if (await applyHistoryItemById(id)) closeHistoryModal();
         }
 
         async function deleteFromHistory(id) {
@@ -1972,6 +1940,233 @@
                 await setCurrentHistoryId(null);
             }
             await renderHistoryList();
+        }
+
+        // ============================================================
+        // 🌟 ส่วนเสริม — Startup popup / เตือนงานยังไม่บันทึก / auto-snapshot
+        // ============================================================
+
+        // escape ข้อความก่อนใส่ลง innerHTML (กันชื่อที่มี < > & " หลุด)
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // ตรวจว่ารายงานปัจจุบันมี "เนื้อหาที่ควรเก็บ" หรือยัง
+        //   ใช้สัญญาณที่บ่งบอก "งานจริง" เท่านั้น คือ ชื่อโครงการ หรือ รูปที่ผู้ใช้อัปโหลด
+        //   (ไม่นับ input ข้อความ default ของเทมเพลต เช่นรายการ general check — กัน popup เด้งบนงานเปล่า)
+        function reportHasContent() {
+            // รายงานที่ผูกกับ history แล้ว ถือว่ามีเนื้อหาเสมอ (ปลอดภัยอยู่ใน history)
+            if (currentHistoryId !== null) return true;
+            const proj = (document.getElementById('coverInputProject')?.value || '').trim();
+            if (proj) return true;
+            const wrap = document.getElementById('exportWrapper');
+            if (!wrap) return false;
+            // มีรูปที่ผู้ใช้อัปโหลดไหม (img ที่ src เป็น data:/blob:)
+            return Array.from(wrap.querySelectorAll('img')).some(img => {
+                const s = img.getAttribute('src') || '';
+                return s.startsWith('data:') || s.startsWith('blob:');
+            });
+        }
+
+        // ตั้งชื่ออัตโนมัติจากหน้าปก (ใช้ตอนบันทึกแบบไม่ถามชื่อ)
+        function deriveAutoName() {
+            const proj = (document.getElementById('coverInputProject')?.value || '').trim();
+            if (proj) return proj;
+            return 'งานที่ยังไม่ได้ตั้งชื่อ ' + new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+        }
+
+        // แกนกลางการบันทึก snapshot ลง history (overwrite ถ้าชื่อซ้ำ) แล้วผูก currentHistoryId
+        async function commitSnapshot(name) {
+            syncDOMValues();
+            const scopeItemsData = [];
+            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
+                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
+            });
+            const snapshot = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                name,
+                savedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+                globals: {
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
+                    groCount, gcCount, genCount, ctCount, tripCount, photoCounters, moduleTitles,
+                    customScopes: scopeItemsData
+                },
+                html: document.getElementById('exportWrapper').innerHTML
+            };
+            let history = await getHistory();
+            const dupIdx = history.findIndex(h => h.name === name);
+            if (dupIdx >= 0) {
+                snapshot.id = history[dupIdx].id;
+                history[dupIdx] = snapshot;
+            } else {
+                history.unshift(snapshot);
+                if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+            }
+            await saveHistory(history);
+            await setCurrentHistoryId(snapshot.id);
+            return snapshot;
+        }
+
+        // โหลด history item ลง DOM แล้วผูก currentHistoryId (ใช้ภายในจากหลายที่)
+        async function applyHistoryItemById(id) {
+            const history = await getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item) return false;
+            applyDataToDOM(item);
+            await setCurrentHistoryId(id);
+            await saveDraft();
+            showToast(`โหลด "${item.name}" แล้ว — แก้ไขได้เลย`);
+            return true;
+        }
+
+        // เริ่มงานใหม่ (ล้าง draft + reload) — ตั้ง flag ไม่ให้ popup เด้งซ้ำหลัง reload
+        async function startNewReport() {
+            await localforage.removeItem('smart_pm_draft');
+            await localforage.removeItem(CURRENT_ID_KEY);
+            try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
+            location.reload();
+        }
+
+        // เริ่มงานใหม่จากเมนูประวัติ — กันงานที่ยังไม่บันทึกหายก่อน
+        async function startNewFromHistory() {
+            if (!(await proceedSwitch())) return;
+            closeHistoryModal();
+            await startNewReport();
+        }
+
+        // กล่องเตือน 3 ปุ่ม: บันทึกก่อน / ไม่บันทึก / ยกเลิก → คืน 'save' | 'discard' | 'cancel'
+        function confirmUnsavedChanges() {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 z-[100001] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print';
+                overlay.innerHTML = `
+                    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                        <div class="p-5 text-center">
+                            <div class="mx-auto w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xl mb-3"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-1">งานยังไม่ได้บันทึก</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">งานปัจจุบันยังไม่ได้บันทึกลง "ประวัติ"<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p>
+                        </div>
+                        <div class="p-4 pt-0 flex flex-col gap-2">
+                            <button data-act="save" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-bookmark"></i> บันทึกก่อน</button>
+                            <div class="flex gap-2">
+                                <button data-act="cancel" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm border border-slate-200">ยกเลิก</button>
+                                <button data-act="discard" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-red-600 hover:bg-red-50 transition-colors text-sm border border-red-200">ไม่บันทึก</button>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                const done = v => { overlay.remove(); resolve(v); };
+                overlay.querySelectorAll('[data-act]').forEach(b => b.onclick = () => done(b.dataset.act));
+                overlay.addEventListener('click', e => { if (e.target === overlay) done('cancel'); });
+            });
+        }
+
+        // เรียกก่อน "เปลี่ยนงาน" (โหลดงานอื่น / เริ่มใหม่) — กันงานใหม่ที่ยังไม่ได้บันทึกหาย
+        async function proceedSwitch() {
+            if (currentHistoryId === null && reportHasContent()) {
+                const choice = await confirmUnsavedChanges();
+                if (choice === 'cancel') return false;
+                if (choice === 'save') {
+                    const auto = deriveAutoName();
+                    await commitSnapshot(auto);
+                    showToast(`บันทึกงานปัจจุบันเป็น "${auto}" แล้ว`);
+                }
+            }
+            return true;
+        }
+
+        // บันทึกเข้า history อัตโนมัติเมื่อ export/พิมพ์ (เก็บ snapshot ของงานที่กำลังทำ)
+        async function autoSnapshotOnExport() {
+            try {
+                if (currentHistoryId !== null) {
+                    // ผูกกับ history อยู่แล้ว → sync ให้เป็นล่าสุด
+                    await saveDraft();
+                    return;
+                }
+                if (!reportHasContent()) return;
+                const auto = deriveAutoName();
+                await commitSnapshot(auto);
+                showToast(`บันทึกงานเข้าประวัติอัตโนมัติ: "${auto}"`);
+            } catch (e) {
+                console.warn('autoSnapshotOnExport failed', e);
+            }
+        }
+
+        // popup ตอนเปิดแอป — เลือกทำงานต่อ / เปิดงานเก่า / เริ่มงานใหม่
+        async function showStartupModal(force = false) {
+            const history = await getHistory();
+            const hasContent = reportHasContent();
+            if (!force && history.length === 0 && !hasContent) return;
+
+            const projName = (document.getElementById('coverInputProject')?.value || '').trim();
+            const continueHtml = hasContent ? `
+                <button id="startupContinue" class="w-full text-left bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl px-4 py-3 shadow-md transition-all mb-4">
+                    <div class="font-bold text-sm flex items-center gap-2"><i class="fa-solid fa-play"></i> ทำงานต่อ (ล่าสุด)</div>
+                    <div class="text-xs opacity-90 mt-0.5 truncate">${escapeHtml(projName || 'งานที่ค้างไว้')}</div>
+                </button>
+                <div class="h-px bg-slate-200 mb-4"></div>` : '';
+
+            const itemsHtml = history.length ? history.map(h => `
+                <div class="flex items-center gap-2 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl p-3 transition-colors">
+                    <div class="flex-1 min-w-0 cursor-pointer" data-open="${h.id}">
+                        <div class="font-bold text-slate-800 text-sm truncate" title="${escapeHtml(h.name)}">${escapeHtml(h.name)}${h.id === currentHistoryId ? '<span class="ml-1.5 text-[10px] font-bold text-white bg-indigo-500 px-1.5 py-0.5 rounded-full uppercase">ล่าสุด</span>' : ''}</div>
+                        <div class="text-xs text-slate-400 mt-0.5"><i class="fa-solid fa-clock"></i> ${escapeHtml(h.savedAt || '')}</div>
+                    </div>
+                    <button data-del="${h.id}" class="shrink-0 text-red-400 hover:text-red-600 hover:bg-red-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors" title="ลบ"><i class="fa-solid fa-trash-can"></i></button>
+                </div>`).join('') : `<div class="text-center text-slate-400 text-sm py-6">ยังไม่มีงานที่บันทึกไว้</div>`;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 z-[99998] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print';
+            overlay.innerHTML = `
+                <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200" style="max-height:88vh;">
+                    <div class="flex justify-between items-center p-5 border-b bg-slate-50 shrink-0">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-folder-open text-indigo-500"></i> เลือกงานที่จะทำต่อ</h3>
+                        <button id="startupClose" class="text-slate-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-4">
+                        ${continueHtml}
+                        <div class="text-[11px] font-bold text-slate-400 tracking-wide mb-2 px-1 uppercase">งานที่บันทึกไว้ (${history.length}/${HISTORY_MAX})</div>
+                        <div class="flex flex-col gap-2">${itemsHtml}</div>
+                    </div>
+                    <div class="p-4 border-t bg-slate-50 shrink-0">
+                        <button id="startupNew" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> เริ่มงานใหม่</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            const close = () => overlay.remove();
+            overlay.querySelector('#startupClose').onclick = close;
+            overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+            const cont = overlay.querySelector('#startupContinue');
+            if (cont) cont.onclick = close;
+            overlay.querySelector('#startupNew').onclick = async () => {
+                if (!(await proceedSwitch())) return;
+                close();
+                await startNewReport();
+            };
+            overlay.querySelectorAll('[data-open]').forEach(el => el.onclick = async () => {
+                if (!(await proceedSwitch())) return;
+                close();
+                await applyHistoryItemById(parseInt(el.dataset.open, 10));
+            });
+            overlay.querySelectorAll('[data-del]').forEach(el => el.onclick = async (e) => {
+                e.stopPropagation();
+                const id = parseInt(el.dataset.del, 10);
+                const h = history.find(x => x.id === id);
+                const ok = await showConfirm({
+                    title: 'ลบงานที่บันทึก',
+                    message: `ต้องการลบงาน "${h ? h.name : ''}" ออกจากประวัติใช่ไหม?\n\nการลบนี้ย้อนกลับไม่ได้`,
+                    confirmText: 'ลบ',
+                    variant: 'danger'
+                });
+                if (!ok) return;
+                const l = await getHistory();
+                await saveHistory(l.filter(x => x.id !== id));
+                if (currentHistoryId === id) await setCurrentHistoryId(null);
+                close();
+                showStartupModal(true);
+            });
         }
 
         // 💬 ระบบ Dialog กลาง — แทน window.confirm และ window.alert
@@ -2539,6 +2734,8 @@
             document.body.removeChild(downloadAnchorNode);
             setTimeout(() => URL.revokeObjectURL(url), 100);
             showSaveStatus('<i class="fa-solid fa-check"></i> นำออกสำเร็จ');
+            // 🌟 เก็บ snapshot เข้าประวัติอัตโนมัติเมื่อ export
+            await autoSnapshotOnExport();
         }
 
         function importData(event) {
@@ -2589,6 +2786,7 @@
             if (ok) {
                 await localforage.removeItem('smart_pm_draft');
                 await localforage.removeItem(CURRENT_ID_KEY);
+                try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
                 location.reload();
             }
         }
@@ -5039,7 +5237,11 @@
                 });
                 return;
             }
-            
+
+            // 🌟 เก็บ snapshot เข้าประวัติอัตโนมัติเมื่อพิมพ์/บันทึก PDF
+            //    (capture innerHTML เกิดขึ้นทันทีก่อน prepareDocumentForPrint แก้ DOM)
+            autoSnapshotOnExport();
+
             const btn = document.querySelector('button[onclick="generateNativePDF()"]');
             if (btn) {
                 btn.setAttribute('data-original-text', btn.innerHTML);
@@ -5145,6 +5347,11 @@
                 <div id="historyList" class="flex flex-col gap-3">
                     <!-- รายการจะถูก render โดย renderHistoryList() -->
                 </div>
+            </div>
+            <div class="p-4 border-t bg-slate-50 shrink-0">
+                <button onclick="startNewFromHistory()" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> เริ่มงานใหม่
+                </button>
             </div>
         </div>
     </div>
