@@ -5277,10 +5277,18 @@
                 }
                 
                 wrapper.style.width = originalWidth;
-                
+
+                // 🌟 ตั้งชื่อไฟล์ PDF อัตโนมัติเป็น "Report - <ชื่อโครงการ>"
+                //    Chrome ใช้ document.title เป็น default filename ใน Save as PDF
+                const projectNameRaw = document.getElementById('coverInputProject')?.value?.trim() || '';
+                const safeProjectName = projectNameRaw.replace(/[\\/:*?"<>|]/g, '').trim();
+                const originalDocTitle = document.title;
+                document.title = safeProjectName ? `Report - ${safeProjectName}` : 'Report';
+
                 window.addEventListener('afterprint', function cleanupGhost() {
                     const ghost = document.getElementById('ghostSpacerHacker');
                     if (ghost) ghost.remove();
+                    document.title = originalDocTitle;
                     window.removeEventListener('afterprint', cleanupGhost);
                 }, { once: true });
 
