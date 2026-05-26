@@ -1023,6 +1023,50 @@
             else select.classList.add('text-slate-400');
         }
 
+        // 🌟 Reference dropdown (custom 2-line) — สำหรับช่อง Reference ของ Insulation Test
+        function toggleRefDropdown(btn, ev) {
+            if (ev) ev.stopPropagation();
+            const wrapper = btn.closest('.ref-dropdown-wrapper');
+            if (!wrapper) return;
+            const menu = wrapper.querySelector('.ref-menu');
+            const willOpen = menu.classList.contains('hidden');
+            document.querySelectorAll('.ref-menu').forEach(m => m.classList.add('hidden'));
+            if (willOpen) menu.classList.remove('hidden');
+        }
+
+        function selectRefOption(optBtn, line1, line2, voltage) {
+            const wrapper = optBtn.closest('.ref-dropdown-wrapper');
+            if (!wrapper) return;
+            const l1 = wrapper.querySelector('.ref-line1');
+            const l2 = wrapper.querySelector('.ref-line2');
+            if (l1) l1.textContent = line1;
+            if (l2) l2.textContent = line2;
+            wrapper.setAttribute('data-ref-value', `${line1} ${line2}`.trim());
+
+            // 🌟 sync Voltage test ทั้ง 3 แถวใน block นี้ให้ตรงกับ reference ที่เลือก
+            if (voltage) {
+                const block = wrapper.closest('.insulation-block');
+                if (block) {
+                    block.querySelectorAll('.voltage-test-input').forEach(inp => {
+                        inp.value = voltage;
+                        inp.setAttribute('value', voltage);
+                    });
+                }
+            }
+
+            wrapper.querySelector('.ref-menu')?.classList.add('hidden');
+            if (typeof showSaveStatus === 'function') {
+                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            }
+            if (typeof saveDraft === 'function') saveDraft();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.ref-dropdown-wrapper')) {
+                document.querySelectorAll('.ref-menu').forEach(m => m.classList.add('hidden'));
+            }
+        });
+
         function adjustFontSize(el) {
             const valLen = el.value.length;
             if (valLen > 15) el.style.fontSize = '11px';
@@ -2498,6 +2542,16 @@
                 blockData.selects.push({ idx, value: sel.value });
             });
 
+            // 🌟 เก็บ reference dropdown (custom 2-line) แยกจาก select ปกติ
+            blockData.refDropdowns = [];
+            block.querySelectorAll('.ref-dropdown-wrapper').forEach((wrap, idx) => {
+                blockData.refDropdowns.push({
+                    idx,
+                    line1: wrap.querySelector('.ref-line1')?.textContent || '',
+                    line2: wrap.querySelector('.ref-line2')?.textContent || ''
+                });
+            });
+
             // เก็บ textarea
             blockData.textareas = [];
             block.querySelectorAll('textarea').forEach((ta, idx) => {
@@ -2601,6 +2655,18 @@
                     selects[idx].value = value;
                     if (typeof updateResultColor === 'function') updateResultColor(selects[idx]);
                 }
+            });
+
+            // 🌟 Restore reference dropdown แบบ 2-line (รายงานเก่าไม่มี field นี้ → ใช้ค่า default)
+            const refDropdowns = newBlock.querySelectorAll('.ref-dropdown-wrapper');
+            (blockData.refDropdowns || []).forEach(({ idx, line1, line2 }) => {
+                const wrap = refDropdowns[idx];
+                if (!wrap) return;
+                const l1 = wrap.querySelector('.ref-line1');
+                const l2 = wrap.querySelector('.ref-line2');
+                if (l1) l1.textContent = line1;
+                if (l2) l2.textContent = line2;
+                wrap.setAttribute('data-ref-value', `${line1} ${line2}`.trim());
             });
 
             // Restore textareas
@@ -3387,20 +3453,32 @@
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L1 to L2+L3+GND</td>
-                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
-                            <td class="text-slate-500 font-medium leading-tight align-middle" rowspan="3">IEC61439-1<br>≥ 1 MΩ</td>
+                            <td class="align-middle text-center" rowspan="3">
+                                <div class="ref-dropdown-wrapper relative inline-block" data-ref-value="IEC61439-1 ≥ 1 MΩ">
+                                    <button type="button" class="ref-display group/ref bg-transparent border-none p-0 leading-tight text-[13px] text-slate-500 font-medium cursor-pointer hover:text-slate-700 transition-colors inline-flex flex-col items-center gap-0" onclick="toggleRefDropdown(this, event)">
+                                        <span class="ref-line1">IEC61439-1</span>
+                                        <span class="ref-line2">≥ 1 MΩ</span>
+                                        <i class="fa-solid fa-caret-down text-[9px] text-slate-300 mt-0.5 opacity-0 group-hover/ref:opacity-100 transition-opacity no-print"></i>
+                                    </button>
+                                    <div class="ref-menu absolute z-50 left-1/2 -translate-x-1/2 top-full mt-1 bg-white shadow-xl rounded-lg border border-slate-200 hidden no-print min-w-[140px] overflow-hidden">
+                                        <button type="button" onclick="selectRefOption(this, 'IEC61439-1', '≥ 1 MΩ', '1000 Vdc 1 min')" class="px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50 leading-tight block w-full text-center font-medium border-b border-slate-100 bg-transparent border-x-0 border-t-0">IEC61439-1<br>≥ 1 MΩ</button>
+                                        <button type="button" onclick="selectRefOption(this, 'IEC62271-200', '≥ 1 GΩ', '5000 Vdc 1 min')" class="px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50 leading-tight block w-full text-center font-medium bg-transparent border-0">IEC62271-200<br>≥ 1 GΩ</button>
+                                    </div>
+                                </div>
+                            </td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L2 to L1+L3+GND</td>
-                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
                             <td class="font-bold text-slate-700 text-left pl-4">L3 to L1+L2+GND</td>
-                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
