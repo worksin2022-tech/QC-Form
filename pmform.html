@@ -138,7 +138,8 @@
         .html2pdf-mode-active .contact-block,
         .html2pdf-mode-active .photo-group-block,
         .html2pdf-mode-active .trip-block,
-        .html2pdf-mode-active .relay-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
+        .html2pdf-mode-active .relay-block,
+        .html2pdf-mode-active .cap-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
         .html2pdf-mode-active .mb-10, .html2pdf-mode-active .mb-8, .html2pdf-mode-active .pb-8 { margin-bottom: 0 !important; padding-bottom: 0 !important; }
         
         .html2pdf-mode-active .general-block > .flex.mb-3, .html2pdf-mode-active .insulation-block > .flex.mb-4, .html2pdf-mode-active .dielectric-block > .flex.mb-4, .html2pdf-mode-active .grounding-block > .flex.mb-4, .html2pdf-mode-active .gc-block > .flex.mb-4, .html2pdf-mode-active .contact-block > .flex.mb-3, .html2pdf-mode-active .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
@@ -270,7 +271,8 @@
             .native-print-mode .gc-block,
             .native-print-mode .contact-block,
             .native-print-mode .trip-block,
-            .native-print-mode .relay-block {
+            .native-print-mode .relay-block,
+            .native-print-mode .cap-block {
                 margin-bottom: 5mm !important;
                 border-bottom: none !important;
                 padding-bottom: 0 !important;
@@ -530,16 +532,26 @@
                 <!-- 12 -->
                 <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-contract"></i></div>
-                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">12. Calibration</span>
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
+                        </div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">12. Capacitor Bank Check</span>
                     </div>
-                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)">
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_cap', this.checked)">
                 </label>
                 <!-- 13 -->
                 <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
                     <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-contract"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">13. Calibration</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)">
+                </label>
+                <!-- 14 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-circle-plus"></i></div>
-                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">13. Blank Page</span>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">14. Blank Page</span>
                     </div>
                     <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)">
                 </label>
@@ -846,6 +858,10 @@
                                                 <div id="relay_container"></div>
                                             </div>
 
+                                            <div id="mod_cap" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div id="cap_container"></div>
+                                            </div>
+
                                             <!-- 🌟 โมดูล Blank -->
                                             <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
                                                 <div id="blk_container"></div>
@@ -1025,7 +1041,8 @@
         let ctCount = 0; 
         let tripCount = 0;
         let relayCount = 0;
-        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, blk: 0 };
+        let capCount = 0;
+        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
         let reorderSortable = null;
         let isGridCollapsed = false;
 
@@ -1148,13 +1165,14 @@
             'mod_contact': 'Contact Resistance Test',
             'mod_trip': 'Trip Unit Test',
             'mod_relay': 'Protection Relay Test',
+            'mod_cap': 'Capacitor Bank Check',
             'mod_blank': 'Custom Section',
             'mod_calibration': 'Certificate of Calibration'
         };
 
         const defaultModuleOrder = [
             'mod_before', 'mod_cleaning', 'mod_after',
-            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_gc', 'mod_contact', 'mod_trip', 'mod_relay', 'mod_blank', 'mod_calibration'
+            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_gc', 'mod_contact', 'mod_trip', 'mod_relay', 'mod_cap', 'mod_blank', 'mod_calibration'
         ];
 
         const defaultGeneralTasks = [
@@ -1321,6 +1339,7 @@
                 'mod_contact': { id: 'ct_container', cls: 'contact-block' },
                 'mod_trip': { id: 'trip_container', cls: 'trip-block' },
                 'mod_relay': { id: 'relay_container', cls: 'relay-block' },
+                'mod_cap': { id: 'cap_container', cls: 'cap-block' },
                 'mod_blank': { id: 'blk_container', cls: 'photo-group-block' }
             };
             return map[modId];
@@ -1386,6 +1405,7 @@
             'mod_contact':     { bg: 'bg-purple-100',  text: 'text-purple-700',  border: 'border-purple-200' },
             'mod_trip':        { bg: 'bg-pink-100',    text: 'text-pink-700',    border: 'border-pink-200' },
             'mod_relay':       { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
+            'mod_cap':         { bg: 'bg-blue-100',    text: 'text-blue-700',    border: 'border-blue-200' },
             'mod_blank':       { bg: 'bg-indigo-100',  text: 'text-indigo-700',  border: 'border-indigo-200' },
             'mod_calibration': { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' }
         };
@@ -1450,6 +1470,7 @@
             if (subBlock.classList.contains('contact-block')) return 'mod_contact';
             if (subBlock.classList.contains('trip-block')) return 'mod_trip';
             if (subBlock.classList.contains('relay-block')) return 'mod_relay';
+            if (subBlock.classList.contains('cap-block')) return 'mod_cap';
             if (subBlock.classList.contains('general-block')) return 'mod_general';
             if (subBlock.classList.contains('photo-group-block')) {
                 // photo-group-block ใช้ใน before/cleaning/after/blank — ดูจาก id prefix
@@ -1462,7 +1483,7 @@
             return null;
         }
 
-        const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block';
+        const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block';
 
         async function openReorderModal() {
             const list = document.getElementById('reorderList');
@@ -1533,6 +1554,7 @@
                 'mod_contact':     'border-l-purple-400',
                 'mod_trip':        'border-l-pink-400',
                 'mod_relay':       'border-l-fuchsia-400',
+                'mod_cap':         'border-l-blue-400',
                 'mod_blank':       'border-l-indigo-400',
                 'mod_calibration': 'border-l-rose-400'
             };
@@ -1704,7 +1726,7 @@
                 block.classList.add('pdf-page-break', 'pt-3');
             });
             // อันแรกของทั้ง moduleContainer ไม่ต้องมี page-break
-            const allBlocks = container.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block');
+            const allBlocks = container.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block');
             if (allBlocks.length > 0) {
                 allBlocks[0].classList.remove('pdf-page-break', 'pt-3');
             }
@@ -1751,7 +1773,7 @@
             const draft = {
                 globals: { 
                     selectedModules, breakerCount, groupCounts, insCount, dieCount, 
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData 
                 },
                 html: document.getElementById('exportWrapper').innerHTML
@@ -2056,7 +2078,7 @@
                 savedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
                 globals: {
                     selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
                 html: document.getElementById('exportWrapper').innerHTML
@@ -2357,10 +2379,12 @@
             ctCount = draft.globals.ctCount || 0;
             tripCount = draft.globals.tripCount || 0;
             relayCount = draft.globals.relayCount || 0;
-            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, blk: 0 };
+            capCount = draft.globals.capCount || 0;
+            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
             if (photoCounters.blk === undefined) photoCounters.blk = 0;
             if (photoCounters.gc === undefined) photoCounters.gc = 0;
             if (photoCounters.relay === undefined) photoCounters.relay = 0;
+            if (photoCounters.cap === undefined) photoCounters.cap = 0;
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
             
             const loadedCustomScopes = draft.globals.customScopes || [];
@@ -2465,7 +2489,7 @@
                 const moduleData = { moduleId, blocks: [] };
                 
                 // หา blocks ทั้งหมดใน module นี้ (insulation-block, photo-group-block, etc.)
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .general-block, .photo-group-block, .blank-group-block';
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .general-block, .photo-group-block, .blank-group-block';
                 const blocks = modNode.querySelectorAll(blockSelectors);
                 
                 blocks.forEach(block => {
@@ -2479,12 +2503,12 @@
             // ════════════════════════════════════════════════════════════
             // 2. Clear moduleContainer + reset counters
             // ════════════════════════════════════════════════════════════
-            insCount = 0; dieCount = 0; groCount = 0; gcCount = 0; ctCount = 0; tripCount = 0; relayCount = 0; genCount = 0;
+            insCount = 0; dieCount = 0; groCount = 0; gcCount = 0; ctCount = 0; tripCount = 0; relayCount = 0; capCount = 0; genCount = 0;
             groupCounts = { bf: 0, cl: 0, af: 0, blk: 0 };
-            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, blk: 0 };
+            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
 
             // ลบ blocks ทั้งหมดออกจาก container ของแต่ละ module (แต่เก็บโครง module ไว้)
-            ['ins_container', 'die_container', 'gro_container', 'gc_container', 'ct_container', 'trip_container', 'relay_container',
+            ['ins_container', 'die_container', 'gro_container', 'gc_container', 'ct_container', 'trip_container', 'relay_container', 'cap_container',
              'gen_container', 'bf_container', 'cl_container', 'af_container', 'blk_container'].forEach(containerId => {
                 const c = document.getElementById(containerId);
                 if (c) c.innerHTML = '';
@@ -2501,6 +2525,7 @@
                 'contact-block': addContactBlock,
                 'trip-block': addTripBlock,
                 'relay-block': addRelayBlock,
+                'cap-block': addCapBlock,
                 'general-block': addGeneralCheckBlock,
                 'photo-group-block': null,  // ใช้ addPhotoGroup ที่ต้องการ type argument
                 'blank-group-block': null,  // ใช้ addBlankGroup
@@ -2527,7 +2552,7 @@
             snapshot.modules.forEach(moduleData => {
                 const modNode = document.getElementById(moduleData.moduleId);
                 if (!modNode) return;
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .general-block, .photo-group-block, .blank-group-block';
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .general-block, .photo-group-block, .blank-group-block';
                 const newBlocks = modNode.querySelectorAll(blockSelectors);
                 
                 moduleData.blocks.forEach((blockData, idx) => {
@@ -2624,7 +2649,7 @@
 
         function detectBlockType(block) {
             const types = ['insulation-block', 'dielectric-block', 'grounding-block', 'gc-block', 'contact-block',
-                          'trip-block', 'relay-block', 'general-block', 'photo-group-block', 'blank-group-block'];
+                          'trip-block', 'relay-block', 'cap-block', 'general-block', 'photo-group-block', 'blank-group-block'];
             for (const t of types) {
                 if (block.classList.contains(t)) return t;
             }
@@ -2808,7 +2833,7 @@
             const draft = {
                 globals: { 
                     selectedModules, breakerCount, groupCounts, insCount, dieCount, 
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
                 html: document.getElementById('exportWrapper').innerHTML
@@ -2930,6 +2955,7 @@
                         else if (moduleId === 'mod_contact') addContactBlock();
                         else if (moduleId === 'mod_trip') addTripBlock();
                         else if (moduleId === 'mod_relay') addRelayBlock();
+                        else if (moduleId === 'mod_cap') addCapBlock();
                         else if (moduleId === 'mod_blank') addBlankGroup('blk');
                     }
                 }
@@ -2971,6 +2997,7 @@
             'mod_contact':    { fn: () => addContactBlock(),         label: 'Contact',             cls: 'bg-purple-100 hover:bg-purple-200 text-purple-700' },
             'mod_trip':       { fn: () => addTripBlock(),            label: 'Trip Unit',           cls: 'bg-pink-100 hover:bg-pink-200 text-pink-700' },
             'mod_relay':      { fn: () => addRelayBlock(),           label: 'Protection Relay',    cls: 'bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-700' },
+            'mod_cap':        { fn: () => addCapBlock(),             label: 'Capacitor Bank',      cls: 'bg-blue-100 hover:bg-blue-200 text-blue-700' },
             'mod_blank':      { fn: () => addBlankGroup('blk'),      label: 'Blank Page',          cls: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700' }
         };
 
@@ -3071,6 +3098,7 @@
                 { modId: 'mod_contact',   containerId: 'ct_container' },
                 { modId: 'mod_trip',      containerId: 'trip_container' },
                 { modId: 'mod_relay',     containerId: 'relay_container' },
+                { modId: 'mod_cap',       containerId: 'cap_container' },
                 { modId: 'mod_insulation',containerId: 'ins_container' },
                 { modId: 'mod_dielectric',containerId: 'die_container' },
                 { modId: 'mod_general',   containerId: 'gen_container' },
@@ -3175,7 +3203,8 @@
                 'block_gc_':   { obj: () => ({ gcCount }),  key: 'gcCount',   set: v => { gcCount = v; } },
                 'block_ct_block_': { obj: () => ({ ctCount }),   key: 'ctCount',   set: v => { ctCount = v; } },
                 'block_trip_': { obj: () => ({ tripCount }), key: 'tripCount', set: v => { tripCount = v; } },
-                'block_relay_': { obj: () => ({ relayCount }), key: 'relayCount', set: v => { relayCount = v; } }
+                'block_relay_': { obj: () => ({ relayCount }), key: 'relayCount', set: v => { relayCount = v; } },
+                'block_cap_': { obj: () => ({ capCount }), key: 'capCount', set: v => { capCount = v; } }
             };
 
             const allBlocksAfterDedup = container.querySelectorAll(SUB_BLOCK_SELECTOR);
@@ -4184,6 +4213,109 @@
             if(block) block.remove();
         }
 
+        // 🌟 Capacitor Bank Check — โครงสร้างอ้างอิงจากไฟล์ capacitor check.pdf
+        //    1 block = 1 ชุดทดสอบ Capacitor Bank (12 Steps × L1-L2/L2-L3/L3-L1)
+        function addCapBlock() {
+            capCount++;
+            const id = capCount;
+            const container = getOrFallbackContainer('cap_container');
+            const prefix = `cap_${id}`;
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
+
+            // สร้างแถว Step 1-12 อัตโนมัติ
+            let stepRows = '';
+            for (let s = 1; s <= 12; s++) {
+                stepRows += `
+                        <tr>
+                            <td class="border border-slate-400 py-1 px-3 font-semibold text-slate-700">Step ${s}</td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium"><input type="text" placeholder="-" class="paper-input w-16 text-center font-bold text-orange-600 px-0 mx-0.5 border-none py-1"> µf</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium"><input type="text" placeholder="-" class="paper-input w-16 text-center font-bold text-orange-600 px-0 mx-0.5 border-none py-1"> µf</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1">
+                                <div class="flex items-center justify-center whitespace-nowrap text-slate-600 font-medium"><input type="text" placeholder="-" class="paper-input w-16 text-center font-bold text-orange-600 px-0 mx-0.5 border-none py-1"> µf</div>
+                            </td>
+                            <td class="border border-slate-400 py-0 px-1"><input type="text" placeholder="-" class="paper-input w-full text-center text-slate-600 border-none m-0 py-1"></td>
+                        </tr>`;
+            }
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="cap-block relative mb-6 pb-6 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-700">
+                                <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Capacitor Bank Check</h3>
+                        </div>
+                        ${id > 1 ? `<button onclick="removeCapBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                    </div>
+
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
+                            <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
+                        </span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น Cap.bank-1, MDB..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
+                    </div>
+
+                    <!-- 📝 Capacitor Bank Step Table -->
+                    <table class="w-full text-[13px] text-center border-collapse border-2 border-slate-400 bg-white shadow-sm print:shadow-none">
+                        <tr class="bg-slate-100">
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">
+                                <div class="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                    <span>Capacitor</span>
+                                    <input type="text" value="50" class="paper-input w-12 text-center font-bold text-orange-600 border-none py-0">
+                                    <span>KVAR =</span>
+                                    <input type="text" value="497.4" class="paper-input w-16 text-center font-bold text-orange-600 border-none py-0">
+                                    <span>µf (±10%)</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="bg-slate-50 font-bold text-slate-700">
+                            <td class="border border-slate-400 py-1.5 w-[15%]">Phase</td>
+                            <td class="border border-slate-400 py-1.5 w-[20%]">L1-L2</td>
+                            <td class="border border-slate-400 py-1.5 w-[20%]">L2-L3</td>
+                            <td class="border border-slate-400 py-1.5 w-[20%]">L3-L1</td>
+                            <td class="border border-slate-400 py-1.5 w-[25%]">Remark</td>
+                        </tr>
+                        ${stepRows}
+                    </table>
+
+                    <!-- 📐 Reference Formulas -->
+                    <div class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[12.5px] text-slate-600">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="font-bold text-slate-700 w-24 shrink-0">C (phase)</span>
+                            <span>=</span>
+                            <span class="font-serif italic">1,000,000 &times; <span class="inline-flex flex-col items-center align-middle"><span class="border-b border-slate-500 px-2">QVar(total)</span><span class="px-2">3 &times; 2&pi; &times; f &times; (V)<sup>2</sup></span></span></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-slate-700 w-24 shrink-0">C (Measured)</span>
+                            <span>=</span>
+                            <span class="font-serif italic">C (phase) + <span class="inline-flex flex-col items-center align-middle"><span class="border-b border-slate-500 px-2">C (phase)</span><span class="px-2">2</span></span></span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-2 mt-4 ml-1">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-image text-slate-400"></i>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
+                        </div>
+                        <button onclick="addPhotoBox('grid_${prefix}', 'cap')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
+                    </div>
+                    <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
+                </div>
+            `;
+            insertBlockAfterLastInGroup(container, blockHtml, 'cap-block', 'block_cap_');
+            for(let i=0; i<2; i++) { addPhotoBox(`grid_${prefix}`, 'cap'); }
+        }
+
+        function removeCapBlock(prefix) {
+            const block = document.getElementById(`block_${prefix}`);
+            if(block) block.remove();
+        }
+
         function handleTripCurveSelection(prefix, value) {
             const previewId = `prev_trip_curve_${prefix}`;
             const imgElement = document.getElementById(previewId);
@@ -4544,7 +4676,7 @@
                 Array.from(container.children).forEach(child => {
                     if (child.classList.contains('hidden') || window.getComputedStyle(child).display === 'none') return;
 
-                    if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block')) {
+                    if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block')) {
                         const modId = getModIdFromSubBlock(child) || 'mod_general';
                         items.push({ title: extractBlockTitle(child, modId), id: child.id });
                         return;
@@ -4555,7 +4687,7 @@
                             items.push({ title: 'Certificate of Calibration', id: child.id });
                             return;
                         }
-                        const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block'));
+                        const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block'));
                         if (blocks.length > 0) {
                             blocks.forEach(block => {
                                 items.push({ title: extractBlockTitle(block, child.id), id: block.id });
@@ -5249,7 +5381,7 @@
             //    วิธีแก้: ใส่ pdf-page-break ชั่วคราวให้ทุก direct-child block ของ moduleContainer
             //    (เพราะหลัง reorder blocks เหล่านี้คือ "หัวข้อใหม่" ทุกตัว)
             //    เก็บ marker ไว้ restore ทีหลัง
-            document.querySelectorAll('#moduleContainer > .photo-group-block, #moduleContainer > .general-block, #moduleContainer > .insulation-block, #moduleContainer > .dielectric-block, #moduleContainer > .grounding-block, #moduleContainer > .gc-block, #moduleContainer > .contact-block, #moduleContainer > .trip-block, #moduleContainer > .relay-block').forEach(b => {
+            document.querySelectorAll('#moduleContainer > .photo-group-block, #moduleContainer > .general-block, #moduleContainer > .insulation-block, #moduleContainer > .dielectric-block, #moduleContainer > .grounding-block, #moduleContainer > .gc-block, #moduleContainer > .contact-block, #moduleContainer > .trip-block, #moduleContainer > .relay-block, #moduleContainer > .cap-block').forEach(b => {
                 if (b.classList.contains('hidden') || b.classList.contains('reorder-hidden')) return;
                 if (!b.classList.contains('pdf-page-break')) {
                     b.classList.add('pdf-page-break');
@@ -5314,12 +5446,13 @@
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = 'none';
 
-            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.gc-block', '.contact-block', '.trip-block', '.relay-block'];
+            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.gc-block', '.contact-block', '.trip-block', '.relay-block', '.cap-block'];
             blocks.forEach(selector => {
                 document.querySelectorAll(selector).forEach(block => {
                     const grid = block.querySelector('.grid');
                     if (grid && selector.includes('contact')) splitGridForPrint(grid, 8, 8);
-                    else if (grid && !selector.includes('grounding') && !selector.includes('gc-block')) splitGridForPrint(grid, 6, 6); 
+                    else if (grid && selector.includes('cap-block')) splitGridForPrint(grid, 2, 6);
+                    else if (grid && !selector.includes('grounding') && !selector.includes('gc-block')) splitGridForPrint(grid, 6, 6);
                     else if (grid) splitGridForPrint(grid, 4, 8);
                 });
             });
