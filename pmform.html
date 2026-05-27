@@ -2465,6 +2465,7 @@
             }
 
             patchOldPhotoBoxes();
+            ensureDeleteButtons();
 
             document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
@@ -3271,7 +3272,23 @@
 
                     const photoBox = photoEl.closest('.photo-box');
                     if (!photoBox) return;
-                    renameWithinElement(photoBox, `${pp}_${oldNum}`, `${pp}_${n}`);
+
+                    // Step 1: rename ${pp}_${oldNum} → ${pp}_${n} ภายใน photo box (id, onclick handlers)
+                    const newBox = renameWithinElement(photoBox, `${pp}_${oldNum}`, `${pp}_${n}`);
+
+                    // Step 2: update clickedIndex ใน onchange ของ file input
+                    //   format: handleMultiUpload(event, 'grid_xxx', 'pp', <oldNum>)
+                    //   regex Step 1 จับ "ct_1" ไม่ได้ใน "..., 'ct', 1)" เพราะเลขเป็น standalone arg
+                    //   → ต้อง patch แยก ไม่งั้นการอัปโหลดจะหา img_ct_oldNum ไม่เจอ → ไปลงผิด box
+                    if (newBox) {
+                        const fileInput = newBox.querySelector(`input[id="img_${pp}_${n}"]`);
+                        if (fileInput) {
+                            const onchange = fileInput.getAttribute('onchange') || '';
+                            const onchangeRe = new RegExp(`(['"]${pp}['"]\\s*,\\s*)${oldNum}(\\s*\\))`);
+                            const newOnchange = onchange.replace(onchangeRe, `$1${n}$2`);
+                            if (newOnchange !== onchange) fileInput.setAttribute('onchange', newOnchange);
+                        }
+                    }
                 });
                 if (photoDups.length > 0) {
                     console.log(`[ensureAllModuleContainers] rename duplicate photos '${pp}': ${photoDups.length} ตัว`);
@@ -3409,7 +3426,7 @@
                             <div class="section-icon bg-${config.color}-700 shrink-0"><i class="fa-solid ${config.icon} text-white"></i></div>
                             <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                         </div>
-                        ${id > 1 ? `<button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3452,7 +3469,7 @@
                             <div class="section-icon bg-slate-700 shrink-0"><i class="fa-solid fa-file-circle-plus text-white"></i></div>
                             <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                         </div>
-                        ${id > 1 ? `<button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3508,7 +3525,7 @@
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addGeneralCheckRow('tbody_${prefix}')" class="bg-white border-2 border-slate-400 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
-                            ${id > 1 ? `<button onclick="removeGeneralCheckBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                            <button onclick="removeGeneralCheckBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
@@ -3602,7 +3619,7 @@
                                 <span class="text-slate-500 font-normal">)</span>
                             </h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeInsulationBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeInsulationBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3685,7 +3702,7 @@
                             <div class="section-icon bg-slate-700"><i class="fa-solid fa-bolt text-white"></i></div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Dielectric Strength Test</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeDielectricBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeDielectricBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3758,7 +3775,7 @@
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Grounding Test</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeGroundingBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeGroundingBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3823,7 +3840,7 @@
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Ground Continuity</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeGcBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeGcBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
                         <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
@@ -3884,7 +3901,7 @@
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addBreakerRow('tbody_${prefix}', 'photoSec_${prefix}')" class="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มเบรกเกอร์</button>
-                            ${id > 1 ? `<button onclick="removeContactBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                            <button onclick="removeContactBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 w-[70%] mb-4">
@@ -3951,7 +3968,7 @@
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Trip Unit Test</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
                     
                     <div class="flex items-center gap-3 w-[70%] mb-4">
@@ -4195,7 +4212,7 @@
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Protection Relay Test</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeRelayBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeRelayBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
 
                     <div class="flex items-center gap-3 w-[70%] mb-4">
@@ -4359,7 +4376,7 @@
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Capacitor Bank Check</h3>
                         </div>
-                        ${id > 1 ? `<button onclick="removeCapBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>` : ''}
+                        <button onclick="removeCapBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
 
                     <div class="flex items-center gap-3 w-[70%] mb-4">
@@ -5769,6 +5786,53 @@
             // 10. webFooter เปิดกลับ
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = '';
+        }
+
+        // 🌟 Retrofit: inject ปุ่ม "ลบชุดนี้" ให้ block ที่ load มาจาก draft/JSON เก่าแต่ยังไม่มีปุ่ม
+        //   ก่อนหน้านี้ template ใส่ ${id > 1 ? ... : ''} → ชุดแรก (id=1) ของทุกหัวข้อไม่มีปุ่มลบ
+        //   ตอนนี้เอา guard ออกแล้ว — แต่ HTML ที่บันทึกไว้เก่ายังขาดปุ่มอยู่ → ต้อง inject ย้อนหลัง
+        function ensureDeleteButtons() {
+            const configs = [
+                { cls: 'insulation-block',  removeFn: 'removeInsulationBlock' },
+                { cls: 'dielectric-block',  removeFn: 'removeDielectricBlock' },
+                { cls: 'grounding-block',   removeFn: 'removeGroundingBlock' },
+                { cls: 'gc-block',          removeFn: 'removeGcBlock' },
+                { cls: 'contact-block',     removeFn: 'removeContactBlock' },
+                { cls: 'trip-block',        removeFn: 'removeTripBlock' },
+                { cls: 'relay-block',       removeFn: 'removeRelayBlock' },
+                { cls: 'cap-block',         removeFn: 'removeCapBlock' },
+                { cls: 'general-block',     removeFn: 'removeGeneralCheckBlock' },
+                { cls: 'photo-group-block', removeFn: 'removePhotoGroup' },
+                { cls: 'blank-group-block', removeFn: 'removePhotoGroup' }
+            ];
+
+            const btnClass = 'text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0';
+
+            configs.forEach(({ cls, removeFn }) => {
+                document.querySelectorAll('.' + cls).forEach(block => {
+                    const id = block.id || '';
+                    if (!id.startsWith('block_')) return;
+                    const prefix = id.replace(/^block_/, '');
+
+                    // ถ้ามีปุ่มลบของ block นี้อยู่แล้ว — ข้าม
+                    if (block.querySelector(`button[onclick*="${removeFn}('${prefix}')"]`)) return;
+
+                    // หา header row — แถวบนสุดที่มี section-title + (อาจจะมี)ปุ่ม action
+                    const header = block.querySelector(':scope > .flex.justify-between');
+                    if (!header) return;
+
+                    const btnHtml = `<button onclick="${removeFn}('${prefix}')" class="${btnClass}"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>`;
+
+                    // Contact: ปุ่ม action รวมอยู่ใน div.flex.gap-2 — แทรกท้ายกลุ่มเดียวกัน
+                    const rightFlex = header.querySelector(':scope > .flex.gap-2');
+                    if (rightFlex) {
+                        rightFlex.insertAdjacentHTML('beforeend', btnHtml);
+                    } else {
+                        // หัวข้ออื่น: แทรกเป็น direct child ของ header (หลัง section-title)
+                        header.insertAdjacentHTML('beforeend', btnHtml);
+                    }
+                });
+            });
         }
 
         function drawPoly(pdf, pts, color) {
