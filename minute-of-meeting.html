@@ -497,6 +497,27 @@
     font-size:16px;letter-spacing:.5px;
     clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
     box-shadow:0 4px 12px -2px rgba(245,166,35,.4);
+    cursor:pointer;user-select:none;transition:filter .15s ease;
+  }
+  .ribbon-arrow:hover{filter:brightness(1.05);}
+  .ribbon-arrow:active{filter:brightness(0.95);}
+
+  /* ---- Doc-type dropdown (popup) ---- */
+  .doctype-menu{
+    background:white;border:1px solid #cbd5e1;border-radius:10px;
+    box-shadow:0 12px 28px -6px rgba(15,39,68,0.25), 0 2px 6px rgba(15,39,68,0.08);
+    z-index:500;min-width:200px;padding:6px;
+    animation:slideUp .15s ease;
+  }
+  .doctype-item{
+    padding:10px 14px;cursor:pointer;font-size:14px;font-weight:600;
+    color:#0f2744;border-radius:6px;display:flex;align-items:center;justify-content:space-between;
+    transition:background .12s ease;
+  }
+  .doctype-item:hover{background:#f1f5f9;}
+  .doctype-item.active{background:#fff7ed;color:#c2410c;}
+  .doctype-item.active::after{
+    content:'';width:8px;height:8px;border-radius:50%;background:#f5a623;
   }
 
   .intro-line{
@@ -1418,7 +1439,12 @@
           <!-- Ribbon -->
           <div class="ribbon-wrap">
             <div class="ribbon-line"></div>
-            <div class="ribbon-arrow">Minute of Meeting</div>
+            <div class="ribbon-arrow" id="docTypeRibbon" onclick="openDocTypeMenu(event)" title="คลิกเพื่อเปลี่ยนประเภทเอกสาร">
+              <span id="docTypeLabel">Minute of Meeting</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;vertical-align:-1px;opacity:.85;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
             <div class="ribbon-line right"></div>
           </div>
 
@@ -2027,6 +2053,7 @@ function captureMetaFromUI(){
   state.meeting.date = document.getElementById('meeting_date').value;
   state.meeting.rev = document.getElementById('cover_rev').value;
   state.meeting.location = document.getElementById('cover_location').value;
+  // docType ถูก set ผ่าน setDocType() อยู่แล้ว → ไม่ต้อง capture เพิ่ม
 }
 function applyMetaToUI(){
   document.getElementById('meeting_name').value = state.meeting.name || '';
@@ -2034,6 +2061,57 @@ function applyMetaToUI(){
   document.getElementById('meeting_date').value = state.meeting.date || '';
   document.getElementById('cover_rev').value = state.meeting.rev || '01';
   document.getElementById('cover_location').value = state.meeting.location || '';
+  // sync ribbon-arrow ตามค่า state.meeting.docType (กัน history เก่าที่ไม่มีฟิลด์นี้ → default)
+  const dt = state.meeting.docType || 'Minute of Meeting';
+  state.meeting.docType = dt;
+  const lbl = document.getElementById('docTypeLabel');
+  if(lbl) lbl.textContent = dt;
+}
+
+/* ========================================================================
+   DOC TYPE DROPDOWN — เลือกประเภทเอกสาร ('Minute of Meeting' / 'Defect' …)
+   เพิ่ม option เพิ่มเติมได้โดยแก้ array DOC_TYPES — ไม่ต้องแตะส่วนอื่น
+   ======================================================================== */
+const DOC_TYPES = ['Minute of Meeting', 'Defect'];
+
+function openDocTypeMenu(e){
+  e.stopPropagation();
+  // กันเปิดซ้อน
+  document.querySelectorAll('.doctype-menu').forEach(m => m.remove());
+  const ribbon = e.currentTarget;
+  const rect = ribbon.getBoundingClientRect();
+  const current = state.meeting.docType || 'Minute of Meeting';
+  const menu = document.createElement('div');
+  menu.className = 'doctype-menu no-print';
+  // จัดให้ขอบซ้ายของ menu ตรงกับขอบซ้ายของ ribbon (เผื่อ scroll page เลยใช้ fixed)
+  menu.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom + 6}px;`;
+  menu.innerHTML = DOC_TYPES.map(t =>
+    `<div class="doctype-item${t === current ? ' active' : ''}" data-val="${escapeHtml(t)}">${escapeHtml(t)}</div>`
+  ).join('');
+  document.body.appendChild(menu);
+  menu.querySelectorAll('.doctype-item').forEach(it => {
+    it.addEventListener('click', () => {
+      setDocType(it.dataset.val);
+      menu.remove();
+    });
+  });
+  // ปิด menu เมื่อคลิกที่อื่น
+  const off = ev => {
+    if(!menu.contains(ev.target)){
+      menu.remove();
+      document.removeEventListener('click', off);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', off), 0);
+}
+
+function setDocType(val){
+  if(!DOC_TYPES.includes(val)) return;
+  state.meeting.docType = val;
+  const lbl = document.getElementById('docTypeLabel');
+  if(lbl) lbl.textContent = val;
+  isDirty = true;
+  debouncedSave();
 }
 
 async function saveDraft(showMsg=false){
@@ -2088,7 +2166,7 @@ function draftHasContent(){
 
 function startNewProject(){
   state = {
-    meeting: { name:'', customer:'', date:new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}), rev:'01', location:'' },
+    meeting: { name:'', customer:'', date:new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}), rev:'01', location:'', docType:'Minute of Meeting' },
     categories: [],
     _histId: null
   };
@@ -2434,6 +2512,7 @@ function showPdfSaveButton(file, filename){
 }
 
 async function exportPDF() {
+  console.log('[exportPDF] BUILD-v5 (doctype dropdown: ' + (state.meeting.docType || 'Minute of Meeting') + ')');
   if (state.categories.length === 0) {
     showToast('ไม่มีข้อมูลให้ export');
     return;
@@ -2579,8 +2658,9 @@ async function exportPDF() {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-/* วาดรูปแบบ contain ลง canvas ที่อัตราส่วน = กรอบพอดี (เห็นรูปเต็มใบ ไม่ตัดส่วนใดออก)
-   แล้วคืนเป็น dataURL — html2canvas แค่วาดรูปที่สัดส่วนถูกต้องอยู่แล้ว ไม่ต้องพึ่ง object-fit (กัน iOS บีบ/ตัดรูป) */
+/* วาดรูปแบบ cover ลง canvas ที่อัตราส่วน = กรอบพอดี (รูปเต็มกรอบเหมือนตอนกรอกข้อมูล — ส่วนเกินถูกครอบทิ้ง)
+   แล้วคืนเป็น dataURL — html2canvas แค่วาดรูปที่สัดส่วนถูกต้องอยู่แล้ว ไม่ต้องพึ่ง object-fit (กัน iOS บีบ/ตัดรูป)
+   หมายเหตุ: เปลี่ยนจาก contain → cover เพื่อให้สัดส่วนตอน export ตรงกับ .photo-slot img ที่ใช้ object-fit:cover */
 function fitImageToDataUrl(src, boxW, boxH, scale) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -2593,12 +2673,10 @@ function fitImageToDataUrl(src, boxW, boxH, scale) {
         canvas.height = targetH;
         const ctx = canvas.getContext('2d');
         const iw = img.naturalWidth, ih = img.naturalHeight;
-        // contain: ย่อรูปทั้งใบให้พอดีกรอบ ไม่ตัดอะไรออก แล้วจัดกึ่งกลาง
-        const r = Math.min(targetW / iw, targetH / ih);
+        // cover: ขยายรูปให้เต็มกรอบ (อิงด้านที่สั้นกว่า) แล้วจัดกึ่งกลาง — ส่วนที่ล้นกรอบถูก clip โดย canvas เอง
+        const r = Math.max(targetW / iw, targetH / ih);
         const dw = iw * r, dh = ih * r;
         const dx = (targetW - dw) / 2, dy = (targetH - dh) / 2;
-        ctx.fillStyle = '#ffffff';                 // พื้นที่ว่าง (letterbox) เป็นสีขาว
-        ctx.fillRect(0, 0, targetW, targetH);
         ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
         resolve(canvas.toDataURL('image/jpeg', 0.95));
       } catch (e) { reject(e); }
@@ -2826,7 +2904,7 @@ function buildCategoryPageForPdf(cat, catIdx, comments, startIdx, pageNum, total
         <rect x="473" y="0" width="11" height="53" fill="#f5a623"/>
         <rect x="484" y="0" width="310" height="53" fill="#1f3a5f"/>
         <rect x="0" y="49" width="794" height="4" fill="#f5a623"/>
-        <text x="764" y="24" dy="0.35em" text-anchor="end" fill="#e2e8f0" font-size="12" font-weight="600" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">Minute of Meeting · Quality Control</text>
+        <text x="764" y="24" dy="0.35em" text-anchor="end" fill="#e2e8f0" font-size="12" font-weight="600" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">${escapeHtml(state.meeting.docType || 'Minute of Meeting')} · Quality Control</text>
       </svg>
       <div style="position:absolute;left:30px;top:0;height:40px;display:flex;align-items:center;max-width:470px;overflow:hidden;">
         <span style="color:#ffffff;font-weight:800;font-size:${hdrFont.toFixed(1)}px;letter-spacing:0.5px;line-height:1.25;font-family:'Sarabun',Arial,sans-serif;white-space:nowrap;">${escapeHtml(hdrName)}</span>
@@ -2845,7 +2923,7 @@ function buildCategoryPageForPdf(cat, catIdx, comments, startIdx, pageNum, total
               </linearGradient>
             </defs>
             <polygon points="0,0 284,0 300,22 284,44 0,44 16,22" fill="url(#ribGrad)"/>
-            <text x="150" y="22" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">Minute of Meeting</text>
+            <text x="150" y="22" dy="0.35em" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="0.5" font-family="Arial,Helvetica,sans-serif">${escapeHtml(state.meeting.docType || 'Minute of Meeting')}</text>
           </svg>
         </div>
         <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(to right,#7c8a98 0%,#dde2e9 100%);"></div>
@@ -2883,8 +2961,16 @@ function buildCommentForPdf(cat, cmt, catNum, cmtNum) {
     : [buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
        buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe')];
        
-  const gridCols = cmt.mode === 'after' ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
-  const photoHeight = cmt.mode === 'after' ? '120px' : '150px';
+  // Before mode: กรอบ 4:3 เป๊ะ (236×177) ตรงกับ .photo-slot ตอนกรอกข้อมูล
+  //   - คอลัมน์เป็น fixed-width 236px (ไม่ใช่ 1fr) แล้ว justify-content:center → กลุ่มรูปอยู่กลางคอมเมนต์
+  //   - มีพื้นที่สีพื้นหลังคอมเมนต์ (ฟ้าอ่อน) ข้างละ ~78px กรอบเดิม
+  //   - net-zero ในแนวตั้ง (pad 6 + photo 177 + label 20 + pad 6 = 209) → ไม่กระทบ 3 คอม/หน้า
+  // After mode: คงเดิมทุกอย่าง (ผู้ใช้ยืนยัน OK แล้ว)
+  const gridCols           = cmt.mode === 'after' ? 'repeat(3,1fr)' : 'repeat(2,236px)';
+  const gridJustifyStyle   = cmt.mode === 'after' ? '' : 'justify-content:center;';
+  const photoHeight        = cmt.mode === 'after' ? '140px' : '177px';
+  const gridPadY           = cmt.mode === 'after' ? '10px' : '6px';
+  const labelH             = cmt.mode === 'after' ? 24 : 20;
 
   const numStr = `${catNum}.${cmtNum}`;
 
@@ -2897,14 +2983,14 @@ function buildCommentForPdf(cat, cmt, catNum, cmtNum) {
         <span style="font-weight:700;">แก้ไขโดย:</span>
         <span style="flex:1;border-bottom:1px dotted #94a3b8;padding-bottom:2px;">${cmt.fixedBy ? escapeHtml(cmt.fixedBy) : '&nbsp;'}</span>
       </div>
-      <div style="display:grid;grid-template-columns:${gridCols};gap:8px;padding:10px 12px;">
+      <div style="display:grid;grid-template-columns:${gridCols};gap:8px;padding:${gridPadY} 12px;${gridJustifyStyle}">
         ${photos.map(p => `<div style="display:flex;flex-direction:column;">
           <div class="pdf-photo-box"${p.hasImg ? ` data-src="${p.src}"` : ''} style="height:${photoHeight};border:1px solid #e2e8f0;background:${p.hasImg ? '#ffffff' : '#fafbfc'};border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;overflow:hidden;">
             ${p.hasImg ? '' : `<div style="color:#cbd5e1;font-size:12px;">ไม่มีรูป</div>`}
           </div>
-          <div style="height:24px;background:${p.labelBg};border-radius:0 0 6px 6px;text-align:center;overflow:hidden;line-height:0;">
-            <svg width="120" height="24" viewBox="0 0 120 24" style="display:inline-block;vertical-align:top;">
-              <text x="60" y="12" dy="0.35em" text-anchor="middle" fill="${p.labelColor}" font-size="11" font-weight="800" letter-spacing="1" font-family="Arial,Helvetica,sans-serif">${escapeHtml(p.label)}</text>
+          <div style="height:${labelH}px;background:${p.labelBg};border-radius:0 0 6px 6px;text-align:center;overflow:hidden;line-height:0;">
+            <svg width="120" height="${labelH}" viewBox="0 0 120 ${labelH}" style="display:inline-block;vertical-align:top;">
+              <text x="60" y="${labelH/2}" dy="0.35em" text-anchor="middle" fill="${p.labelColor}" font-size="11" font-weight="800" letter-spacing="1" font-family="Arial,Helvetica,sans-serif">${escapeHtml(p.label)}</text>
             </svg>
           </div>
         </div>`).join('')}
