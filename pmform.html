@@ -1763,18 +1763,26 @@
         }
 
         async function saveDraft() {
-            syncDOMValues(); 
-            
+            // 🌟 กันบั๊ก: ถ้า DOM กำลังถูก mutate เพื่อพิมพ์ (print mode) — อย่าบันทึก
+            //    ไม่งั้น autosave จะเก็บสถานะที่มี .hidden, display:none, print-text-span, tmp-split-wrapper
+            //    ค้างไว้ → reload เปิดมา input/photo/curve UI จะหายเพราะถูกซ่อน
+            const wrapper = document.querySelector('.a4-wrapper');
+            if (wrapper && wrapper.classList.contains('preparing-pdf')) {
+                return;
+            }
+
+            syncDOMValues();
+
             const scopeItemsData = [];
             document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
                 if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
             });
 
             const draft = {
-                globals: { 
-                    selectedModules, breakerCount, groupCounts, insCount, dieCount, 
+                globals: {
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
                     groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
-                    customScopes: scopeItemsData 
+                    customScopes: scopeItemsData
                 },
                 html: document.getElementById('exportWrapper').innerHTML
             };
@@ -2394,7 +2402,7 @@
             } else {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = draft.html;
-                
+
                 const oldScope = tempDiv.querySelector('#scopeSection');
                 const oldModule = tempDiv.querySelector('#moduleContainer');
                 const oldToc = tempDiv.querySelector('#tocSection');
@@ -2403,6 +2411,13 @@
                 if (oldModule) document.getElementById('moduleContainer').innerHTML = oldModule.innerHTML;
                 if (oldToc && document.getElementById('tocSection')) document.getElementById('tocSection').innerHTML = oldToc.innerHTML;
             }
+
+            // 🌟 Recover: ถ้า draft/JSON ถูก save ตอนอยู่ใน print mode (เช่น autosave บังเอิญรัน
+            //    ระหว่าง prepareDocumentForPrint → restoreDocumentAfterPrint) จะมีร่องรอย
+            //    .print-text-span / .tmp-hidden-element / .tmp-no-print / .tmp-split-wrapper /
+            //    inline display:none บน .no-print ติดมาด้วย → input/photo/curve UI จะหายไปบนหน้าจอ
+            //    เรียก purgePrintArtifacts() เพื่อล้างแบบไม่พึ่ง data-orig-display
+            try { purgePrintArtifacts(); } catch (e) { console.warn('purgePrintArtifacts failed', e); }
 
             // 🌟 Self-heal: เติม module containers ที่ขาดหายไปใน draft เก่า
             //    บั๊กเดิม: ถ้า user save draft ไว้ก่อนที่จะเพิ่ม module ใหม่ (เช่น mod_gc) draft.html
@@ -3160,32 +3175,108 @@
                 console.log(`[ensureAllModuleContainers] ลบ pdf-page-break จาก orphan blocks ที่ hidden จำนวน ${cleanedOrphans} ตัว`);
             }
 
-            const seenIds = new Map(); // id → element ตัวแรกที่เจอ (priority: ตัวใน sub-container)
-            const allBlocks = container.querySelectorAll(SUB_BLOCK_SELECTOR);
-            // รอบแรก: เก็บตัวที่อยู่ใน sub-container ก่อน (parent ≠ moduleContainer)
-            allBlocks.forEach(b => {
+            // 🌟 RENAME duplicate block IDs (เปลี่ยนจาก "ลบทิ้ง" เป็น "เปลี่ยนชื่อ id")
+            //   บั๊กเดิม: ตัว dedup เก่าลบ orphan ที่มี id ซ้ำกับตัวใน sub-container ทิ้ง
+            //   ปัญหา: ในเคสจริง orphan มักเป็นตัวที่ user "เคยทำงานต่อ" หลัง reorder (มีข้อมูล + รูปจริง)
+            //            ส่วน sub-container อาจเป็น block default ที่ถูกสร้างใหม่ขึ้นมาเปล่าๆ → ลบผิดตัว
+            //   แก้: rename orphan ให้ใช้เลขใหม่ที่ไม่ซ้ำ → ทั้งสอง block ถูกเก็บไว้ครบ
+            //         ใช้ outerHTML replace เพื่อ update references ภายใน block (grid_, tbody_, photoSec_,
+            //         onclick handlers ที่อ้างถึง prefix เก่า)
+            const renameWithinElement = (el, oldStr, newStr) => {
+                // match oldStr ที่ตามด้วย non-word char (กัน ct_block_1 ไปชน ct_block_10)
+                //   ไม่ใช้ \b นำหน้า เพราะ oldStr มักติดกับ "_" จาก prefix (block_/grid_/tbody_/photoSec_)
+                //   ซึ่ง _ เป็น word char จึงไม่เกิด word boundary
+                const safe = oldStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const re = new RegExp(`${safe}(?=[^a-zA-Z0-9_]|$)`, 'g');
+                const newHtml = el.outerHTML.replace(re, newStr);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = newHtml;
+                const newEl = wrapper.firstElementChild;
+                if (newEl && el.parentNode) {
+                    el.parentNode.replaceChild(newEl, el);
+                    return newEl;
+                }
+                return el;
+            };
+
+            // Phase 1: เก็บ id ที่เห็นแล้ว — ลำดับความสำคัญ: ตัวใน sub-container ได้สิทธิ์ใช้ id เดิม
+            const seenIds = new Map(); // id → element
+            const allBlocks0 = container.querySelectorAll(SUB_BLOCK_SELECTOR);
+            allBlocks0.forEach(b => {
                 if (!b.id) return;
                 if (b.parentNode !== container) {
                     if (!seenIds.has(b.id)) seenIds.set(b.id, b);
                 }
             });
-            // รอบสอง: เจอตัวใน moduleContainer ถ้า id ตรงกับใน seenIds → zombie ลบทิ้ง
-            //         ถ้ายังไม่มี id นี้ → ตัวนี้เป็น orphan จริง (จาก reorder ที่ตั้งใจ) เก็บไว้
-            const toRemove = [];
-            allBlocks.forEach(b => {
+            // เพิ่ม orphan อันแรกของแต่ละ id (ถ้ายังไม่มี)
+            const duplicates = []; // [{element, originalId}]
+            allBlocks0.forEach(b => {
                 if (!b.id) return;
                 if (b.parentNode === container) {
                     if (seenIds.has(b.id)) {
-                        toRemove.push(b); // zombie
+                        duplicates.push({ element: b, originalId: b.id });
                     } else {
-                        seenIds.set(b.id, b); // orphan ที่ valid
+                        seenIds.set(b.id, b);
                     }
                 }
             });
-            toRemove.forEach(b => b.remove());
-            if (toRemove.length > 0) {
-                console.log(`[ensureAllModuleContainers] ลบ zombie blocks ${toRemove.length} ตัว`);
+
+            // Phase 2: rename ตัว duplicate ให้ใช้เลขใหม่ที่ไม่ซ้ำ
+            let renamedCount = 0;
+            duplicates.forEach(dup => {
+                // แยก prefix และ number จาก id เช่น "block_ct_block_1" → prefix="ct_block_", num=1
+                const m = dup.originalId.match(/^block_([a-z_]+_)(\d+)$/);
+                if (!m) return;
+                const subPrefix = m[1];        // e.g., "ct_block_" หรือ "trip_"
+                const oldNum = parseInt(m[2], 10);
+                if (isNaN(oldNum)) return;
+
+                // หาเลขถัดไปที่ยังไม่ถูกใช้
+                let n = oldNum + 1;
+                while (document.getElementById(`block_${subPrefix}${n}`)) n++;
+
+                const oldRef = `${subPrefix}${oldNum}`;  // e.g., "ct_block_1"
+                const newRef = `${subPrefix}${n}`;       // e.g., "ct_block_3"
+
+                renameWithinElement(dup.element, oldRef, newRef);
+                renamedCount++;
+            });
+            if (renamedCount > 0) {
+                console.log(`[ensureAllModuleContainers] rename duplicate blocks: ${renamedCount} ตัว`);
             }
+
+            // 🌟 RENAME duplicate photo-box IDs (prev_xxx_N / img_xxx_N) ที่ซ้ำกัน
+            //   เกิดเมื่อมี contact block ซ้ำ id และทั้งสองมี photo boxes ที่ใช้ photoCounters เดียวกัน
+            //   เช่น Block A มี prev_ct_1-4 และ Block B (orphan) มี prev_ct_1-6 (ซ้ำ 1-4)
+            //   วิธีแก้: ใน block ที่ "ใส่หลัง" rename photo IDs ให้เป็นช่วงใหม่ที่ไม่ซ้ำ
+            const photoPrefixes = ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'bf', 'cl', 'af', 'blk'];
+            photoPrefixes.forEach(pp => {
+                const photos = document.querySelectorAll(`[id^="prev_${pp}_"]`);
+                const seenPhotoIds = new Set();
+                const photoDups = [];
+                photos.forEach(el => {
+                    if (seenPhotoIds.has(el.id)) photoDups.push(el);
+                    else seenPhotoIds.add(el.id);
+                });
+                if (photoDups.length === 0) return;
+
+                photoDups.forEach(photoEl => {
+                    const oldId = photoEl.id;                       // e.g., "prev_ct_3"
+                    const oldNumMatch = oldId.match(new RegExp(`^prev_${pp}_(\\d+)$`));
+                    if (!oldNumMatch) return;
+                    const oldNum = parseInt(oldNumMatch[1], 10);
+
+                    let n = oldNum + 1;
+                    while (document.getElementById(`prev_${pp}_${n}`) || document.getElementById(`img_${pp}_${n}`)) n++;
+
+                    const photoBox = photoEl.closest('.photo-box');
+                    if (!photoBox) return;
+                    renameWithinElement(photoBox, `${pp}_${oldNum}`, `${pp}_${n}`);
+                });
+                if (photoDups.length > 0) {
+                    console.log(`[ensureAllModuleContainers] rename duplicate photos '${pp}': ${photoDups.length} ตัว`);
+                }
+            });
 
             // 🌟 Sync counters ให้ตรงกับ id สูงสุดที่มีอยู่จริงใน DOM
             //    บั๊ก: draft อาจเก็บ groupCounts.bf = 2 แต่ใน DOM มี block_bf_3 (orphan ค้าง)
@@ -3230,6 +3321,24 @@
                 if (current < maxNum) {
                     console.log(`[ensureAllModuleContainers] sync ${ref.key}: ${current} → ${maxNum}`);
                     ref.set(maxNum);
+                }
+            });
+
+            // 🌟 Sync photoCounters ตามเลข prev_xxx_N / img_xxx_N ที่มีอยู่จริงใน DOM
+            //   จำเป็นเพราะ rename duplicate photos อาจสร้างเลขใหม่ที่เกิน photoCounters เดิม
+            //   ถ้าไม่ sync → user กด "+ เพิ่มรูป" ครั้งถัดไปจะใช้เลขที่ชน id เก่า
+            ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'bf', 'cl', 'af', 'blk'].forEach(pp => {
+                let maxN = 0;
+                document.querySelectorAll(`[id^="prev_${pp}_"], [id^="img_${pp}_"]`).forEach(el => {
+                    const m = el.id.match(new RegExp(`^(?:prev|img)_${pp}_(\\d+)$`));
+                    if (m) {
+                        const n = parseInt(m[1], 10);
+                        if (n > maxN) maxN = n;
+                    }
+                });
+                if (maxN > (photoCounters[pp] || 0)) {
+                    console.log(`[ensureAllModuleContainers] sync photoCounters.${pp}: ${photoCounters[pp]} → ${maxN}`);
+                    photoCounters[pp] = maxN;
                 }
             });
         }
@@ -5567,6 +5676,99 @@
                 printBtn.disabled = false;
                 printBtn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
+        }
+
+        // 🌟 ล้างทุก artifact จาก print mode (สำหรับใช้ตอนโหลด draft/JSON เก่าที่ contain broken state)
+        //    ต่างจาก restoreDocumentAfterPrint: ไม่พึ่ง data-orig-display — ลบ inline display:none
+        //    ของ .no-print / .tmp-no-print ตรงๆ และล้าง class ทุกตัวที่เป็นร่องรอย print mode
+        function purgePrintArtifacts() {
+            // 1. Body/wrapper print-mode classes
+            const wrapper = document.querySelector('.a4-wrapper');
+            if (wrapper) wrapper.classList.remove('preparing-pdf', 'html2pdf-mode-wrapper');
+            const reportDoc = document.getElementById('reportDocument');
+            if (reportDoc) reportDoc.classList.remove('html2pdf-mode-active');
+            document.body.classList.remove('native-print-mode', 'html2pdf-body-lock');
+
+            const exportWrapperEl = document.getElementById('exportWrapper');
+            if (exportWrapperEl) exportWrapperEl.style.position = '';
+
+            // 2. ลบ print-text-span (ที่ถูกแทรกข้างหน้า input/select/textarea)
+            document.querySelectorAll('.print-text-span').forEach(span => span.remove());
+
+            // 3. ถอด .hidden + .tmp-hidden-element ออกจาก input/select/textarea
+            document.querySelectorAll('.tmp-hidden-element').forEach(el => {
+                el.classList.remove('hidden', 'tmp-hidden-element');
+            });
+
+            // 4. ล้าง tmp-split-wrapper — ย้าย photo-box กลับเข้า original grid
+            document.querySelectorAll('.tmp-split-wrapper').forEach(wrap => {
+                const origGrid = wrap.previousElementSibling;
+                if (origGrid && origGrid.classList.contains('tmp-orig-grid')) {
+                    Array.from(wrap.querySelectorAll('.photo-box')).forEach(box => origGrid.appendChild(box));
+                    const allChildren = Array.from(origGrid.children);
+                    allChildren.sort((a, b) => {
+                        const ai = parseInt(a.getAttribute('data-orig-index'));
+                        const bi = parseInt(b.getAttribute('data-orig-index'));
+                        if (isNaN(ai) || isNaN(bi)) return 0;
+                        return ai - bi;
+                    });
+                    allChildren.forEach(child => {
+                        child.removeAttribute('data-orig-index');
+                        origGrid.appendChild(child);
+                    });
+                    wrap.remove();
+                    origGrid.classList.remove('tmp-orig-grid', 'tmp-no-print');
+                    origGrid.style.removeProperty('display');
+                    origGrid.removeAttribute('data-orig-display');
+                } else {
+                    // เผื่อ original grid หาย — กู้ photo-box ออกมาไว้ที่ parent ของ wrapper
+                    const parent = wrap.parentNode;
+                    if (parent) {
+                        Array.from(wrap.querySelectorAll('.photo-box')).forEach(box => parent.insertBefore(box, wrap));
+                    }
+                    wrap.remove();
+                }
+            });
+
+            // 5. กวาด tmp-no-print + inline display:none ทั้งหมด (ครอบคลุม photo-box ว่าง + original grid ที่อาจตกค้าง)
+            document.querySelectorAll('.tmp-no-print').forEach(el => {
+                el.classList.remove('tmp-no-print');
+                if (el.style.display === 'none') el.style.removeProperty('display');
+                el.removeAttribute('data-orig-display');
+            });
+
+            // 6. ล้าง inline display:none จาก .no-print ทุกตัว (ไม่พึ่ง data-orig-display — กันกรณี attribute หาย)
+            //    .no-print เป็น marker class ของระบบเอง ไม่ควรถูกตั้ง display:none ค้างไว้บน screen
+            document.querySelectorAll('.no-print').forEach(el => {
+                if (el.style.display === 'none') el.style.removeProperty('display');
+                el.removeAttribute('data-orig-display');
+            });
+
+            // 7. pdf-page-break markers
+            document.querySelectorAll('[data-restore-pdf-page-break]').forEach(el => {
+                el.classList.add('pdf-page-break');
+                el.removeAttribute('data-restore-pdf-page-break');
+            });
+            document.querySelectorAll('[data-remove-pdf-page-break-on-restore]').forEach(el => {
+                el.classList.remove('pdf-page-break');
+                el.removeAttribute('data-remove-pdf-page-break-on-restore');
+            });
+
+            // 8. printLayoutThead/Tfoot กลับเป็น hidden (ใช้เฉพาะตอนพิมพ์)
+            const thead = document.getElementById('printLayoutThead');
+            if (thead) thead.classList.add('hidden');
+            const tfoot = document.getElementById('printLayoutTfoot');
+            if (tfoot) tfoot.classList.add('hidden');
+
+            // 9. ghostSpacer + nativePageNumbers
+            const ghost = document.getElementById('ghostSpacerHacker');
+            if (ghost) ghost.remove();
+            const nativeNums = document.getElementById('nativePageNumbers');
+            if (nativeNums) nativeNums.remove();
+
+            // 10. webFooter เปิดกลับ
+            const webFooter = document.getElementById('webFooter');
+            if (webFooter) webFooter.style.display = '';
         }
 
         function drawPoly(pdf, pts, color) {
