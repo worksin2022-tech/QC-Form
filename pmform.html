@@ -908,7 +908,7 @@
             </div>
             <div class="p-4 border-t bg-white flex justify-end gap-3">
                 <button onclick="closeReorderModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">ยกเลิก</button>
-                <button onclick="applyReorder()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all">บันทึกตำแหน่ง</button>
+                <button id="reorderSaveBtn" onclick="applyReorder()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all opacity-50">บันทึกตำแหน่ง</button>
             </div>
         </div>
     </div>
@@ -1044,6 +1044,7 @@
         let capCount = 0;
         let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
         let reorderSortable = null;
+        let reorderHasChanges = false; // 🌟 ติดตามว่ามีการเลื่อนใน modal "จัดเรียง" หรือไม่ — ใช้คุมปุ่ม "บันทึกตำแหน่ง"
         let isGridCollapsed = false;
 
         // ตัวแปรสำหรับ Fabric.js Canvas
@@ -1367,29 +1368,27 @@
             return target;
         }
 
-        // 🌟 Helper: หาตำแหน่งที่ดีที่สุดให้ block ใหม่ใน moduleContainer
-        //    เมื่อ wrapper ถูก reorder-hidden แล้ว blocks จะถูกย้ายออกมาเป็น direct children
-        //    ของ moduleContainer ตามลำดับที่ user จัดเรียง
-        //    block ใหม่ที่กด "+" ควรถูกใส่ "ต่อจาก block สุดท้ายของกลุ่มเดียวกัน" ไม่ใช่ไปท้ายสุด
+        // 🌟 Helper: หาตำแหน่งที่ดีที่สุดให้ block ใหม่
+        //    ค้นหา block สุดท้ายของกลุ่มเดียวกันใน "ทั้ง document" แล้วใส่ block ใหม่ "ต่อจากนั้น"
+        //    — ไม่ว่าจะเป็น direct child ของ moduleContainer หรืออยู่ใน sub-container
+        //    เหตุผล: หลัง reorder + reload, applyDataToDOM อาจ unhide mod_xxx shells ทำให้
+        //    sub-container เก่า (เช่น ins_container) กลับมาอยู่บนสุดของ moduleContainer
+        //    ถ้าใส่ block ใหม่ลงใน sub-container นั้น → block ใหม่จะโผล่บนสุดของรายงาน
+        //    การยึด "block สุดท้ายของกลุ่ม" เป็นหลักจะใส่ในที่ถูกต้องเสมอ
         //    cls = class ของ block (เช่น 'photo-group-block'), prefix = id prefix (เช่น 'block_bf_')
         function insertBlockAfterLastInGroup(container, blockHtml, cls, prefix) {
-            // กรณีปกติ (ใส่ใน sub-container) — แค่ append
-            if (container.id !== 'moduleContainer') {
-                container.insertAdjacentHTML('beforeend', blockHtml);
-                return;
-            }
-            // กรณี moduleContainer — หา block สุดท้ายของกลุ่มเดียวกัน แล้วใส่หลังมัน
-            const sameGroupBlocks = Array.from(container.children).filter(c => {
-                if (!c.classList.contains(cls)) return false;
-                if (prefix && c.id && !c.id.startsWith(prefix)) return false;
+            const allBlocks = Array.from(document.querySelectorAll('.' + cls));
+            const sameGroupBlocks = allBlocks.filter(b => {
+                if (prefix && (!b.id || !b.id.startsWith(prefix))) return false;
+                if (b.classList.contains('reorder-hidden')) return false;
                 return true;
             });
             if (sameGroupBlocks.length > 0) {
                 sameGroupBlocks[sameGroupBlocks.length - 1].insertAdjacentHTML('afterend', blockHtml);
-            } else {
-                // ไม่มี block ในกลุ่ม → ใส่ท้าย container (fallback)
-                container.insertAdjacentHTML('beforeend', blockHtml);
+                return;
             }
+            // ไม่มี block ของกลุ่มนี้เลย — fallback ใส่ปลาย container ที่ระบุมา
+            container.insertAdjacentHTML('beforeend', blockHtml);
         }
 
         // 🌟 สีประจำกลุ่ม (badge) เพื่อให้แยกแยะที่มาของแต่ละรายการได้ง่าย
@@ -1611,10 +1610,21 @@
                 draggable: 'li',
                 forceFallback: true,
                 fallbackTolerance: 5,
+                onUpdate: function(evt) {
+                    // 🌟 user เลื่อนรายการแล้ว — ให้ปุ่ม "บันทึกตำแหน่ง" กลับมาเป็นสีปกติ
+                    reorderHasChanges = true;
+                    const saveBtn = document.getElementById('reorderSaveBtn');
+                    if (saveBtn) saveBtn.classList.remove('opacity-50');
+                },
                 onEnd: function(evt) {
                     console.log('[Sortable] drag end: moved from', evt.oldIndex, 'to', evt.newIndex);
                 }
             });
+
+            // 🌟 รีเซ็ตปุ่ม "บันทึกตำแหน่ง" ให้เป็นสีจางตอนเปิด modal (ยังไม่มีการเลื่อน)
+            reorderHasChanges = false;
+            const saveBtn = document.getElementById('reorderSaveBtn');
+            if (saveBtn) saveBtn.classList.add('opacity-50');
         }
 
         function closeReorderModal() {
@@ -1738,8 +1748,12 @@
             console.log('========== applyReorder() done ==========');
 
             saveDraft();
-            closeReorderModal();
+            // 🌟 ไม่ปิด modal — ให้ user กดปุ่ม X ปิดเองตามต้องการ
             showSaveStatus('<i class="fa-solid fa-check"></i> จัดเรียงสำเร็จ');
+            // 🌟 รีเซ็ตปุ่มกลับเป็นสีจาง (ยังไม่มีการเปลี่ยนแปลงใหม่หลังบันทึก)
+            reorderHasChanges = false;
+            const saveBtn = document.getElementById('reorderSaveBtn');
+            if (saveBtn) saveBtn.classList.add('opacity-50');
         }
 
         function syncDOMValues() {
@@ -2435,13 +2449,37 @@
                 //    ตอน module ซ่อนอยู่) wrapper จะมี class reorder-hidden ค้างมา
                 //    ผลคือ <div id="mod_xxx"> ถูก display:none → blocks ข้างในไม่ render
                 //    user เห็นว่ากดปุ่ม + แล้ว block ใหม่ "หาย"
+                //
+                //    ⚠️ ยกเว้น: ถ้า user เคย "จัดเรียง" → sub-container ว่าง + blocks ของ group นี้
+                //       เป็น direct child ของ moduleContainer แล้ว → ห้ามถอด reorder-hidden!
+                //       ไม่งั้น shell เปล่าจะโผล่ขึ้นมาเป็นหน้าว่างใน PDF และทำให้ปุ่ม + ใส่ block
+                //       ใหม่ผิดที่ (ไปอยู่บนสุดของรายงาน)
                 const modDiv = document.getElementById(modId);
                 if (modDiv) {
-                    modDiv.classList.remove('reorder-hidden');
-                    modDiv.classList.remove('hidden');
-                    // ล้าง reorder-hidden จาก sub-blocks ที่เป็นของ module นี้ด้วย
                     const subInfo = getSubContainerInfo(modId);
+                    let isReorderedState = false;
                     if (subInfo) {
+                        const subContainer = document.getElementById(subInfo.id);
+                        const subContainerEmpty = !subContainer || subContainer.children.length === 0;
+                        if (subContainerEmpty) {
+                            const mc = document.getElementById('moduleContainer');
+                            const blocksInMC = mc ? Array.from(mc.children).filter(c => {
+                                if (!c.classList.contains(subInfo.cls)) return false;
+                                if (subInfo.cls === 'photo-group-block') {
+                                    const pfx = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
+                                    return pfx && c.id && c.id.startsWith(pfx);
+                                }
+                                return true;
+                            }) : [];
+                            if (blocksInMC.length > 0) isReorderedState = true;
+                        }
+                    }
+                    if (!isReorderedState) {
+                        modDiv.classList.remove('reorder-hidden');
+                    }
+                    modDiv.classList.remove('hidden');
+                    // ล้าง reorder-hidden จาก sub-blocks ของ module นี้ (เฉพาะกรณี "ไม่ใช่" reorder state)
+                    if (!isReorderedState && subInfo) {
                         document.querySelectorAll('.' + subInfo.cls + '.reorder-hidden').forEach(b => {
                             let belongs = true;
                             if (subInfo.cls === 'photo-group-block') {
