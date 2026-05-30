@@ -364,6 +364,29 @@
         /* 🌟 ปุ่ม + เล็กข้าง checkbox ใน sidebar */
         .sidebar-quick-add-btn { margin-right: 0.6rem; }
         .sidebar-quick-add-btn:hover { transform: scale(1.08); }
+
+        /* 🌟 ไฮไลท์รายการที่ user กำลังดูอยู่ใน modal จัดเรียง */
+        .reorder-current-item {
+            background: linear-gradient(to right, #eef2ff, #ffffff) !important;
+            box-shadow: 0 0 0 2px #818cf8, 0 6px 16px -4px rgba(99, 102, 241, 0.35) !important;
+            transform: scale(1.01);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .reorder-now-viewing-badge {
+            background: #6366f1;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 6px;
+            box-shadow: 0 1px 3px rgba(99, 102, 241, 0.4);
+            white-space: nowrap;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden bg-slate-100">
@@ -1118,6 +1141,84 @@
             else el.style.fontSize = '18px'; 
         }
 
+        // 🌟 หา sub-block (หรือ mod_calibration) ที่ user กำลังเห็นในมุมมองตอนนี้
+        //    หลักการ: เลือก block ที่ top เข้าใกล้ขอบบนของ scrollArea มากที่สุด
+        //    (block ที่กำลังถูก scroll ผ่านอยู่ตอนนี้)
+        function findCurrentlyViewedBlock() {
+            const scrollArea = document.getElementById('a4ScrollArea');
+            if (!scrollArea) return null;
+            const scrollRect = scrollArea.getBoundingClientRect();
+            const anchorY = scrollRect.top + 100; // bias ลงมาเล็กน้อยเพื่อให้รู้สึก "ตรงกลางบน"
+
+            const candidates = Array.from(document.querySelectorAll(SUB_BLOCK_SELECTOR));
+            const calib = document.getElementById('mod_calibration');
+            if (calib && !calib.classList.contains('hidden') && !calib.classList.contains('reorder-hidden')) {
+                candidates.push(calib);
+            }
+
+            let best = null;
+            let bestDist = Infinity;
+            candidates.forEach(b => {
+                if (b.classList.contains('reorder-hidden') || b.classList.contains('hidden')) return;
+                const rect = b.getBoundingClientRect();
+                // ข้าม block ที่ไม่อยู่ในมุมมองเลย
+                if (rect.bottom < scrollRect.top || rect.top > scrollRect.bottom) return;
+                const dist = Math.abs(rect.top - anchorY);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = b;
+                }
+            });
+            return best;
+        }
+
+        // 🌟 เลื่อนหน้ารายงานไปยัง block ที่กำหนด (ไม่ปิด modal, ไฮไลท์สีเขียวสด)
+        //    ใช้สำหรับ "+" สร้าง block ใหม่ — ผู้ใช้จะได้เห็น block ที่เพิ่งสร้างทันที
+        function scrollToNewBlock(elementId) {
+            setTimeout(() => {
+                const el = document.getElementById(elementId);
+                const scrollArea = document.getElementById('a4ScrollArea');
+                if (!el || !scrollArea) return;
+                const elRect = el.getBoundingClientRect();
+                const scrollAreaRect = scrollArea.getBoundingClientRect();
+                const topPos = elRect.top - scrollAreaRect.top + scrollArea.scrollTop - 40;
+                scrollArea.scrollTo({ top: topPos, behavior: 'smooth' });
+
+                const oldOutline = el.style.outline;
+                const oldOutlineOffset = el.style.outlineOffset;
+                const oldTransition = el.style.transition;
+                el.style.transition = 'outline 0.3s ease';
+                el.style.outline = '4px solid #10b981'; // emerald — "block ใหม่"
+                el.style.outlineOffset = '4px';
+                el.style.borderRadius = '8px';
+                setTimeout(() => {
+                    el.style.outline = '4px solid transparent';
+                    setTimeout(() => {
+                        el.style.outline = oldOutline;
+                        el.style.outlineOffset = oldOutlineOffset;
+                        el.style.transition = oldTransition;
+                    }, 300);
+                }, 1500);
+            }, 50);
+        }
+
+        // 🌟 หา block สุดท้ายของกลุ่มที่ระบุ แล้วเลื่อนหน้าไปหา
+        //    ใช้หลังเพิ่ม block ใหม่ผ่านปุ่ม + — block ใหม่จะเป็นตัวสุดท้ายของกลุ่มเสมอ
+        function scrollToLatestBlockOfModule(modId) {
+            const subInfo = getSubContainerInfo(modId);
+            if (!subInfo) return;
+            let lastBlock = null;
+            document.querySelectorAll('.' + subInfo.cls).forEach(b => {
+                if (b.classList.contains('reorder-hidden') || b.classList.contains('hidden')) return;
+                if (subInfo.cls === 'photo-group-block') {
+                    const pfx = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
+                    if (!pfx || !b.id || !b.id.startsWith(pfx)) return;
+                }
+                lastBlock = b;
+            });
+            if (lastBlock && lastBlock.id) scrollToNewBlock(lastBlock.id);
+        }
+
         function scrollToElement(elementId) {
             closeReorderModal();
             setTimeout(() => {
@@ -1625,6 +1726,34 @@
             reorderHasChanges = false;
             const saveBtn = document.getElementById('reorderSaveBtn');
             if (saveBtn) saveBtn.classList.add('opacity-50');
+
+            // 🌟 ไฮไลท์รายการที่ user กำลังดูอยู่ในรายงาน — ทำให้รู้ตัวว่าตอนนี้อยู่ที่หัวข้อไหน
+            const currentBlock = findCurrentlyViewedBlock();
+            if (currentBlock) {
+                let targetLi = null;
+                if (currentBlock.id === 'mod_calibration') {
+                    targetLi = list.querySelector('li[data-kind="module"][data-mod-id="mod_calibration"]');
+                } else if (currentBlock.id) {
+                    targetLi = list.querySelector(`li[data-sub-id="${currentBlock.id}"]`);
+                }
+                if (targetLi) {
+                    targetLi.classList.add('reorder-current-item');
+                    // เพิ่ม badge "ดูอยู่" ก่อนปุ่ม go-to (หรือท้าย handle ถ้าไม่มี)
+                    const badge = document.createElement('span');
+                    badge.className = 'reorder-now-viewing-badge';
+                    badge.innerHTML = '<i class="fa-solid fa-eye text-[9px]"></i> ดูอยู่';
+                    const goBtn = targetLi.querySelector('.go-to-btn');
+                    if (goBtn) {
+                        goBtn.parentNode.insertBefore(badge, goBtn);
+                    } else {
+                        targetLi.appendChild(badge);
+                    }
+                    // เลื่อน list ใน modal ให้รายการนี้อยู่ตรงกลางสายตา
+                    setTimeout(() => {
+                        try { targetLi.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+                    }, 150);
+                }
+            }
         }
 
         function closeReorderModal() {
@@ -3011,6 +3140,8 @@
                         else if (moduleId === 'mod_relay') addRelayBlock();
                         else if (moduleId === 'mod_cap') addCapBlock();
                         else if (moduleId === 'mod_blank') addBlankGroup('blk');
+                        // 🌟 เลื่อนไป block ใหม่ที่เพิ่ง auto-add
+                        scrollToLatestBlockOfModule(moduleId);
                     }
                 }
             } else {
@@ -3111,6 +3242,8 @@
                     action.fn();
                     saveDraft();
                     showToast(`เพิ่ม ${action.label} แล้ว`);
+                    // 🌟 เลื่อนหน้ารายงานไปยัง block ที่เพิ่งเพิ่ม
+                    scrollToLatestBlockOfModule(modId);
                 });
                 // แทรกก่อน checkbox (อยู่ข้างซ้ายของ checkbox)
                 cb.parentNode.insertBefore(btn, cb);
