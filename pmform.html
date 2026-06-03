@@ -400,6 +400,73 @@
             .block-base-title[contenteditable="true"]:empty:before { content: ''; }
         }
 
+        /* 🌟 โหมดเต็มจอของ modal จัดเรียง — กว้าง/สูงเกือบเต็มจอ + จัดเป็นหลายคอลัมน์ */
+        #reorderPanel.reorder-fs {
+            max-width: 96vw !important;
+            width: 96vw;
+            max-height: 96vh !important;
+            height: 96vh;
+        }
+        #reorderPanel.reorder-fs #reorderList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 8px;
+            align-content: start;
+        }
+        #reorderPanel.reorder-fs #reorderList > li { margin-top: 0 !important; }
+
+        /* 🌟 ป้ายเลขลำดับ (คลิกเพื่อพิมพ์ตำแหน่งใหม่) */
+        .reorder-pos-badge {
+            flex-shrink: 0;
+            min-width: 30px;
+            height: 26px;
+            padding: 0 6px;
+            border-radius: 7px;
+            background: #eef2ff;
+            color: #4f46e5;
+            font-size: 12px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e0e7ff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-variant-numeric: tabular-nums;
+        }
+        .reorder-pos-badge:hover {
+            background: #4f46e5;
+            color: #fff;
+            transform: scale(1.06);
+        }
+        .reorder-pos-input {
+            flex-shrink: 0;
+            width: 52px;
+            height: 26px;
+            padding: 0 4px;
+            border-radius: 7px;
+            border: 2px solid #6366f1;
+            font-size: 12px;
+            font-weight: 800;
+            text-align: center;
+            color: #4f46e5;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+        }
+        /* ซ่อนลูกศร spinner ของ number input */
+        .reorder-pos-input::-webkit-outer-spin-button,
+        .reorder-pos-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .reorder-pos-input { -moz-appearance: textfield; }
+
+        /* 🌟 ไฮไลท์ชั่วคราวหลังย้ายด้วยการพิมพ์เลข */
+        .reorder-just-moved {
+            animation: reorderMovedPulse 1.2s ease;
+        }
+        @keyframes reorderMovedPulse {
+            0%   { box-shadow: 0 0 0 3px #34d399, 0 6px 16px -4px rgba(16,185,129,0.5); background: #ecfdf5; }
+            100% { box-shadow: none; background: #fff; }
+        }
+
         /* 🌟 ไฮไลท์รายการที่ user กำลังดูอยู่ใน modal จัดเรียง */
         .reorder-current-item {
             background: linear-gradient(to right, #eef2ff, #ffffff) !important;
@@ -951,20 +1018,27 @@
 
     <!-- 🔄 MODAL สำหรับจัดเรียงหัวข้อ -->
     <div id="reorderModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4 transition-opacity">
-        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-            <div class="flex justify-between items-center p-5 border-b bg-slate-50">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-sort text-indigo-500"></i> จัดเรียงลำดับหัวข้อ</h3>
-                <button onclick="closeReorderModal()" class="text-slate-400 hover:text-red-500 transition-colors">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
+        <div id="reorderPanel" class="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 transition-all duration-200" style="max-height: 85vh;">
+            <div class="flex justify-between items-center p-5 border-b bg-slate-50 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-sort text-indigo-500"></i> จัดเรียงลำดับหัวข้อ <span id="reorderCountBadge" class="text-xs font-semibold text-slate-400 ml-1"></span></h3>
+                <div class="flex items-center gap-1">
+                    <button id="reorderFullscreenBtn" onclick="toggleReorderFullscreen()" class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-9 h-9 rounded-lg flex items-center justify-center transition-colors" title="ขยายเต็มจอ">
+                        <i class="fa-solid fa-expand text-lg"></i>
+                    </button>
+                    <button onclick="closeReorderModal()" class="text-slate-400 hover:text-red-500 transition-colors w-9 h-9 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
             </div>
-            <div class="p-4 bg-slate-100 flex-grow overflow-y-auto max-h-[60vh]">
-                <p class="text-xs text-slate-500 mb-3 text-center">ลากรายการขึ้น-ลงเพื่อจัดเรียง — แถบสีด้านซ้ายบอกกลุ่ม</p>
+            <div class="px-4 pt-3 pb-2 bg-slate-50 border-b shrink-0">
+                <p class="text-xs text-slate-500 text-center">ลากรายการเพื่อจัดเรียง — หรือ <b class="text-indigo-600">คลิกตัวเลขลำดับ</b> แล้วพิมพ์ตำแหน่งใหม่ (เช่น ย้ายจาก 100 → 50 ได้ทันที) — แถบสีซ้ายบอกกลุ่ม</p>
+            </div>
+            <div id="reorderListWrap" class="p-4 bg-slate-100 flex-grow overflow-y-auto">
                 <ul id="reorderList" class="space-y-2">
                     <!-- รายการจะถูกแทรกที่นี่ด้วย JS -->
                 </ul>
             </div>
-            <div class="p-4 border-t bg-white flex justify-end gap-3">
+            <div class="p-4 border-t bg-white flex justify-end gap-3 shrink-0">
                 <button onclick="closeReorderModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">ยกเลิก</button>
                 <button id="reorderSaveBtn" onclick="applyReorder()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all opacity-50">บันทึกตำแหน่ง</button>
             </div>
@@ -1148,10 +1222,7 @@
             }
 
             wrapper.querySelector('.ref-menu')?.classList.add('hidden');
-            if (typeof showSaveStatus === 'function') {
-                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
-            }
-            if (typeof saveDraft === 'function') saveDraft();
+            if (typeof markUnsaved === 'function') markUnsaved();
         }
 
         document.addEventListener('click', (e) => {
@@ -1428,7 +1499,7 @@
             document.addEventListener('change', (e) => {
                 if (e.target.tagName === 'SELECT') {
                     updateResultColor(e.target);
-                    showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                    markUnsaved();
                 }
             });
             
@@ -1447,11 +1518,21 @@
                 lastScrollY = currentScrollY;
             });
             
-            setInterval(saveDraft, 3000); 
-            
+            // 🌟 A: เซฟแบบ debounce — พิมพ์/แก้แล้วเซฟหลังหยุด ~1.5 วิ (ผ่าน markUnsaved)
             document.getElementById('exportWrapper').addEventListener('input', () => {
-                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                markUnsaved();
             });
+
+            // 🌟 A: เฝ้าดูการเปลี่ยนโครงสร้าง (เพิ่ม/ลบ block, รูป) ให้ตั้ง dirty อัตโนมัติ
+            startDomDirtyObserver();
+
+            // 🌟 A: ตัวกันพลาด — เซฟทุก ๆ 8 วิ เฉพาะตอนยังมีของค้าง (ไม่เขียนตอน idle)
+            setInterval(() => { if (draftDirty) flushDraftSave(); }, DRAFT_BACKSTOP_MS);
+
+            // 🌟 A: ก่อนปิด/สลับแท็บ — รีบเซฟของที่ค้างทันที
+            const flushOnLeave = () => { if (draftDirty) { try { flushDraftSave(); } catch (e) {} } };
+            window.addEventListener('pagehide', flushOnLeave);
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushOnLeave(); });
 
             initDrawingCanvas();
 
@@ -1688,6 +1769,100 @@
 
         const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block';
 
+        // 🌟 มาร์คว่ามีการเปลี่ยนลำดับ → เปิดปุ่ม "บันทึกตำแหน่ง" ให้เป็นสีปกติ
+        function markReorderChanged() {
+            reorderHasChanges = true;
+            const saveBtn = document.getElementById('reorderSaveBtn');
+            if (saveBtn) saveBtn.classList.remove('opacity-50');
+        }
+
+        // 🌟 ใส่เลขลำดับ (1..N) ให้ทุกแถวใน modal + อัปเดตตัวนับรวมบน header
+        function renumberReorderList() {
+            const list = document.getElementById('reorderList');
+            if (!list) return;
+            const children = Array.from(list.children);
+            children.forEach((li, i) => {
+                const badge = li.querySelector('.reorder-pos-badge');
+                if (badge) badge.textContent = String(i + 1);
+            });
+            const countBadge = document.getElementById('reorderCountBadge');
+            if (countBadge) countBadge.textContent = children.length ? `(${children.length} รายการ)` : '';
+        }
+
+        // 🌟 ย้ายแถวไปยังตำแหน่งที่ระบุ (1-based) แบบทันที + ไฮไลท์ + เลื่อนให้เห็น
+        function moveLiToPosition(li, pos1) {
+            const list = document.getElementById('reorderList');
+            if (!list || !li) return;
+            const others = Array.from(list.children).filter(x => x !== li);
+            const idx = Math.max(0, Math.min(others.length, pos1 - 1));
+            const ref = others[idx] || null;
+            list.insertBefore(li, ref);
+            renumberReorderList();
+            li.classList.remove('reorder-just-moved');
+            void li.offsetWidth; // restart animation
+            li.classList.add('reorder-just-moved');
+            setTimeout(() => li.classList.remove('reorder-just-moved'), 1200);
+            try { li.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+        }
+
+        // 🌟 คลิกเลขลำดับ → กลายเป็นช่องพิมพ์ตัวเลข → Enter เพื่อย้ายไปตำแหน่งนั้น
+        function startPosEdit(btn, ev) {
+            if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+            const li = btn.closest('li');
+            if (!li) return;
+            const list = document.getElementById('reorderList');
+            const total = list.children.length;
+            const cur = Array.from(list.children).indexOf(li) + 1;
+            if (li.querySelector('.reorder-pos-input')) return;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1';
+            input.max = String(total);
+            input.value = String(cur);
+            input.className = 'reorder-pos-input';
+            btn.style.display = 'none';
+            btn.parentNode.insertBefore(input, btn);
+            input.focus();
+            input.select();
+
+            let done = false;
+            const cleanup = () => { if (input.parentNode) input.remove(); btn.style.display = ''; };
+            const commit = () => {
+                if (done) return; done = true;
+                let t = parseInt(input.value, 10);
+                cleanup();
+                if (!isNaN(t)) {
+                    t = Math.max(1, Math.min(total, t));
+                    if (t !== cur) { moveLiToPosition(li, t); markReorderChanged(); }
+                    else { renumberReorderList(); }
+                } else {
+                    renumberReorderList();
+                }
+            };
+            const cancel = () => { if (done) return; done = true; cleanup(); renumberReorderList(); };
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commit(); }
+                else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+            });
+            input.addEventListener('blur', commit);
+        }
+
+        // 🌟 สลับโหมดเต็มจอของ modal จัดเรียง
+        let reorderIsFullscreen = false;
+        function toggleReorderFullscreen() {
+            const panel = document.getElementById('reorderPanel');
+            const btn = document.getElementById('reorderFullscreenBtn');
+            if (!panel) return;
+            reorderIsFullscreen = !reorderIsFullscreen;
+            panel.classList.toggle('reorder-fs', reorderIsFullscreen);
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = reorderIsFullscreen ? 'fa-solid fa-compress text-lg' : 'fa-solid fa-expand text-lg';
+                btn.title = reorderIsFullscreen ? 'ย่อหน้าต่าง' : 'ขยายเต็มจอ';
+            }
+        }
+
         async function openReorderModal() {
             const list = document.getElementById('reorderList');
             list.innerHTML = '';
@@ -1780,6 +1955,7 @@
                     }
                     li.setAttribute('data-sub-id', item.subBlock.id);
                     li.innerHTML = `
+                        <button onclick="startPosEdit(this, event)" class="reorder-pos-badge" title="คลิกเพื่อพิมพ์ตำแหน่งใหม่">0</button>
                         <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
                             <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
                             <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${itemLabel}">${itemLabel}</span>
@@ -1791,6 +1967,7 @@
                 } else {
                     li.setAttribute('data-kind', 'module');
                     li.innerHTML = `
+                        <button onclick="startPosEdit(this, event)" class="reorder-pos-badge" title="คลิกเพื่อพิมพ์ตำแหน่งใหม่">0</button>
                         <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
                             <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
                             <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${groupLabel}">${groupLabel}</span>
@@ -1800,8 +1977,12 @@
                         </button>
                     `;
                 }
+                li.classList.add('gap-2');
                 list.appendChild(li);
             });
+
+            // 🌟 ใส่เลขลำดับให้ทุกแถว + อัปเดตจำนวนรวมบน header
+            renumberReorderList();
 
             document.getElementById('reorderModal').classList.remove('hidden');
             document.getElementById('reorderModal').classList.add('flex');
@@ -1815,13 +1996,12 @@
                 forceFallback: true,
                 fallbackTolerance: 5,
                 onUpdate: function(evt) {
-                    // 🌟 user เลื่อนรายการแล้ว — ให้ปุ่ม "บันทึกตำแหน่ง" กลับมาเป็นสีปกติ
-                    reorderHasChanges = true;
-                    const saveBtn = document.getElementById('reorderSaveBtn');
-                    if (saveBtn) saveBtn.classList.remove('opacity-50');
+                    // 🌟 user เลื่อนรายการแล้ว — ให้ปุ่ม "บันทึกตำแหน่ง" กลับมาเป็นสีปกติ + อัปเดตเลขลำดับ
+                    markReorderChanged();
+                    renumberReorderList();
                 },
                 onEnd: function(evt) {
-                    console.log('[Sortable] drag end: moved from', evt.oldIndex, 'to', evt.newIndex);
+                    renumberReorderList();
                 }
             });
 
@@ -1979,6 +2159,7 @@
             console.log('[applyReorder] moduleContainer children:', Array.from(container.children).map(c => c.id || c.className));
             console.log('========== applyReorder() done ==========');
 
+            markUnsaved(); // 🌟 จัดเรียง = การแก้ที่ยังไม่บันทึกเข้า history
             saveDraft();
             // 🌟 ไม่ปิด modal — ให้ user กดปุ่ม X ปิดเองตามต้องการ
             showSaveStatus('<i class="fa-solid fa-check"></i> จัดเรียงสำเร็จ');
@@ -2008,6 +2189,81 @@
             });
         }
 
+        // ============================================================
+        // 🌟 ระบบบันทึก (A + B)
+        //   A) Autosave แบบ debounce + dirty-flag — เขียน draft เฉพาะตอนมีการแก้จริง
+        //      และหลังหยุดแก้ ~1.5 วิ (ไม่ใช่ทุก 3 วิตายตัว) → ลดอาการหน่วงในรายงานหลายร้อยหน้า
+        //   B) แยก "บันทึกเข้าประวัติ (history)" ออกจาก autosave — history จะถูกเขียน
+        //      เฉพาะตอนผู้ใช้กด "บันทึก" หรือก่อน export เท่านั้น (ไม่ sync ทุก autosave)
+        // ============================================================
+        let draftDirty = false;      // มีการแก้ที่ยังไม่ได้เขียนลง draft (autosave)
+        let historyDirty = false;    // มีการแก้ที่ยังไม่ได้บันทึกเข้า history (ใช้ตอนถามก่อนเปลี่ยนงาน)
+        let suppressDirty = false;   // true ระหว่างที่โค้ดแก้ DOM เอง (โหลด/พิมพ์/sync) — อย่านับเป็นการแก้ของผู้ใช้
+        let draftSaveTimer = null;
+        let domDirtyObserver = null;
+        const DRAFT_DEBOUNCE_MS = 1500;   // หยุดพิมพ์กี่มิลลิวินาทีถึงเซฟ
+        const DRAFT_BACKSTOP_MS = 8000;   // ตัวกันพลาด: ถ้ายังมีของค้าง เซฟทุก ๆ เท่านี้
+
+        // สร้าง object สำหรับเก็บลง draft/history (sync ค่าจาก DOM ก่อนอ่าน innerHTML)
+        function buildDraftObject() {
+            suppressDirty = true; // กัน observer นับการ sync ค่าเป็นการแก้
+            syncDOMValues();
+            const scopeItemsData = [];
+            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
+                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
+            });
+            const obj = {
+                globals: {
+                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
+                    customScopes: scopeItemsData
+                },
+                html: document.getElementById('exportWrapper').innerHTML
+            };
+            setTimeout(() => { suppressDirty = false; }, 0); // ปลดล็อกหลัง mutation ของ syncDOMValues ถูกประมวลผลแล้ว
+            return obj;
+        }
+
+        // 🌟 เรียกเมื่อมี "การแก้ไขจริงจากผู้ใช้" — ตั้ง dirty + ตั้งเวลาเซฟแบบ debounce
+        function markUnsaved() {
+            if (suppressDirty) return;
+            draftDirty = true;
+            historyDirty = true;
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            scheduleDraftSave();
+        }
+
+        function scheduleDraftSave() {
+            if (draftSaveTimer) clearTimeout(draftSaveTimer);
+            draftSaveTimer = setTimeout(() => { flushDraftSave(); }, DRAFT_DEBOUNCE_MS);
+        }
+
+        async function flushDraftSave() {
+            if (draftSaveTimer) { clearTimeout(draftSaveTimer); draftSaveTimer = null; }
+            if (!draftDirty) return;
+            await saveDraft();
+        }
+
+        // เคลียร์สถานะ "ยังไม่บันทึกเข้าประวัติ" (เรียกหลังบันทึกเข้า history / หลังโหลดงาน)
+        function markHistorySynced() {
+            historyDirty = false;
+        }
+
+        // เริ่มเฝ้าดูการเปลี่ยนโครงสร้าง DOM (เพิ่ม/ลบ block, รูป, ฯลฯ) เป็น dirty อัตโนมัติ
+        //   — ครอบคลุมการแก้เชิงโครงสร้างทุกแบบโดยไม่ต้องไปแก้ทุกฟังก์ชัน add/remove
+        //   — การพิมพ์ (input) ไม่ทำให้ childList เปลี่ยน จึงไม่ชนกัน
+        function startDomDirtyObserver() {
+            const target = document.getElementById('exportWrapper');
+            if (!target || domDirtyObserver) return;
+            domDirtyObserver = new MutationObserver(() => {
+                if (suppressDirty) return;
+                draftDirty = true;
+                historyDirty = true;
+                scheduleDraftSave();
+            });
+            domDirtyObserver.observe(target, { childList: true, subtree: true });
+        }
+
         async function saveDraft() {
             // 🌟 กันบั๊ก: ถ้า DOM กำลังถูก mutate เพื่อพิมพ์ (print mode) — อย่าบันทึก
             //    ไม่งั้น autosave จะเก็บสถานะที่มี .hidden, display:none, print-text-span, tmp-split-wrapper
@@ -2017,36 +2273,30 @@
                 return;
             }
 
-            syncDOMValues();
-
-            const scopeItemsData = [];
-            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
-                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
-            });
-
-            const draft = {
-                globals: {
-                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
-                    customScopes: scopeItemsData
-                },
-                html: document.getElementById('exportWrapper').innerHTML
-            };
+            const draft = buildDraftObject();
 
             try {
                 await localforage.setItem('smart_pm_draft', draft);
-
-                // 🌟 ถ้ารายงานปัจจุบันถูก "บันทึก" เข้า history แล้ว → sync เข้า history ทุกครั้งด้วย
-                if (currentHistoryId !== null) {
-                    await syncCurrentToHistory(draft);
-                }
-
+                draftDirty = false; // 🌟 B: ไม่ sync เข้า history ที่นี่แล้ว — history เขียนเฉพาะตอนกด "บันทึก"
                 const time = new Date().toLocaleTimeString('th-TH');
-                showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกล่าสุด ${time}`);
+                showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกร่างล่าสุด ${time}`);
             } catch (e) {
                 console.error("Save error:", e);
                 showSaveStatus(`<i class="fa-solid fa-circle-exclamation"></i> บันทึกไม่สำเร็จ`, false);
             }
+        }
+
+        // 🌟 B: เขียนสถานะปัจจุบันเข้า history item ที่ผูกอยู่ (เรียกตอนกด "บันทึก" / ก่อน export)
+        async function commitCurrentToHistory() {
+            if (currentHistoryId === null) return false;
+            const draft = buildDraftObject();
+            try {
+                await localforage.setItem('smart_pm_draft', draft); // อัปเดต draft ให้ตรงกันด้วย
+                draftDirty = false;
+            } catch (e) { console.warn('save draft during commit failed', e); }
+            await syncCurrentToHistory(draft);
+            markHistorySynced();
+            return true;
         }
 
         // ============================================================
@@ -2348,6 +2598,7 @@
             }
             await saveHistory(history);
             await setCurrentHistoryId(snapshot.id);
+            markHistorySynced(); // 🌟 B: บันทึกเข้า history แล้ว → ไม่ค้าง
             return snapshot;
         }
 
@@ -2359,6 +2610,7 @@
             applyDataToDOM(item);
             await setCurrentHistoryId(id);
             await saveDraft();
+            markHistorySynced(); // 🌟 B: เพิ่งโหลดมา = ตรงกับ history แล้ว ยังไม่มีการแก้
             showToast(`โหลด "${item.name}" แล้ว — แก้ไขได้เลย`);
             return true;
         }
@@ -2405,16 +2657,28 @@
             });
         }
 
-        // เรียกก่อน "เปลี่ยนงาน" (โหลดงานอื่น / เริ่มใหม่) — กันงานใหม่ที่ยังไม่ได้บันทึกหาย
+        // เรียกก่อน "เปลี่ยนงาน" (โหลดงานอื่น / เริ่มใหม่) — กันงานที่ยังไม่ได้บันทึกหาย
+        //   🌟 B: ถามทั้งสองกรณี
+        //     1) งานใหม่ที่ยังไม่ผูก history แต่มีเนื้อหา
+        //     2) งานที่ผูก history แล้ว แต่มีการแก้ที่ยังไม่ได้บันทึกเข้า history (historyDirty)
         async function proceedSwitch() {
-            if (currentHistoryId === null && reportHasContent()) {
+            const newUnsaved = (currentHistoryId === null && reportHasContent());
+            const linkedUnsaved = (currentHistoryId !== null && historyDirty);
+            if (newUnsaved || linkedUnsaved) {
                 const choice = await confirmUnsavedChanges();
                 if (choice === 'cancel') return false;
                 if (choice === 'save') {
-                    const auto = deriveAutoName();
-                    await commitSnapshot(auto);
-                    showToast(`บันทึกงานปัจจุบันเป็น "${auto}" แล้ว`);
+                    if (currentHistoryId !== null) {
+                        // งานนี้ผูก history อยู่แล้ว → อัปเดตเข้า history เดิม
+                        await commitCurrentToHistory();
+                        showToast('บันทึกงานปัจจุบันเข้าประวัติแล้ว');
+                    } else {
+                        const auto = deriveAutoName();
+                        await commitSnapshot(auto);
+                        showToast(`บันทึกงานปัจจุบันเป็น "${auto}" แล้ว`);
+                    }
                 }
+                // ถ้าเลือก "ไม่บันทึก" → ปล่อยให้เปลี่ยนงานได้เลย (งานปัจจุบันจะถูกทับ)
             }
             return true;
         }
@@ -2423,8 +2687,8 @@
         async function autoSnapshotOnExport() {
             try {
                 if (currentHistoryId !== null) {
-                    // ผูกกับ history อยู่แล้ว → sync ให้เป็นล่าสุด
-                    await saveDraft();
+                    // ผูกกับ history อยู่แล้ว → เขียนเข้า history ให้เป็นล่าสุด (B: autosave ไม่ sync แล้ว)
+                    await commitCurrentToHistory();
                     return;
                 }
                 if (!reportHasContent()) return;
@@ -2621,6 +2885,7 @@
         }
 
         function applyDataToDOM(draft) {
+            suppressDirty = true; // 🌟 โค้ดกำลังเขียน DOM เอง — อย่านับเป็นการแก้ของผู้ใช้
             selectedModules = draft.globals.selectedModules || [];
             breakerCount = draft.globals.breakerCount || 0;
             groupCounts = draft.globals.groupCounts || { bf: 0, cl: 0, af: 0, blk: 0 };
@@ -2746,6 +3011,14 @@
 
             // 🌟 ใส่ contenteditable ให้ .block-base-title ทุกตัว (เผื่อ draft เก่าก่อนฟีเจอร์นี้ยังไม่มี attribute)
             if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable();
+
+            // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการโหลดถูกประมวลผลเสร็จ (observer callback เป็น async)
+            //    แล้วเคลียร์ flag dirty — เพราะเพิ่งโหลดมา = ตรงกับที่บันทึกไว้ ยังไม่มีการแก้
+            setTimeout(() => {
+                suppressDirty = false;
+                draftDirty = false;
+                historyDirty = false;
+            }, 0);
         }
 
         // 🌟 ใส่ contenteditable + spellcheck=false ให้ .block-base-title ทุกตัวที่ยังไม่มี
@@ -2863,6 +3136,7 @@
                 });
             });
 
+            markUnsaved(); // 🌟 สร้าง layout ใหม่ = การแก้ที่ยังไม่บันทึกเข้า history
             await saveDraft();
             showSaveStatus('<i class="fa-solid fa-check-circle"></i> สร้าง Layout ใหม่สำเร็จ');
         }
@@ -3359,6 +3633,7 @@
                     e.preventDefault();
                     e.stopPropagation();
                     action.fn();
+                    markUnsaved(); // 🌟 เพิ่มหัวข้อ = การแก้ที่ยังไม่บันทึกเข้า history
                     saveDraft();
                     showToast(`เพิ่ม ${action.label} แล้ว`);
                     // 🌟 เลื่อนหน้ารายงานไปยัง block ที่เพิ่งเพิ่ม
@@ -5728,13 +6003,14 @@
         // 🌟 🌟 🌟 🌟 🌟
 
         function prepareDocumentForPrint(isNative = false) {
+            suppressDirty = true; // 🌟 การ mutate เพื่อพิมพ์ ไม่ใช่การแก้ของผู้ใช้
             const scrollArea = document.getElementById('a4ScrollArea');
-            if (scrollArea) scrollArea.scrollTo(0, 0); 
-            window.scrollTo(0, 0); 
-            
+            if (scrollArea) scrollArea.scrollTo(0, 0);
+            window.scrollTo(0, 0);
+
             const wrapper = document.querySelector('.a4-wrapper');
             const element = document.getElementById('reportDocument');
-            wrapper.classList.add('preparing-pdf'); 
+            wrapper.classList.add('preparing-pdf');
 
             if (!isNative) {
                 document.body.classList.add('html2pdf-body-lock'); 
@@ -6076,6 +6352,10 @@
             // 10. webFooter เปิดกลับ
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = '';
+
+            // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการ restore ถูกประมวลผลเสร็จ
+            //    (อย่าตั้ง dirty เพราะการพิมพ์/คืนค่าไม่ใช่การแก้ของผู้ใช้)
+            setTimeout(() => { suppressDirty = false; }, 0);
         }
 
         // 🌟 Retrofit: inject ปุ่ม "ลบชุดนี้" ให้ block ที่ load มาจาก draft/JSON เก่าแต่ยังไม่มีปุ่ม
