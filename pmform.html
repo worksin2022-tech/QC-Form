@@ -365,6 +365,41 @@
         .sidebar-quick-add-btn { margin-right: 0.6rem; }
         .sidebar-quick-add-btn:hover { transform: scale(1.08); }
 
+        /* 🌟 .block-base-title แบบ contenteditable — ให้รู้สึก "พิมพ์ได้" เวลา hover/focus */
+        .block-base-title[contenteditable="true"] {
+            cursor: text;
+            padding: 1px 4px;
+            border-radius: 4px;
+            border-bottom: 1px dashed transparent;
+            transition: background 0.2s ease, border-color 0.2s ease;
+            min-width: 60px;
+        }
+        .block-base-title[contenteditable="true"]:hover {
+            background: #f8fafc;
+            border-bottom-color: #cbd5e1;
+        }
+        .block-base-title[contenteditable="true"]:focus {
+            background: #fff7ed;
+            border-bottom-color: #f97316;
+            outline: none;
+        }
+        .block-base-title[contenteditable="true"]:empty:before {
+            content: 'พิมพ์ชื่อหัวข้อ...';
+            color: #94a3b8;
+            font-weight: normal;
+            pointer-events: none;
+        }
+        /* ตอนพิมพ์ — ไม่มี outline/border ใน PDF */
+        @media print {
+            .block-base-title[contenteditable="true"] {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .block-base-title[contenteditable="true"]:empty:before { content: ''; }
+        }
+
         /* 🌟 ไฮไลท์รายการที่ user กำลังดูอยู่ใน modal จัดเรียง */
         .reorder-current-item {
             background: linear-gradient(to right, #eef2ff, #ffffff) !important;
@@ -1255,6 +1290,71 @@
             }, 150);
         }
 
+        // 🌟 อัปเดต label ของรายการใน modal จัดเรียงให้ตรงกับ block element (ใช้ตอน user แก้ชื่อหัวข้อสด)
+        function updateReorderModalLabel(block) {
+            const reorderModal = document.getElementById('reorderModal');
+            if (!reorderModal || reorderModal.classList.contains('hidden')) return;
+            const list = document.getElementById('reorderList');
+            if (!list || !block || !block.id) return;
+            let li = null;
+            if (block.id === 'mod_calibration') {
+                li = list.querySelector('li[data-kind="module"][data-mod-id="mod_calibration"]');
+            } else {
+                li = list.querySelector(`li[data-sub-id="${block.id}"]`);
+            }
+            if (!li) return;
+            const modId = li.getAttribute('data-mod-id');
+            let newLabel;
+            try { newLabel = getReorderItemLabel(modId, block); } catch (e) { return; }
+            const labelSpan = li.querySelector('.reorder-handle span[title]');
+            if (labelSpan && newLabel) {
+                labelSpan.textContent = newLabel;
+                labelSpan.setAttribute('title', newLabel);
+            }
+        }
+
+        // 🌟 Event delegation: ฟังการแก้ไขช่องที่มีผลต่อ "ชื่อหัวข้อ" แล้วอัปเดต TOC + reorder modal สด
+        //    - .block-base-title (contenteditable span/h3) — ชื่อหลักของหัวข้อ
+        //    - .photo-group-title-input (input)
+        //    - .eq-panel-input (input ชื่อตู้)
+        //    - input ใน <h3> (เช่น phase "Before/After")
+        document.addEventListener('input', (e) => {
+            const target = e.target;
+            if (!target || !target.classList) return;
+            const isTitleEdit = (
+                target.classList.contains('block-base-title') ||
+                target.classList.contains('photo-group-title-input') ||
+                target.classList.contains('eq-panel-input') ||
+                (target.tagName === 'INPUT' && target.closest && target.closest('h3'))
+            );
+            if (!isTitleEdit) return;
+            const block = (target.closest && (target.closest('[id^="block_"]') || target.closest('#mod_calibration')));
+            if (!block) return;
+            // debounce ป้องกันยิงถี่เกินไป
+            clearTimeout(window.__titleUpdateTimer);
+            window.__titleUpdateTimer = setTimeout(() => {
+                try { updateTOC(); } catch (err) {}
+                try { updateReorderModalLabel(block); } catch (err) {}
+            }, 120);
+        });
+
+        // 🌟 contenteditable .block-base-title — กด Enter ให้ blur (ไม่ขึ้นบรรทัดใหม่)
+        document.addEventListener('keydown', (e) => {
+            if (e.target && e.target.classList && e.target.classList.contains('block-base-title') && e.key === 'Enter') {
+                e.preventDefault();
+                if (typeof e.target.blur === 'function') e.target.blur();
+            }
+        });
+
+        // 🌟 contenteditable .block-base-title — paste ให้ใส่ plain text เท่านั้น (ไม่เอา formatting)
+        document.addEventListener('paste', (e) => {
+            const t = e.target;
+            if (!t || !t.classList || !t.classList.contains('block-base-title')) return;
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            try { document.execCommand('insertText', false, text); } catch (err) {}
+        });
+
         let moduleTitles = {
             'mod_before': 'Photograph: Before',
             'mod_cleaning': 'Photograph: Cleaning',
@@ -1314,6 +1414,9 @@
 
             // 🌟 อัปเดต sidebar quick-add buttons
             renderSidebarQuickAdd();
+
+            // 🌟 ใส่ contenteditable ให้ .block-base-title ที่ render มา (เผื่อ draft เก่าไม่มี attribute)
+            if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable();
 
             // 🌟 แสดง indicator "กำลังแก้: [ชื่อ]" ถ้ามี currentHistoryId
             updateCurrentHistoryIndicator();
@@ -2640,6 +2743,22 @@
 
             // 🌟 อัปเดต sidebar quick-add buttons หลังโหลด draft
             if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
+
+            // 🌟 ใส่ contenteditable ให้ .block-base-title ทุกตัว (เผื่อ draft เก่าก่อนฟีเจอร์นี้ยังไม่มี attribute)
+            if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable();
+        }
+
+        // 🌟 ใส่ contenteditable + spellcheck=false ให้ .block-base-title ทุกตัวที่ยังไม่มี
+        //    เรียกหลังโหลด draft / หลัง rebuild — กันบั๊กกรณี draft เก่าไม่มี attribute
+        function ensureBaseTitleEditable() {
+            document.querySelectorAll('.block-base-title').forEach(el => {
+                if (el.getAttribute('contenteditable') !== 'true') {
+                    el.setAttribute('contenteditable', 'true');
+                }
+                if (!el.hasAttribute('spellcheck')) {
+                    el.setAttribute('spellcheck', 'false');
+                }
+            });
         }
 
         // 🌟 Rebuild Layout — สร้าง HTML ของ moduleContainer ใหม่จาก template ปัจจุบัน
@@ -3692,7 +3811,7 @@
                     <div class="flex justify-between items-center mb-3">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-600"><i class="fa-solid fa-clipboard-check text-white"></i></div>
-                            <h3 class="text-xl font-bold text-slate-800 block-base-title">General Check</h3>
+                            <h3 class="text-xl font-bold text-slate-800 block-base-title" contenteditable="true" spellcheck="false">General Check</h3>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addGeneralCheckRow('tbody_${prefix}')" class="bg-white border-2 border-slate-400 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มรายการ</button>
@@ -3783,7 +3902,7 @@
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700"><span class="font-bold text-[22px] font-serif leading-none text-white">&Omega;</span></div>
                             <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <span class="block-base-title">Insulation Resistance Test</span>
+                                <span class="block-base-title" contenteditable="true" spellcheck="false">Insulation Resistance Test</span>
                                 <span class="text-slate-500 font-normal ml-1">(</span>
                                 <!-- 🌟 เพิ่มเหตุการณ์ oninput เพื่อให้อัปเดตสถานะแบบเรียลไทม์ 🌟 -->
                                 <input type="text" placeholder="ระบุช่วง..." value="Before" class="paper-input text-lg font-bold text-orange-600 w-28 text-center px-1" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
@@ -3871,7 +3990,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0">
                             <div class="section-icon bg-slate-700"><i class="fa-solid fa-bolt text-white"></i></div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Dielectric Strength Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Dielectric Strength Test</h3>
                         </div>
                         <button onclick="removeDielectricBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
@@ -3944,7 +4063,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8" /><path d="M5 12h14" /><path d="M8 16h8" /><path d="M10 20h4" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Grounding Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Grounding Test</h3>
                         </div>
                         <button onclick="removeGroundingBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
@@ -4009,7 +4128,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Ground Continuity</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Ground Continuity</h3>
                         </div>
                         <button onclick="removeGcBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
@@ -4068,7 +4187,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="6" y2="12" /><circle cx="8" cy="12" r="2" /><line x1="8" y1="9" x2="15" y2="4" /><circle cx="16" cy="12" r="2" /><line x1="18" y1="12" x2="23" y2="12" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 block-base-title">Contact Resistance Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 block-base-title" contenteditable="true" spellcheck="false">Contact Resistance Test</h3>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="addBreakerRow('tbody_${prefix}', 'photoSec_${prefix}')" class="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-bold no-print shadow-sm transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มเบรกเกอร์</button>
@@ -4137,7 +4256,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Trip Unit Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Trip Unit Test</h3>
                         </div>
                         <button onclick="removeTripBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
@@ -4381,7 +4500,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 4,22 22,22" /><polyline points="4,6 10,12 10,16 16,16 16,19 22,19" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Protection Relay Test</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Protection Relay Test</h3>
                         </div>
                         <button onclick="removeRelayBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
@@ -4545,7 +4664,7 @@
                             <div class="section-icon bg-slate-700">
                                 <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title">Capacitor Bank Check</h3>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">Capacitor Bank Check</h3>
                         </div>
                         <button onclick="removeCapBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
                     </div>
