@@ -2702,10 +2702,42 @@ document.getElementById('btnHistory').addEventListener('click', ()=>showStartupM
 document.getElementById('btnSave').addEventListener('click', ()=>saveCurrentToHistory(false));
 document.getElementById('btnHome').addEventListener('click', async ()=>{
   // Same guard as switching projects — warn before discarding unsaved edits.
-  // proceedSwitch() returns false if user picks "Cancel", or returns true
-  // after they either Save or Discard.
   if(!(await proceedSwitch())) return;
-  window.location.href = '../index.html';
+  // Build candidate URLs ordered by likelihood for our deployment:
+  //   1. ../index.html  — file:// double-click (most common)
+  //   2. ./index.html   — server rooted at the report's folder
+  //   3. /index.html    — server rooted higher
+  const candidates = [
+    new URL('../index.html', window.location.href).href,
+    new URL('./index.html',  window.location.href).href,
+    new URL('/index.html',   window.location.origin || window.location.href).href
+  ];
+  // De-dup (file:// often collapses all three into the same URL)
+  const unique = [...new Set(candidates)];
+  console.log('[home] trying candidates:', unique);
+
+  // On file:// fetch may throw or always succeed regardless of whether the file
+  // exists, so HEAD-checking is unreliable. Just navigate to the first guess
+  // (parent's index.html) — this is the actual install layout.
+  if(window.location.protocol === 'file:'){
+    window.location.href = unique[0];
+    return;
+  }
+
+  // On http(s):// HEAD-check each candidate and navigate to the first hit.
+  for(const url of unique){
+    try{
+      const r = await fetch(url, {method:'HEAD'});
+      if(r.ok){ window.location.href = url; return; }
+    }catch(e){ /* try next */ }
+  }
+  // Nothing found — friendly fallback: ask the user
+  const retry = await confirmDialog({
+    title:'หา index.html ไม่เจอ',
+    message:`ตำแหน่งที่ลอง:<br><code style="font-size:11px;color:#475569">${unique.join('<br>')}</code><br><br>ต้องการเปิด <b>หน้านี้/index.html</b> เป็นทางเลือกสุดท้ายไหม?`,
+    confirmText:'ลอง', cancelText:'ยกเลิก'
+  });
+  if(retry) window.location.href = unique[0];
 });
 
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
