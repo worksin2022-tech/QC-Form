@@ -1,0 +1,3102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Thermoscan Report — Avatar Electric</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+:root{
+  --c-bg:#f4f5f7;
+  --c-card:#ffffff;
+  --c-border:#e2e5ea;
+  --c-text:#1f2937;
+  --c-text-light:#6b7280;
+  --c-primary:#2563eb;
+  --c-primary-dark:#1d4ed8;
+  --c-accent:#ea580c;
+  --c-success:#16a34a;
+  --c-warn:#ca8a04;
+  --c-danger:#dc2626;
+  --c-state-a:#16a34a;
+  --c-state-b:#eab308;
+  --c-state-c:#ea580c;
+  --c-state-d:#dc2626;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Sarabun','Inter',sans-serif;color:var(--c-text);background:var(--c-bg);font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+img{max-width:100%;display:block}
+
+/* === App shell === */
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#0f172a;color:#fff;box-shadow:var(--shadow-md)}
+.topbar .title{font-weight:700;font-size:16px;letter-spacing:.2px}
+.topbar .title small{font-weight:400;opacity:.7;margin-left:8px;font-size:12px}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.topbar-actions button{background:rgba(255,255,255,.1);color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;transition:background .15s}
+.topbar-actions button:hover{background:rgba(255,255,255,.2)}
+
+/* === Tabs === */
+.tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--c-border);padding:0 16px;overflow-x:auto}
+.tab{padding:14px 18px;font-size:14px;font-weight:500;color:var(--c-text-light);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--c-text)}
+.tab.active{color:var(--c-primary);border-color:var(--c-primary);font-weight:600}
+.tab .num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:#e5e7eb;color:var(--c-text-light);border-radius:50%;font-size:11px;font-weight:700;margin-right:6px;transition:all .15s}
+.tab.active .num{background:var(--c-primary);color:#fff}
+
+/* === Page panels === */
+.panel{display:none;padding:20px;max-width:1200px;margin:0 auto;width:100%}
+.panel.active{display:block}
+.panel h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.panel .desc{color:var(--c-text-light);font-size:13px;margin-bottom:20px}
+
+/* === Card === */
+.card{background:var(--c-card);border:1px solid var(--c-border);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card h3{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3 .dot{width:6px;height:6px;background:var(--c-primary);border-radius:50%}
+
+/* === Form === */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--c-text-light);margin-bottom:5px}
+.field input[type=text],.field input[type=date],.field input[type=password],.field input[type=number],.field select,.field textarea{
+  width:100%;padding:9px 12px;border:1px solid var(--c-border);border-radius:7px;background:#fff;font-size:14px;transition:border-color .15s,box-shadow .15s
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--c-primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.field textarea{resize:vertical;min-height:60px}
+.field-row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.field-row.three{grid-template-columns:repeat(3,1fr)}
+@media(max-width:640px){.field-row,.field-row.three{grid-template-columns:1fr}}
+
+/* === Buttons === */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:7px;font-size:13px;font-weight:600;transition:all .15s;border:1px solid transparent}
+.btn-primary{background:var(--c-primary);color:#fff}
+.btn-primary:hover{background:var(--c-primary-dark)}
+.btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
+.btn-secondary{background:#fff;color:var(--c-text);border-color:var(--c-border)}
+.btn-secondary:hover{background:#f9fafb}
+.btn-accent{background:var(--c-accent);color:#fff}
+.btn-accent:hover{background:#c2410c}
+.btn-ghost{background:transparent;color:var(--c-text-light)}
+.btn-ghost:hover{background:#f3f4f6;color:var(--c-text)}
+.btn-danger{background:#fee2e2;color:var(--c-danger)}
+.btn-danger:hover{background:#fecaca}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-lg{padding:12px 22px;font-size:14px}
+
+/* === Drop zone === */
+.dropzone{
+  border:2px dashed #cbd5e1;border-radius:10px;padding:30px;text-align:center;background:#fafbfc;
+  transition:all .15s;cursor:pointer;position:relative
+}
+.dropzone:hover{border-color:var(--c-primary);background:#eff6ff}
+.dropzone.dragging{border-color:var(--c-primary);background:#dbeafe}
+.dropzone .icon{font-size:36px;color:#94a3b8;margin-bottom:10px}
+.dropzone .label{font-weight:600;color:var(--c-text);margin-bottom:4px}
+.dropzone .hint{font-size:12px;color:var(--c-text-light)}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+/* === File summary === */
+.file-summary{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding:12px;background:#f9fafb;border-radius:7px;font-size:13px}
+.file-summary .item{display:flex;gap:6px;align-items:center}
+.file-summary .item strong{color:var(--c-primary)}
+
+/* === Building/Cabinet review === */
+.building-card{margin-bottom:20px}
+.building-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--c-border)}
+.building-head h3{font-size:16px;margin:0;display:flex;align-items:center;gap:8px}
+.building-head .badge{background:#dbeafe;color:var(--c-primary-dark);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+
+.cabinet-box{background:#f9fafb;border:1px solid var(--c-border);border-radius:8px;padding:14px;margin-bottom:12px}
+.cabinet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;user-select:none}
+.cabinet-head .name{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.cabinet-head .name input{font-weight:600;padding:4px 8px;border:1px solid transparent;background:transparent;border-radius:4px;font-size:14px;width:160px}
+.cabinet-head .name input:hover,.cabinet-head .name input:focus{border-color:var(--c-border);background:#fff;outline:none}
+.cabinet-head .meta{font-size:12px;color:var(--c-text-light)}
+.cabinet-head .chev{transition:transform .15s}
+.cabinet-box.collapsed .chev{transform:rotate(-90deg)}
+.cabinet-box.collapsed .point-list{display:none}
+/* Building collapse — hide all cabinets when building header chev clicked */
+.bld-chev{transition:transform .15s;font-size:14px;color:var(--c-text-light);margin-left:6px}
+.building-card.collapsed .bld-chev{transform:rotate(-90deg)}
+.building-card.collapsed .cabinet-list{display:none}
+
+.point-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.point-row{display:grid;grid-template-columns:60px 80px 80px 1fr 1fr 70px;gap:10px;align-items:center;padding:10px;background:#fff;border:1px solid var(--c-border);border-radius:6px;font-size:13px}
+.point-row .pnum{font-weight:700;color:var(--c-primary);text-align:center;font-size:15px}
+.point-row .pimg{width:80px;height:60px;background:#f3f4f6;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;border:1px dashed transparent;transition:border-color .15s,background .15s}
+.point-row .pimg:hover{border-color:var(--c-primary);background:#eff6ff}
+.point-row .pimg img{width:100%;height:100%;object-fit:cover}
+.point-row .pimg-missing{font-size:10px;color:var(--c-text-light);text-align:center;line-height:1.3}
+.point-row .pimg-clear{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(220,38,38,.92);color:#fff;font-size:13px;line-height:18px;text-align:center;border:none;cursor:pointer;padding:0;display:none}
+.point-row .pimg:hover .pimg-clear{display:block}
+.point-row .pmeta{display:flex;flex-direction:column;gap:3px}
+.point-row .pmeta input,.point-row .pmeta select{padding:5px 7px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;width:100%}
+.point-row .pmeta .label{font-size:10px;color:var(--c-text-light);text-transform:uppercase;letter-spacing:.3px}
+.point-row .pstate{text-align:center}
+.state-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;color:#fff;min-width:32px}
+.state-A{background:var(--c-state-a)}
+.state-B{background:var(--c-state-b);color:#111}
+.state-C{background:var(--c-state-c)}
+.state-D{background:var(--c-state-d)}
+@media(max-width:900px){.point-row{grid-template-columns:1fr 1fr;gap:8px}.point-row .pnum{grid-column:1/2}.point-row .pstate{grid-column:2/3;text-align:left}}
+
+/* Drag-and-drop handles (SortableJS) */
+.drag-handle{cursor:grab;color:#94a3b8;user-select:none;font-size:16px;padding:4px 6px;border-radius:4px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:color .12s,background .12s}
+.drag-handle:hover{color:#1e293b;background:#f1f5f9}
+.drag-handle:active{cursor:grabbing}
+.point-row .drag-handle{font-size:14px;padding:2px 4px}
+.sortable-ghost{opacity:.35;background:#eff6ff !important;border:2px dashed var(--c-primary) !important}
+.sortable-chosen{opacity:.9}
+.sortable-drag{box-shadow:0 6px 18px rgba(0,0,0,.18);opacity:.98}
+
+/* === Toolbar === */
+.toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.toolbar .left,.toolbar .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.progress{flex:1;max-width:300px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+.progress .bar{height:100%;background:var(--c-primary);transition:width .2s}
+
+/* === Modal === */
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(2px)}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--c-border)}
+.modal-head h3{font-size:16px;font-weight:700;margin:0}
+.modal-body{padding:20px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--c-border);display:flex;justify-content:flex-end;gap:8px}
+
+/* === Toast === */
+.toast{position:fixed;top:20px;right:20px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:200;display:none;animation:slideIn .25s ease-out}
+.toast.show{display:block}
+.toast.success{background:var(--c-success)}
+.toast.error{background:var(--c-danger)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* === Report preview pages === */
+.report-stage{background:#9ca3af;padding:20px;border-radius:8px;overflow:auto;max-height:80vh}
+.page{
+  width:794px;height:1123px;background:#fff;margin:0 auto 20px;
+  box-shadow:0 4px 20px rgba(0,0,0,.15);padding:50px 50px 40px;
+  position:relative;font-family:'Sarabun',sans-serif;font-size:11px;color:#000;line-height:1.45
+}
+.page.last{margin-bottom:0}
+
+/* === Title Cover (Avatar branded) === */
+.page-cover{padding:0 !important;overflow:hidden;position:relative;font-family:Arial,Helvetica,sans-serif}
+.cover-top-band{position:absolute;top:0;left:0;width:100%;height:300px;pointer-events:none;z-index:0}
+.cover-title-block{position:absolute;top:170px;left:90px;z-index:10}
+.cover-title-block .t1{font-size:52px;font-weight:400;color:#1e293b;line-height:1;letter-spacing:-0.5px}
+.cover-title-block .t2{font-size:20px;font-weight:600;color:#f97316;letter-spacing:1.5px;margin-left:210px;margin-top:4px}
+.cover-logo-wrap{position:absolute;top:330px;left:0;width:100%;display:flex;justify-content:center;z-index:10}
+.cover-logo-wrap img{width:250px;height:250px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.12))}
+.cover-logo-wrap .ph{width:250px;height:250px;border:2px dashed #cbd5e1;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;background:rgba(255,255,255,0.7);text-align:center}
+.cover-info-card{position:absolute;top:620px;left:72px;right:72px;background:rgba(255,255,255,.94);border-radius:18px;box-shadow:0 8px 22px -8px rgba(0,0,0,.18);border:1px solid #e2e8f0;padding:22px 28px;z-index:10}
+.cover-info-title{font-size:22px;font-weight:800;color:#1e293b;text-align:center;letter-spacing:3px;text-transform:uppercase;margin-top:0;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #f1f5f9}
+.cover-info-row{display:flex;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:10px;min-height:50px}
+.cover-info-row:last-child{margin-bottom:0}
+.cover-info-label{width:130px;background:#334155;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-size:13px;display:flex;align-items:center;justify-content:center;border-right:4px solid #f97316;flex-shrink:0;line-height:1}
+.cover-info-value{padding:10px 18px;font-size:18px;font-weight:700;color:#ea580c;flex:1;display:flex;align-items:center;line-height:1.2;word-break:break-word}
+.cover-bot-band{position:absolute;bottom:0;left:0;width:100%;height:240px;pointer-events:none;z-index:5}
+.cover-url{position:absolute;bottom:28px;left:90px;color:#fff;font-size:18px;font-weight:500;letter-spacing:2.5px;z-index:10;line-height:1}
+
+/* === Page chrome (header + footer on non-cover pages) === */
+.page.has-chrome{padding-top:62px;padding-bottom:60px}
+.page-header{position:absolute;top:0;left:0;right:0;height:42px;overflow:hidden;z-index:5}
+.page-header-title{position:absolute;top:10px;right:30px;z-index:6}
+.page-footer{position:absolute;bottom:0;left:0;right:0;height:42px;overflow:hidden;z-index:5}
+.page-footer-left{position:absolute;top:13px;left:14px;width:210px;z-index:6;overflow:visible}
+.page-footer-right{position:absolute;top:14px;right:30px;z-index:6}
+
+/* Cover (page 1) — classification */
+.cover-logo{text-align:center;margin-bottom:20px}
+.cover-logo img{height:70px;display:inline-block}
+.cover-logo .logo-placeholder{width:70px;height:70px;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;font-size:10px}
+.cover-title{text-align:center;font-size:24px;font-weight:700;margin-bottom:24px}
+.cls-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.cls-table th,.cls-table td{border:1px solid #555;padding:8px 10px;text-align:center;font-size:12px;vertical-align:middle;line-height:1.25}
+.cls-table th{background:#fff;font-weight:600}
+.cls-table .cls-A{background:#16a34a;color:#fff;font-weight:700}
+.cls-table .cls-B{background:#eab308;color:#000;font-weight:700}
+.cls-table .cls-C{background:#ea580c;color:#fff;font-weight:700}
+.cls-table .cls-D{background:#dc2626;color:#fff;font-weight:700}
+.cover-note{font-size:11px;line-height:1.7;text-indent:30px}
+
+/* Summary (page 2) */
+.sum-title{text-align:center;font-size:18px;font-weight:700;font-style:italic;margin-bottom:12px}
+.sum-table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}
+.sum-table th,.sum-table td{border:1px solid #555;padding:6px;text-align:center;vertical-align:middle;line-height:1.15}
+.sum-table th{background:#e5e7eb;font-weight:600}
+.sum-table .state-cell{font-weight:700;color:#fff}
+
+/* Detail (page 3+) */
+.det-head{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #555;margin-bottom:12px}
+.det-head .cell{padding:10px 12px;border-right:1px solid #555}
+.det-head .cell:last-child{border-right:none}
+.det-head .label-tag{font-size:10px;font-weight:600;color:#6b7280;margin-bottom:3px;letter-spacing:.3px;text-transform:uppercase}
+.det-head .value{font-size:14px;font-weight:600;line-height:1.2}
+
+.det-images{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.det-images .img-box{border:1px solid #555}
+.det-images .img-label{background:#e5e7eb;padding:5px;text-align:center;font-weight:600;font-size:11px;border-bottom:1px solid #555}
+.det-images .img-content{height:280px;background:#f9fafb;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.det-images .img-content img{width:100%;height:100%;object-fit:contain}
+.det-images .img-missing{color:#9ca3af;font-size:11px}
+
+.det-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.det-section{border:1px solid #555}
+.det-section-title{background:#e5e7eb;padding:5px;font-weight:600;font-size:11px;text-align:center;border-bottom:1px solid #555}
+.det-section-body{padding:8px}
+.kv-table{width:100%;border-collapse:collapse;font-size:10px}
+.kv-table td{padding:6px 7px;border:1px solid #555;vertical-align:middle;line-height:1.2}
+.kv-table td:first-child{background:#f9fafb;font-weight:600;width:42%}
+.sp-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:5px}
+.sp-table th,.sp-table td{border:1px solid #555;padding:5px 4px;text-align:center;vertical-align:middle;line-height:1.1}
+
+/* === AI Processing modal (popup overlay during runAIProcessing) === */
+.proc-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:500;opacity:1;animation:procFadeIn .25s ease forwards}
+@keyframes procFadeIn{from{opacity:0}to{opacity:1}}
+.proc-card{background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);border-radius:18px;padding:24px 28px 22px;width:min(94vw,440px);box-shadow:0 25px 60px -15px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.06);text-align:center;opacity:1;animation:procPop .35s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes procPop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.proc-pixel{width:160px;height:160px;margin:0 auto 4px;image-rendering:pixelated;image-rendering:-moz-crisp-edges;display:block;filter:drop-shadow(0 4px 8px rgba(15,23,42,.15))}
+.proc-provider{display:inline-block;font-size:10.5px;font-weight:700;color:#1d4ed8;background:#dbeafe;padding:3px 10px;border-radius:99px;letter-spacing:.4px;margin-bottom:8px}
+.proc-title{font-size:18px;font-weight:800;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.proc-title::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;animation:procDot 1s infinite}
+@keyframes procDot{0%,100%{opacity:1}50%{opacity:.3}}
+.proc-bar-wrap{background:#e2e8f0;border-radius:99px;height:9px;overflow:hidden;position:relative;margin-bottom:8px}
+.proc-bar{height:100%;background:linear-gradient(90deg,#3b82f6,#06b6d4,#0ea5e9);background-size:200% 100%;width:0%;transition:width .35s ease;border-radius:99px;position:relative;overflow:hidden;animation:procBarSlide 2s linear infinite}
+@keyframes procBarSlide{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+.proc-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:procShimmer 1.4s linear infinite}
+@keyframes procShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.proc-status{font-size:12.5px;color:#475569;min-height:18px;font-weight:600;margin-top:6px}
+.proc-pct{font-size:11px;color:#94a3b8;font-weight:700;display:inline-block;margin-left:6px}
+.proc-mini-log{background:#0f172a;color:#cbd5e1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;padding:10px 12px;border-radius:8px;text-align:left;max-height:90px;overflow-y:auto;margin-top:14px;line-height:1.55}
+.proc-mini-log .log-line{padding:1px 0;color:#94a3b8}
+.proc-mini-log .log-line:last-child{color:#e2e8f0}
+.proc-mini-log .log-line.err{color:#fca5a5}
+.proc-cancel-hint{font-size:10.5px;color:#94a3b8;margin-top:10px}
+
+/* Pixel-art character animations (CSS-based, lighter than SMIL) */
+.proc-pixel .px-hand-l{transform-box:fill-box;transform-origin:center;animation:pxHandL .42s infinite}
+.proc-pixel .px-hand-r{transform-box:fill-box;transform-origin:center;animation:pxHandR .42s infinite}
+@keyframes pxHandL{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes pxHandR{0%,100%{transform:translateY(-2px)}50%{transform:translateY(0)}}
+.proc-pixel .px-eyes{transform-box:fill-box;transform-origin:center;animation:pxBlink 4s infinite}
+@keyframes pxBlink{0%,92%,100%{transform:scaleY(1)}95%,97%{transform:scaleY(.15)}}
+.proc-pixel .px-antenna{animation:pxAntenna 1.6s infinite}
+@keyframes pxAntenna{0%,100%{fill:#ef4444}33%{fill:#fbbf24}66%{fill:#22d3ee}}
+.proc-pixel .px-cursor{animation:pxCursor .8s steps(1) infinite}
+@keyframes pxCursor{0%,49%{opacity:1}50%,100%{opacity:0}}
+.proc-pixel .px-steam-1{transform-box:fill-box;transform-origin:center;animation:pxSteam 2s ease-out infinite}
+.proc-pixel .px-steam-2{transform-box:fill-box;transform-origin:center;animation:pxSteam 2s ease-out .6s infinite}
+@keyframes pxSteam{0%{transform:translateY(0);opacity:.7}100%{transform:translateY(-8px);opacity:0}}
+.proc-pixel .px-screen-1{transform-box:fill-box;transform-origin:left center;animation:pxScreen1 2.4s ease-in-out infinite}
+.proc-pixel .px-screen-2{transform-box:fill-box;transform-origin:left center;animation:pxScreen2 2.8s ease-in-out infinite}
+.proc-pixel .px-screen-3{transform-box:fill-box;transform-origin:left center;animation:pxScreen3 2.2s ease-in-out infinite}
+.proc-pixel .px-screen-4{transform-box:fill-box;transform-origin:left center;animation:pxScreen4 3s ease-in-out infinite}
+.proc-pixel .px-screen-5{transform-box:fill-box;transform-origin:left center;animation:pxScreen5 2.6s ease-in-out infinite}
+@keyframes pxScreen1{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.4)}}
+@keyframes pxScreen2{0%,100%{transform:scaleX(.6)}50%{transform:scaleX(1.1)}}
+@keyframes pxScreen3{0%,100%{transform:scaleX(.8)}50%{transform:scaleX(.3)}}
+@keyframes pxScreen4{0%,100%{transform:scaleX(.5)}50%{transform:scaleX(1)}}
+@keyframes pxScreen5{0%,100%{transform:scaleX(.9)}50%{transform:scaleX(.5)}}
+
+/* === Export-mode overrides — only active during PDF rasterization ===
+   html2canvas draws plain HTML text at the bottom of its line box, so the
+   default symmetric padding (which centers text correctly in the live
+   browser preview) appears bottom-shifted in the PDF. During export we
+   add `.export-mode` to #previewStage and apply asymmetric padding to push
+   the line box upward; combined with line-height:1 (shrunken line box),
+   text visually centers in the rasterized output. Cells that contain an
+   SVG (state badges, classification letters) keep symmetric padding so
+   the SVG — which is already perfectly centered — doesn't drift. */
+.export-mode .sum-table td{padding:0 6px 12px;line-height:1}
+.export-mode .sum-table td.state-cell{padding:6px}
+.export-mode .kv-table td{padding:1px 7px 9px;line-height:1}
+.export-mode .sp-table td{padding:0 4px 10px;line-height:1}
+.export-mode .cls-table th{padding:0 10px 14px;line-height:1}
+.export-mode .cls-table td{padding:2px 10px 10px;line-height:1.2}
+.export-mode .cls-table td.cls-A,
+.export-mode .cls-table td.cls-B,
+.export-mode .cls-table td.cls-C,
+.export-mode .cls-table td.cls-D{padding:8px 10px;line-height:1.25}
+.export-mode .det-reco-body .reco-desc{line-height:1;margin-top:-8px}
+.export-mode .cover-info-value{padding:5px 18px 15px;line-height:1;display:block}
+.sp-table th{background:#e5e7eb;font-weight:600}
+.sp-note{font-size:9px;color:#6b7280;line-height:1.5;margin-top:5px}
+
+.det-reco{border:1px solid #555;margin-bottom:8px}
+.det-reco-title{background:#e5e7eb;padding:5px;font-weight:600;font-size:11px;border-bottom:1px solid #555}
+.det-reco-body{padding:10px;display:flex;gap:12px;align-items:center}
+.det-reco-state{padding:6px 14px;border-radius:4px;color:#fff;font-weight:700}
+/* old .page-foot removed — replaced by .page-footer chevron design */
+
+/* === Empty state === */
+.empty{text-align:center;padding:50px 20px;color:var(--c-text-light)}
+.empty .icon{font-size:48px;margin-bottom:10px;opacity:.4}
+.empty .label{font-weight:600;color:var(--c-text);margin-bottom:5px}
+.empty .hint{font-size:13px}
+
+/* === Status pill === */
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:600}
+.status-pending{background:#e5e7eb;color:#6b7280}
+.status-processing{background:#dbeafe;color:var(--c-primary-dark)}
+.status-done{background:#dcfce7;color:var(--c-success)}
+.status-error{background:#fee2e2;color:var(--c-danger)}
+
+/* === Logo preview === */
+.logo-preview{display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px;background:#f9fafb;border-radius:6px}
+.logo-preview img{height:50px;width:50px;object-fit:contain;background:#fff;border:1px solid var(--c-border);border-radius:6px;padding:4px}
+.logo-preview .name{font-size:12px;color:var(--c-text-light);flex:1}
+
+/* === Job slot === */
+.job-slot{padding:12px;border:1px solid var(--c-border);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .15s;background:#fff}
+.job-slot:hover{border-color:var(--c-primary);background:#f8faff}
+.job-slot .info .title{font-weight:600;font-size:14px;margin-bottom:3px}
+.job-slot .info .meta{font-size:11px;color:var(--c-text-light)}
+.job-slot.empty-slot{background:#f9fafb;border-style:dashed}
+.job-slot.empty-slot .info .title{color:var(--c-text-light);font-weight:500}
+.hist-continue{display:block;width:100%;text-align:left;border:none;border-radius:11px;padding:13px 16px;cursor:pointer;color:white;background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 4px 12px -2px rgba(245,158,11,.4);margin-bottom:14px;transition:transform .12s}
+.hist-continue:hover{transform:translateY(-1px)}
+.hist-continue .lab1{font-weight:800;font-size:14px}
+.hist-continue .lab2{font-size:12px;opacity:.92;margin-top:2px}
+.hist-sep{height:1px;background:var(--c-border);margin:14px 0}
+.hist-section-label{font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px}
+.hist-tag{font-size:9px;font-weight:800;color:#92400e;background:linear-gradient(135deg,#fef3c7,#fde68a);padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle}
+.dlg-icon{width:52px;height:52px;border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+.dlg-icon.info{background:#eff6ff;color:#2563eb}
+.dlg-icon.danger{background:#fef2f2;color:#ef4444}
+.dlg-title{font-weight:800;font-size:17px;color:#0b1220;margin-bottom:8px;text-align:center}
+.dlg-msg{font-size:13.5px;color:#475569;line-height:1.6;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="title">Thermoscan Report Generator <small>Avatar Electric Co., Ltd.</small></div>
+  <div class="topbar-actions">
+    <button id="btnHistory">ประวัติงาน</button>
+    <button id="btnSave">บันทึก</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="setup"><span class="num">1</span>ตั้งค่างาน</div>
+  <div class="tab" data-tab="upload"><span class="num">2</span>อัปโหลดภาพ</div>
+  <div class="tab" data-tab="review"><span class="num">3</span>ตรวจสอบ</div>
+  <div class="tab" data-tab="preview"><span class="num">4</span>ดูตัวอย่าง</div>
+  <div class="tab" data-tab="export"><span class="num">5</span>Export PDF</div>
+</div>
+
+<!-- ============== TAB 1: SETUP ============== -->
+<div class="panel active" data-panel="setup">
+  <h2>1. ตั้งค่างาน</h2>
+  <p class="desc">กรอกข้อมูลพื้นฐานของงาน — รายละเอียดที่ไม่เกี่ยวกับภาพแต่ละจุด</p>
+
+  <div class="card">
+    <h3><span class="dot"></span>ข้อมูลโครงการ</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>ชื่อโครงการ / Site</label>
+        <input type="text" id="projectName" placeholder="เช่น โรงไฟฟ้าอาวาตา 1">
+      </div>
+      <div class="field">
+        <label>วันที่ตรวจสอบ</label>
+        <input type="date" id="inspectionDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>บริษัท/ผู้ตรวจสอบ</label>
+        <input type="text" id="inspector" placeholder="เช่น Avatar Electric Co.,Ltd.">
+      </div>
+      <div class="field">
+        <label>Color of Palettes</label>
+        <select id="palette">
+          <option value="Ironbow">Ironbow</option>
+          <option value="Rainbow">Rainbow</option>
+          <option value="Grayscale">Grayscale</option>
+          <option value="Hot Metal">Hot Metal</option>
+          <option value="Amber">Amber</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>โลโก้รายงาน</h3>
+    <div class="dropzone" style="padding:18px">
+      <input type="file" id="logoInput" accept="image/*">
+      <div class="icon">🖼️</div>
+      <div class="label">เลือกหรือลากไฟล์โลโก้</div>
+      <div class="hint">PNG/JPG พื้นหลังโปร่งใสได้ ขนาดประมาณ 200×200 px</div>
+    </div>
+    <div id="logoPreview" style="display:none" class="logo-preview">
+      <img id="logoImg" src="">
+      <div class="name" id="logoName"></div>
+      <button class="btn btn-ghost btn-sm" id="logoRemove">ลบ</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>AI Provider & API Key</h3>
+    <p style="font-size:12px;color:var(--c-text-light);margin-bottom:8px">ใช้สำหรับให้ AI อ่านชื่อตู้/อาคาร, อ่านค่าจากหน้าจอกล้อง Fluke, อ่านชื่อโหลดจากป้ายสติ๊กเกอร์ — เก็บไว้ในเครื่องเท่านั้น</p>
+    <div class="field">
+      <label>Provider</label>
+      <select id="aiProvider">
+        <option value="anthropic">Anthropic — Claude Sonnet 4.6 ($3 / $15 ต่อ 1M tokens) — ฉลาดสุด แม่นยำสุด</option>
+        <option value="google">Google — Gemini 2.5 Pro ($1.25 / $10 ต่อ 1M tokens) — สมดุล</option>
+        <option value="google-flash">Google — Gemini 3.5 Flash ($1.50 / $9 ต่อ 1M tokens) — เร็วสุด (ใหม่ พ.ค. 2026)</option>
+      </select>
+    </div>
+    <div class="field" id="fieldAnthropicKey">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anthropicKey" placeholder="sk-ant-...">
+    </div>
+    <div class="field" id="fieldGoogleKey" style="display:none">
+      <label>Google API Key</label>
+      <input type="password" id="googleKey" placeholder="AIza...">
+    </div>
+    <div class="field" style="display:flex;gap:8px;align-items:center;margin-top:0">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="apiKeySave" checked>
+        จดจำใน LocalForage (ไม่ส่งออกนอกเครื่อง)
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>เกณฑ์ Classification (Delta T)</h3>
+    <p style="font-size:12px;color:var(--c-text-light);margin-bottom:10px">อ้างอิง Infraspection Institute, January 1993</p>
+    <table class="cls-table" style="margin:0">
+      <thead>
+        <tr><th style="width:25%">Delta T</th><th>Action Required</th><th style="width:15%">State</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0 °C – 10 °C</td><td>ปกติ ควรดำเนินการตรวจสอบอย่างต่อเนื่องต่อไป</td><td class="cls-A">A</td></tr>
+        <tr><td>10 °C – 20 °C</td><td>เริ่มผิดปกติ ควรดำเนินการแก้ไขเมื่อมีการดับไฟฟ้า (ภายใน 6 เดือน)</td><td class="cls-B">B</td></tr>
+        <tr><td>20 °C – 40 °C</td><td>ผิดปกติ ควรดำเนินการแก้ไขโดยด่วน (ภายใน 1 เดือน)</td><td class="cls-C">C</td></tr>
+        <tr><td>40 °C – Above</td><td>ผิดปกติ ควรดำเนินการแก้ไขโดยทันที</td><td class="cls-D">D</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="toolbar">
+    <div></div>
+    <button class="btn btn-primary" onclick="goTab('upload')">ถัดไป: อัปโหลดภาพ →</button>
+  </div>
+</div>
+
+<!-- ============== TAB 2: UPLOAD ============== -->
+<div class="panel" data-panel="upload">
+  <h2>2. อัปโหลดภาพ</h2>
+  <p class="desc">อัปโหลดโฟลเดอร์ภาพจากมือถือ (แบ่งตาม อาคาร/ตู้) และโฟลเดอร์ภาพ thermal จาก Fluke</p>
+
+  <div class="card">
+    <h3><span class="dot"></span>ภาพจากมือถือ (อาคาร/ตู้)</h3>
+    <p style="font-size:12px;color:var(--c-text-light);margin-bottom:10px">เลือกโฟลเดอร์ทั้งงาน เช่น <code>อาคาร อวาตาโรง 1/MDB-F1/</code> — ระบบจะแยกตามโฟลเดอร์ย่อยให้อัตโนมัติ</p>
+    <div class="dropzone">
+      <input type="file" id="mobileInput" webkitdirectory directory multiple accept="image/*">
+      <div class="icon">📁</div>
+      <div class="label">เลือกโฟลเดอร์งาน</div>
+      <div class="hint">ลำดับการถ่ายต่อจุด: ภาพปกติ → ภาพหน้าจอกล้อง Fluke</div>
+    </div>
+    <div id="mobileSummary" class="file-summary" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>ภาพ Thermal จากกล้อง Fluke</h3>
+    <p style="font-size:12px;color:var(--c-text-light);margin-bottom:10px">ไฟล์ที่ export จากกล้อง เช่น <code>Fluke_20260605_0001.jpg</code></p>
+    <div class="dropzone">
+      <input type="file" id="thermalInput" multiple accept="image/*">
+      <div class="icon">🔥</div>
+      <div class="label">เลือกไฟล์ thermal ทั้งหมด</div>
+      <div class="hint">เลือกได้หลายไฟล์พร้อมกัน</div>
+    </div>
+    <div id="thermalSummary" class="file-summary" style="display:none"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary" onclick="goTab('setup')">← ย้อนกลับ</button>
+    <button class="btn btn-ghost" id="btnSkipAI" title="ข้าม AI ไป Review แล้วกรอกข้อมูลเอง">⏭ ข้าม AI / กรอกแมนนวล</button>
+    <button class="btn btn-accent btn-lg" id="btnProcess" disabled>
+      ▶ ประมวลผลด้วย AI
+    </button>
+  </div>
+
+  <!-- Inline processing status replaced by the animated popup modal
+       (openProcessModal in JS). Kept as hidden no-op so any legacy code path
+       referencing #processBar / #processLabel / #processLog still no-ops safely. -->
+  <div id="processStatus" style="display:none">
+    <div id="processBar"></div>
+    <div id="processLabel"></div>
+    <div id="processLog"></div>
+  </div>
+</div>
+
+<!-- ============== TAB 3: REVIEW ============== -->
+<div class="panel" data-panel="review">
+  <h2>3. ตรวจสอบและแก้ไข</h2>
+  <p class="desc">ตรวจสอบผลการอ่านของ AI — แก้ไขชื่อตู้/อาคาร, ชื่อโหลด, ค่า Sp, สถานะ ได้</p>
+
+  <div id="reviewArea">
+    <div class="empty">
+      <div class="icon">📋</div>
+      <div class="label">ยังไม่มีข้อมูล</div>
+      <div class="hint">กลับไปอัปโหลดภาพและกดประมวลผลด้วย AI ก่อน</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary" onclick="goTab('upload')">← ย้อนกลับ</button>
+    <button class="btn btn-primary" onclick="goTab('preview')">ดูตัวอย่างรีพอร์ต →</button>
+  </div>
+</div>
+
+<!-- ============== TAB 4: PREVIEW ============== -->
+<div class="panel" data-panel="preview">
+  <h2>4. ตัวอย่างรีพอร์ต</h2>
+  <p class="desc">ดูหน้าตา PDF ก่อน export — กลับไป Tab 3 เพื่อแก้ไข</p>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary" onclick="goTab('review')">← กลับไปแก้ไข</button>
+    <button class="btn btn-primary" onclick="goTab('export')">ไป Export →</button>
+  </div>
+
+  <div id="previewStage" class="report-stage">
+    <div class="empty" style="background:#fff;border-radius:6px;padding:80px 20px">
+      <div class="icon">📄</div>
+      <div class="label">ยังไม่มีข้อมูลให้แสดง</div>
+      <div class="hint">ตรวจสอบและประมวลผลภาพก่อน</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB 5: EXPORT ============== -->
+<div class="panel" data-panel="export">
+  <h2>5. Export PDF</h2>
+  <p class="desc">สร้างไฟล์ PDF A4 พร้อมส่งลูกค้า</p>
+
+  <div class="card">
+    <h3><span class="dot"></span>ตั้งค่า</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>ชื่อไฟล์ PDF</label>
+        <input type="text" id="pdfFilename" placeholder="Thermoscan_Report.pdf">
+      </div>
+      <div class="field">
+        <label>คุณภาพภาพ</label>
+        <select id="pdfQuality">
+          <option value="jpeg2">มาตรฐาน — ไฟล์เล็ก (JPEG)</option>
+          <option value="jpeg3" selected>สูง — แนะนำ (JPEG คุณภาพสูง)</option>
+          <option value="png3">คมชัดสูงสุด — ตัวอักษรคม ไฟล์ใหญ่ (PNG)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary" onclick="goTab('preview')">← ย้อนกลับ</button>
+    <button class="btn btn-accent btn-lg" id="btnExport">📥 Export PDF</button>
+  </div>
+
+  <div id="exportStatus" class="card" style="display:none">
+    <h3><span class="dot"></span>กำลังสร้าง PDF</h3>
+    <div class="toolbar">
+      <div class="progress"><div class="bar" id="exportBar" style="width:0%"></div></div>
+      <div id="exportLabel" style="font-size:12px;color:var(--c-text-light)">เริ่มต้น...</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- History uses dynamic overlay (showStartupModal) — no static element needed -->
+
+<!-- ============== TOAST ============== -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====================================================================
+   State & globals
+===================================================================== */
+const state = {
+  meta: {
+    projectName: '',
+    inspectionDate: '',
+    inspector: '',
+    palette: 'Ironbow',
+    logo: null,  // {dataUrl, name}
+  },
+  provider: 'anthropic',         // 'anthropic' | 'google'
+  anthropicKey: '',
+  googleKey: '',
+  apiKeySave: true,
+
+  // Mobile photos grouped by building → cabinet
+  buildings: [],
+  // buildings: [
+  //   {
+  //     id, name (building, from AI),
+  //     cabinets: [
+  //       {
+  //         id, name (cabinet, from AI),
+  //         photos: [ {file, dataUrl, name, kind: 'building_label'|'overview'|'cabinet_label'|'normal'|'fluke_screen', pointIndex} ],
+  //         points: [
+  //           {
+  //             id,
+  //             equipment,    // from AI label sticker
+  //             normalPhoto,  // dataUrl of identification photo
+  //             flukeScreenPhoto, // dataUrl of Fluke screen photo
+  //             flukeFilename,// e.g. "Fluke_20260605_0001"
+  //             thermalDataUrl, // dataUrl of actual Fluke thermal export
+  //             temps: { max, min, avg, sp1..sp6 },
+  //             date, time,
+  //             deltaT: [{label, mp, rp, dt}],  // 3 pairs (Sp1↔Sp4, Sp2↔Sp5, Sp3↔Sp6)
+  //             state: 'A'|'B'|'C'|'D',
+  //             addInfo: '',
+  //           }
+  //         ]
+  //       }
+  //     ]
+  //   }
+  // ]
+
+  // Thermal export files keyed by filename
+  thermalFiles: {}, // {"Fluke_20260605_0001": {dataUrl, name}}
+
+  processing: false,
+};
+
+const HISTORY_KEY = 'thermoscan_jobs_v1';
+const STORAGE_KEY = 'thermoscan_draft_v1';
+const MAX_SLOTS = 5;
+let isDirty = false;          // true if state has unsaved-to-history edits
+let _draftTimer = null;       // debounce timer for saveDraft
+
+/* ====================================================================
+   Tab navigation
+===================================================================== */
+function goTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.dataset.panel===name));
+  if(name==='review') renderReview();
+  if(name==='preview') renderPreview();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>goTab(t.dataset.tab)));
+
+/* ====================================================================
+   Toast & modal
+===================================================================== */
+function toast(msg, kind=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+kind;
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+/* ====================================================================
+   File helpers
+===================================================================== */
+function readAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=e=>resolve(e.target.result);
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+}
+function compressImage(dataUrl, maxW=1600, quality=0.85){
+  return new Promise((resolve, reject)=>{
+    const img=new Image();
+    let settled=false;
+    // Safety net: if neither onload nor onerror fires within 30s (HEIC on some
+    // browsers, broken data URLs, etc.), reject so the caller can fall through
+    // and the whole upload doesn't hang silently.
+    const timer = setTimeout(()=>{
+      if(settled) return;
+      settled=true;
+      reject(new Error('compressImage timeout (30s) — ไฟล์อาจเปิดไม่ได้ในบราวเซอร์นี้ (HEIC/RAW)'));
+    }, 30000);
+    img.onload=()=>{
+      if(settled) return; settled=true; clearTimeout(timer);
+      try{
+        let w=img.width, h=img.height;
+        if(w>maxW){ h=h*(maxW/w); w=maxW; }
+        const c=document.createElement('canvas');
+        c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg', quality));
+      }catch(e){ reject(e); }
+    };
+    img.onerror=()=>{
+      if(settled) return; settled=true; clearTimeout(timer);
+      reject(new Error('โหลดรูปไม่ได้ — รูปแบบไฟล์อาจไม่รองรับ (HEIC, RAW, เสียหาย)'));
+    };
+    img.src=dataUrl;
+  });
+}
+// PNG version that preserves alpha channel (transparent backgrounds)
+// Used for logos with transparent backgrounds
+async function compressImagePNG(dataUrl, maxW=400){
+  return new Promise((resolve, reject)=>{
+    const img=new Image();
+    let settled=false;
+    const timer = setTimeout(()=>{
+      if(settled) return; settled=true;
+      reject(new Error('compressImagePNG timeout (30s)'));
+    }, 30000);
+    img.onload=()=>{
+      if(settled) return; settled=true; clearTimeout(timer);
+      try{
+        let w=img.width, h=img.height;
+        if(w>maxW){ h=h*(maxW/w); w=maxW; }
+        const c=document.createElement('canvas');
+        c.width=w; c.height=h;
+        const ctx=c.getContext('2d');
+        ctx.fillStyle='rgba(255,255,255,0)';
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/png'));
+      }catch(e){ reject(e); }
+    };
+    img.onerror=()=>{
+      if(settled) return; settled=true; clearTimeout(timer);
+      reject(new Error('โหลดรูปไม่ได้'));
+    };
+    img.src=dataUrl;
+  });
+}
+
+// Ultra-low-res version used only for AI photo classification — saves tokens
+async function thumbForClassify(dataUrl){
+  return await compressImage(dataUrl, 420, 0.7);
+}
+// Downscale just before sending an image to a vision API call. The original
+// (higher-res) data URL is preserved in state for the PDF report. Use a smaller
+// size for label/text OCR (still legible) and a larger one for thermal markers
+// where small numbers need to remain readable.
+//   - shrinkForAPI: labels, building/cabinet names, Fluke filename, identification
+//   - shrinkThermalForAPI: thermal exports with Sp1-Sp6 readings
+async function shrinkForAPI(dataUrl){
+  return await compressImage(dataUrl, 900, 0.75);
+}
+async function shrinkThermalForAPI(dataUrl){
+  return await compressImage(dataUrl, 1100, 0.82);
+}
+
+
+/* ====================================================================
+   Setup tab bindings
+===================================================================== */
+['projectName','inspectionDate','inspector','palette'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',e=>{
+    state.meta[id]=e.target.value;
+    saveDraft();
+  });
+});
+function syncProviderUI(){
+  // Both Gemini providers share the same Google API key, so toggle by family
+  const isGoogle = state.provider === 'google' || state.provider === 'google-flash';
+  document.getElementById('fieldAnthropicKey').style.display = isGoogle ? 'none' : '';
+  document.getElementById('fieldGoogleKey').style.display    = isGoogle ? '' : 'none';
+  document.getElementById('aiProvider').value = state.provider;
+  updateProcessButton();
+}
+document.getElementById('aiProvider').addEventListener('change', e=>{
+  state.provider = e.target.value;
+  syncProviderUI();
+});
+document.getElementById('anthropicKey').addEventListener('input',e=>{ state.anthropicKey=e.target.value; updateProcessButton(); });
+document.getElementById('googleKey').addEventListener('input',e=>{ state.googleKey=e.target.value; updateProcessButton(); });
+document.getElementById('apiKeySave').addEventListener('change',e=>{ state.apiKeySave=e.target.checked; });
+
+document.getElementById('logoInput').addEventListener('change', async (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const url=await readAsDataURL(f);
+  // Use PNG compression for logos to preserve alpha channel (transparent backgrounds)
+  // JPEG would turn transparent areas black
+  const compressed=await compressImagePNG(url, 400);
+  state.meta.logo={dataUrl:compressed, name:f.name};
+  document.getElementById('logoImg').src=compressed;
+  document.getElementById('logoName').textContent=f.name;
+  document.getElementById('logoPreview').style.display='flex';
+  saveDraft();
+});
+
+document.getElementById('logoRemove').addEventListener('click',()=>{
+  state.meta.logo=null;
+  saveDraft();
+  document.getElementById('logoInput').value='';
+  document.getElementById('logoPreview').style.display='none';
+});
+
+/* ====================================================================
+   Upload tab — handlers (skeleton, full logic in next chunk)
+===================================================================== */
+document.getElementById('mobileInput').addEventListener('change', handleMobileUpload);
+document.getElementById('thermalInput').addEventListener('change', handleThermalUpload);
+
+// Files that file-pickers / webkitdirectory drag in but are NOT photos:
+// Windows thumbnail cache, macOS metadata, folder-view settings, Spotlight, etc.
+// Filtering these out prevents false "broken file" warnings.
+function isRealImageFile(f){
+  const name = (f.name||'').toLowerCase();
+  // Junk by exact name
+  const junkNames = ['thumbs.db', '.ds_store', 'desktop.ini', '.localized'];
+  if(junkNames.includes(name)) return false;
+  // Hidden/system dotfiles (e.g. ._TC_00346.jpeg AppleDouble resource forks)
+  if(name.startsWith('._') || name.startsWith('.')) return false;
+  // Must look like an image by extension OR MIME type
+  const imgExt = /\.(jpe?g|png|gif|bmp|webp|heic|heif|tif?f)$/i;
+  if(f.type && f.type.startsWith('image/')) return true;
+  if(imgExt.test(name)) return true;
+  return false;
+}
+
+async function handleMobileUpload(e){
+  let files=Array.from(e.target.files);
+  if(!files.length) return;
+
+  // Drop non-image system files (Thumbs.db, .DS_Store, ...) before counting,
+  // so they never register as "skipped/broken" in the summary.
+  const rawCount = files.length;
+  files = files.filter(isRealImageFile);
+  const junkCount = rawCount - files.length;
+  if(junkCount > 0) console.info(`[upload] ignored ${junkCount} non-image system file(s)`);
+  if(!files.length){
+    toast('ไม่พบไฟล์รูปภาพในโฟลเดอร์ที่เลือก', 'error');
+    return;
+  }
+
+  // Group files by folder path (folder = cabinet)
+  // Use the LAST two folder names before the filename, regardless of how many
+  // parent folders are above them. So all of these resolve the same way:
+  //   "อาคาร 1/MDB-F1/IMG.jpg"                  → building=อาคาร 1, cabinet=MDB-F1
+  //   "ภาพจากมือถือ/อาคาร 1/MDB-F1/IMG.jpg"     → building=อาคาร 1, cabinet=MDB-F1
+  //   "Root/Sub/อาคาร 1/MDB-F1/IMG.jpg"          → building=อาคาร 1, cabinet=MDB-F1
+  const tree={};
+  for(const f of files){
+    const path=f.webkitRelativePath||f.name;
+    const parts=path.split('/');
+    let building='(ไม่ระบุอาคาร)', cabinet='(ไม่ระบุตู้)';
+    if(parts.length>=3){
+      building=parts[parts.length-3];
+      cabinet=parts[parts.length-2];
+    } else if(parts.length===2){
+      cabinet=parts[0];
+    }
+    tree[building]=tree[building]||{};
+    tree[building][cabinet]=tree[building][cabinet]||[];
+    tree[building][cabinet].push(f);
+  }
+
+  toast(`กำลังอ่านไฟล์ 0/${files.length}...`, 'success');
+  let processed = 0, failed = 0;
+  const failedFiles = [];
+
+  try{
+    state.buildings=[];
+    let bIdx=0;
+    for(const [bName, cabs] of Object.entries(tree)){
+      const buildingObj={id:'b'+(bIdx++), name:bName, cabinets:[]};
+      let cIdx=0;
+      for(const [cName, fs] of Object.entries(cabs)){
+        fs.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+        const photos=[];
+        for(const f of fs){
+          // Each file isolated — if one fails (HEIC, RAW, corrupted, too large),
+          // skip it and continue rather than aborting the whole upload silently.
+          try{
+            const url=await readAsDataURL(f);
+            const compressed=await compressImage(url, 1600, 0.85);
+            photos.push({name:f.name, dataUrl:compressed, kind:null, pointIndex:null});
+          }catch(err){
+            console.warn('[upload] skipped', f.name, err.message);
+            failed++;
+            failedFiles.push(f.name);
+          }
+          processed++;
+          // Update toast every 5 files (less DOM churn)
+          if(processed % 5 === 0 || processed === files.length){
+            toast(`กำลังอ่านไฟล์ ${processed}/${files.length}...`, 'success');
+          }
+        }
+        buildingObj.cabinets.push({id:'c'+(cIdx++), name:cName, photos, points:[]});
+      }
+      state.buildings.push(buildingObj);
+    }
+
+    // Sort buildings (and cabinets within each) by name, numeric-aware
+    // → "อาคาร 1, อาคาร 2, อาคาร 10" stays in natural order, not "1, 10, 2"
+    const cmp = (a,b)=>String(a.name||'').localeCompare(String(b.name||''), undefined, {numeric:true, sensitivity:'base'});
+    state.buildings.sort(cmp);
+    state.buildings.forEach(b => b.cabinets.sort(cmp));
+
+    // Show summary — runs even if some files failed (as long as at least one succeeded)
+    const totalCabs=state.buildings.reduce((s,b)=>s+b.cabinets.length,0);
+    const successCount = files.length - failed;
+
+    // Detected structure list — lets the user verify building/cabinet parsing
+    // immediately. If any building reads as "(ไม่ระบุอาคาร)", it means they
+    // selected the cabinet folder directly (no building level in the path).
+    const UNKNOWN_BUILDING = '(ไม่ระบุอาคาร)';
+    const hasUnknownBuilding = state.buildings.some(b=>b.name===UNKNOWN_BUILDING);
+    const treeHtml = state.buildings.map(b=>{
+      const bad = b.name===UNKNOWN_BUILDING;
+      const cabs = b.cabinets.map(c=>`<span style="display:inline-block;background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:1px 7px;margin:2px 3px 0 0;font-size:11px">📦 ${escapeHtml(c.name)} <span style="color:#94a3b8">(${c.photos.length})</span></span>`).join('');
+      return `<div style="margin-top:6px">
+        <span style="font-weight:700;font-size:12px;color:${bad?'#dc2626':'#0f172a'}">🏢 ${escapeHtml(b.name)}</span>
+        <div>${cabs}</div>
+      </div>`;
+    }).join('');
+
+    const sum = document.getElementById('mobileSummary');
+    sum.style.display='flex';
+    sum.style.flexDirection='column';
+    sum.style.alignItems='stretch';
+    sum.innerHTML=`
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div class="item"><strong>${state.buildings.length}</strong> อาคาร</div>
+        <div class="item"><strong>${totalCabs}</strong> ตู้</div>
+        <div class="item"><strong>${successCount}</strong> ภาพ${failed?` <span style="color:#dc2626">(ข้าม ${failed})</span>`:''}</div>
+      </div>
+      ${hasUnknownBuilding?`<div style="margin-top:8px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:#991b1b;line-height:1.5">
+        ⚠️ <b>ตรวจไม่พบชื่ออาคาร</b> — คุณอาจเลือกโฟลเดอร์ตู้โดยตรง<br>
+        ให้เลือกโฟลเดอร์ที่อยู่<b>เหนือชั้นตู้</b> เช่น "ภาพจากมือถือ" หรือชื่ออาคาร (โครงสร้าง: <i>อาคาร / ตู้ / รูป</i>)
+      </div>`:''}
+      <div style="margin-top:6px;border-top:1px solid #e5e7eb;padding-top:6px">
+        <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;margin-bottom:2px">โครงสร้างที่ตรวจพบ</div>
+        ${treeHtml}
+      </div>
+    `;
+    updateProcessButton();
+    saveDraft();
+
+    if(hasUnknownBuilding){
+      toast('อ่านไฟล์เสร็จ แต่ตรวจไม่พบชื่ออาคาร — ดูคำเตือนด้านล่าง', 'error');
+    } else if(failed > 0){
+      toast(`อ่านไฟล์เสร็จ — ${successCount} สำเร็จ, ข้าม ${failed} (ดู Console)`, 'error');
+      console.warn('[upload] failed files:', failedFiles);
+    } else {
+      toast(`อ่านไฟล์เสร็จ ${successCount} ภาพ`, 'success');
+    }
+  }catch(err){
+    console.error('[upload] fatal', err);
+    toast('อัปโหลดล้มเหลว: '+err.message, 'error');
+  }
+}
+
+// Normalize a Fluke filename for indexing/lookup so that AI output and
+// the actual file on disk match regardless of case or whitespace:
+//   "Fluke_20260610_0004.jpg"        → "fluke_20260610_0004"
+//   "fluke_20260610_0004"            → "fluke_20260610_0004"
+//   "  FLUKE_20260610_0004 .JPG  "   → "fluke_20260610_0004"
+function normalizeFlukeKey(name){
+  return String(name||'')
+    .trim()
+    .replace(/\.(jpg|jpeg|png)$/i, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+async function handleThermalUpload(e){
+  const files=Array.from(e.target.files);
+  if(!files.length) return;
+  toast('กำลังอ่านไฟล์ thermal...', 'success');
+  state.thermalFiles={};
+  for(const f of files){
+    const url=await readAsDataURL(f);
+    const compressed=await compressImage(url, 1280, 0.85);
+    const key=normalizeFlukeKey(f.name);
+    state.thermalFiles[key]={dataUrl:compressed, name:f.name};
+  }
+  document.getElementById('thermalSummary').style.display='flex';
+  document.getElementById('thermalSummary').innerHTML=`
+    <div class="item"><strong>${files.length}</strong> ไฟล์ thermal</div>
+  `;
+  updateProcessButton();
+  saveDraft();
+  toast('อ่านไฟล์ thermal เสร็จ', 'success');
+}
+
+function updateProcessButton(){
+  const btn=document.getElementById('btnProcess');
+  const hasMobile=state.buildings.length>0;
+  const hasThermal=Object.keys(state.thermalFiles).length>0;
+  const isGoogle = state.provider==='google' || state.provider==='google-flash';
+  const activeKey = isGoogle ? state.googleKey : state.anthropicKey;
+  const hasKey = (activeKey||'').trim().length>0;
+  btn.disabled=!(hasMobile && hasThermal && hasKey);
+  if(!hasKey) btn.title='กรอก API Key ใน Tab 1 ก่อน';
+  else if(!hasMobile) btn.title='อัปโหลดภาพมือถือก่อน';
+  else if(!hasThermal) btn.title='อัปโหลดภาพ thermal ก่อน';
+  else btn.title='';
+}
+
+/* ====================================================================
+   Manual mode — empty factories + skip-AI flow
+===================================================================== */
+function newEmptyPoint(){
+  return {
+    id:'p'+Date.now()+Math.random().toString(16).slice(2,6),
+    equipment:'', equipmentLabelPhoto:null,
+    normalPhoto:null, flukeScreenPhoto:null, thermalDataUrl:null,
+    flukeFilename:'', date:'', time:'',
+    temps:{sp1:null,sp2:null,sp3:null,sp4:null,sp5:null,sp6:null},
+    deltaT:[], state:'A', addInfo:''
+  };
+}
+function newEmptyCabinet(name){
+  return { name: name||'ตู้ใหม่', photos:[], points:[ newEmptyPoint() ] };
+}
+function newEmptyBuilding(name){
+  return { name: name||'อาคารใหม่', cabinets:[ newEmptyCabinet() ] };
+}
+function addBuilding(){
+  state.buildings.push(newEmptyBuilding('อาคารใหม่ '+(state.buildings.length+1)));
+  renderReview(); saveDraft();
+}
+function addCabinet(bi){
+  const b = state.buildings[bi]; if(!b) return;
+  b.cabinets.push(newEmptyCabinet('ตู้ใหม่ '+(b.cabinets.length+1)));
+  renderReview(); saveDraft();
+}
+function addPoint(bi,ci){
+  const c = state.buildings[bi]?.cabinets[ci]; if(!c) return;
+  c.points.push(newEmptyPoint());
+  renderReview(); saveDraft();
+}
+async function removeBuilding(bi){
+  if(!(await confirmDialog({title:'ลบอาคาร', message:'ต้องการลบอาคารนี้ทั้งหมดใช่ไหม?', confirmText:'ลบ', danger:true}))) return;
+  state.buildings.splice(bi,1); renderReview(); saveDraft();
+}
+async function removeCabinet(bi,ci){
+  if(!(await confirmDialog({title:'ลบตู้', message:'ต้องการลบตู้นี้ใช่ไหม?', confirmText:'ลบ', danger:true}))) return;
+  state.buildings[bi].cabinets.splice(ci,1); renderReview(); saveDraft();
+}
+async function removePoint(bi,ci,pi){
+  if(!(await confirmDialog({title:'ลบจุดวัด', message:'ต้องการลบจุดวัดนี้ใช่ไหม?', confirmText:'ลบ', danger:true}))) return;
+  state.buildings[bi].cabinets[ci].points.splice(pi,1); renderReview(); saveDraft();
+}
+async function pickPointImage(bi,ci,pi,field){
+  const pt = state.buildings[bi]?.cabinets[ci]?.points[pi];
+  if(!pt) return;
+  const input = document.createElement('input');
+  input.type='file'; input.accept='image/*';
+  input.onchange = async ()=>{
+    const f = input.files && input.files[0]; if(!f) return;
+    try{
+      let url = await readAsDataURL(f);
+      // Identification = ภาพแสดงตัว CB → ขนาดเล็กก็พอ (ใน PDF ~280px tall). บีบลงเยอะกว่า
+      // Thermal = ภาพมี Sp markers + ตัวเลขอุณหภูมิ → ต้องคงคมพอให้อ่านได้
+      const preset = field === 'normalPhoto'
+        ? {maxW: 800,  q: 0.72}
+        : {maxW: 1400, q: 0.85};
+      url = await compressImage(url, preset.maxW, preset.q);
+      pt[field] = url;
+      renderReview(); saveDraft();
+      toast('แทรกรูปสำเร็จ','success');
+    }catch(e){ toast('โหลดรูปผิดพลาด: '+e.message,'error'); }
+  };
+  input.click();
+}
+function clearPointImage(bi,ci,pi,field){
+  const pt = state.buildings[bi]?.cabinets[ci]?.points[pi];
+  if(!pt) return;
+  pt[field] = null;
+  renderReview(); saveDraft();
+}
+
+document.getElementById('btnSkipAI').addEventListener('click', ()=>{
+  if(!state.buildings.length){
+    state.buildings.push(newEmptyBuilding('อาคารตัวอย่าง'));
+  }
+  saveDraft();
+  toast('ข้าม AI — กรอกข้อมูลแบบแมนนวลใน Tab 3', 'success');
+  goTab('review');
+});
+
+/* ====================================================================
+   Process button (AI) — shows cost-estimate modal first
+===================================================================== */
+// Pricing per 1M tokens, in USD. Used by estimateAIUsage().
+const AI_PRICING = {
+  'anthropic':    {input: 3.00, output: 15.00, label: 'Claude Sonnet 4.6'},
+  'google':       {input: 1.25, output: 10.00, label: 'Gemini 2.5 Pro'},
+  'google-flash': {input: 1.50, output:  9.00, label: 'Gemini 3.5 Flash'}
+};
+const USD_TO_THB = 36;   // rough display rate; not auto-fetched
+
+function estimateAIUsage(){
+  // Per cabinet: 1 batched classify call (sends N thumbnails @ 420px)
+  // Per point:   3 detail calls — fluke filename, thermal markers, equipment label
+  let cabinets=0, realPoints=0, photos=0;
+  for(const b of state.buildings){
+    cabinets += b.cabinets.length;
+    for(const c of b.cabinets){
+      photos += c.photos.length;
+      realPoints += c.points.length;
+    }
+  }
+  // CRITICAL: before AI runs, c.points is empty (points are built FROM photos
+  // by categorizePhotosWithAI → buildPointsFromPhotos). So if realPoints is 0
+  // but photos > 0, estimate points from photo count.
+  // Typical breakdown: each point uses ~3 photos (equipment_label + normal + fluke_screen).
+  // Sometimes only 2 (no separate equipment_label). Use 3 as conservative estimate.
+  const points = realPoints > 0 ? realPoints : Math.ceil(photos / 3);
+
+  // Gemini image-token math (per image):
+  //   ≤384×384  = 258 tok (1 tile)
+  //   >384      = 258 × ceil(w/768) × ceil(h/768) tiles
+  // Our shrinks:
+  //   thumbForClassify(420)     → ~1 tile  ≈ 290 tok (incl. base64 overhead)
+  //   shrinkForAPI(900)         → ~2 tiles ≈ 600 tok
+  //   shrinkThermalForAPI(1100) → ~4 tiles ≈ 1100 tok
+  const TOK_THUMB        = 290;
+  const TOK_IMG_LABEL    = 600;
+  const TOK_IMG_THERMAL  = 1100;
+  // Prompts (counted from actual prompt sizes in aiRead* functions):
+  const TOK_PROMPT_CLASSIFY = 1500;
+  const TOK_PROMPT_FLUKE    = 700;
+  const TOK_PROMPT_THERMAL  = 900;
+  const TOK_PROMPT_EQ       = 700;
+  // Output sizes (varies by JSON structure):
+  const TOK_OUT_CLASSIFY = 500;
+  const TOK_OUT_FLUKE    = 200;
+  const TOK_OUT_THERMAL  = 300;
+  const TOK_OUT_EQ       = 100;
+
+  // 1 classify call per cabinet — sends ALL photos in that cabinet
+  const classifyCalls = cabinets;
+  const classifyInputTok  = photos * TOK_THUMB + cabinets * TOK_PROMPT_CLASSIFY;
+  const classifyOutputTok = cabinets * TOK_OUT_CLASSIFY;
+
+  // 3 detail calls per point (fluke filename + thermal markers + equipment label)
+  const flukeCalls   = points;
+  const thermalCalls = points;
+  const eqCalls      = points;
+  const detailInputTok  = points * (TOK_IMG_LABEL + TOK_PROMPT_FLUKE)        // fluke filename
+                        + points * (TOK_IMG_THERMAL + TOK_PROMPT_THERMAL)    // thermal markers
+                        + points * (TOK_IMG_LABEL + TOK_PROMPT_EQ);          // equipment label
+  const detailOutputTok = points * (TOK_OUT_FLUKE + TOK_OUT_THERMAL + TOK_OUT_EQ);
+
+  const totalCalls = classifyCalls + flukeCalls + thermalCalls + eqCalls;
+  const inTok  = classifyInputTok + detailInputTok;
+  const outTok = classifyOutputTok + detailOutputTok;
+
+  const p = AI_PRICING[state.provider] || AI_PRICING['anthropic'];
+  const usd = (inTok * p.input + outTok * p.output) / 1e6;
+  const thb = usd * USD_TO_THB;
+  return {
+    cabinets, points, photos, totalCalls,
+    classifyCalls, flukeCalls, thermalCalls, eqCalls,
+    inTok, outTok, usd, thb,
+    providerLabel: p.label,
+    isEstimated: realPoints === 0 && photos > 0  // flag — we guessed points from photos
+  };
+}
+
+function showAIConfirmModal(){
+  return new Promise(resolve=>{
+    const u = estimateAIUsage();
+    const fmtTok = n => n.toLocaleString('en-US');
+    const fmtUSD = n => '$' + n.toFixed(n<0.1?4:3);
+    const fmtTHB = n => '฿' + (n<10 ? n.toFixed(2) : n.toFixed(1));
+    const bg = buildModalOverlay(`
+      <div class="modal-head"><h3>ยืนยันก่อนประมวลผลด้วย AI</h3></div>
+      <div class="modal-body" style="padding:18px 20px">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;color:#1d4ed8;font-weight:700;letter-spacing:.5px;margin-bottom:4px">PROVIDER</div>
+          <div style="font-size:15px;font-weight:700;color:#0f172a">${escapeHtml(u.providerLabel)}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:#64748b;margin-bottom:2px">อาคาร</div>
+            <div style="font-size:20px;font-weight:800;color:#0f172a">${u.cabinets ? state.buildings.length : 0}</div>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:#64748b;margin-bottom:2px">ตู้ทั้งหมด</div>
+            <div style="font-size:20px;font-weight:800;color:#0f172a">${u.cabinets}</div>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:#64748b;margin-bottom:2px">จุดวัด${u.isEstimated?' (ประมาณ)':''}</div>
+            <div style="font-size:20px;font-weight:800;color:#0f172a">${u.isEstimated?'~':''}${u.points}</div>
+            ${u.isEstimated?`<div style="font-size:9px;color:#94a3b8;margin-top:2px">จาก ${u.photos} รูป÷3</div>`:''}
+          </div>
+        </div>
+
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;color:#9a3412;font-weight:700;letter-spacing:.5px;margin-bottom:8px">การประมวลผล (ประมาณ)</div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#1e293b;line-height:1.7">
+            <span>จัดประเภทภาพ (1 call/ตู้)</span><span style="font-weight:700">${u.classifyCalls} calls</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#1e293b;line-height:1.7">
+            <span>อ่าน Fluke filename + Thermal Sp + Equipment</span><span style="font-weight:700">${u.flukeCalls+u.thermalCalls+u.eqCalls} calls</span>
+          </div>
+          <div style="border-top:1px solid #fed7aa;margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9a3412">
+            <span>รวม</span><span>${u.totalCalls} calls</span>
+          </div>
+        </div>
+
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:10px;padding:14px 16px;margin-bottom:8px">
+          <div style="font-size:11px;color:#78350f;font-weight:700;letter-spacing:.5px;margin-bottom:6px">ค่าใช้จ่ายโดยประมาณ</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div>
+              <span style="font-size:26px;font-weight:800;color:#78350f">${fmtUSD(u.usd)}</span>
+              <span style="font-size:14px;font-weight:600;color:#9a3412;margin-left:8px">(~${fmtTHB(u.thb)})</span>
+            </div>
+            <div style="font-size:11px;color:#9a3412;text-align:right;line-height:1.4">
+              input ~${fmtTok(u.inTok)} tok<br>output ~${fmtTok(u.outTok)} tok
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;line-height:1.5">
+          * ตัวเลขนี้เป็นค่าประมาณการณ์ที่อิงจากจำนวน call × ราคา per token. ค่าจริงอาจต่างได้ ±20% ตามขนาดภาพและ output ที่ AI ตอบกลับ
+        </div>
+      </div>
+      <div class="modal-foot" style="justify-content:stretch;gap:10px">
+        <button class="btn btn-ghost" id="aiConfirmCancel" style="flex:1;justify-content:center">ยกเลิก</button>
+        <button class="btn btn-accent" id="aiConfirmGo" style="flex:1.4;justify-content:center">▶ เริ่มประมวลผล</button>
+      </div>
+    `, {z:420});
+    const done = v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#aiConfirmCancel').onclick = ()=> done(false);
+    bg.querySelector('#aiConfirmGo').onclick     = ()=> done(true);
+    bg.addEventListener('click', e=>{ if(e.target===bg) done(false); });
+  });
+}
+
+document.getElementById('btnProcess').addEventListener('click', async ()=>{
+  if(state.processing){ toast('กำลังประมวลผลอยู่...'); return; }
+  // Confirmation gate — show cost estimate first
+  const ok = await showAIConfirmModal();
+  if(!ok) return;
+  state.processing=true;
+  // Open the animated popup (replaces the old inline status card)
+  const providerLabel = AI_PRICING[state.provider]?.label || '';
+  openProcessModal(providerLabel);
+  try{
+    await runAIProcessing();
+    saveDraft();
+    // Brief delay so user sees "เสร็จสิ้น ✓" before closing
+    await new Promise(r=>setTimeout(r, 700));
+    closeProcessModal();
+    toast('ประมวลผลเสร็จ! ไปดู Tab ตรวจสอบ', 'success');
+    setTimeout(()=>goTab('review'), 400);
+  }catch(err){
+    console.error(err);
+    closeProcessModal();
+    toast('ผิดพลาด: '+err.message, 'error');
+  }finally{
+    state.processing=false;
+  }
+});
+
+async function runAIProcessing(){
+  logProcess('เริ่มประมวลผล...');
+  setProgress(0, 'เริ่มต้น');
+  document.getElementById('processLog').innerHTML='';
+
+  // STEP 1: Classify photos per cabinet (1 batched AI call/cabinet)
+  let totalCabs=0;
+  for(const b of state.buildings) totalCabs += b.cabinets.length;
+  let cabDone=0;
+  for(const b of state.buildings){
+    for(const c of b.cabinets){
+      logProcess(`จัดประเภทภาพในตู้ ${c.name} (${c.photos.length} ภาพ)`);
+      await categorizePhotosWithAI(c);
+      buildPointsFromPhotos(b, c);
+      cabDone++;
+      setProgress(cabDone/totalCabs*30, `จัดประเภทภาพ ${cabDone}/${totalCabs} ตู้`);
+    }
+  }
+
+  // STEP 2: Build totalSteps — ใช้ชื่ออาคาร/ตู้จาก folder name โดยตรง (ไม่เรียก AI)
+  let totalSteps=0, doneSteps=0;
+  for(const b of state.buildings){
+    for(const c of b.cabinets){
+      totalSteps += c.points.length * 2; // fluke filename + Sp markers + equipment label per point
+    }
+  }
+
+  for(const b of state.buildings){
+    for(const c of b.cabinets){
+      logProcess(`เริ่มตู้ ${c.name} (อาคาร: ${b.name})`);
+      // ชื่ออาคาร b.name + ชื่อตู้ c.name มาจากชื่อ folder ตอน upload (ไม่ override ด้วย AI)
+
+      // 2.3 Per measurement point — flow ใหม่:
+      //   a) อ่าน Fluke filename จากภาพมือถือ (marker ยังไม่ถูกตั้ง)
+      //   b) match thermal export file ผ่านชื่อไฟล์
+      //   c) อ่าน Sp1-Sp6 + Max/Min/Avg จากภาพ thermal export (มี marker ติดแล้ว)
+      //   d) อ่านชื่อโหลดจากภาพ normal
+      for(let i=0;i<c.points.length;i++){
+        const pt = c.points[i];
+        logProcess(`อ่าน Fluke filename จุดที่ ${i+1}`);
+        try{
+          const meta = await aiReadFlukeFilename(pt.flukeScreenPhoto);
+          pt.flukeFilename = meta.flukeFilename;
+          pt.date = meta.date;
+          pt.time = meta.time;
+          if(pt.flukeFilename){
+            // Normalize both sides — AI sometimes returns "fluke_..." (lower-
+            // case) while the actual file is "Fluke_...". Without this fix
+            // the match silently fails and the thermal export is dropped.
+            const key=normalizeFlukeKey(pt.flukeFilename);
+            if(state.thermalFiles[key]){
+              pt.thermalDataUrl=state.thermalFiles[key].dataUrl;
+              // Keep the original (correct-case) filename for display in the
+              // report instead of the AI's lowercase guess.
+              pt.flukeFilename = (state.thermalFiles[key].name||'').replace(/\.(jpg|jpeg|png)$/i,'');
+            }
+            else logProcess(`! ไม่พบไฟล์ thermal ${key}`);
+          }
+        }catch(e){ logProcess(`! อ่าน Fluke filename ผิดพลาด: ${e.message}`); }
+
+        if(pt.thermalDataUrl){
+          logProcess(`อ่าน Sp markers + timestamp จาก thermal export จุดที่ ${i+1}`);
+          try{
+            const result = await aiReadThermalMarkers(pt.thermalDataUrl);
+            const {date, time, ...temps} = result;
+            pt.temps = temps;
+            // date/time priority (NEW):
+            //   1) burn-in timestamp จากมือถือ (อ่านใน aiReadFlukeFilename) — authoritative
+            //   2) timestamp บน thermal export — fallback ถ้า burn-in ไม่มี
+            //   3) parse จากชื่อไฟล์ Fluke_YYYYMMDD_NNNN — final fallback
+            if(date && !pt.date) pt.date = date;
+            if(time && !pt.time) pt.time = time;
+            computeDeltaTAndState(pt);
+          }catch(e){ logProcess(`! อ่าน Sp markers ผิดพลาด: ${e.message}`); }
+        } else {
+          logProcess(`! จุดที่ ${i+1} ไม่มี thermal export — ข้าม Sp markers`);
+        }
+        // Fallback: parse date จากชื่อไฟล์ Fluke_YYYYMMDD_NNNN ถ้ายังไม่มี date
+        if(!pt.date && pt.flukeFilename){
+          const m = pt.flukeFilename.match(/(\d{4})(\d{2})(\d{2})/);
+          if(m) pt.date = `${m[1]}-${m[2]}-${m[3]}`;
+        }
+        doneSteps++; setProgress(30+doneSteps/totalSteps*70, `จุด ${i+1}/${c.points.length} (${c.name})`);
+
+        const eqPhoto = pt.equipmentLabelPhoto || pt.normalPhoto;
+        if(eqPhoto){
+          logProcess(`อ่านชื่อโหลดจากป้ายจุดที่ ${i+1}`);
+          try{
+            const eq = await aiReadEquipmentLabel(eqPhoto);
+            pt.equipment = (eq && eq!=='?') ? eq : '';
+          }catch(e){ logProcess(`! อ่าน Equipment ผิดพลาด: ${e.message}`); }
+        }
+        doneSteps++; setProgress(30+doneSteps/totalSteps*70, `Equipment จุด ${i+1}`);
+      }
+    }
+  }
+  setProgress(100, 'เสร็จสิ้น');
+  logProcess('เสร็จสิ้น ✓');
+}
+
+function setProgress(pct, label){
+  // Update inline status (legacy fallback) AND the popup modal if open
+  const b = document.getElementById('processBar'); if(b) b.style.width=pct+'%';
+  const l = document.getElementById('processLabel'); if(l) l.textContent=label;
+  const pb = document.querySelector('.proc-modal .proc-bar'); if(pb) pb.style.width=pct+'%';
+  const ps = document.querySelector('.proc-modal .proc-status-text'); if(ps) ps.textContent = label;
+  const pp = document.querySelector('.proc-modal .proc-pct'); if(pp) pp.textContent = Math.round(pct) + '%';
+}
+function logProcess(msg){
+  const time = new Date().toLocaleTimeString();
+  const isErr = String(msg||'').startsWith('!');
+  // Legacy inline log
+  const log = document.getElementById('processLog');
+  if(log){
+    log.innerHTML += '<div>' + time + ' — ' + msg + '</div>';
+    log.scrollTop = log.scrollHeight;
+  }
+  // Popup modal mini-log — show last ~6 lines for compact display
+  const miniLog = document.querySelector('.proc-modal .proc-mini-log');
+  if(miniLog){
+    const div = document.createElement('div');
+    div.className = 'log-line' + (isErr ? ' err' : '');
+    div.textContent = time + ' — ' + msg;
+    miniLog.appendChild(div);
+    // Keep only the last 12 lines (lighter DOM during long runs)
+    while(miniLog.children.length > 12) miniLog.firstChild.remove();
+    miniLog.scrollTop = miniLog.scrollHeight;
+  }
+}
+
+/* ====================================================================
+   AI Processing Popup Modal — pixel-art character animation
+===================================================================== */
+function pixelCharacterSvg(){
+  // 64×64 pixel art: dev character at desk + monitor
+  // Uses CSS animations (lighter than SMIL — fewer reflows, no jank on long runs)
+  return `<svg viewBox="0 0 64 64" class="proc-pixel" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+    <!-- Floor / desk shadow -->
+    <rect x="0" y="56" width="64" height="8" fill="#fde68a"/>
+    <rect x="0" y="54" width="64" height="2" fill="#f59e0b"/>
+    <!-- Desk -->
+    <rect x="14" y="44" width="36" height="12" fill="#92400e"/>
+    <rect x="14" y="44" width="36" height="2" fill="#b45309"/>
+    <rect x="16" y="56" width="2" height="6" fill="#78350f"/>
+    <rect x="46" y="56" width="2" height="6" fill="#78350f"/>
+    <!-- Monitor base + stand -->
+    <rect x="29" y="38" width="6" height="6" fill="#475569"/>
+    <rect x="26" y="42" width="12" height="2" fill="#334155"/>
+    <!-- Monitor frame -->
+    <rect x="16" y="12" width="32" height="28" fill="#1e293b"/>
+    <rect x="18" y="14" width="28" height="24" fill="#0f172a"/>
+    <!-- Screen content (static colored lines) -->
+    <rect x="20" y="17" width="14" height="2" fill="#22d3ee" class="px-screen-1"/>
+    <rect x="20" y="21" width="20" height="2" fill="#a78bfa" class="px-screen-2"/>
+    <rect x="20" y="25" width="10" height="2" fill="#f59e0b" class="px-screen-3"/>
+    <rect x="20" y="29" width="16" height="2" fill="#22d3ee" class="px-screen-4"/>
+    <rect x="20" y="33" width="12" height="2" fill="#10b981" class="px-screen-5"/>
+    <!-- Cursor blink -->
+    <rect x="32" y="33" width="2" height="2" fill="#fff" class="px-cursor"/>
+    <!-- Character body (shirt) -->
+    <rect x="20" y="46" width="14" height="10" fill="#1d4ed8"/>
+    <rect x="20" y="46" width="14" height="2" fill="#3b82f6"/>
+    <!-- Neck -->
+    <rect x="24" y="42" width="6" height="4" fill="#fde68a"/>
+    <!-- Head -->
+    <rect x="22" y="32" width="10" height="12" fill="#fde68a"/>
+    <!-- Hair -->
+    <rect x="22" y="32" width="10" height="3" fill="#1f2937"/>
+    <rect x="21" y="33" width="1" height="4" fill="#1f2937"/>
+    <rect x="32" y="33" width="1" height="4" fill="#1f2937"/>
+    <!-- Eyes (with blink via scaleY) -->
+    <g class="px-eyes">
+      <rect x="24" y="38" width="2" height="2" fill="#0f172a"/>
+      <rect x="29" y="38" width="2" height="2" fill="#0f172a"/>
+    </g>
+    <!-- Smile -->
+    <rect x="26" y="42" width="3" height="1" fill="#9a3412"/>
+    <!-- Hands typing (alternating up/down) -->
+    <rect x="14" y="44" width="4" height="3" fill="#fde68a" class="px-hand-l"/>
+    <rect x="36" y="42" width="4" height="3" fill="#fde68a" class="px-hand-r"/>
+    <!-- Coffee mug -->
+    <rect x="40" y="40" width="5" height="4" fill="#dc2626"/>
+    <rect x="44" y="41" width="1" height="2" fill="#dc2626"/>
+    <rect x="40" y="39" width="5" height="1" fill="#fca5a5"/>
+    <!-- Steam from mug -->
+    <rect x="41" y="36" width="1" height="2" fill="#e2e8f0" class="px-steam-1"/>
+    <rect x="43" y="36" width="1" height="2" fill="#e2e8f0" class="px-steam-2"/>
+    <!-- AI Antenna with blinking light -->
+    <rect x="26" y="29" width="2" height="3" fill="#475569"/>
+    <rect x="25" y="27" width="4" height="2" fill="#475569"/>
+    <rect x="26" y="26" width="2" height="1" fill="#ef4444" class="px-antenna"/>
+  </svg>`;
+}
+
+function openProcessModal(providerLabel){
+  // Reuse if already open (defensive)
+  closeProcessModal();
+  const modal = document.createElement('div');
+  modal.className = 'proc-modal no-print';
+  modal.id = 'procModal';
+  modal.innerHTML = `
+    <div class="proc-card">
+      ${pixelCharacterSvg()}
+      ${providerLabel ? `<div class="proc-provider">${escapeHtml(providerLabel)}</div>` : ''}
+      <div class="proc-title">กำลังประมวลผลด้วย AI</div>
+      <div class="proc-bar-wrap">
+        <div class="proc-bar"></div>
+      </div>
+      <div class="proc-status">
+        <span class="proc-status-text">กำลังเริ่มต้น...</span>
+        <span class="proc-pct">0%</span>
+      </div>
+      <div class="proc-mini-log"></div>
+      <div class="proc-cancel-hint">โปรดอย่าปิดแท็บนี้จนกว่าจะประมวลผลเสร็จ</div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+function closeProcessModal(){
+  const m = document.getElementById('procModal');
+  if(m) m.remove();
+}
+
+/* ====================================================================
+   Photo categorization — vidik B (sequential)
+
+   Strategy:
+   1) Send all photos (low-res thumbs) in 1 AI call → classify each as
+      one of: building_label, cabinet_label, overview, normal, fluke_screen
+   2) Walk photos in order, build points:
+        each fluke_screen = 1 measurement point
+        normal photo immediately before fluke_screen = identification photo
+===================================================================== */
+async function categorizePhotosWithAI(cabinet){
+  const photos = cabinet.photos;
+  if(!photos.length){ cabinet.points=[]; return; }
+
+  // Prepare thumbnails (only if not done before)
+  const thumbs=[];
+  for(const p of photos){
+    if(!p._thumb) p._thumb = await thumbForClassify(p.dataUrl);
+    thumbs.push(p._thumb);
+  }
+
+  // Build batched message
+  const content = [];
+  thumbs.forEach((t,i)=>{
+    content.push({ type:'text', text:`ภาพที่ ${i+1}:` });
+    content.push(imageMessage(t));
+  });
+  content.push({ type:'text', text:
+`คุณได้รับภาพถ่ายจากการตรวจ Thermoscan ตู้ไฟฟ้า ${photos.length} ภาพ (ตามลำดับที่ถ่าย)
+จัดประเภทแต่ละภาพเป็น 1 ใน 6 ประเภทนี้:
+
+- "building_label": ภาพ whiteboard หรือกระดาษ A4 ที่เขียนชื่ออาคาร เช่น "อาคารโรงงาน 1" (พบไม่เกิน 1 ภาพต่อตู้ และมักเป็นภาพแรก)
+
+- "cabinet_label": ป้าย/สติ๊กเกอร์ใหญ่หน้าตู้แสดง**ชื่อตู้หลัก** เช่น "MDB", "MDB-F1", "MDB-A", "LP1", "EDB-A"
+  • ลักษณะป้าย: ใหญ่ มักอยู่บนหัวตู้/หน้าตู้ภายนอก, ตัวอักษรชัด
+  • **กฎ:** มีได้แค่ 1 ภาพต่อตู้
+
+- "equipment_label": ป้าย**ชื่อจุดวัด/โหลด** — ป้ายดำ engraved หรือสติ๊กเกอร์เล็ก ที่ระบุชื่อจุด/feeder/load
+  • รูปแบบภาพได้ 2 แบบ:
+    (ก) ภาพมุมเบรกเกอร์ + ป้ายชื่อข้าง ๆ (ถ่ายก่อนเปิดฝา)
+    (ข) ภาพ **ป้ายอย่างเดียว** (zoom เข้าใกล้ป้ายโดยไม่เห็นเบรกเกอร์) — ทีมงานบางครั้งถ่ายแค่ป้ายก่อนแล้วค่อยเข้าไปถ่ายภาพ normal
+  • ตัวอย่างข้อความบนป้าย: "FROM BY MEA", "1LC-PD-01", "1LC-PD-AC", "Main ACB", "LP1/2 สโตร์", "CB. Branch"
+  • **มักถ่ายก่อนภาพ normal และก่อน fluke_screen ของจุดวัดเดียวกัน** เพื่อบอกว่าจุดถัดไปคืออะไร
+  • อาจมีหลายภาพต่อตู้ (1 ภาพ/จุดวัด)
+  • **ห้ามสับสนกับ cabinet_label**:
+    - equipment_label = ชื่อจุด/feeder/load (รหัสยาว มี - / . หรือมีเลข feeder)
+    - cabinet_label = ชื่อตู้หลัก (รหัสสั้น MDB, LP, EDB อย่างเดียว)
+    - ถ้าเห็นป้ายอย่างเดียวที่เขียน "1LC-PD-01" → equipment_label
+    - ถ้าเห็นป้ายอย่างเดียวที่เขียน "MDB-F1" → cabinet_label
+
+- "overview": ภาพมุมกว้างตู้ทั้งใบ เห็น CB หลายตัวเรียงกัน ไม่มีจอ Fluke ไม่มีป้ายเด่น
+
+- "fluke_screen": ภาพถ่ายตัวกล้องสีเหลือง Fluke หรือหน้าจอที่กำลังโชว์ภาพ thermal (เห็น UI Save/Cancel/Edit หรือสีกล้องเหลือง)
+
+- "normal": ภาพเบรกเกอร์/CB ระยะใกล้ **หลังเปิดฝาตู้แล้ว** เห็นตัว CB ชัด มักไม่มีป้ายชื่อจุดติดด้วย ใช้เป็น identification photo
+
+**ลำดับปกติของแต่ละจุดวัด:** equipment_label → normal → fluke_screen
+(บางจุดอาจไม่มี normal ถ้าไม่ได้เปิดฝา — มีแค่ equipment_label → fluke_screen)
+
+**สำคัญ:**
+- equipment_label vs cabinet_label: ดูที่ "ชื่อบนป้าย" — ถ้าเป็นรหัสตู้หลัก (MDB, LP, EDB) → cabinet_label; ถ้าเป็นชื่อจุด/feeder/load → equipment_label
+- ถ้า cabinet_label เจอหลายภาพ เลือก 1 ที่เป็นป้ายตู้หลักจริง ๆ ที่เหลือเป็น equipment_label หรือ normal
+
+ตอบเป็น JSON array อย่างเดียว ไม่มีคำอธิบาย ไม่ใช้ markdown:
+[{"i":1,"kind":"..."},{"i":2,"kind":"..."}, ...]` });
+
+  const text = await callAI([{role:'user', content}], 400);
+  let arr=[];
+  try{
+    const cleaned = text.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+    arr = JSON.parse(cleaned);
+  }catch(e){
+    logProcess(`! parse classification ไม่ได้, ใช้ heuristic fallback`);
+    arr = heuristicClassify(photos);
+  }
+
+  // Apply classifications
+  for(const item of arr){
+    const idx = item.i-1;
+    if(idx>=0 && idx<photos.length) photos[idx].kind = item.kind;
+  }
+  // Defensive: any photo unclassified → 'normal'
+  photos.forEach(p=>{ if(!p.kind) p.kind='normal'; });
+}
+
+function heuristicClassify(photos){
+  // Fallback if AI parse fails:
+  // assume first photo = building_label, second = cabinet_label or overview,
+  // every 3rd from then on alternating normal/normal/fluke_screen
+  const out=[];
+  for(let i=0;i<photos.length;i++){
+    let kind='normal';
+    if(i===0) kind='building_label';
+    else if(i===1) kind='overview';
+    else if(i===2) kind='cabinet_label';
+    else if((i-2)%3===0) kind='fluke_screen';
+    out.push({i:i+1, kind});
+  }
+  return out;
+}
+
+function buildPointsFromPhotos(building, cabinet){
+  const photos = cabinet.photos;
+  cabinet.points = [];
+  let prevNormal = null;
+  let prevEqLabel = null;
+  let ptIdx = 0;
+  for(let i=0;i<photos.length;i++){
+    const p = photos[i];
+    if(p.kind==='equipment_label') prevEqLabel = p;
+    if(p.kind==='normal') prevNormal = p;
+    if(p.kind==='fluke_screen'){
+      // Identification photo: prefer normal (CB เปิดฝา), fallback equipment_label (CB ปิดฝา + ป้าย)
+      const identPhoto = prevNormal ? prevNormal.dataUrl : (prevEqLabel ? prevEqLabel.dataUrl : null);
+      cabinet.points.push({
+        id:'p'+(ptIdx++),
+        equipment:'',
+        equipmentLabelPhoto: prevEqLabel ? prevEqLabel.dataUrl : null,
+        normalPhoto: identPhoto,
+        flukeScreenPhoto: p.dataUrl,
+        flukeFilename:'',
+        thermalDataUrl:null,
+        temps:{},
+        date:'', time:'',
+        deltaT:[], state:'A',
+        addInfo:''
+      });
+      prevNormal = null;
+      prevEqLabel = null;
+    }
+  }
+}
+
+/* ====================================================================
+   AI API calls (vision) — provider-agnostic dispatcher
+   - Anthropic format (image/text blocks) is the canonical input.
+   - For Google, we translate to Gemini's contents/parts format.
+===================================================================== */
+async function callAI(messages, maxTokens=300){
+  if(state.provider === 'google')       return await callGemini(messages, maxTokens, 'gemini-2.5-pro');
+  if(state.provider === 'google-flash') return await callGemini(messages, maxTokens, 'gemini-3.5-flash');
+  return await callAnthropic(messages, maxTokens);
+}
+
+async function callAnthropic(messages, maxTokens=300){
+  const body={
+    model: 'claude-sonnet-4-6',
+    max_tokens: maxTokens,
+    messages
+  };
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': state.anthropicKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify(body)
+  });
+  if(!resp.ok){
+    const t=await resp.text();
+    throw new Error(`Anthropic API ${resp.status}: ${t.slice(0,200)}`);
+  }
+  const data=await resp.json();
+  return (data.content||[]).map(c=>c.text||'').join('').trim();
+}
+
+async function callGemini(messages, maxTokens=300, model='gemini-2.5-pro'){
+  // Translate Anthropic-style messages → Gemini contents/parts
+  const contents = messages.map(m=>{
+    const rawParts = Array.isArray(m.content) ? m.content : [{type:'text', text:String(m.content||'')}];
+    const parts = rawParts.map(p=>{
+      if(p.type === 'image' && p.source?.type === 'base64'){
+        return { inline_data: { mime_type: p.source.media_type, data: p.source.data } };
+      }
+      return { text: p.text || '' };
+    });
+    return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+  });
+
+  // CRITICAL: Gemini 2.5 Pro mandates thinking (min 128 tokens for Pro), AND
+  // `maxOutputTokens` is the TOTAL budget including thinking. If the caller
+  // asked for 60–200 output tokens (the Anthropic-sized budgets used here),
+  // Gemini spends it all on thinking and returns an EMPTY response → empty
+  // building/cabinet names, null temperatures, mis-classified photos.
+  // Fix: pin thinking budget low (128 for Pro; 0 for Flash since it can disable
+  // thinking) and inflate the total budget so the real answer still fits.
+  const isFlash = model.includes('flash');
+  const thinkingBudget = isFlash ? 0 : 128;       // Flash can disable; Pro can't
+  const totalBudget = Math.max(maxTokens + 1024, 2048);
+
+  const body = {
+    contents,
+    generationConfig: {
+      maxOutputTokens: totalBudget,
+      temperature: 0.2,
+      thinkingConfig: { thinkingBudget }
+    }
+  };
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(state.googleKey)}`;
+  const resp = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!resp.ok){
+    const t=await resp.text();
+    throw new Error(`Gemini API ${resp.status}: ${t.slice(0,200)}`);
+  }
+  const data=await resp.json();
+  const cand = data.candidates?.[0];
+  if(!cand){
+    const pf = data.promptFeedback ? ` promptFeedback=${JSON.stringify(data.promptFeedback).slice(0,150)}` : '';
+    throw new Error('Gemini: no candidate in response.'+pf);
+  }
+  const parts = cand.content?.parts || [];
+  const text = parts.map(p=>p.text||'').join('').trim();
+  if(!text){
+    // Empty output — almost always thinking-budget exhaustion or a safety block.
+    // Surface finishReason so the user knows whether to retry or change provider.
+    const reason = cand.finishReason || 'unknown';
+    console.warn('[Gemini empty]', JSON.stringify(cand).slice(0,400));
+    throw new Error(`Gemini ตอบกลับว่าง (finishReason=${reason}) — ลอง Anthropic หรือลดความหนาแน่นของ prompt`);
+  }
+  return text;
+}
+
+function imageMessage(dataUrl){
+  const m = dataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+  if(!m) throw new Error('Invalid image data');
+  return { type:'image', source:{ type:'base64', media_type:m[1], data:m[2] } };
+}
+
+async function aiReadBuildingName(dataUrl){
+  dataUrl = await shrinkForAPI(dataUrl);
+  const text = await callAI([{
+    role:'user',
+    content:[
+      imageMessage(dataUrl),
+      { type:'text', text:`ภาพนี้คือป้าย/whiteboard ลายมือที่เขียนข้อมูลตู้ — อาจมีหลายข้อมูล (ชื่ออาคาร, ชื่อตู้, วันที่, ผู้บันทึก ฯลฯ)
+
+ดึงเฉพาะ **ชื่ออาคาร** เท่านั้น (ส่วนที่ขึ้นต้นด้วย "อาคาร", "Building", "อาคาร โรงงาน", "Plant", หรือชื่อตึก)
+ห้ามรวม: ชื่อตู้ (MDB, LP, EDB...), วันที่, เวลา, ชื่อคน, เลขที่ job
+
+ตัวอย่าง:
+- "อาคารโรงงาน 1\\nMDB-F1\\n5/6/2026" → ตอบ "อาคารโรงงาน 1"
+- "Building A — DB Room — 12 June" → ตอบ "Building A"
+
+ตอบ plain text บรรทัดเดียว ไม่ใส่ markdown. ถ้าหาชื่ออาคารไม่เจอตอบ "?"` }
+    ]
+  }], 100);
+  return stripMarkdown(text).replace(/\n+/g,' ').trim();
+}
+
+async function aiReadCabinetName(dataUrl){
+  dataUrl = await shrinkForAPI(dataUrl);
+  const text = await callAI([{
+    role:'user',
+    content:[
+      imageMessage(dataUrl),
+      { type:'text', text:'ภาพนี้คือป้ายชื่อตู้ไฟฟ้าหลัก. มองหาข้อความใหญ่/ตัวหนาที่เป็นชื่อตู้ (รูปแบบ "MDB", "MDB-F1", "LP1", "EDB-A", "DB-1F"). ห้ามใช้ชื่อ feeder, branch circuit, panel schedule, หรือ load name. ตอบเฉพาะชื่อตู้ plain text บรรทัดเดียว ไม่ใส่ ** หรือ markdown. ถ้าอ่านไม่ได้/ไม่มีชื่อตู้หลัก ตอบ "?"' }
+    ]
+  }], 60);
+  return stripMarkdown(text).replace(/\n+/g,' ').trim();
+}
+
+function stripMarkdown(s){
+  return String(s||'')
+    .replace(/```[\s\S]*?```/g,'')          // code fences
+    .replace(/`([^`]+)`/g,'$1')              // inline code
+    .replace(/\*\*([^*]+)\*\*/g,'$1')        // **bold**
+    .replace(/__([^_]+)__/g,'$1')            // __bold__
+    .replace(/\*([^*\n]+)\*/g,'$1')          // *italic*
+    .replace(/_([^_\n]+)_/g,'$1')            // _italic_
+    .replace(/^#+\s*/gm,'')                  // headings
+    .replace(/^>\s?/gm,'')                   // blockquote
+    .replace(/^[-*+]\s+/gm,'')               // bullets
+    .replace(/\n{2,}/g,'\n')
+    .replace(/^["'\s]+|["'\s]+$/g,'')
+    .trim();
+}
+
+async function aiReadEquipmentLabel(dataUrl){
+  dataUrl = await shrinkForAPI(dataUrl);
+  const text = await callAI([{
+    role:'user',
+    content:[
+      imageMessage(dataUrl),
+      { type:'text', text:`ภาพนี้คือภาพถ่ายเบรกเกอร์ที่อาจมี **1 หรือหลายป้ายชื่อจุดวัด** ในภาพเดียว
+(ในงานจริง ทีมงานบางครั้งถ่ายเบรกเกอร์ 2 ตัวรวมในภาพเดียวเพื่อประหยัดเวลา)
+
+ป้ายชื่อจุดวัดมักเป็นป้ายขาว/ดำที่ระบุชื่อจุด/feeder/load (เช่น "DBTW6", "DBTW11", "1LC-PD-01", "Main ACB", "FROM BY MEA")
+ป้ายมักติดข้างหรือใกล้เบรกเกอร์ที่มันชี้ถึง
+
+**กฎการอ่าน:**
+1. นับ**ทุกป้ายชื่อจุดวัด**ที่เห็นในภาพ (อาจมี 1, 2, หรือมากกว่า)
+2. ถ้ามี**หลายป้าย** → ตอบคั่นด้วย ", " (comma+space) เช่น "DBTW6, DBTW11"
+3. ถ้าป้ายเดียวมีหลายบรรทัด → รวมเป็นบรรทัดเดียวคั่นด้วยช่องว่าง
+
+**ห้ามรวม:**
+- ข้อความบนตัวเบรกเกอร์ (Schneider, EasyPact, Compact, ON/OFF, ค่าแรงดัน, ค่ากระแส เช่น "80A40°C", "TM 80D")
+- ป้ายเตือน (DANGER, ไฟดูด, ⚡)
+- QR code, label สีเหลือง
+
+ตอบ plain text บรรทัดเดียว ไม่ใส่ markdown ไม่ใส่ ** หรือ _
+ตัวอย่าง output:
+- "DBTW6" (ป้ายเดียว)
+- "DBTW6, DBTW11" (2 ป้ายในภาพเดียว)
+- "1LC-PD-01, 1LC-PD-AC, 1LC-PD-03" (3 ป้าย)
+
+ถ้าไม่เห็นป้ายชื่อจุดที่ชัดเจน ตอบ "?"` }
+    ]
+  }], 100);
+  return stripMarkdown(text).replace(/\n+/g,' ').trim();
+}
+
+function parseJsonLoose(text){
+  // ลบ code fences + parse — ถ้า fail ลอง regex หา object
+  const cleaned = text.replace(/```(?:json)?/gi,'').trim();
+  try{ return JSON.parse(cleaned); }catch(e){}
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if(m){ try{ return JSON.parse(m[0]); }catch(e){} }
+  return null;
+}
+
+// อ่านจาก "ภาพมือถือถ่ายหน้าจอ Fluke" — เอาชื่อไฟล์ + date/time จาก burn-in timestamp ที่กล้องมือถือพิมพ์ลงในภาพ
+// (timestamp burn-in มักอยู่มุมล่างซ้าย รูปแบบไทย "9 มิ.ย. 2569 11:05:49")
+async function aiReadFlukeFilename(dataUrl){
+  dataUrl = await shrinkForAPI(dataUrl);
+  const text = await callAI([{
+    role:'user',
+    content:[
+      imageMessage(dataUrl),
+      { type:'text', text:`ภาพนี้คือภาพถ่ายมือถือของหน้าจอกล้องความร้อน Fluke ขณะ preview/save
+ใช้เพื่ออ่าน 2 อย่าง:
+1. **ชื่อไฟล์** ที่จะ export จากกล้อง — เห็นบนหน้าจอ Fluke (ตรงกลางจอ)
+2. **วันที่/เวลา** จาก burn-in timestamp ที่กล้องมือถือพิมพ์ลงในภาพ (มักอยู่มุมล่างซ้าย/ขวา ภายนอกหน้าจอ Fluke)
+
+burn-in timestamp มักอยู่ในรูปแบบไทย พุทธศักราช เช่น:
+- "9 มิ.ย. 2569 11:05:49" → ค.ศ. 2026-06-09 11:05:49 (ปี พ.ศ. - 543 = ค.ศ.)
+- "15 ม.ค. 2570 14:30:00" → 2027-01-15 14:30:00
+- หรืออาจเป็นรูปแบบสากล "2026-06-09 11:05:49"
+
+เดือนไทยย่อ: ม.ค.=01, ก.พ.=02, มี.ค.=03, เม.ย.=04, พ.ค.=05, มิ.ย.=06, ก.ค.=07, ส.ค.=08, ก.ย.=09, ต.ค.=10, พ.ย.=11, ธ.ค.=12
+
+**สำคัญ:** ให้ใช้ burn-in timestamp จากกล้องมือถือเป็นหลัก (อยู่ขอบล่างของภาพ ไม่ใช่บนหน้าจอ Fluke) — ถ้าไม่มี burn-in ค่อย fallback ไป timestamp บนจอ Fluke
+
+ตอบ JSON อย่างเดียว ไม่ใส่ markdown ไม่ใส่ \`\`\`:
+{
+  "flukeFilename": "<ชื่อไฟล์ Fluke เช่น Fluke_20260609_0056 — ไม่ต้องมีนามสกุล .jpg>",
+  "date": "<YYYY-MM-DD ค.ศ. (แปลงจากพ.ศ.แล้ว)>",
+  "time": "<HH:MM:SS 24-hour format>"
+}
+
+ถ้าอ่านไม่ได้ส่วนไหนใส่ "" หรือ null` }
+    ]
+  }], 300);
+  const obj = parseJsonLoose(text) || {};
+  return {
+    flukeFilename: (obj.flukeFilename||'').replace(/\.(jpg|jpeg|png)$/i,''),
+    date: obj.date||'',
+    time: obj.time||''
+  };
+}
+
+// อ่าน Sp marker + date/time จาก "ภาพ thermal export" (Fluke พิมพ์ timestamp ลงในภาพ)
+async function aiReadThermalMarkers(dataUrl){
+  // Thermal images keep slightly more detail (1100px vs 900) because Sp1-6
+  // numbers are small and need to remain legible at API call time.
+  dataUrl = await shrinkThermalForAPI(dataUrl);
+  const text = await callAI([{
+    role:'user',
+    content:[
+      imageMessage(dataUrl),
+      { type:'text', text:`ภาพนี้คือไฟล์ thermal ที่ export มาจากกล้อง Fluke โดยตรง — มี marker Sp1-Sp6 ติดบนภาพ มีกล่องตัวเลขแสดงค่าอุณหภูมิ และมี timestamp (date/time) ที่ Fluke พิมพ์ลงในภาพ (มักอยู่มุมล่าง/บน)
+
+ตามมาตรฐานบริษัท: Sp1, Sp2, Sp3 = จุดวัด (MP, ฝั่งที่ต้องการวัด — มักร้อนกว่า) | Sp4, Sp5, Sp6 = จุดอ้างอิง (RP, ฝั่งสาย/บัสที่ปกติ)
+คู่ Delta T: Sp1↔Sp4 (Phase A), Sp2↔Sp5 (Phase B), Sp3↔Sp6 (Phase C)
+
+ตอบ JSON อย่างเดียว ไม่ใส่ markdown:
+{
+  "max": <Max temp °C จากมุมขวาบนของจอ>,
+  "min": <Min ถ้ามี>,
+  "avg": <Avg ถ้ามี>,
+  "sp1": <ค่า Sp1 จากตาราง>,
+  "sp2": <Sp2>,
+  "sp3": <Sp3>,
+  "sp4": <Sp4>,
+  "sp5": <Sp5>,
+  "sp6": <Sp6>,
+  "date": "<YYYY-MM-DD จาก timestamp บนภาพ — แปลงให้อยู่ในรูป YYYY-MM-DD>",
+  "time": "<HH:MM:SS จาก timestamp บนภาพ — 24-hour format>"
+}
+
+ค่าไหนอ่านไม่ได้/ไม่มีใส่ null. ตัวเลขอุณหภูมิเป็น number (ไม่ใช่ string, ไม่มี °C). date/time เป็น string.` }
+    ]
+  }], 500);
+  const obj = parseJsonLoose(text) || {};
+  return {
+    max: obj.max ?? null, min: obj.min ?? null, avg: obj.avg ?? null,
+    sp1: obj.sp1 ?? null, sp2: obj.sp2 ?? null, sp3: obj.sp3 ?? null,
+    sp4: obj.sp4 ?? null, sp5: obj.sp5 ?? null, sp6: obj.sp6 ?? null,
+    date: obj.date || '',
+    time: obj.time || '',
+  };
+}
+
+/* ====================================================================
+   Delta T computation + State
+===================================================================== */
+function computeDeltaTAndState(pt){
+  const t = pt.temps||{};
+  const pairs = [
+    {label:'Phase A', mp:t.sp1, rp:t.sp4},
+    {label:'Phase B', mp:t.sp2, rp:t.sp5},
+    {label:'Phase C', mp:t.sp3, rp:t.sp6},
+  ];
+  pt.deltaT = pairs.map(p=>({
+    label:p.label,
+    mp:p.mp, rp:p.rp,
+    dt: (p.mp!=null && p.rp!=null) ? Math.abs(p.mp - p.rp) : null
+  }));
+  const maxDt = Math.max(...pt.deltaT.map(d=>d.dt||0));
+  pt.state = stateFromDeltaT(maxDt);
+}
+function stateFromDeltaT(dt){
+  if(dt==null||isNaN(dt)) return 'A';
+  if(dt < 10) return 'A';
+  if(dt < 20) return 'B';
+  if(dt < 40) return 'C';
+  return 'D';
+}
+const STATE_DESC = {
+  A:'ปกติ ควรดำเนินการตรวจสอบอย่างต่อเนื่องต่อไป',
+  B:'เริ่มผิดปกติ ควรดำเนินการแก้ไขเมื่อมีการดับไฟฟ้า (ภายใน 6 เดือน)',
+  C:'ผิดปกติ ควรดำเนินการแก้ไขโดยด่วน (ภายใน 1 เดือน)',
+  D:'ผิดปกติ ควรดำเนินการแก้ไขโดยทันที',
+};
+
+/* ====================================================================
+   Review tab rendering — placeholder
+===================================================================== */
+function renderReview(){
+  const area=document.getElementById('reviewArea');
+  const topBar = `<div class="toolbar" style="margin-bottom:12px;align-items:center"><button class="btn btn-secondary btn-sm" onclick="addBuilding()">+ เพิ่มอาคาร</button><span style="font-size:11px;color:var(--c-text-light);margin-left:8px">💡 ลากปุ่ม ⋮⋮ เพื่อสลับลำดับ</span></div>`;
+  if(!state.buildings.length){
+    area.innerHTML=topBar+`<div class="empty"><div class="icon">📋</div><div class="label">ยังไม่มีข้อมูล</div><div class="hint">กด "+ เพิ่มอาคาร" ด้านบนเพื่อกรอกแบบแมนนวล หรือกลับไปอัปโหลดภาพและกดประมวลผลด้วย AI</div></div>`;
+    return;
+  }
+  let html=topBar+`<div class="building-list">`;
+  state.buildings.forEach((b,bi)=>{
+    html += `<div class="card building-card${b.collapsed?' collapsed':''}" id="bld-${bi}" data-bi="${bi}">
+      <div class="building-head" onclick="toggleBuilding(${bi})" style="cursor:pointer;user-select:none">
+        <h3><span class="drag-handle building" onclick="event.stopPropagation()" title="ลากเพื่อสลับลำดับอาคาร">⋮⋮</span>🏢 <input type="text" value="${escapeAttr(b.name)}" data-bind="building:${bi}:name" onclick="event.stopPropagation()" style="font-size:16px;font-weight:700;border:1px solid transparent;background:transparent;padding:4px 8px;border-radius:4px;width:280px"></h3>
+        <span class="badge">${b.cabinets.length} ตู้</span>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();removeBuilding(${bi})">🗑 ลบอาคาร</button>
+        <span class="chev bld-chev">▼</span>
+      </div>
+      <div class="cabinet-list" data-bi="${bi}">`;
+    b.cabinets.forEach((c,ci)=>{
+      html += `<div class="cabinet-box${c.collapsed?' collapsed':''}" id="cab-${bi}-${ci}" data-ci="${ci}">
+        <div class="cabinet-head" onclick="toggleCabinet(${bi},${ci})">
+          <div class="name"><span class="drag-handle cabinet" onclick="event.stopPropagation()" title="ลากเพื่อสลับลำดับตู้ในอาคารนี้">⋮⋮</span>📦 <input type="text" value="${escapeAttr(c.name)}" data-bind="cabinet:${bi}:${ci}:name" onclick="event.stopPropagation()"></div>
+          <div class="meta">
+            ${c.points.length} จุดวัด
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();removeCabinet(${bi},${ci})">🗑</button>
+            <span class="chev">▼</span>
+          </div>
+        </div>
+        <div class="point-list" data-bi="${bi}" data-ci="${ci}">`;
+      if(!c.points.length){
+        html += `<div class="empty" style="padding:20px"><div class="hint">ยังไม่มีจุดวัด — กด "+ จุด" ที่หัวตู้เพื่อเพิ่ม</div></div>`;
+      }
+      c.points.forEach((pt,pi)=>{
+        const stateDesc=STATE_DESC[pt.state||'A']||'';
+        const normalSrc = pt.normalPhoto;
+        const thermalSrc = pt.thermalDataUrl || pt.flukeScreenPhoto || null;
+        html += `<div class="point-row" data-pi="${pi}">
+          <div class="pnum"><span class="drag-handle point" title="ลากเพื่อสลับลำดับจุดในตู้นี้">⋮⋮</span> #${pi+1}</div>
+          <div class="pimg" title="กดเพื่อแทรกภาพ Identification" onclick="pickPointImage(${bi},${ci},${pi},'normalPhoto')">
+            ${normalSrc?`<img src="${normalSrc}"><button class="pimg-clear" title="ลบรูป" onclick="event.stopPropagation();clearPointImage(${bi},${ci},${pi},'normalPhoto')">×</button>`:'<span class="pimg-missing">+ แทรก<br>Identification</span>'}
+          </div>
+          <div class="pimg" title="กดเพื่อแทรกภาพ Thermal" onclick="pickPointImage(${bi},${ci},${pi},'thermalDataUrl')">
+            ${thermalSrc?`<img src="${thermalSrc}"><button class="pimg-clear" title="ลบรูป" onclick="event.stopPropagation();clearPointImage(${bi},${ci},${pi},'thermalDataUrl')">×</button>`:'<span class="pimg-missing">+ แทรก<br>Thermal</span>'}
+          </div>
+          <div class="pmeta">
+            <div class="label">Equipment</div>
+            <input type="text" value="${escapeAttr(pt.equipment||'')}" data-bind="point:${bi}:${ci}:${pi}:equipment">
+            <div class="label" style="margin-top:4px">ไฟล์ Fluke</div>
+            <input type="text" value="${escapeAttr(pt.flukeFilename||'')}" data-bind="point:${bi}:${ci}:${pi}:flukeFilename">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+              <div><div class="label">Date</div><input type="date" value="${escapeAttr(pt.date||'')}" data-bind="point:${bi}:${ci}:${pi}:date"></div>
+              <div><div class="label">Time</div><input type="time" value="${escapeAttr(pt.time||'')}" data-bind="point:${bi}:${ci}:${pi}:time"></div>
+            </div>
+          </div>
+          <div class="pmeta">
+            <div class="label">Sp1-6 (°C)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">
+              ${['sp1','sp2','sp3','sp4','sp5','sp6'].map(k=>`<input type="number" step="0.1" placeholder="${k}" value="${pt.temps?.[k]??''}" data-bind="point:${bi}:${ci}:${pi}:temps.${k}" style="padding:3px 5px;font-size:11px">`).join('')}
+            </div>
+          </div>
+          <div class="pstate">
+            <select data-bind="point:${bi}:${ci}:${pi}:state" style="padding:3px 6px;font-size:12px;font-weight:700;border-radius:4px">
+              <option value="A" ${pt.state==='A'?'selected':''}>A</option>
+              <option value="B" ${pt.state==='B'?'selected':''}>B</option>
+              <option value="C" ${pt.state==='C'?'selected':''}>C</option>
+              <option value="D" ${pt.state==='D'?'selected':''}>D</option>
+            </select>
+            <div class="state-badge state-${pt.state||'A'}" style="margin-top:5px">${pt.state||'A'}</div>
+            <button class="btn btn-danger btn-sm" style="margin-top:5px" onclick="removePoint(${bi},${ci},${pi})">🗑</button>
+          </div>
+        </div>`;
+      });
+      html += `<div class="toolbar" style="margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="addPoint(${bi},${ci})">+ เพิ่มจุด</button></div>`;
+      html += `</div></div>`;
+    });
+    html += `</div>`;  // close .cabinet-list
+    html += `<div class="toolbar" style="margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="addCabinet(${bi})">+ เพิ่มตู้</button></div>`;
+    html += `</div>`;  // close .building-card
+  });
+  html += `</div>`;  // close .building-list
+  area.innerHTML=html;
+
+  // bind inputs
+  area.querySelectorAll('[data-bind]').forEach(el=>{
+    el.addEventListener('input', handleBindInput);
+    el.addEventListener('change', handleBindInput);
+  });
+
+  // Enable drag-and-drop reorder (SortableJS)
+  setupReviewSortable(area);
+}
+
+/* ====================================================================
+   Drag-and-drop reorder (SortableJS) — buildings / cabinets / points
+   Cabinets locked to same building, points locked to same cabinet
+   (separate group names per parent prevent cross-parent drops).
+===================================================================== */
+function setupReviewSortable(area){
+  if(!window.Sortable) return;
+  const opts = {animation:150, ghostClass:'sortable-ghost', chosenClass:'sortable-chosen', dragClass:'sortable-drag'};
+
+  // Buildings — root list
+  const buildingList = area.querySelector('.building-list');
+  if(buildingList){
+    Sortable.create(buildingList, {
+      ...opts,
+      handle:'.drag-handle.building',
+      draggable:'.building-card',
+      group:'thermoscan-buildings',
+      onEnd: e=>{
+        if(e.oldIndex===e.newIndex) return;
+        const [moved] = state.buildings.splice(e.oldIndex, 1);
+        state.buildings.splice(e.newIndex, 0, moved);
+        renderReview(); saveDraft();
+      }
+    });
+  }
+
+  // Cabinets — one Sortable per building, group keyed by building index
+  // so cabinets cannot be dragged across buildings.
+  area.querySelectorAll('.cabinet-list').forEach(list=>{
+    const bi = +list.dataset.bi;
+    Sortable.create(list, {
+      ...opts,
+      handle:'.drag-handle.cabinet',
+      draggable:'.cabinet-box',
+      group:'thermoscan-cab-b'+bi,
+      onEnd: e=>{
+        if(e.oldIndex===e.newIndex) return;
+        const cabs = state.buildings[bi]?.cabinets;
+        if(!cabs) return;
+        const [moved] = cabs.splice(e.oldIndex, 1);
+        cabs.splice(e.newIndex, 0, moved);
+        renderReview(); saveDraft();
+      }
+    });
+  });
+
+  // Points — one Sortable per cabinet, group keyed by cabinet path
+  area.querySelectorAll('.point-list').forEach(list=>{
+    const bi = +list.dataset.bi;
+    const ci = +list.dataset.ci;
+    Sortable.create(list, {
+      ...opts,
+      handle:'.drag-handle.point',
+      draggable:'.point-row',
+      group:'thermoscan-pt-b'+bi+'-c'+ci,
+      onEnd: e=>{
+        if(e.oldIndex===e.newIndex) return;
+        const points = state.buildings[bi]?.cabinets[ci]?.points;
+        if(!points) return;
+        const [moved] = points.splice(e.oldIndex, 1);
+        points.splice(e.newIndex, 0, moved);
+        renderReview(); saveDraft();
+      }
+    });
+  });
+}
+function handleBindInput(e){
+  const path=e.target.dataset.bind.split(':');
+  const kind=path[0];
+  if(kind==='building'){ state.buildings[+path[1]].name=e.target.value; }
+  else if(kind==='cabinet'){ state.buildings[+path[1]].cabinets[+path[2]].name=e.target.value; }
+  else if(kind==='point'){
+    const pt=state.buildings[+path[1]].cabinets[+path[2]].points[+path[3]];
+    const field=path[4];
+    if(field.startsWith('temps.')){
+      const k=field.slice(6);
+      pt.temps=pt.temps||{};
+      pt.temps[k] = e.target.value===''?null:parseFloat(e.target.value);
+      computeDeltaTAndState(pt);
+      updatePointStateUI(e.target, pt);
+    } else {
+      pt[field] = e.target.value;
+      if(field==='state'){ updatePointStateUI(e.target, pt); }
+    }
+  }
+  saveDraft();
+}
+function updatePointStateUI(originEl, pt){
+  const row = originEl.closest('.point-row');
+  if(!row) return;
+  const badge = row.querySelector('.state-badge');
+  if(badge){
+    badge.textContent = pt.state||'A';
+    badge.className = 'state-badge state-'+(pt.state||'A');
+  }
+  const sel = row.querySelector('select[data-bind$=":state"]');
+  if(sel && sel !== originEl) sel.value = pt.state||'A';
+}
+function toggleCabinet(bi,ci){
+  // Persist collapse state in data so re-renders (after drag-reorder, etc.)
+  // don't lose it — otherwise users get confused when their collapsed
+  // cabinets suddenly "extract" all their points after a move.
+  const cab = state.buildings[bi]?.cabinets[ci];
+  if(!cab) return;
+  cab.collapsed = !cab.collapsed;
+  document.getElementById(`cab-${bi}-${ci}`)?.classList.toggle('collapsed', cab.collapsed);
+}
+function toggleBuilding(bi){
+  const bld = state.buildings[bi];
+  if(!bld) return;
+  bld.collapsed = !bld.collapsed;
+  document.getElementById(`bld-${bi}`)?.classList.toggle('collapsed', bld.collapsed);
+}
+function escapeAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
+
+/* ====================================================================
+   Preview rendering — placeholder (full layout next)
+===================================================================== */
+function renderPreview(){
+  const stage=document.getElementById('previewStage');
+  if(!state.buildings.length){
+    stage.innerHTML=`<div class="empty" style="background:#fff;border-radius:6px;padding:80px 20px"><div class="icon">📄</div><div class="label">ยังไม่มีข้อมูล</div></div>`;
+    return;
+  }
+  // Count total numbered pages (classification + summary + N detail) — title cover excluded
+  let pointCount=0;
+  for(const b of state.buildings) for(const c of b.cabinets) pointCount += c.points.length;
+
+  // Pack summary rows into pages by MEASURED visual height (DOM-based).
+  // Row heights depend on whether Location/Cabinet/Equipment wrap, and the
+  // browser's table auto-layout depends on the longest content in each column
+  // — so we render all rows in an off-screen probe table to get the real
+  // heights, then pack chunks that fit within the per-page tbody budget.
+  const allRows = buildSummaryRowsRaw();
+  const measured = measureSummaryRowHeights(allRows.map(r=>r.html));
+  measured.forEach((h, i)=>{ allRows[i].height = h; });
+  const summaryPages = packSummaryRows(allRows);
+  const summaryPageCount = Math.max(1, summaryPages.length);
+
+  // 1 classification + N summary pages + M detail pages
+  const totalPages = 1 + summaryPageCount + pointCount;
+  // First detail page number = right after the last summary page
+  const detailStartPage = 1 + summaryPageCount + 1;
+
+  // Now patch the "{{PAGE}}" placeholder in each row with the real detail page
+  // number, in iteration order (1st row → detailStartPage, 2nd → +1, ...).
+  let detailPageNo = detailStartPage;
+  for(const r of allRows){
+    r.html = r.html.replace('{{PAGE}}', detailPageNo++);
+  }
+
+  let html='';
+  html += renderTitleCover();                        // un-numbered
+  html += renderCoverPage(1, totalPages);            // Page 1 of N
+  // Summary pages — Page 2 .. (1 + summaryPageCount) of N
+  summaryPages.forEach((chunk, s) => {
+    const rowsHtml = chunk.indices.map(i => allRows[i].html).join('');
+    html += renderSummaryPage(2 + s, totalPages, rowsHtml, s > 0);
+  });
+  // Detail pages — numbered detailStartPage onwards
+  let pageNo = detailStartPage;
+  for(const b of state.buildings){
+    for(const c of b.cabinets){
+      for(const pt of c.points){
+        html += renderDetailPage(b, c, pt, pageNo, totalPages);
+        pageNo++;
+      }
+    }
+  }
+  stage.innerHTML=html;
+}
+
+/* ====================================================================
+   Page chrome (header + footer) — Avatar-branded chevron strips
+   Design matches pmfrom.html: dark slate + thin orange transition + dark
+   navy chevron, with text inside the colored band.
+===================================================================== */
+function renderPageHeader(){
+  // แบบสี่เหลี่ยมตรง (ไม่เฉียง) — ตามรูปแบบ pmfrom.html
+  // โซนซ้าย 63px (=30%) สีเทาเข้ม / โซนขวา 147px (=70%) สีน้ำเงินเข้ม / เส้นส้มขอบล่าง
+  return `<div class="page-header">
+    <svg viewBox="0 0 210 12" preserveAspectRatio="none" width="100%" height="100%">
+      <rect x="0" y="0" width="63" height="12" fill="#334155"/>
+      <rect x="63" y="0" width="147" height="12" fill="#0f172a"/>
+      <rect x="0" y="10.8" width="210" height="1.2" fill="#f97316"/>
+    </svg>
+    <div class="page-header-title">${svgText('THERMOSCAN INSPECTION REPORT',{w:230,h:12,fontSize:9.5,fontWeight:800,fg:'#f1f5f9',family:'Arial,Helvetica,sans-serif'})}</div>
+  </div>`;
+}
+function renderPageFooter(pageNo, totalPages){
+  // แบบสี่เหลี่ยมตรง (ไม่เฉียง) — ตามรูปแบบ pmfrom.html
+  // โซนซ้าย 63px (=30%) สีเทาเข้ม + เส้นส้มขอบบน / โซนขวา 147px (=70%) สีน้ำเงินเข้ม + เส้นส้มขอบบน
+  const companyName = state.meta.inspector || 'Avatar Electric Co.,Ltd.';
+  return `<div class="page-footer">
+    <svg viewBox="0 0 210 12" preserveAspectRatio="none" width="100%" height="100%">
+      <rect x="0" y="0" width="63" height="12" fill="#334155"/>
+      <rect x="63" y="0" width="147" height="12" fill="#0f172a"/>
+      <rect x="0" y="0" width="210" height="1.2" fill="#f97316"/>
+    </svg>
+    <div class="page-footer-left">${svgText(companyName,{w:210,h:14,fontSize:11,fontWeight:800,fg:'#f1f5f9',fit:true})}</div>
+    <div class="page-footer-right">${svgText('Page '+pageNo+' of '+totalPages,{w:90,h:12,fontSize:10,fontWeight:700,fg:'#f1f5f9',family:'Arial,Helvetica,sans-serif'})}</div>
+  </div>`;
+}
+
+
+/* ====================================================================
+   Title Cover (page 1) — Avatar Electric branded design
+===================================================================== */
+function fmtCoverDate(s){
+  if(!s) return '—';
+  const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return s;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${parseInt(m[3],10)} ${months[parseInt(m[2],10)-1]||''} ${m[1]}`;
+}
+function renderTitleCover(){
+  const proj = (state.meta.projectName||'').trim() || 'Thermoscan Inspection Project';
+  const date = fmtCoverDate(state.meta.inspectionDate);
+  const customerLogo = state.meta.logo?.dataUrl;
+  return `<div class="page page-cover">
+    <!-- Top decorative band (dark slate + yellow + orange + peach gradient) -->
+    <div class="cover-top-band">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%">
+        <defs>
+          <linearGradient id="ctgrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fdba74" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="100" height="20" fill="#1e293b"/>
+        <rect x="0" y="20" width="100" height="2" fill="#f59e0b"/>
+        <rect x="0" y="22" width="100" height="6" fill="#f97316"/>
+        <rect x="0" y="28" width="100" height="72" fill="url(#ctgrad)"/>
+      </svg>
+    </div>
+
+    <!-- Title text overlay -->
+    <div class="cover-title-block">
+      ${svgText('Avatar Electric',{w:460,h:60,fontSize:52,fontWeight:400,fg:'#1e293b',family:'Arial,Helvetica,sans-serif'})}
+      <div style="margin-left:200px;margin-top:-6px">
+        ${svgText('Company Limited',{w:200,h:24,fontSize:20,fontWeight:600,fg:'#f97316',family:'Arial,Helvetica,sans-serif'})}
+      </div>
+    </div>
+
+    <!-- Center logo (customer-uploaded or placeholder) -->
+    <div class="cover-logo-wrap">
+      ${customerLogo
+        ? `<img src="${customerLogo}" alt="logo">`
+        : `<div class="ph">โลโก้บริษัทลูกค้า<br><span style="font-size:11px;opacity:.7">อัปโหลดในแท็บ Setup</span></div>`}
+    </div>
+
+    <!-- Project info card -->
+    <div class="cover-info-card">
+      <div class="cover-info-title">${svgText('THERMOSCAN INSPECTION REPORT',{w:520,h:28,fontSize:22,fontWeight:800,fg:'#1e293b',family:'Arial,Helvetica,sans-serif'})}</div>
+      <div class="cover-info-row">
+        <div class="cover-info-label">${svgText('PROJECT',{w:90,h:16,fontSize:13,fontWeight:700,fg:'#ffffff',family:'Arial,Helvetica,sans-serif'})}</div>
+        <div class="cover-info-value">${escapeHtml(proj)}</div>
+      </div>
+      <div class="cover-info-row">
+        <div class="cover-info-label">${svgText('DATE',{w:60,h:16,fontSize:13,fontWeight:700,fg:'#ffffff',family:'Arial,Helvetica,sans-serif'})}</div>
+        <div class="cover-info-value">${escapeHtml(date)}</div>
+      </div>
+    </div>
+
+    <!-- Bottom decorative band (orange diagonal + dark navy) -->
+    <div class="cover-bot-band">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%">
+        <polygon points="0,60 100,85 100,89 0,64" fill="#ea580c"/>
+        <polygon points="0,63 100,88 100,100 0,100" fill="#1e293b"/>
+      </svg>
+    </div>
+    <div class="cover-url">${svgText('www.avatar-electric.com',{w:240,h:20,fontSize:17,fontWeight:500,fg:'#ffffff',family:'Arial,Helvetica,sans-serif'})}</div>
+  </div>`;
+}
+
+function renderCoverPage(pageNo, totalPages){
+  const logoHtml = state.meta.logo
+    ? `<img src="${state.meta.logo.dataUrl}" alt="logo">`
+    : `<div class="logo-placeholder">โลโก้</div>`;
+  return `<div class="page has-chrome">
+    ${renderPageHeader()}
+    <div class="cover-logo">${logoHtml}</div>
+    <div class="cover-title">Classification Description</div>
+    <table class="cls-table">
+      <thead><tr><th>Delta T</th><th>Action Required</th><th>Classifications</th></tr></thead>
+      <tbody>
+        <tr><td>0 °C – 10 °C</td><td>${STATE_DESC.A}</td><td class="cls-A">${svgText('A',{w:50,h:24,fontSize:16,fontWeight:800,fg:'#fff'})}</td></tr>
+        <tr><td>10 °C – 20 °C</td><td>${STATE_DESC.B}</td><td class="cls-B">${svgText('B',{w:50,h:24,fontSize:16,fontWeight:800,fg:'#000'})}</td></tr>
+        <tr><td>20 °C – 40 °C</td><td>${STATE_DESC.C}</td><td class="cls-C">${svgText('C',{w:50,h:24,fontSize:16,fontWeight:800,fg:'#fff'})}</td></tr>
+        <tr><td>40 °C – Above</td><td>${STATE_DESC.D}</td><td class="cls-D">${svgText('D',{w:50,h:24,fontSize:16,fontWeight:800,fg:'#fff'})}</td></tr>
+      </tbody>
+    </table>
+    <div style="font-weight:600;margin-bottom:6px">หมายเหตุ :</div>
+    <div class="cover-note">1.) Delta T คือ ความแตกต่างของอุณหภูมิที่เทียบระหว่างอุณหภูมิของจุดที่ต้องการวัดกับจุดอ้างอิง เช่น อุณหภูมิของจุดต่อสายเทียบกับอุณหภูมิของสายตัวนำ หรืออุณหภูมิของจุดต่อสายของ Drop Fuse เทียบกับอุณหภูมิของสาย Lead Wire เป็นต้น ซึ่งอุณหภูมิของจุดอ้างอิงนี้คืออุณหภูมิเทียบเท่ากับอุณภูมิในสภาวะปกติของจุดที่ต้องการวัด สำหรับการตรวจสอบจุดต่อในระบบไฟฟ้านั้นจุดอ้างอิงควรเป็นจุดที่เชื่อมต่อกันและเป็นทางเดินของกระแสใน Phase และระดับแรงดันไฟฟ้าเดียวกันเป็นต้น</div>
+    <div class="cover-note">2.) ตารางข้างต้นอ้างอิงตาม "Infraspection Institute" – Guideline for Infrared Inspection of Electrical and Mechanical System, January 1993 part2 "Temperature Criteria for Electrical System"</div>
+    ${renderPageFooter(pageNo, totalPages)}
+  </div>`;
+}
+
+// Build summary row HTML with a {{PAGE}} placeholder for the Page column.
+// Real detail-page numbers can't be assigned yet — they depend on chunking
+// (chunking → summary page count → detail page start) which itself depends
+// on row heights. So we leave the placeholder and patch it in once chunks
+// are known.
+function buildSummaryRowsRaw(){
+  const rows=[];
+  for(const b of state.buildings){
+    for(const c of b.cabinets){
+      for(const pt of c.points){
+        const stateColor={A:'#16a34a',B:'#eab308',C:'#ea580c',D:'#dc2626'}[pt.state||'A'];
+        const textColor=pt.state==='B'?'#000':'#fff';
+        const html = `<tr>
+          <td>${escapeHtml(pt.flukeFilename||'-')}</td>
+          <td>${escapeHtml(pt.time||'-')}</td>
+          <td>${escapeHtml(b.name||'-')}</td>
+          <td>${escapeHtml(c.name||'-')}</td>
+          <td>${escapeHtml(pt.equipment||'-')}</td>
+          <td>{{PAGE}}</td>
+          <td class="state-cell" style="background:${stateColor}">${svgText(pt.state||'A',{w:30,h:18,fontSize:13,fontWeight:800,fg:textColor})}</td>
+        </tr>`;
+        rows.push({html, height: 0});  // height filled later by measureSummaryRowHeights
+      }
+    }
+  }
+  return rows;
+}
+
+// Estimate row visual height by checking which columns are likely to wrap.
+// Column character budgets are empirical — measured from the browser's
+// auto-layout of the 7-column sum-table at 10px font with 6px cell padding:
+//   Image    ≈ 24 chars/line
+//   Location ≈ 14 chars/line  ← narrow, wraps often
+//   Cabinet  ≈ 14 chars/line
+//   Equipment ≈ 26 chars/line ← wraps when multi-label "X, Y" or has "(RES)"
+// Time, Page, State are short fixed-format → ignored.
+// Fixed column widths used by every summary table — probe + each rendered
+// page. With table-layout:fixed every chunk renders identical column widths,
+// so a row that fits on the probe also fits on the page (and vice versa).
+// Widths sum to ~684px (close to page tbody width of 694).
+const SUM_COL_WIDTHS = { image:115, time:65, location:105, cabinet:90, equipment:200, page:55, state:55 };
+function sumColgroup(){
+  const w = SUM_COL_WIDTHS;
+  return `<colgroup>
+    <col style="width:${w.image}px"><col style="width:${w.time}px"><col style="width:${w.location}px">
+    <col style="width:${w.cabinet}px"><col style="width:${w.equipment}px"><col style="width:${w.page}px">
+    <col style="width:${w.state}px">
+  </colgroup>`;
+}
+
+// Measure the real rendered height of every summary row by inserting them
+// into an off-screen probe element with the same dimensions and column widths
+// as the live summary page. Both probe and page use table-layout:fixed +
+// matching <colgroup>, so heights measured here exactly match the heights
+// that occur in the rendered summary pages (no surprises from auto-layout).
+function measureSummaryRowHeights(rowsHTML){
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-99999px;top:0;width:694px;visibility:hidden;font-family:Sarabun,sans-serif;font-size:11px;color:#000;line-height:1.45';
+  const sumTh = (label,w)=>`<th>${svgText(label,{w:w||60,h:16,fontSize:10,fontWeight:700,fg:'#374151'})}</th>`;
+  probe.innerHTML = `<table class="sum-table">${sumColgroup()}<thead><tr>${sumTh('Image',60)}${sumTh('Time',50)}${sumTh('Location',70)}${sumTh('Cabinet',70)}${sumTh('Equipment',80)}${sumTh('Page',40)}${sumTh('State',40)}</tr></thead><tbody>${rowsHTML.join('')}</tbody></table>`;
+  document.body.appendChild(probe);
+  const heights = [...probe.querySelectorAll('tbody tr')].map(tr => tr.getBoundingClientRect().height);
+  document.body.removeChild(probe);
+  return heights;
+}
+
+// Pack rows into pages using measured heights. Each page's total row height
+// must not exceed the tbody budget. Budget calibrated from chrome layout:
+//   page usable = 1123 − chrome top (62) − chrome bottom (60) = 1001
+//   minus title (~32) − thead (~28) − safety (~21) = 920px tbody
+const SUMMARY_BODY_HEIGHT_PX = 920;
+function packSummaryRows(rows){
+  const pages = [];
+  let cur = {indices:[], h:0};
+  for(let i=0;i<rows.length;i++){
+    if(cur.indices.length && cur.h + rows[i].height > SUMMARY_BODY_HEIGHT_PX){
+      pages.push(cur);
+      cur = {indices:[], h:0};
+    }
+    cur.indices.push(i);
+    cur.h += rows[i].height;
+  }
+  if(cur.indices.length) pages.push(cur);
+  return pages;
+}
+
+// Render ONE summary page given a chunk of row HTML.
+function renderSummaryPage(pageNo, totalPages, rowsHtml, continued){
+  const sumTh = (label,w)=>`<th>${svgText(label,{w:w||60,h:16,fontSize:10,fontWeight:700,fg:'#374151'})}</th>`;
+  const title = continued ? 'Summary of Inspection (Continued)' : 'Summary of Inspection';
+  return `<div class="page has-chrome">
+    ${renderPageHeader()}
+    <div class="sum-title">${title}</div>
+    <table class="sum-table">
+      ${sumColgroup()}
+      <thead><tr>${sumTh('Image',60)}${sumTh('Time',50)}${sumTh('Location',70)}${sumTh('Cabinet',70)}${sumTh('Equipment',80)}${sumTh('Page',40)}${sumTh('State',40)}</tr></thead>
+      <tbody>${rowsHtml||'<tr><td colspan="7" style="text-align:center;padding:20px">ไม่มีข้อมูล</td></tr>'}</tbody>
+    </table>
+    ${renderPageFooter(pageNo, totalPages)}
+  </div>`;
+}
+
+function renderDetailPage(building, cabinet, pt, pageNo, totalPages){
+  const stateColor={A:'#16a34a',B:'#eab308',C:'#ea580c',D:'#dc2626'}[pt.state||'A'];
+  const textColor=pt.state==='B'?'#000':'#fff';
+  const fmtNum=v=>(v==null||isNaN(v))?'-':v.toFixed(1);
+  const fmtDate=d=>{
+    if(!d) return '-';
+    const m=d.match(/(\d{4})-(\d{2})-(\d{2})/);
+    return m?`${m[3]}/${m[2]}/${m[1]}`:d;
+  };
+  return `<div class="page has-chrome">
+    ${renderPageHeader()}
+    <div class="det-head">
+      <div class="cell">
+        <div class="label-tag">ตู้ / Cabinet</div>
+        <div class="value">${escapeHtml(cabinet.name||'-')}</div>
+      </div>
+      <div class="cell">
+        <div class="label-tag">อาคาร / Location</div>
+        <div class="value">${escapeHtml(building.name||'-')}</div>
+      </div>
+    </div>
+
+    <div class="det-images">
+      <div class="img-box">
+        <div class="img-label">${svgText('Thermography',{w:140,h:16,fontSize:11,fontWeight:700,fg:'#000'})}</div>
+        <div class="img-content">${pt.thermalDataUrl?`<img src="${pt.thermalDataUrl}">`:(pt.flukeScreenPhoto?`<img src="${pt.flukeScreenPhoto}">`:'<span class="img-missing">— ไม่มีภาพ thermal —</span>')}</div>
+      </div>
+      <div class="img-box">
+        <div class="img-label">${svgText('Identification',{w:140,h:16,fontSize:11,fontWeight:700,fg:'#000'})}</div>
+        <div class="img-content">${pt.normalPhoto?`<img src="${pt.normalPhoto}">`:'<span class="img-missing">— ไม่มีภาพ —</span>'}</div>
+      </div>
+    </div>
+
+    <div class="det-body">
+      <div class="det-section">
+        <div class="det-section-title">${svgText('Parameter of Camera',{w:170,h:16,fontSize:11,fontWeight:700,fg:'#000'})}</div>
+        <div class="det-section-body">
+          <table class="kv-table"><tbody>
+            <tr><td>Color of Palettes</td><td>${escapeHtml(state.meta.palette||'-')}</td></tr>
+          </tbody></table>
+          <table class="sp-table">
+            <thead><tr><th>${svgText('Label',{w:40,h:14,fontSize:10,fontWeight:700,fg:'#000'})}</th><th>${svgText('Value (°C)',{w:60,h:14,fontSize:10,fontWeight:700,fg:'#000'})}</th><th>${svgText('Label',{w:40,h:14,fontSize:10,fontWeight:700,fg:'#000'})}</th><th>${svgText('Value (°C)',{w:60,h:14,fontSize:10,fontWeight:700,fg:'#000'})}</th><th>${svgText('Delta T (°C)',{w:70,h:14,fontSize:10,fontWeight:700,fg:'#000'})}</th></tr></thead>
+            <tbody>
+              <tr><td>Sp1</td><td>${fmtNum(pt.temps?.sp1)}</td><td>Sp4</td><td>${fmtNum(pt.temps?.sp4)}</td><td>${fmtNum(pt.deltaT?.[0]?.dt)}</td></tr>
+              <tr><td>Sp2</td><td>${fmtNum(pt.temps?.sp2)}</td><td>Sp5</td><td>${fmtNum(pt.temps?.sp5)}</td><td>${fmtNum(pt.deltaT?.[1]?.dt)}</td></tr>
+              <tr><td>Sp3</td><td>${fmtNum(pt.temps?.sp3)}</td><td>Sp6</td><td>${fmtNum(pt.temps?.sp6)}</td><td>${fmtNum(pt.deltaT?.[2]?.dt)}</td></tr>
+            </tbody>
+          </table>
+          <div class="sp-note">
+            • Sp1-Sp3 = อุณหภูมิจุดวัด (MP)<br>
+            • Sp4-Sp6 = อุณหภูมิจุดอ้างอิง (RP)<br>
+            • Delta T = | Sp(MP) − Sp(RP) |
+          </div>
+        </div>
+      </div>
+      <div class="det-section">
+        <div class="det-section-title">${svgText('General Data',{w:120,h:16,fontSize:11,fontWeight:700,fg:'#000'})}</div>
+        <div class="det-section-body">
+          <table class="kv-table"><tbody>
+            <tr><td>Equipment</td><td>${escapeHtml(pt.equipment||'-')}</td></tr>
+            <tr><td>Date</td><td>${fmtDate(pt.date)}</td></tr>
+            <tr><td>Time</td><td>${escapeHtml(pt.time||'-')}</td></tr>
+            <tr><td>File Name</td><td>${escapeHtml(pt.flukeFilename||'-')}</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="det-reco">
+      <div class="det-reco-title">${svgText('Recommendation',{w:140,h:16,fontSize:11,fontWeight:700,fg:'#000'})}</div>
+      <div class="det-reco-body">
+        ${svgText('State '+(pt.state||'A'),{w:90,h:26,fontSize:13,fontWeight:800,fg:textColor,bg:stateColor,rx:4,style:'display:inline-block;vertical-align:middle;flex:0 0 auto'})}
+        <div class="reco-desc">${STATE_DESC[pt.state||'A']}</div>
+      </div>
+    </div>
+
+    ${renderPageFooter(pageNo, totalPages)}
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* SVG label — fixed-size SVG with a perfectly centered text glyph (and
+   optional background rect). Required for any Latin label/badge/cell
+   that sits inside a colored box, because html2canvas draws plain HTML
+   text at the bottom of its line box (align-items:center, vertical-align:
+   middle, line-height tricks all FAIL in html2canvas). SVG bypasses this.
+   Do NOT use for Thai text — web fonts don't load inside serialized SVG
+   images, Thai becomes tofu. Keep Thai as plain HTML. */
+function svgText(text, opts){
+  opts = opts || {};
+  const w = opts.w || 60, h = opts.h || 22;
+  const fg = opts.fg || '#000';
+  const fontSize = opts.fontSize || 12;
+  const fontWeight = opts.fontWeight || 600;
+  // Default font chain: tries Sarabun (web) → Tahoma (Windows Thai) →
+  // Thonburi (iOS Thai) → Arial. When html2canvas serializes the SVG to a
+  // standalone image, web fonts (Sarabun) don't load — so system fonts
+  // (Tahoma/Thonburi) keep Thai readable instead of falling to tofu.
+  const family = opts.family || "'Sarabun','Tahoma','Thonburi',Arial,Helvetica,sans-serif";
+  const rx = opts.rx || 0;
+  const bg = opts.bg ? `<rect x="0" y="0" width="${w}" height="${h}" rx="${rx}" fill="${opts.bg}"/>` : '';
+  const style = opts.style || 'display:inline-block;vertical-align:middle';
+  const t = String(text==null?'':text).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // fit:true → if estimated text width exceeds available SVG width, compress
+  // via SVG textLength + lengthAdjust="spacingAndGlyphs" so long company /
+  // project names visually shrink to fit instead of being clipped.
+  let textLengthAttr = '';
+  if(opts.fit){
+    // Rough char-width estimate: 0.55em per char for mixed Latin/Thai.
+    // Thai chars are typically wider than Latin, so estimate is conservative.
+    const estW = (String(text||'').length) * fontSize * 0.55;
+    const maxW = w - 4;
+    if(estW > maxW) textLengthAttr = ` textLength="${maxW}" lengthAdjust="spacingAndGlyphs"`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="${style}"><g>${bg}<text x="${w/2}" y="${h/2}" dy="0.35em" text-anchor="middle" fill="${fg}" font-size="${fontSize}" font-weight="${fontWeight}" font-family="${family}"${textLengthAttr}>${t}</text></g></svg>`;
+}
+
+/* ====================================================================
+   PDF Export — placeholder (next)
+===================================================================== */
+document.getElementById('btnExport').addEventListener('click', async ()=>{
+  if(!state.buildings.length){ toast('ยังไม่มีข้อมูล','error'); return; }
+  document.getElementById('exportStatus').style.display='block';
+  try{
+    await exportPDF();
+  }catch(e){
+    console.error(e);
+    toast('Export ผิดพลาด: '+e.message,'error');
+  }
+});
+
+async function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const A4_W=210, A4_H=297;
+  // Pre-render preview to ensure pages exist
+  renderPreview();
+  await new Promise(r=>setTimeout(r,200));
+
+  // Force preview panel to lay out off-screen — when user clicks Export from Tab 5,
+  // the preview panel is display:none → .page elements have 0×0 → html2canvas
+  // would produce blank pages. Move the stage to a visible off-screen container
+  // for the duration of export, then put it back.
+  const stage = document.getElementById('previewStage');
+  const stagePanel = stage.closest('.panel');
+  const panelWasHidden = stagePanel && !stagePanel.classList.contains('active');
+  const stageBackup = { maxHeight: stage.style.maxHeight, overflow: stage.style.overflow };
+  let offscreenHolder = null, originalParent = null, originalNext = null;
+  if(panelWasHidden){
+    originalParent = stage.parentNode;
+    originalNext = stage.nextSibling;
+    offscreenHolder = document.createElement('div');
+    offscreenHolder.id = '__pdfExportHolder';
+    offscreenHolder.style.cssText = 'position:fixed;left:-100000px;top:0;width:auto;background:#fff;z-index:-1';
+    document.body.appendChild(offscreenHolder);
+    offscreenHolder.appendChild(stage);
+  }
+  // Always unlock stage scroll-area so pages have full natural size during capture
+  stage.style.maxHeight = 'none';
+  stage.style.overflow = 'visible';
+  // Activate export-only CSS overrides (asymmetric padding + line-height shrink)
+  // so html2canvas's "text at bottom of line box" quirk gets visually centered.
+  stage.classList.add('export-mode');
+  await new Promise(r=>setTimeout(r,100));
+
+  const pages = document.querySelectorAll('#previewStage .page');
+  if(!pages.length){
+    // restore before throwing
+    stage.classList.remove('export-mode');
+    if(panelWasHidden && originalParent){ originalParent.insertBefore(stage, originalNext); offscreenHolder?.remove(); }
+    stage.style.maxHeight = stageBackup.maxHeight;
+    stage.style.overflow = stageBackup.overflow;
+    throw new Error('ไม่มีหน้า render');
+  }
+
+  try{
+    // Quality preset: "<format><scale>" e.g. "jpeg3", "png3"
+    // PNG = lossless → ตัวอักษรคมที่สุด (ไฟล์ใหญ่). JPEG 0.97 = คมพอ ไฟล์เล็กกว่ามาก
+    // หมายเหตุ iOS: page สูง 1123px × scale 4 = 4492px เกิน 4096px cap ของ Safari → ใช้ scale สูงสุด 3
+    const preset = document.getElementById('pdfQuality').value || 'jpeg3';
+    const usePng = preset.startsWith('png');
+    const scale = parseInt(preset.replace(/^\D+/,''),10) || 3;
+    const imgFormat = usePng ? 'PNG' : 'JPEG';
+    for(let i=0;i<pages.length;i++){
+      setExportProgress((i)/pages.length*100, `กำลังสร้างหน้า ${i+1}/${pages.length}`);
+      const canvas = await html2canvas(pages[i], {scale, useCORS:true, backgroundColor:'#ffffff', logging:false});
+      const img = usePng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.97);
+      if(i>0) pdf.addPage();
+      pdf.addImage(img, imgFormat, 0, 0, A4_W, A4_H, undefined, 'FAST');
+    }
+    setExportProgress(100, 'บันทึก');
+    const filename = (document.getElementById('pdfFilename').value || 'Thermoscan_Report') .replace(/\.pdf$/i,'') + '.pdf';
+    pdf.save(filename);
+    toast('สร้าง PDF สำเร็จ', 'success');
+    document.getElementById('exportStatus').style.display='none';
+    // Auto-snapshot to history on successful export
+    try{ await saveCurrentToHistory(true); }catch(e){ console.warn('auto-snapshot failed', e); }
+  } finally {
+    // Restore stage to its original panel + revert style overrides
+    stage.classList.remove('export-mode');
+    if(panelWasHidden && originalParent){
+      originalParent.insertBefore(stage, originalNext);
+      offscreenHolder?.remove();
+    }
+    stage.style.maxHeight = stageBackup.maxHeight;
+    stage.style.overflow = stageBackup.overflow;
+  }
+}
+function setExportProgress(pct, label){
+  document.getElementById('exportBar').style.width=pct+'%';
+  document.getElementById('exportLabel').textContent=label;
+}
+
+/* ====================================================================
+   History + draft autosave (MoM-style)
+===================================================================== */
+document.getElementById('btnHistory').addEventListener('click', ()=>showStartupModal(true));
+document.getElementById('btnSave').addEventListener('click', ()=>saveCurrentToHistory(false));
+
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+async function loadHistory(){ try{ return (await localforage.getItem(HISTORY_KEY)) || []; }catch(e){ return []; } }
+async function saveHistory(list){ try{ await localforage.setItem(HISTORY_KEY, list); }catch(e){ console.error(e); } }
+
+/* ---------- Live draft (auto-save every change, crash-safe) ---------- */
+function draftHasContent(){
+  if((state.meta?.projectName||'').trim()) return true;
+  return (state.buildings||[]).some(b => (b.cabinets||[]).some(c =>
+    (c.photos&&c.photos.length) || (c.points||[]).some(pt =>
+      (pt.equipment||'').trim() || pt.normalPhoto || pt.thermalDataUrl ||
+      Object.values(pt.temps||{}).some(v=>v!=null)
+    )
+  ));
+}
+function stripKeysFromState(s){
+  // Never persist API keys inside draft or history snapshots
+  const clone = deepClone(s);
+  delete clone.anthropicKey;
+  delete clone.googleKey;
+  delete clone.processing;
+  return clone;
+}
+async function saveDraft(){
+  isDirty = true;
+  if(_draftTimer) clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(async ()=>{
+    try{ await localforage.setItem(STORAGE_KEY, stripKeysFromState(state)); }
+    catch(e){ console.warn('saveDraft failed', e); }
+  }, 250);
+}
+async function loadDraft(){
+  try{
+    const d = await localforage.getItem(STORAGE_KEY);
+    if(!d) return false;
+    // Preserve current keys/provider — they live in their own slots
+    const aK = state.anthropicKey, gK = state.googleKey, pv = state.provider;
+    Object.assign(state, d);
+    state.anthropicKey = aK; state.googleKey = gK; state.provider = pv;
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ---------- Dialog primitives ---------- */
+function buildModalOverlay(innerHTML, opts){
+  opts = opts||{};
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg show no-print';
+  bg.style.zIndex = opts.z || 400;
+  bg.innerHTML = `<div class="modal" style="width:min(94vw,460px)">${innerHTML}</div>`;
+  document.body.appendChild(bg);
+  return bg;
+}
+function confirmDialog({title='ยืนยัน', message='', confirmText='ตกลง', cancelText='ยกเลิก', danger=false}={}){
+  return new Promise(resolve=>{
+    const iconSvg = danger
+      ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+      : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    const bg = buildModalOverlay(`
+      <div class="modal-body" style="text-align:center;padding:24px 22px 12px">
+        <div class="dlg-icon ${danger?'danger':'info'}">${iconSvg}</div>
+        <div class="dlg-title">${escapeHtml(title)}</div>
+        <div class="dlg-msg">${message}</div>
+      </div>
+      <div class="modal-foot" style="justify-content:stretch;gap:10px">
+        <button class="btn btn-ghost" id="cdCancel" style="flex:1;justify-content:center">${escapeHtml(cancelText)}</button>
+        <button class="btn ${danger?'btn-danger':'btn-primary'}" id="cdOk" style="flex:1;justify-content:center">${escapeHtml(confirmText)}</button>
+      </div>
+    `, {z:440});
+    const done = v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#cdOk').onclick = ()=> done(true);
+    bg.querySelector('#cdCancel').onclick = ()=> done(false);
+    bg.addEventListener('click', e=>{ if(e.target===bg) done(false); });
+  });
+}
+function confirmUnsavedChanges(){
+  return new Promise(resolve=>{
+    const bg = buildModalOverlay(`
+      <div class="modal-head"><h3>ยังไม่ได้บันทึก</h3></div>
+      <div class="modal-body"><p style="font-size:14px;color:#475569;line-height:1.6;margin:0">งานปัจจุบันมีการแก้ไขที่ยังไม่ได้บันทึกลงประวัติ<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p></div>
+      <div class="modal-foot" style="flex-wrap:wrap">
+        <button class="btn btn-ghost" id="unsCancel">ยกเลิก</button>
+        <button class="btn btn-secondary" id="unsDiscard" style="color:#ef4444">ไม่บันทึก</button>
+        <button class="btn btn-primary" id="unsSave">บันทึก</button>
+      </div>
+    `, {z:420});
+    const done = v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#unsCancel').onclick = ()=> done('cancel');
+    bg.querySelector('#unsDiscard').onclick = ()=> done('discard');
+    bg.querySelector('#unsSave').onclick = ()=> done('save');
+    bg.addEventListener('click', e=>{ if(e.target===bg) done('cancel'); });
+  });
+}
+async function proceedSwitch(){
+  if(isDirty && draftHasContent()){
+    const c = await confirmUnsavedChanges();
+    if(c === 'cancel') return false;
+    if(c === 'save'){ if(!(await saveCurrentToHistory(true))) return false; }
+  }
+  return true;
+}
+
+/* ---------- New project + load state ---------- */
+function applyMetaToUI(){
+  document.getElementById('projectName').value     = state.meta.projectName     || '';
+  document.getElementById('inspectionDate').value  = state.meta.inspectionDate  || '';
+  document.getElementById('inspector').value       = state.meta.inspector       || '';
+  document.getElementById('palette').value         = state.meta.palette         || 'Ironbow';
+  const logoPrev = document.getElementById('logoPreview');
+  if(state.meta.logo){
+    document.getElementById('logoImg').src = state.meta.logo.dataUrl;
+    document.getElementById('logoName').textContent = state.meta.logo.name || '';
+    logoPrev.style.display = 'flex';
+  } else {
+    logoPrev.style.display = 'none';
+  }
+}
+function startNewProject(){
+  // Wipe data but keep API keys / provider
+  const aK = state.anthropicKey, gK = state.googleKey, pv = state.provider, save = state.apiKeySave;
+  state.meta = { projectName:'', inspectionDate:'', inspector:'', palette:'Ironbow', logo:null };
+  state.buildings = [];
+  state.thermalFiles = {};
+  state.processing = false;
+  state.anthropicKey = aK; state.googleKey = gK; state.provider = pv; state.apiKeySave = save;
+  state._histId = null;
+  document.getElementById('inspectionDate').valueAsDate = new Date();
+  state.meta.inspectionDate = document.getElementById('inspectionDate').value;
+  applyMetaToUI();
+  document.getElementById('mobileSummary').style.display='none';
+  document.getElementById('thermalSummary').style.display='none';
+  updateProcessButton();
+  goTab('setup');
+  isDirty = false;
+  localforage.removeItem(STORAGE_KEY);
+  toast('เริ่มงานใหม่','success');
+}
+function loadStateIntoApp(s){
+  // Preserve current keys
+  const aK = state.anthropicKey, gK = state.googleKey, pv = state.provider, save = state.apiKeySave;
+  Object.assign(state, s);
+  state.anthropicKey = aK; state.googleKey = gK; state.provider = pv; state.apiKeySave = save;
+  if(typeof state._histId === 'undefined') state._histId = null;
+  applyMetaToUI();
+  updateProcessButton();
+  // re-render the active tab if it shows state
+  document.querySelectorAll('.panel.active').forEach(p=>{
+    if(p.dataset.panel==='review') renderReview();
+    if(p.dataset.panel==='preview') renderPreview();
+  });
+  isDirty = false;
+  saveDraft();  // sync draft slot to loaded state
+}
+
+/* ---------- Save to history (auto-handles full slots) ---------- */
+async function saveCurrentToHistory(silent){
+  if(!state.buildings.length && !(state.meta.projectName||'').trim()){
+    if(!silent) toast('ยังไม่มีข้อมูลให้บันทึก','error');
+    return false;
+  }
+  const id = state._histId || ('job_'+Date.now()+Math.random().toString(16).slice(2,6));
+  state._histId = id;
+  const snap = {
+    id,
+    title: (state.meta.projectName||'').trim() || 'งานไม่มีชื่อ',
+    savedAt: new Date().toISOString(),
+    state: stripKeysFromState(state)
+  };
+  let list = await loadHistory();
+  const idx = list.findIndex(j=>j.id===id);
+  let saved = true;
+  if(idx >= 0){
+    list[idx] = snap;
+    await saveHistory(list);
+  } else if(list.length < MAX_SLOTS){
+    list.push(snap);
+    await saveHistory(list);
+  } else {
+    saved = await showHistoryFullModal(list, snap);
+  }
+  if(saved){
+    isDirty = false;
+    if(!silent) toast('บันทึกลงประวัติแล้ว','success');
+  }
+  return saved;
+}
+
+function showHistoryFullModal(list, snap){
+  return new Promise(resolve=>{
+    const sorted = list.slice().sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+    const items = sorted.map(h=>`
+      <label class="job-slot" style="cursor:pointer">
+        <input type="radio" name="histDel" value="${h.id}" style="width:18px;height:18px;flex-shrink:0;accent-color:#ef4444;margin-right:10px">
+        <div class="info" style="flex:1;min-width:0">
+          <div class="title">${escapeHtml(h.title)}</div>
+          <div class="meta">${new Date(h.savedAt).toLocaleString('th-TH')}</div>
+        </div>
+      </label>`).join('');
+    const bg = buildModalOverlay(`
+      <div class="modal-head"><h3>ประวัติเต็ม (${MAX_SLOTS}/${MAX_SLOTS})</h3></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#475569;margin:0 0 12px">กำลังบันทึก "<b>${escapeHtml(snap.title)}</b>" — เลือกงานเก่าที่จะลบออก 1 งาน</p>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow-y:auto">${items}</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="histFullCancel">ไม่บันทึก</button>
+        <button class="btn btn-primary" id="histFullConfirm">ลบแล้วบันทึก</button>
+      </div>
+    `);
+    const close = ()=> bg.remove();
+    bg.querySelector('#histFullCancel').onclick = ()=>{ close(); resolve(false); };
+    bg.querySelector('#histFullConfirm').onclick = async ()=>{
+      const sel = bg.querySelector('input[name="histDel"]:checked');
+      if(!sel){ toast('เลือกงานที่จะลบก่อน','error'); return; }
+      let l = await loadHistory();
+      l = l.filter(x=>x.id!==sel.value);
+      l.push(snap);
+      await saveHistory(l);
+      close();
+      resolve(true);
+    };
+  });
+}
+
+/* ---------- Import / Export JSON (project portability) ---------- */
+function exportStateAsJson(){
+  if(!draftHasContent()){
+    toast('ไม่มีข้อมูลให้ส่งออก','error');
+    return;
+  }
+  // Use the same key-stripped clone we'd put into history — never include
+  // API keys or transient flags in a portable JSON file.
+  const payload = {
+    _format: 'thermoscan_v1',
+    _exportedAt: new Date().toISOString(),
+    state: stripKeysFromState(state)
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = (state.meta?.projectName||'thermoscan').replace(/[^\w\-ก-๙]+/g,'_').slice(0,50);
+  const dt = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `thermoscan_${safeName}_${dt}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast(`ส่งออกแล้ว: ${a.download}`,'success');
+}
+
+async function importStateFromJson(){
+  return new Promise(resolve=>{
+    const input = document.createElement('input');
+    input.type='file'; input.accept='.json,application/json';
+    input.onchange = async ()=>{
+      const f = input.files && input.files[0];
+      if(!f){ resolve(false); return; }
+      try{
+        const text = await f.text();
+        const data = JSON.parse(text);
+        // Accept either:
+        //   { _format:'thermoscan_v1', state: {...} } — our export wrapper
+        //   { buildings: [...], meta: {...} }         — a bare state blob
+        const incoming = (data && data._format==='thermoscan_v1' && data.state) ? data.state : data;
+        if(!incoming || !Array.isArray(incoming.buildings)){
+          toast('ไฟล์ JSON ไม่มีโครงสร้างที่ถูกต้อง (ต้องมี buildings array)','error');
+          resolve(false); return;
+        }
+        const totalCabs = incoming.buildings.reduce((s,b)=>s+(b.cabinets?.length||0),0);
+        const totalPts  = incoming.buildings.reduce((s,b)=>s+(b.cabinets||[]).reduce((ss,c)=>ss+(c.points?.length||0),0),0);
+        const ok = await confirmDialog({
+          title:'นำเข้าไฟล์ JSON',
+          message:`<b>${escapeHtml(incoming.meta?.projectName||'งานไม่มีชื่อ')}</b><br>${incoming.buildings.length} อาคาร · ${totalCabs} ตู้ · ${totalPts} จุดวัด<br><br>จะ<b>แทนที่</b>งานปัจจุบัน — งานที่เปิดอยู่ตอนนี้จะถูกทับ`,
+          confirmText:'นำเข้า', cancelText:'ยกเลิก', danger:true
+        });
+        if(!ok){ resolve(false); return; }
+        // Reuse the same load path as opening from history — preserves API
+        // keys, resets dirty flag, and re-renders UI.
+        if(!incoming._histId) incoming._histId = null;
+        loadStateIntoApp(deepClone(incoming));
+        toast(`นำเข้าเสร็จ: ${totalCabs} ตู้`,'success');
+        goTab('review');
+        resolve(true);
+      }catch(e){
+        toast('อ่านไฟล์ผิดพลาด: '+e.message,'error');
+        console.error('[importStateFromJson]', e);
+        resolve(false);
+      }
+    };
+    input.click();
+  });
+}
+
+/* ---------- Startup modal (continue draft / open / new) ---------- */
+async function showStartupModal(force){
+  const list = (await loadHistory()).sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+  const hasDraft = draftHasContent();
+  // Skip auto-popup when nothing to show
+  if(!force && list.length === 0 && !hasDraft) return;
+
+  const continueHtml = hasDraft ? `
+    <button class="hist-continue" id="histContinue">
+      <div class="lab1">▶ ทำงานต่อ (ค้างไว้)</div>
+      <div class="lab2">${escapeHtml((state.meta.projectName||'').trim() || 'งานที่ยังไม่ตั้งชื่อ')}</div>
+    </button>` : '';
+
+  const itemsHtml = list.length ? list.map(h=>`
+    <div class="job-slot" data-job="${h.id}">
+      <div class="info" data-open="${h.id}" style="flex:1;cursor:pointer;min-width:0">
+        <div class="title">${escapeHtml(h.title)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
+        <div class="meta">${new Date(h.savedAt).toLocaleString('th-TH')} • ${h.state.buildings?.length||0} อาคาร</div>
+      </div>
+      <button class="btn btn-danger btn-sm" data-del="${h.id}">🗑</button>
+    </div>`).join('')
+    : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px">ยังไม่มีงานที่บันทึกไว้</div>`;
+
+  const bg = buildModalOverlay(`
+    <div class="modal-head" style="display:flex;align-items:center;justify-content:space-between"><h3>เลือกงานที่จะทำต่อ</h3><button class="btn btn-ghost btn-sm" id="histClose">✕</button></div>
+    <div class="modal-body">
+      ${continueHtml}
+      ${hasDraft && list.length?'<div class="hist-sep"></div>':''}
+      <div class="hist-section-label">งานที่บันทึกไว้ (${list.length}/${MAX_SLOTS})</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow-y:auto">${itemsHtml}</div>
+    </div>
+    <div class="modal-foot" style="flex-direction:column;gap:8px">
+      <button class="btn btn-primary" id="histNew" style="width:100%;justify-content:center">+ เริ่มงานใหม่</button>
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-secondary" id="histImport" style="flex:1;justify-content:center">📥 นำเข้าไฟล์ JSON</button>
+        <button class="btn btn-secondary" id="histExport" style="flex:1;justify-content:center" ${!draftHasContent()?'disabled':''}>📤 ส่งออกไฟล์ JSON</button>
+      </div>
+    </div>
+  `);
+  const close = ()=> bg.remove();
+  bg.querySelector('#histClose').onclick = close;
+  bg.addEventListener('click', e=>{ if(e.target===bg) close(); });
+  const cont = bg.querySelector('#histContinue');
+  if(cont) cont.onclick = ()=>{ close(); toast('ทำงานต่อ','success'); };
+  bg.querySelector('#histNew').onclick = async ()=>{
+    if(!(await proceedSwitch())) return;
+    close();
+    startNewProject();
+  };
+  bg.querySelector('#histExport').onclick = ()=>{ close(); exportStateAsJson(); };
+  bg.querySelector('#histImport').onclick = async ()=>{ close(); await importStateFromJson(); };
+  bg.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', async ()=>{
+    if(!(await proceedSwitch())) return;
+    const h = list.find(x=>x.id===el.dataset.open);
+    if(h && h.state){
+      loadStateIntoApp(deepClone(h.state));
+      close();
+      goTab('review');
+      toast('เปิดงานแล้ว','success');
+    }
+  }));
+  bg.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const h = list.find(x=>x.id===el.dataset.del);
+    const ok = await confirmDialog({
+      title:'ลบงานที่บันทึก',
+      message:`ต้องการลบงาน "<b>${escapeHtml(h?h.title:'')}</b>" ออกจากประวัติใช่ไหม?<br><span style="color:#94a3b8;font-size:12px">การลบนี้ย้อนกลับไม่ได้</span>`,
+      confirmText:'ลบ', cancelText:'ยกเลิก', danger:true
+    });
+    if(!ok) return;
+    const l = (await loadHistory()).filter(x=>x.id!==el.dataset.del);
+    await saveHistory(l);
+    close();
+    showStartupModal(true);
+  }));
+}
+
+/* ====================================================================
+   API keys auto-save/load (per provider, separate slots)
+===================================================================== */
+async function loadApiKeys(){
+  // Backward-compat: migrate old single-key slot to anthropicKey on first run
+  const legacy = await localforage.getItem('thermoscan_apikey');
+  if(legacy){
+    await localforage.setItem('thermoscan_anthropic_key', legacy);
+    await localforage.removeItem('thermoscan_apikey');
+  }
+  const aKey = await localforage.getItem('thermoscan_anthropic_key');
+  const gKey = await localforage.getItem('thermoscan_google_key');
+  const prov = await localforage.getItem('thermoscan_provider');
+  if(aKey){ state.anthropicKey=aKey; document.getElementById('anthropicKey').value=aKey; }
+  if(gKey){ state.googleKey=gKey;    document.getElementById('googleKey').value=gKey; }
+  if(prov==='anthropic' || prov==='google' || prov==='google-flash') state.provider = prov;
+  syncProviderUI();
+}
+window.addEventListener('beforeunload', ()=>{
+  if(!state.apiKeySave) return;
+  if(state.anthropicKey) localforage.setItem('thermoscan_anthropic_key', state.anthropicKey);
+  if(state.googleKey)    localforage.setItem('thermoscan_google_key', state.googleKey);
+  localforage.setItem('thermoscan_provider', state.provider);
+});
+
+/* ====================================================================
+   Init
+===================================================================== */
+(async function init(){
+  document.getElementById('inspectionDate').valueAsDate = new Date();
+  state.meta.inspectionDate = document.getElementById('inspectionDate').value;
+  await loadApiKeys();
+  // Restore live draft (if any) → user's last session survives a crash/reload
+  const hadDraft = await loadDraft();
+  if(hadDraft){ applyMetaToUI(); updateProcessButton(); }
+  isDirty = false;
+  // Startup chooser: only auto-popup if there's saved work or a non-empty draft
+  await showStartupModal(false);
+})();
+
+/* Expose for inline handlers */
+window.goTab=goTab;
+window.closeModal=closeModal;
+window.toggleCabinet=toggleCabinet;
+</script>
+</body>
+</html>
