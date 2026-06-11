@@ -123,6 +123,7 @@
                         <button onclick="switchApp('trip-site')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-site">Trip (Trading)</button>
                         <button onclick="window.location.href='pmform.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-purple-300">PM Report</button>
                         <button onclick="window.location.href='minute-of-meeting.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-teal-300">Minute of Meeting</button>
+                        <button onclick="window.location.href='Report Thermal/thermoscan_report.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-yellow-300">Thermoscan</button>
                     </div>
                 </div>
                 <div class="md:hidden flex items-center">
@@ -140,6 +141,7 @@
             <button onclick="switchApp('trip-site'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="trip-site">Trip Unit Test (Trading)</button>
             <button onclick="window.location.href='pmform.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-purple-300 hover:bg-gray-600">PM Report</button>
             <button onclick="window.location.href='minute-of-meeting.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-teal-300 hover:bg-gray-600">Minute of Meeting</button>
+            <button onclick="window.location.href='Report Thermal/thermoscan_report.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-yellow-300 hover:bg-gray-600">Thermoscan Report</button>
         </div>
     </nav>
 
@@ -213,6 +215,27 @@
                         </div>
                         <h3 class="text-lg font-bold text-gray-800 mb-1">Minute of Meeting</h3>
                         <p class="text-gray-500 text-sm">บันทึกการประชุม FAT และรายการแก้ไข (Before/After) พร้อม Export PDF</p>
+                    </div>
+                </div>
+                <div onclick="window.location.href='Report Thermal/thermoscan_report.html'" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-yellow-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4 text-yellow-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
+                                <!-- Glass tube -->
+                                <rect x="10" y="2" width="4" height="13" rx="2" stroke="currentColor" fill="none"></rect>
+                                <!-- Round bulb at bottom -->
+                                <circle cx="12" cy="18" r="3.5" stroke="currentColor" fill="none"></circle>
+                                <!-- Mercury inside bulb -->
+                                <circle cx="12" cy="18" r="2.5" fill="currentColor" fill-opacity="0.35"></circle>
+                                <!-- Scale marks -->
+                                <line x1="7" y1="6" x2="10" y2="6" stroke="currentColor" stroke-linecap="round"></line>
+                                <line x1="7" y1="9" x2="10" y2="9" stroke="currentColor" stroke-linecap="round"></line>
+                                <line x1="7" y1="12" x2="10" y2="12" stroke="currentColor" stroke-linecap="round"></line>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Thermoscan Report</h3>
+                        <p class="text-gray-500 text-sm">รายงานผลการตรวจวัดอุณหภูมิด้วยกล้อง Thermal Scan พร้อมรูปภาพ</p>
                     </div>
                 </div>
             </div>
