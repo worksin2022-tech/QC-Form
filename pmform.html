@@ -264,13 +264,14 @@
             .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
             .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
 
-            /* 🌟 Contact: 2 คอลัมน์ 6 รูป + ตาราง ให้พอดี 1 หน้า — ตัวสูงสุดคือรูป 3 แถว
-               จึงลดความสูงรูปเป็น 16:9 (จาก 3:2 → เตี้ยลง ~30mm) + บีบ margin + บีบตาราง */
-            .native-print-mode .contact-block .grid > div { margin-bottom: 5px !important; }
-            .native-print-mode .contact-block .contact-photo-section { margin-top: 3px !important; }
-            .native-print-mode .contact-block .photo-box { aspect-ratio: 16 / 9 !important; }
-            .native-print-mode .contact-block table th,
-            .native-print-mode .contact-block table td { padding: 2px 5px !important; line-height: 1.15 !important; }
+            /* 🌟 Contact: ให้สูงเท่า insulation (แถวตารางเท่ากัน → ใส่ 6 รูปได้เท่ากัน)
+               ตัวที่ทำให้ contact สูงกว่า: (1) wrapper mt-4 เกินมา (2) input ชื่อเบรกเกอร์ text-lg ใหญ่
+               (3) <select> ใน header → normalize ให้เท่า cell ปกติของ insulation (padding คงเท่ากันจาก global) */
+            .native-print-mode .contact-block .contact-photo-section { margin-top: 0 !important; }
+            .native-print-mode .contact-block table input,
+            .native-print-mode .contact-block table select { font-size: 13px !important; line-height: 1.15 !important; }
+            /* buffer: ลดเฉพาะระยะห่าง*ใต้รูป* (ขนาดรูปเท่า insulation) ให้ฟิตชัวร์ */
+            .native-print-mode .contact-block .grid > div { margin-bottom: 10px !important; }
 
             .native-print-mode .general-block,
             .native-print-mode .insulation-block, 
@@ -2178,6 +2179,8 @@
 
             markUnsaved(); // 🌟 จัดเรียง = การแก้ที่ยังไม่บันทึกเข้า history
             saveDraft();
+            // 🌟 อัปเดต TOC บนหน้าจอให้ตรงลำดับใหม่ทันที (เดิมอัปเดตเฉพาะตอนพิมพ์ → TOC บนจอค้าง)
+            try { updateTOC(); } catch (e) { console.error('updateTOC after reorder failed:', e); }
             // 🌟 ไม่ปิด modal — ให้ user กดปุ่ม X ปิดเองตามต้องการ
             showSaveStatus('<i class="fa-solid fa-check"></i> จัดเรียงสำเร็จ');
             // 🌟 รีเซ็ตปุ่มกลับเป็นสีจาง (ยังไม่มีการเปลี่ยนแปลงใหม่หลังบันทึก)
