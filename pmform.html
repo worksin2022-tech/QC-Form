@@ -263,7 +263,15 @@
             .native-print-mode #moduleContainer { display: block !important; }
             .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
             .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
-            
+
+            /* 🌟 Contact: 2 คอลัมน์ 6 รูป + ตาราง ให้พอดี 1 หน้า — ตัวสูงสุดคือรูป 3 แถว
+               จึงลดความสูงรูปเป็น 16:9 (จาก 3:2 → เตี้ยลง ~30mm) + บีบ margin + บีบตาราง */
+            .native-print-mode .contact-block .grid > div { margin-bottom: 5px !important; }
+            .native-print-mode .contact-block .contact-photo-section { margin-top: 3px !important; }
+            .native-print-mode .contact-block .photo-box { aspect-ratio: 16 / 9 !important; }
+            .native-print-mode .contact-block table th,
+            .native-print-mode .contact-block table td { padding: 2px 5px !important; line-height: 1.15 !important; }
+
             .native-print-mode .general-block,
             .native-print-mode .insulation-block, 
             .native-print-mode .dielectric-block, 
@@ -364,6 +372,17 @@
         /* 🌟 ปุ่ม + เล็กข้าง checkbox ใน sidebar */
         .sidebar-quick-add-btn { margin-right: 0.6rem; }
         .sidebar-quick-add-btn:hover { transform: scale(1.08); }
+
+        /* 🌟 AI Import — content-visibility ทำให้ browser ข้าม render รูปนอกจอ */
+        #aiImportModal [data-card-fn] {
+            content-visibility: auto;
+            contain-intrinsic-size: 80px 80px;
+        }
+        #aiSectionsList .ai-sec-grid img,
+        #aiUnusedGrid img {
+            /* บังคับ decode async + ไม่ต้องลื่นๆ ระหว่าง decode */
+            image-rendering: auto;
+        }
 
         /* 🌟 .block-base-title แบบ contenteditable — ให้รู้สึก "พิมพ์ได้" เวลา hover/focus */
         .block-base-title[contenteditable="true"] {
@@ -706,16 +725,9 @@
             </div>
 
             <div class="flex items-center gap-1.5">
-                <!-- 🌟 แก้ไข: เปลี่ยนจาก xl:flex เป็น md:flex เพื่อให้ปุ่มกลับมาแสดงบนหน้าจอทั่วไป 🌟 -->
+                <!-- นำออก/นำเข้า ย้ายไปไว้ในป๊อบอัพ "ประวัติ" แล้ว เพื่อให้แถบเมนูไม่ล้น -->
+                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
                 <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-1.5 shadow-inner">
-                    <button onclick="exportData()" class="whitespace-nowrap bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
-                        <i class="fa-solid fa-download"></i> นำออก
-                    </button>
-                    <button onclick="document.getElementById('importFile').click()" class="whitespace-nowrap bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100">
-                        <i class="fa-solid fa-upload"></i> นำเข้า
-                    </button>
-                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                    <div class="w-px bg-slate-300 mx-1 my-1"></div>
                     <button onclick="rebuildLayout()" class="whitespace-nowrap bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
                         <i class="fa-solid fa-arrows-rotate"></i> Rebuild
                     </button>
@@ -724,6 +736,11 @@
                         <i class="fa-solid fa-trash-can"></i> ล้าง
                     </button>
                 </div>
+
+                <!-- 🌟 ปุ่ม Import จาก AI classification -->
+                <button onclick="openAiImportModal()" class="whitespace-nowrap no-print justify-center bg-purple-50 border border-purple-200 hover:bg-purple-100 hover:text-purple-700 text-purple-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="Import รูปและ caption อัตโนมัติจาก AI classification.json">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline">Import AI</span>
+                </button>
 
                 <!-- 🌟 ปุ่มบันทึกและประวัติรายงาน -->
                 <button onclick="openSaveToHistoryModal()" class="whitespace-nowrap no-print justify-center bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="บันทึกรายงานนี้ไว้ดูและแก้ไขภายหลัง">
@@ -4509,7 +4526,7 @@
             insertBlockAfterLastInGroup(container, blockHtml, 'contact-block', 'block_ct_block_');
             
             addBreakerRow(`tbody_${prefix}`, `photoSec_${prefix}`);
-            for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }
+            for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }   // 6 กล่อง (เท่า insulation) — 6 ภาพ + ตาราง อยู่หน้าเดียว
         }
 
         function removeContactBlock(prefix) {
@@ -6526,6 +6543,1611 @@
             restoreDocumentAfterPrint();
         });
 
+        // ════════════════════════════════════════════════════════════════════
+        // 🌟 AI IMPORT — Import รูปและ classification จาก classify_photos.py
+        // ════════════════════════════════════════════════════════════════════
+        const aiImportState = {
+            jsonData: null,      // ข้อมูลจาก classification.json
+            photoFiles: new Map(), // filename → File
+        };
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 STATE (live, user-editable)
+        // ════════════════════════════════════════════════════════════
+        // นอก aiImportState หลัก (jsonData + photoFiles) เพิ่ม state สำหรับ preview
+        Object.assign(aiImportState, {
+            isSelectionJson: false,                 // true ถ้าโหลด selection.json (มี selections{})
+            photosByFilename: new Map(),            // filename → photo metadata
+            sections: {},                           // section_id → [filename] — *editable*
+            scope: { project_name:'', panel_name:'', working_date:'', scope_th:'', tests_performed:[], tests_not_performed:[] },
+            moduleMapping: {},                      // category/section → mapping
+            thumbCache: new Map(),                  // filename → objectURL
+            testTables: {},                         // sectionId → {kind, table|breakers, events} (Stage 3)
+            sectionMeta: {},                        // sectionId → {title, category, mod_id, counter_key, kind}
+        });
+
+        // resolve template ของแต่ละหมวด → ใช้ block แบบไหน
+        //   test → block test (มีตาราง) ; before/cleaning/after → photo-group ;
+        //   อื่นๆ (metering/general/nameplate/unknown) → custom photo-group (addBlankGroup) + ตั้งชื่อหัวข้อเอง
+        function aiResolveTemplate(category) {
+            const T = {
+                insulation_test: { mod_id:'mod_insulation', counter_key:'ins', kind:'test', testId:'insulation_test' },
+                contact_test:    { mod_id:'mod_contact',    counter_key:'ct',  kind:'test', testId:'contact_test' },
+                grounding_test:  { mod_id:'mod_grounding',  counter_key:'gro', kind:'test', testId:'grounding_test' },
+                trip_unit_test:  { mod_id:'mod_trip',       counter_key:'trip',kind:'test', testId:'trip_unit_test' },
+                capacitor_check: { mod_id:'mod_cap',        counter_key:'cap', kind:'test', testId:'capacitor_check' },
+                before:          { mod_id:'mod_before',     counter_key:'bf',  kind:'photo' },
+                cleaning:        { mod_id:'mod_cleaning',   counter_key:'cl',  kind:'photo' },
+                installation_work:{mod_id:'mod_cleaning',   counter_key:'cl',  kind:'photo' },
+                after:           { mod_id:'mod_after',      counter_key:'af',  kind:'photo' },
+                detail_termination:{mod_id:'mod_after',     counter_key:'af',  kind:'photo' },
+            };
+            return T[category] || { mod_id:'mod_blank', counter_key:'blk', kind:'custom' };  // fallback = custom
+        }
+        function aiSecInfo(sectionId) {
+            return aiImportState.sectionMeta[sectionId] || null;
+        }
+
+        const AI_SECTION_LABELS = {
+            before:             'Before (ก่อนเริ่มงาน)',
+            cleaning:           'Cleaning (ทำความสะอาด)',
+            installation_work:  'Installation Work (ขั้นติดตั้ง)',
+            retorque:           'Retorque (ขันน็อต)',
+            after:              'After (หลังเสร็จ)',
+            insulation_test:    'Insulation Test (Megger)',
+            contact_test:       'Contact Test (DLRO)',
+            grounding_test:     'Grounding Test',
+            metering_check:     'Metering Check',
+            general_check:      'General / Visual Check',
+            acb_general_check:  'ACB General Check',
+            trip_unit_test:     'Trip Unit Test',
+            rackin_rackout:     'Rack in/out ACB',
+            capacitor_check:    'Capacitor Check',
+            fuse_check:         'Fuse Check',
+            detail_termination: 'Detail / Termination',
+            nameplate:          'Nameplate',
+            safety_loto:        'Safety / LOTO',
+        };
+
+        // ════════════════════════════════════════════════════════════════════
+        // 🌟 IN-BROWSER AI ENGINE — เรียก Claude/Gemini ตรงจากเบราว์เซอร์
+        //    (พอร์ตจาก Python pipeline: classify → select → read test values)
+        // ════════════════════════════════════════════════════════════════════
+        const AI_KEY_HINTS = {
+            'anthropic': 'เอา key จาก console.anthropic.com (ขึ้นต้น sk-ant-)',
+            'google': 'เอา key จาก aistudio.google.com/apikey',
+            'google-flash': 'เอา key จาก aistudio.google.com/apikey (Flash มี free tier)',
+        };
+        function onAiProviderChange() {
+            const p = document.getElementById('aiProvider').value;
+            const hint = document.getElementById('aiKeyHint');
+            if (hint) hint.textContent = AI_KEY_HINTS[p] || '';
+        }
+
+        // ── โฟลเดอร์หัวข้อ → category (ชื่อโฟลเดอร์เป็นความจริง) ──
+        const SECTION_FOLDER_MAP = [
+            [/insulat|megger|ฉนวน/i, 'insulation_test'],   // เช็คก่อน 'after' กัน substring
+            [/contact|dlro|micro.?ohm|หน้าสัมผัส/i, 'contact_test'],
+            [/ground|earth|กราวด|ลงดิน/i, 'grounding_test'],
+            [/trip|micrologic/i, 'trip_unit_test'],
+            [/capacitor|\bcap\b|คาปา/i, 'capacitor_check'],
+            [/retorque|torque|ขัน/i, 'retorque'],
+            [/clean|ทำความสะอาด|ทําความสะอาด/i, 'cleaning'],
+            [/before|ก่อน/i, 'before'],
+            [/after|หลัง/i, 'after'],
+            [/meter|มิเตอร/i, 'metering_check'],
+            [/nameplate|เนมเพลท|ป้าย/i, 'nameplate'],
+            [/general|visual|ทั่วไป|สภาพ/i, 'general_check'],
+        ];
+        function aiMatchSection(name) {
+            for (const [re, cat] of SECTION_FOLDER_MAP) if (re.test(name)) return cat;
+            return null;
+        }
+
+        // ── เลือกโฟลเดอร์ตู้ (webkitdirectory) → จับหมวดจากชื่อโฟลเดอร์ ──
+        async function handleAiFolderPick(event) {
+            aiImportState.thumbCache.clear();
+            aiImportState.photoFiles.clear();
+            aiImportState.folderMode = true;
+            aiImportState.folderInfo = new Map();   // key → {category, folderName, cabinet}
+            const cabinets = {};
+            const folderCount = {};
+            let count = 0, unmatched = 0;
+            for (const f of event.target.files) {
+                if (!/\.(jpe?g|png|webp)$/i.test(f.name)) continue;
+                const rel = f.webkitRelativePath || f.name;
+                const parts = rel.split('/');
+                // หา "โฟลเดอร์หัวข้อ" จาก parts (ตัวที่ map ได้ — ลึกสุดชนะ)
+                let cat = null, secIdx = -1;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const c = aiMatchSection(parts[i]);
+                    if (c) { cat = c; secIdx = i; }
+                }
+                // folderName = ชื่อหัวข้อจริงที่ผู้ใช้ตั้ง (ใช้เป็นชื่อ block); ถ้าไม่ match → ใช้โฟลเดอร์ที่ติดไฟล์
+                let folderName, cabinet;
+                if (cat) { folderName = parts[secIdx]; cabinet = secIdx > 0 ? parts[secIdx - 1] : (parts[0] || ''); }
+                else { unmatched++; cat = 'other'; folderName = parts.length >= 2 ? parts[parts.length - 2] : 'อื่นๆ'; cabinet = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] || ''); }
+                let key = f.name;
+                if (aiImportState.photoFiles.has(key)) key = parts.slice(-2).join('/');
+                aiImportState.photoFiles.set(key, f);
+                aiImportState.folderInfo.set(key, { category: cat, folderName, cabinet });
+                if (cabinet) cabinets[cabinet] = (cabinets[cabinet] || 0) + 1;
+                folderCount[folderName] = (folderCount[folderName] || 0) + 1;
+                count++;
+            }
+            if (count === 0) {
+                document.getElementById('aiPhotosStatus').innerHTML =
+                    `<span class="text-red-600 font-bold">ไม่พบรูปในโฟลเดอร์</span>`;
+                return;
+            }
+            // ตู้ที่พบบ่อยสุด → เติมช่องชื่อตู้ (ถ้ายังว่าง)
+            const topCab = Object.entries(cabinets).sort((a, b) => b[1] - a[1])[0];
+            if (topCab && !document.getElementById('aiPanelName').value.trim())
+                document.getElementById('aiPanelName').value = topCab[0];
+
+            const secSummary = Object.entries(folderCount).map(([c, n]) => `${c}:${n}`).join(', ');
+            document.getElementById('aiPhotosStatus').innerHTML =
+                `<span class="text-blue-600 font-bold"><i class="fa-solid fa-folder-tree mr-1"></i> ${count} รูป — เตรียมรูปย่อ…</span>`;
+            await aiGenerateAllThumbnails();
+            document.getElementById('aiPhotosStatus').innerHTML =
+                `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> ${count} รูป จัดตามโฟลเดอร์: ${secSummary}` +
+                (unmatched ? ` <span class="text-amber-600">(${unmatched} รูปหาหมวดไม่ได้ → other)</span>` : '') + `</span>`;
+            document.getElementById('aiAnalyzeBtn').disabled = false;
+        }
+
+        // ── call API (อิง pattern จาก thermoscan ที่พิสูจน์แล้ว) ──
+        async function aiCall(messages, maxTokens = 1500) {
+            const provider = document.getElementById('aiProvider').value;
+            const key = document.getElementById('aiApiKey').value.trim();
+            if (!key) throw new Error('ยังไม่กรอก API key');
+            if (provider === 'google') return aiCallGemini(messages, maxTokens, key, 'gemini-2.5-pro');
+            if (provider === 'google-flash') return aiCallGemini(messages, maxTokens, key, 'gemini-2.5-flash');
+            return aiCallAnthropic(messages, maxTokens, key);
+        }
+
+        async function aiCallAnthropic(messages, maxTokens, key) {
+            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': key,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: maxTokens, messages }),
+            });
+            if (!resp.ok) {
+                const t = await resp.text();
+                if (resp.status === 401) throw new Error('API key ไม่ถูกต้อง (401)');
+                if (/credit|too low/i.test(t)) throw new Error('credit หมด — เติมที่ console.anthropic.com');
+                throw new Error(`Anthropic ${resp.status}: ${t.slice(0, 160)}`);
+            }
+            const data = await resp.json();
+            return (data.content || []).map(c => c.text || '').join('').trim();
+        }
+
+        async function aiCallGemini(messages, maxTokens, key, model) {
+            const contents = messages.map(m => {
+                const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content || '') }];
+                const parts = raw.map(p => p.type === 'image' && p.source?.type === 'base64'
+                    ? { inline_data: { mime_type: p.source.media_type, data: p.source.data } }
+                    : { text: p.text || '' });
+                return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+            });
+            const isFlash = model.includes('flash');
+            const body = {
+                contents,
+                generationConfig: {
+                    maxOutputTokens: Math.max(maxTokens + 1024, 2048),
+                    temperature: 0.2,
+                    thinkingConfig: { thinkingBudget: isFlash ? 0 : 128 },
+                },
+            };
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+            const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!resp.ok) {
+                const t = await resp.text();
+                throw new Error(`Gemini ${resp.status}: ${t.slice(0, 160)}`);
+            }
+            const data = await resp.json();
+            const cand = data.candidates?.[0];
+            const text = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
+            if (!text) throw new Error(`Gemini ตอบว่าง (finishReason=${cand?.finishReason || '?'}) — ลองใหม่หรือเปลี่ยน provider`);
+            return text;
+        }
+
+        // ── parse JSON จาก response (ตัด ```json fences) ──
+        function aiParseJson(text) {
+            let t = text.trim();
+            if (t.startsWith('```')) {
+                t = t.split('```')[1] || t;
+                if (t.startsWith('json')) t = t.slice(4);
+                t = t.trim();
+            }
+            // เผื่อมีข้อความนำ — หา { แรกถึง } สุดท้าย
+            const a = t.indexOf('{'), b = t.lastIndexOf('}');
+            if (a > 0 || b < t.length - 1) t = t.slice(a, b + 1);
+            return JSON.parse(t);
+        }
+
+        // ── ความละเอียดรูปก่อนส่ง AI ──
+        // ⚠️ ความถูกต้องมาก่อน: ค่าพวกนี้ตั้งไว้ให้ "อ่านข้อมูลถูก" เป็นหลัก แล้วค่อยประหยัด
+        //   • classify 1280px: ต้องอ่านเลขรุ่นเครื่อง (MI3201 vs MI3252) + สีสาย/บัสบาร์ได้ — ไม่ลดต่ำกว่านี้
+        //   • read 1568px: ขนาดที่ Anthropic ใช้จริง (ใหญ่กว่านี้ API ย่อเองอยู่ดี) — จออ่านตัวเลขชัด ห้ามลด
+        const AI_IMG_CLASSIFY = { maxDim: 1280, quality: 0.80 };
+        const AI_IMG_READ     = { maxDim: 1568, quality: 0.88 };
+
+        // ── รูป → base64 (ย่อก่อนส่ง) — default ใช้ค่าฝั่งอ่านค่า (ปลอดภัยสุด) ──
+        function aiImageToBase64(file, maxDim = 1568, quality = 0.88) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        if (Math.max(w, h) > maxDim) {
+                            const s = maxDim / Math.max(w, h);
+                            w = Math.round(w * s); h = Math.round(h * s);
+                        }
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        const ctx = c.getContext('2d');
+                        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const dataUrl = c.toDataURL('image/jpeg', quality);
+                        resolve(dataUrl.split(',')[1]);   // base64 ล้วน
+                    };
+                    img.onerror = reject;
+                    img.src = ev.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function aiImgBlock(b64) {
+            return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } };
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // SCHEMA (พอร์ตจาก pm_panel.yaml / modify_busbar.yaml)
+        // ════════════════════════════════════════════════════════════════════
+        const AI_SCHEMAS = {
+            pm: {
+                name: 'งาน PM (Preventive Maintenance)',
+                categories: [
+                    ['before', 'ภาพก่อนทำความสะอาด — สกปรก/มีคราบเขม่าดำ/ฝุ่นจุดดำ'],
+                    ['cleaning', 'ช่างกำลังทำความสะอาด (ถือผ้า/แปรง/blower)'],
+                    ['retorque', 'ช่างใช้ประแจ torque ขันน็อตจุดต่อ CB/busbar'],
+                    ['after', 'ภาพหลังทำความสะอาด — ผิวสะอาด ไม่มีคราบดำ/ฝุ่น'],
+                    ['insulation_test', 'ทดสอบ Insulation: เครื่อง Metrel MI3201/MI3210/Uni-T สายเหลือง ค่า MΩ/GΩ (>1MΩ)'],
+                    ['contact_test', 'ทดสอบ Contact: เครื่อง Metrel MI3252 สายดำใหญ่+แดงเล็ก/Kelvin clip 4ขา ค่า µΩ/mΩ'],
+                    ['grounding_test', 'ทดสอบ Grounding: เครื่อง Fluke 1630-2 ค่า Ω'],
+                    ['metering_check', 'ตรวจ/วัด meter (panel meter, clamp meter วัด V/A)'],
+                    ['general_check', 'ตรวจสภาพทั่วไป (visual) ไม่มีเครื่องมือพิเศษ'],
+                    ['trip_unit_test', 'ทดสอบ Trip unit ACB ด้วย test kit (จอแสดง Ir/Isd/Ii/Ig)'],
+                    ['capacitor_check', 'ตรวจ/วัด capacitor bank'],
+                    ['nameplate', 'ป้ายข้อมูลอุปกรณ์ CB/ACB/CT'],
+                    ['panel_marker', 'ป้ายชื่อตู้ (MDB/EMDB/DP1...)'],
+                    ['other', 'อื่นๆ จัดหมวดไม่ได้'],
+                ],
+                mapping: {
+                    before:{mod_id:'mod_before',counter_key:'bf'}, cleaning:{mod_id:'mod_cleaning',counter_key:'cl'},
+                    retorque:{mod_id:'mod_cleaning',counter_key:'cl'}, after:{mod_id:'mod_after',counter_key:'af'},
+                    insulation_test:{mod_id:'mod_insulation',counter_key:'ins'}, contact_test:{mod_id:'mod_contact',counter_key:'ct'},
+                    grounding_test:{mod_id:'mod_grounding',counter_key:'gro'}, metering_check:{mod_id:'mod_general',counter_key:'gc'},
+                    general_check:{mod_id:'mod_general',counter_key:'gc'}, trip_unit_test:{mod_id:'mod_trip',counter_key:'trip'},
+                    capacitor_check:{mod_id:'mod_cap',counter_key:'cap'}, nameplate:{mod_id:'mod_general',counter_key:'gc'},
+                    panel_marker:{skip:true}, other:{skip:true},
+                },
+            },
+            modify: {
+                name: 'งาน Modify / Add Busbar',
+                categories: [
+                    ['before', 'ภาพก่อน modify — ตู้/busbar เดิม'],
+                    ['installation_work', 'ช่างกำลังติดตั้ง busbar/อุปกรณ์ใหม่'],
+                    ['detail_termination', 'close-up จุดต่อ/ขั้ว/lug/น็อต'],
+                    ['insulation_test', 'ทดสอบ Insulation: Megger สายเหลือง ค่า MΩ'],
+                    ['contact_test', 'ทดสอบ Contact: DLRO/Metrel MI3252 ค่า µΩ/mΩ'],
+                    ['nameplate', 'ป้ายข้อมูลอุปกรณ์'],
+                    ['after', 'ภาพหลังติดตั้งเสร็จ busbar ใหม่'],
+                    ['other', 'อื่นๆ'],
+                ],
+                mapping: {
+                    before:{mod_id:'mod_before',counter_key:'bf'}, installation_work:{mod_id:'mod_cleaning',counter_key:'cl'},
+                    detail_termination:{mod_id:'mod_after',counter_key:'af'}, insulation_test:{mod_id:'mod_insulation',counter_key:'ins'},
+                    contact_test:{mod_id:'mod_contact',counter_key:'ct'}, nameplate:{mod_id:'mod_after',counter_key:'af'},
+                    after:{mod_id:'mod_after',counter_key:'af'}, other:{skip:true},
+                },
+            },
+        };
+
+        // ── progress helper ──
+        function aiAnalyzeStatus(msg, pct, logLine) {
+            document.getElementById('aiAnalyzeText').textContent = msg;
+            if (pct != null) document.getElementById('aiAnalyzeBar').style.width = `${pct}%`;
+            if (logLine) {
+                const el = document.getElementById('aiAnalyzeLog');
+                el.innerHTML += logLine + '<br>';
+                el.scrollTop = el.scrollHeight;
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // STAGE 1 — classify (batch รูปทีละ 4)
+        // ════════════════════════════════════════════════════════════════════
+        async function aiClassify(files, schema, onProg) {
+            const catList = schema.categories.map(([id, d]) => `  [${id}] ${d}`).join('\n');
+            const sys = `คุณเป็นวิศวกรไฟฟ้า Avatar Electric จัดหมวดรูปถ่ายงาน ${schema.name} + เขียน caption ไทยสั้นๆ
+หมวดที่เป็นไปได้:
+${catList}
+
+กฎสำคัญ: before=สกปรก/คราบเขม่าดำ, after=สะอาด (ถ่ายมุมเดียวกัน แยกที่ความสกปรก) ;
+Insulation=สายเหลือง ค่า MΩ (Metrel MI3201) ; Contact=ดำใหญ่+แดงเล็ก/Kelvin4ขา ค่า µΩ/mΩ (Metrel MI3252) ; Grounding=Fluke 1630-2 ค่า Ω`;
+            const names = Array.from(files.keys());
+            const results = [];
+            const BATCH = 4;
+            for (let i = 0; i < names.length; i += BATCH) {
+                const batch = names.slice(i, i + BATCH);
+                const content = [{ type: 'text', text: sys + '\n\nจัดหมวดรูปต่อไปนี้:' }];
+                for (let j = 0; j < batch.length; j++) {
+                    const b64 = await aiImageToBase64(files.get(batch[j]), AI_IMG_CLASSIFY.maxDim, AI_IMG_CLASSIFY.quality);
+                    content.push(aiImgBlock(b64));
+                    content.push({ type: 'text', text: `[รูป index ${j}: ${batch[j]}]` });
+                }
+                content.push({ type: 'text', text:
+                    `ตอบ JSON เท่านั้น: {"photos":[{"index":0,"category":"<id>","caption_th":"...","notes":"สิ่งที่เห็น เช่น ยี่ห้อเครื่อง/ค่า/สีสาย","confidence":0.0-1.0}]}` });
+                let parsed;
+                try {
+                    parsed = aiParseJson(await aiCall([{ role: 'user', content }], 1024));
+                } catch (e) {
+                    onProg && onProg(`⚠️ batch ${i / BATCH + 1} พลาด: ${e.message}`);
+                    for (const fn of batch) results.push({ filename: fn, category: 'other', caption_th: '', notes: '', confidence: 0 });
+                    continue;
+                }
+                const validIds = new Set(schema.categories.map(c => c[0]));
+                for (let j = 0; j < batch.length; j++) {
+                    const pd = (parsed.photos || []).find(x => x.index === j) || {};
+                    let cat = pd.category;
+                    if (!validIds.has(cat)) cat = 'other';
+                    results.push({ filename: batch[j], category: cat, caption_th: pd.caption_th || '', notes: pd.notes || '', confidence: +pd.confidence || 0 });
+                }
+                onProg && onProg(`classify ${Math.min(i + BATCH, names.length)}/${names.length}`, (i + BATCH) / names.length);
+            }
+            return results;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // STAGE 2 — select + scope (text only, ใช้ metadata จาก classify)
+        // ════════════════════════════════════════════════════════════════════
+        async function aiSelect(photos, schema, panelName) {
+            const activeCats = schema.categories.map(c => c[0]).filter(id => schema.mapping[id] && !schema.mapping[id].skip);
+            const byCat = {};
+            for (const p of photos) (byCat[p.category] ||= []).push(p);
+            let meta = '';
+            for (const [cat, items] of Object.entries(byCat)) {
+                meta += `\n### ${cat} (${items.length})\n`;
+                for (const p of items) meta += `- "${p.filename}": ${p.caption_th} | ${p.notes}\n`;
+            }
+            const sys = `คุณเป็นวิศวกรไฟฟ้าอาวุโส Avatar Electric เลือกรูป representative + อนุมาน scope งาน ${schema.name}
+Panel: ${panelName || '(เดาจากรูป)'}
+Sections ที่ใช้ได้: ${activeCats.join(', ')}
+จำนวนแนะนำ: before/after 1-3, cleaning/retorque/general/metering 3-6, insulation/contact/grounding 3-6 (โฟกัสคู่ probe→reading), nameplate 1-2
+ถ้า test ไหนไม่มีรูปจริง ใส่ [] + ระบุใน tests_not_performed
+ตอบ JSON เท่านั้น`;
+            const user = `รูปทั้งหมด (จัดหมวดแล้ว):\n${meta}\n
+ตอบ JSON: {"scope":{"project_name":"","panel_name":"${panelName || ''}","working_date":"","scope_th":"","tests_performed":[],"tests_not_performed":[]},
+"selections":{${activeCats.map(c => `"${c}":[]`).join(',')}},"reasoning":""}
+ใส่เฉพาะ filename จริงจาก metadata`;
+            const r = aiParseJson(await aiCall([{ role: 'user', content: sys + '\n\n' + user }], 3000));
+            // filter filename ที่มีจริง
+            const valid = new Set(photos.map(p => p.filename));
+            const sections = {};
+            for (const [sec, files] of Object.entries(r.selections || {})) {
+                const good = (files || []).filter(f => valid.has(f));
+                if (good.length) sections[sec] = good;
+            }
+            return { scope: r.scope || {}, sections };
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // STAGE 3 — read test values (vision) — insulation / contact / trip
+        //   hole-filling: ดึงรูปช่วงเลขไฟล์ติดกัน กัน mistag หลุด
+        // ════════════════════════════════════════════════════════════════════
+        function aiNumKey(fn) { const m = String(fn).match(/\d+/g); return m ? +m[m.length - 1] : -1; }
+
+        function aiTestPhotoSet(photos, testId) {
+            const test = photos.filter(p => p.category === testId);
+            if (!test.length) return [];
+            const keys = test.map(p => aiNumKey(p.filename)).sort((a, b) => a - b);
+            const clusters = [];
+            for (const k of keys) {
+                if (clusters.length && k - clusters[clusters.length - 1].at(-1) <= 3) clusters[clusters.length - 1].push(k);
+                else clusters.push([k]);
+            }
+            const inc = new Set();
+            for (const cl of clusters) for (let k = cl[0]; k <= cl.at(-1); k++) inc.add(k);
+            const testFns = new Set(test.map(p => p.filename));
+            return photos.filter(p => inc.has(aiNumKey(p.filename)) || testFns.has(p.filename))
+                         .sort((a, b) => aiNumKey(a.filename) - aiNumKey(b.filename));
+        }
+
+        const AI_TEST_PROMPTS = {
+            insulation_test: (panel) => `อ่านผล Insulation Resistance Test ตู้ ${panel}. เครื่อง Metrel MI3201/MI3210, สายเหลือง, ค่า MΩ/GΩ.
+⭐ งานสำคัญสุด: อ่านตัวเลขบนจอ Megger จากทุกรูป "ค่า(reading)" แล้วกรอกลง table ให้ครบทั้ง L1 L2 L3 (เช่น "92.0 MΩ") — ห้ามเว้นว่างถ้าจอแสดงเลข
+แยกรูป "คีบสาย(probe)" vs "ค่าบนจอ(reading)". เฟส: ใหม่ น้ำตาล=L1 ดำ=L2 เทา=L3 / เก่า แดง=L1 เหลือง=L2 น้ำเงิน=L3.
+ถ้ามีหลาย session (เลขไฟล์เป็นกลุ่ม) เลือกกลุ่มเลขท้ายสุด ห้ามผสม. ตอบ JSON เท่านั้น:
+{"ordered_photos":[<คีบL1,ค่าL1,คีบL2,ค่าL2,คีบL3,ค่าL3>],"table":{"L1":"92.0 MΩ","L2":"...","L3":"..."},"notes":""}`,
+            contact_test: (panel) => `อ่านผล Contact Resistance Test ตู้ ${panel}. เครื่อง Metrel MI3252, สายดำใหญ่+แดงเล็ก/Kelvin4ขา, ค่า µΩ หรือ mΩ (อ่านหน่วยตามจอจริง).
+⭐ งานสำคัญสุด: อ่านตัวเลขบนจอจากทุกรูป "ค่า(reading)" กรอก A B C ให้ครบพร้อมหน่วย (เช่น "23.104 µΩ") — ห้ามเว้นว่างถ้าจอแสดงเลข
+ทดสอบที่เบรกเกอร์ เฟสนับซ้าย→ขวา A/B/C. แยก probe vs reading. ตอบ JSON เท่านั้น:
+{"ordered_photos":[<คีบA,ค่าA,คีบB,ค่าB,คีบC,ค่าC>],"breakers":[{"name":"Main ACB","is_main":true,"A":"23.104 µΩ","B":"...","C":"..."}],"notes":""}`,
+            trip_unit_test: (panel) => `อ่านผล Trip Unit Test ตู้ ${panel} จากจอ test kit (Schneider). อ่าน settings + function test. ตอบ JSON:
+{"info":{"manufacturer":"Schneider","circuit_breaker":"","micrologic":"","rate_current":"","serial":"","feeder_name":""},
+"settings":{"long_time":{"setting":"","pri":"","time":""},"short_time":{"setting":"","pri":"","time":""},"instantaneous":{"setting":"","pri":""},"ground_fault":{"setting":"","pri":"","time":""}},
+"function_test":{"long_time":{"injected":"","trip_time":"","result":"Pass"},"short_time":{"injected":"","trip_time":"","result":"Pass"},"instantaneous":{"injected":"","trip_time":"","result":"Pass"},"ground_fault":{"injected":"","trip_time":"","result":"Pass"}},
+"ordered_photos":[],"notes":""}`,
+        };
+
+        async function aiReadTest(photos, files, testId, panel) {
+            const set = aiTestPhotoSet(photos, testId);
+            return aiReadTestExplicit(set.map(p => p.filename), files, testId, panel);
+        }
+
+        // อ่านค่า test จากรายชื่อรูปที่ระบุตรงๆ (ใช้กับ folder mode = 1 โฟลเดอร์ 1 ชุดทดสอบ)
+        async function aiReadTestExplicit(filenames, files, testId, panel) {
+            const set = filenames.filter(fn => files.has(fn)).sort((a, b) => aiNumKey(a) - aiNumKey(b));
+            if (!set.length || !AI_TEST_PROMPTS[testId]) return null;
+            const content = [{ type: 'text', text: AI_TEST_PROMPTS[testId](panel || '') }];
+            for (const fn of set) {
+                const b64 = await aiImageToBase64(files.get(fn), AI_IMG_READ.maxDim, AI_IMG_READ.quality);
+                content.push(aiImgBlock(b64));
+                content.push({ type: 'text', text: `[${fn}]` });
+            }
+            content.push({ type: 'text', text: 'ใช้เฉพาะ filename ที่ส่งมา อ่านค่าจากจอจริงห้ามเดา ตอบ JSON เท่านั้น' });
+            const r = aiParseJson(await aiCall([{ role: 'user', content }], 2000));
+            const valid = new Set(set);
+            r.ordered_photos = (r.ordered_photos || []).filter(f => valid.has(f));
+            return r;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // ORCHESTRATOR — runAiAnalysis()
+        // ════════════════════════════════════════════════════════════════════
+        async function runAiAnalysis() {
+            const files = aiImportState.photoFiles;
+            if (!files.size) { alert('ยังไม่ได้อัปโหลดรูป'); return; }
+            if (!document.getElementById('aiApiKey').value.trim()) { alert('กรุณากรอก API key'); return; }
+            const reportType = document.getElementById('aiReportType').value;
+            const schema = AI_SCHEMAS[reportType];
+            const panelName = document.getElementById('aiPanelName').value.trim();
+
+            document.getElementById('aiAnalyzeBtn').disabled = true;
+            document.getElementById('aiAnalyzeProgress').classList.remove('hidden');
+            document.getElementById('aiAnalyzeLog').innerHTML = '';
+            const onProg = (msg, frac) => aiAnalyzeStatus(msg, frac != null ? Math.round(frac * 60) : null, msg);
+
+            try {
+                let photos, scope;
+                const sections = {};      // sectionId(instance) → [filename]
+                const sectionMeta = {};   // sectionId → {title, category, mod_id, counter_key, kind, testId}
+
+                if (aiImportState.folderMode) {
+                    // ── โหมดโฟลเดอร์: แต่ละโฟลเดอร์ = 1 instance (1 block) ── ชื่อโฟลเดอร์ = ชื่อหัวข้อ
+                    aiAnalyzeStatus('ใช้โฟลเดอร์ที่จัดไว้ — ข้าม classify…', 55, '📁 จัดตามโฟลเดอร์');
+                    photos = [];
+                    const instCat = {};
+                    let skippedOther = 0;
+                    for (const [key, info] of aiImportState.folderInfo.entries()) {
+                        if (info.category === 'other') { skippedOther++; continue; }  // ไม่อยู่ในโฟลเดอร์หัวข้อ → ไม่เลือก
+                        const inst = info.folderName;
+                        (sections[inst] ||= []).push(key);
+                        instCat[inst] = info.category;
+                        photos.push({ filename: key, category: info.category, caption_th: inst, notes: '', confidence: 1 });
+                    }
+                    if (skippedOther) aiAnalyzeStatus(`ข้าม ${skippedOther} รูป (ไม่อยู่ในโฟลเดอร์หัวข้อ)`, null, `⏭ ข้าม ${skippedOther} รูปนอกหัวข้อ`);
+                    for (const [inst, cat] of Object.entries(instCat)) {
+                        const tpl = aiResolveTemplate(cat);
+                        sectionMeta[inst] = { title: inst, category: cat, mod_id: tpl.mod_id, counter_key: tpl.counter_key, kind: tpl.kind, testId: tpl.testId };
+                    }
+                    scope = { panel_name: panelName || '', project_name: '', working_date: '', scope_th: '', tests_performed: [], tests_not_performed: [] };
+                } else {
+                    // ── โหมดเดิม: AI เดาหมวดเอง → แต่ละหมวด = 1 instance ──
+                    aiAnalyzeStatus('Stage 1/3 — จัดหมวดรูป…', 2, '🔍 classify…');
+                    photos = await aiClassify(files, schema, onProg);
+                    aiAnalyzeStatus('Stage 2/3 — เลือกรูป + scope…', 65, '📋 select…');
+                    const sel = await aiSelect(photos, schema, panelName);
+                    scope = sel.scope || {};
+                    for (const [cat, fns] of Object.entries(sel.sections || {})) {
+                        sections[cat] = fns;
+                        const tpl = aiResolveTemplate(cat);
+                        sectionMeta[cat] = { title: AI_SECTION_LABELS[cat] || cat, category: cat, mod_id: tpl.mod_id, counter_key: tpl.counter_key, kind: tpl.kind, testId: tpl.testId };
+                    }
+                }
+
+                // STAGE 3 — อ่านค่า "ต่อ instance" (insulation/contact/trip) — หลาย insulation = อ่านแยกกัน
+                const testTables = {};
+                const testInstances = Object.keys(sections).filter(inst => {
+                    const m = sectionMeta[inst];
+                    return m && m.kind === 'test' && AI_TEST_PROMPTS[m.testId] &&
+                           sections[inst].filter(f => files.has(f)).length >= 2;
+                });
+                let ti = 0;
+                for (const inst of testInstances) {
+                    const m = sectionMeta[inst];
+                    aiAnalyzeStatus(`Stage 3 — อ่านค่า ${m.title}…`, 70 + Math.round(25 * ti / testInstances.length), `🔬 ${m.title}…`);
+                    try {
+                        const r = await aiReadTestExplicit(sections[inst], files, m.testId, panelName || scope.panel_name);
+                        if (r) {
+                            if (r.ordered_photos && r.ordered_photos.length) sections[inst] = r.ordered_photos;
+                            const entry = { test_id: m.testId };
+                            if (r.table) { entry.kind = 'phase_table'; entry.table = r.table; }
+                            if (r.breakers) { entry.kind = 'breaker_table'; entry.breakers = r.breakers; }
+                            if (r.settings || r.function_test) { entry.kind = 'trip_table'; entry.info = r.info || {}; entry.settings = r.settings || {}; entry.function_test = r.function_test || {}; }
+                            testTables[inst] = entry;   // keyed by INSTANCE
+                        }
+                    } catch (e) { aiAnalyzeStatus(`Stage 3 — ${m.title} พลาด (ข้าม)`, null, `⚠️ ${m.title}: ${e.message}`); }
+                    ti++;
+                }
+
+                // populate state ให้ preview/commit ใช้
+                aiImportState.moduleMapping = schema.mapping;
+                aiImportState.sectionMeta = sectionMeta;
+                aiImportState.sections = sections;
+                aiImportState.testTables = testTables;
+                aiImportState.photosByFilename.clear();
+                for (const p of photos) aiImportState.photosByFilename.set(p.filename, p);
+                aiImportState.scope = {
+                    project_name: scope.project_name || '', panel_name: scope.panel_name || panelName || '',
+                    working_date: scope.working_date || '', scope_th: scope.scope_th || '',
+                    tests_performed: scope.tests_performed || [], tests_not_performed: scope.tests_not_performed || [],
+                };
+
+                aiAnalyzeStatus('✅ วิเคราะห์เสร็จ', 100, '✅ เสร็จ — แสดง preview');
+                document.getElementById('aiInputArea').classList.add('hidden');
+                renderAiPreview();
+            } catch (e) {
+                aiAnalyzeStatus('❌ ' + e.message, null, '❌ ' + e.message);
+                document.getElementById('aiAnalyzeBtn').disabled = false;
+            }
+        }
+
+        function openAiImportModal() {
+            // revoke any cached object URLs
+            aiImportState.thumbCache.forEach(url => { try { URL.revokeObjectURL(url); } catch(e){} });
+            aiImportState.thumbCache.clear();
+            // reset state
+            aiImportState.jsonData = null;
+            aiImportState.photoFiles.clear();
+            aiImportState.photosByFilename.clear();
+            aiImportState.sections = {};
+            aiImportState.scope = { project_name:'', panel_name:'', working_date:'', scope_th:'', tests_performed:[], tests_not_performed:[] };
+            aiImportState.moduleMapping = {};
+            aiImportState.isSelectionJson = false;
+            aiImportState.testTables = {};
+            aiImportState.sectionMeta = {};
+            // reset UI
+            document.getElementById('aiJsonPicker').value = '';
+            document.getElementById('aiPhotosPicker').value = '';
+            document.getElementById('aiJsonStatus').innerHTML = '';
+            document.getElementById('aiPhotosStatus').innerHTML = '';
+            document.getElementById('aiPreviewArea').classList.add('hidden');
+            document.getElementById('aiProgressBox').classList.add('hidden');
+            document.getElementById('aiUnusedPool').classList.add('hidden');
+            document.getElementById('aiCommitBtn').disabled = true;
+            document.getElementById('aiCommitSummary').textContent = '';
+            // reset input area (in-browser AI)
+            document.getElementById('aiInputArea').classList.remove('hidden');
+            document.getElementById('aiAnalyzeProgress').classList.add('hidden');
+            document.getElementById('aiAnalyzeBtn').disabled = true;
+            const fp = document.getElementById('aiFolderPicker'); if (fp) fp.value = '';
+            aiImportState.folderMode = false;
+            aiImportState.folderInfo = new Map();
+            onAiProviderChange();   // อัปเดต hint ของ key
+            hideAiMovePopover();
+            // show
+            const m = document.getElementById('aiImportModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeAiImportModal() {
+            const m = document.getElementById('aiImportModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            // revoke thumbnails
+            aiImportState.thumbCache.forEach(url => { try { URL.revokeObjectURL(url); } catch(e){} });
+            aiImportState.thumbCache.clear();
+            hideAiMovePopover();
+        }
+
+        function handleAiJsonPick(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    // ตรวจ structure: selection.json (มี selections{}) หรือ classification.json (มี photos[])
+                    let isSelection = false;
+                    let photosArr = null;
+                    let initialSections = {};
+                    let mapping = data.module_mapping || {};
+
+                    if (data.selections && typeof data.selections === 'object') {
+                        // selection.json — มี structure ที่ดีกว่า
+                        isSelection = true;
+                        photosArr = data.all_photos || [];
+                        // initialSections = ตามที่ AI เลือก
+                        for (const [sec, files] of Object.entries(data.selections)) {
+                            if (Array.isArray(files) && files.length > 0) {
+                                initialSections[sec] = [...files];
+                            }
+                        }
+                    } else if (Array.isArray(data.photos)) {
+                        // classification.json — group by category
+                        photosArr = data.photos;
+                        for (const p of photosArr) {
+                            const m = mapping[p.category];
+                            if (!m || m.skip) continue;
+                            if (!initialSections[p.category]) initialSections[p.category] = [];
+                            initialSections[p.category].push(p.filename);
+                        }
+                    } else {
+                        throw new Error('JSON ไม่ใช่ classification หรือ selection — ไม่พบ photos[] หรือ selections{}');
+                    }
+                    if (!mapping || Object.keys(mapping).length === 0) {
+                        throw new Error('JSON ขาด module_mapping');
+                    }
+
+                    aiImportState.jsonData = data;
+                    aiImportState.isSelectionJson = isSelection;
+                    aiImportState.moduleMapping = mapping;
+                    aiImportState.sections = initialSections;
+                    aiImportState.testTables = data.test_tables || {};
+                    // สร้าง sectionMeta (instance) จาก category — ให้ commit/preview ใช้แบบเดียวกับ in-browser
+                    aiImportState.sectionMeta = {};
+                    for (const sec of Object.keys(initialSections)) {
+                        const tpl = aiResolveTemplate(sec);
+                        aiImportState.sectionMeta[sec] = { title: AI_SECTION_LABELS[sec] || sec, category: sec, mod_id: tpl.mod_id, counter_key: tpl.counter_key, kind: tpl.kind, testId: tpl.testId };
+                    }
+                    aiImportState.photosByFilename.clear();
+                    for (const p of photosArr) aiImportState.photosByFilename.set(p.filename, p);
+                    // scope (selection.json มี Claude อนุมานให้)
+                    if (data.scope) {
+                        aiImportState.scope = {
+                            project_name: data.scope.project_name || '',
+                            panel_name: data.scope.panel_name || data.panel_name || '',
+                            working_date: data.scope.working_date || '',
+                            scope_th: data.scope.scope_th || '',
+                            tests_performed: data.scope.tests_performed || [],
+                            tests_not_performed: data.scope.tests_not_performed || [],
+                        };
+                    } else {
+                        aiImportState.scope.panel_name = data.panel_name || '';
+                    }
+
+                    const totalSel = Object.values(initialSections).reduce((s,a)=>s+a.length, 0);
+                    const label = isSelection ? 'selection.json' : 'classification.json';
+                    document.getElementById('aiJsonStatus').innerHTML =
+                        `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> ${label} — ${photosArr.length} รูปทั้งหมด, AI เลือก ${totalSel} รูป</span>`;
+                    tryRenderAiPreview();
+                } catch (err) {
+                    aiImportState.jsonData = null;
+                    document.getElementById('aiJsonStatus').innerHTML =
+                        `<span class="text-red-600 font-bold"><i class="fa-solid fa-circle-xmark"></i> ${err.message}</span>`;
+                    document.getElementById('aiPreviewArea').classList.add('hidden');
+                    document.getElementById('aiCommitBtn').disabled = true;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function handleAiPhotosPick(event) {
+            aiImportState.thumbCache.clear();
+            aiImportState.photoFiles.clear();
+            for (const f of event.target.files) {
+                aiImportState.photoFiles.set(f.name, f);
+            }
+            const n = aiImportState.photoFiles.size;
+            document.getElementById('aiPhotosStatus').innerHTML =
+                `<span class="text-blue-600 font-bold"><i class="fa-solid fa-images mr-1"></i> รับ ${n} รูป — เตรียมรูปย่อ…</span>`;
+            await aiGenerateAllThumbnails();
+            document.getElementById('aiPhotosStatus').innerHTML =
+                `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> พร้อม ${n} รูป — กด 'วิเคราะห์ด้วย AI'</span>`;
+            // เปิดปุ่มวิเคราะห์ (ไม่ render preview จนกว่า AI จะทำงานเสร็จ)
+            document.getElementById('aiAnalyzeBtn').disabled = (n === 0);
+        }
+
+        function tryRenderAiPreview() {
+            const data = aiImportState.jsonData;
+            const files = aiImportState.photoFiles;
+            if (!data || files.size === 0) {
+                document.getElementById('aiPreviewArea').classList.add('hidden');
+                document.getElementById('aiCommitBtn').disabled = true;
+                return;
+            }
+            renderAiPreview();
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 THUMBNAIL helper
+        // ════════════════════════════════════════════════════════════
+        // คืนค่า data URL ของรูปย่อ ที่ pre-generate ไว้แล้ว
+        // (ถ้ายังไม่ generate → คืน placeholder 1x1)
+        const AI_THUMB_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23e2e8f0"/></svg>';
+        function aiGetThumbUrl(filename) {
+            return aiImportState.thumbCache.get(filename) || AI_THUMB_PLACEHOLDER;
+        }
+
+        // สร้างรูปย่อด้วย canvas — เร็ว, ขนาดเล็ก, decoded ครั้งเดียว
+        function aiMakeThumbnail(file, maxSize) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        if (w > h && w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        const ctx = c.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(c.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.onerror = reject;
+                    img.src = ev.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // pre-generate thumbnails ทั้งอัลบั้ม — concurrent ทีละ 4 (browser handle ได้ดี)
+        async function aiGenerateAllThumbnails() {
+            const files = aiImportState.photoFiles;
+            const total = files.size;
+            if (total === 0) return;
+            const status = document.getElementById('aiPhotosStatus');
+            let done = 0;
+            const updateMsg = () => {
+                status.innerHTML = `<span class="text-blue-600 font-bold"><i class="fa-solid fa-cog fa-spin mr-1"></i> กำลังเตรียมรูปย่อ ${done}/${total}…</span>`;
+            };
+            updateMsg();
+            const filenames = Array.from(files.keys());
+            const concurrent = 4;
+            const processOne = async (fn) => {
+                if (aiImportState.thumbCache.has(fn)) { done++; return; }
+                const file = files.get(fn);
+                if (!file) { done++; return; }
+                try {
+                    const url = await aiMakeThumbnail(file, 240);   // 240px max → ~6-10KB data URL
+                    aiImportState.thumbCache.set(fn, url);
+                } catch (e) {
+                    console.warn('thumb fail:', fn, e);
+                }
+                done++;
+                if (done % 8 === 0 || done === total) updateMsg();
+            };
+            for (let i = 0; i < filenames.length; i += concurrent) {
+                const batch = filenames.slice(i, i + concurrent);
+                await Promise.all(batch.map(processOne));
+            }
+            status.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> เลือก ${total} รูป (พร้อม preview แล้ว)</span>`;
+        }
+
+        // escape สำหรับใส่ใน HTML attribute (single-quoted) + JS literal:
+        //   จัดการทั้ง '"' (ทำให้ attribute แตก) และ "'" (ทำให้ JS string แตก) และ '\\'
+        function aiAttrJs(s) {
+            return String(s)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 RENDER preview
+        // ════════════════════════════════════════════════════════════
+        function renderAiPreview() {
+            const data = aiImportState.jsonData;
+            const files = aiImportState.photoFiles;
+            const mapping = aiImportState.moduleMapping;
+
+            // fill scope inputs
+            document.getElementById('aiScopeProject').value = aiImportState.scope.project_name || '';
+            document.getElementById('aiScopePanel').value = aiImportState.scope.panel_name || '';
+            document.getElementById('aiScopeDate').value = aiImportState.scope.working_date || '';
+            document.getElementById('aiScopeText').value = aiImportState.scope.scope_th || '';
+            // bind change events to keep state
+            document.getElementById('aiScopeProject').oninput = e => aiImportState.scope.project_name = e.target.value;
+            document.getElementById('aiScopePanel').oninput = e => aiImportState.scope.panel_name = e.target.value;
+            document.getElementById('aiScopeDate').oninput = e => aiImportState.scope.working_date = e.target.value;
+            document.getElementById('aiScopeText').oninput = e => aiImportState.scope.scope_th = e.target.value;
+            // AI note
+            const aiNote = (aiImportState.scope.tests_not_performed || []).length
+                ? `<i class="fa-solid fa-lightbulb"></i> AI หมายเหตุ: ไม่ได้ทำ — ${aiImportState.scope.tests_not_performed.join(', ')}`
+                : (aiImportState.scope.tests_performed || []).length
+                    ? `<i class="fa-solid fa-lightbulb"></i> AI ระบุทดสอบ: ${aiImportState.scope.tests_performed.join(', ')}`
+                    : '';
+            document.getElementById('aiScopeAiNote').innerHTML = aiNote;
+
+            // render sections
+            const sectionsList = document.getElementById('aiSectionsList');
+            sectionsList.innerHTML = '';
+
+            // section instances ที่มี meta (รักษาลำดับโฟลเดอร์ ไม่ sort — before/after จะเรียงตามที่จัด)
+            const sortedSections = Object.entries(aiImportState.sections)
+                .filter(([sec, files]) => files.length > 0 && aiSecInfo(sec));
+
+            let totalSelected = 0, totalMissing = 0;
+            for (const [sec, filenames] of sortedSections) {
+                const sectionEl = renderAiSection(sec, filenames);
+                sectionsList.appendChild(sectionEl);
+                for (const fn of filenames) {
+                    if (files.has(fn)) totalSelected++;
+                    else totalMissing++;
+                }
+            }
+            if (sortedSections.length === 0) {
+                sectionsList.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm">
+                    <i class="fa-solid fa-inbox text-2xl mb-2"></i><br>
+                    AI ไม่ได้เลือกรูปไหนเลย — ลองดู "รูปที่ไม่ได้เลือก" แล้วเพิ่มเข้า section
+                </div>`;
+            }
+
+            // render unused pool
+            renderAiUnusedPool();
+
+            // counter
+            document.getElementById('aiPreviewCount').textContent = `${totalSelected} รูปจะ Import`;
+            const warnings = [];
+            if (totalMissing) warnings.push(`⚠️ ${totalMissing} รูปใน JSON ไม่พบไฟล์`);
+            document.getElementById('aiCommitSummary').textContent = warnings.join(' · ') || `จะสร้าง ${sortedSections.length} block`;
+            document.getElementById('aiCommitBtn').disabled = totalSelected === 0;
+            document.getElementById('aiPreviewArea').classList.remove('hidden');
+        }
+
+        function renderAiSection(sectionId, filenames) {
+            const meta = aiSecInfo(sectionId) || {};
+            const label = meta.title || AI_SECTION_LABELS[sectionId] || sectionId;
+            const validCount = filenames.filter(fn => aiImportState.photoFiles.has(fn)).length;
+            const wrap = document.createElement('div');
+            wrap.className = 'border border-slate-200 rounded-xl bg-white overflow-hidden';
+            wrap.dataset.section = sectionId;
+
+            const photosHtml = filenames.map(fn => renderAiPhotoCard(fn, sectionId)).join('');
+            const modNote = meta.kind === 'custom' ? `→ หัวข้อใหม่ (${label})` : (meta.mod_id ? `→ ${meta.mod_id}` : '');
+            const targetMod = modNote ? `<span class="text-[10px] font-mono text-slate-400 ml-1">${modNote}</span>` : '';
+            const secEsc = aiAttrJs(sectionId);
+            // badge ค่าที่ AI อ่านได้ (diagnostic + ยืนยันก่อน import)
+            const valuesHtml = aiSectionValuesHtml(sectionId);
+            wrap.innerHTML = `
+                <div class="flex justify-between items-center px-3 py-2 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                    <div class="font-bold text-sm text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-folder text-purple-500"></i>
+                        ${label}
+                        <span class="ai-sec-count text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">${validCount}</span>
+                        ${targetMod}
+                    </div>
+                    <button type="button" onclick="aiDeleteSection('${secEsc}')"
+                        class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-md font-bold transition-colors"
+                        title="ลบ section นี้ทั้งหมด (เช่นถ้า AI false positive)">
+                        <i class="fa-solid fa-trash-can"></i> ลบ section
+                    </button>
+                </div>
+                ${valuesHtml}
+                <div class="ai-sec-grid p-2 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    ${photosHtml}
+                </div>
+            `;
+            return wrap;
+        }
+
+        // badge โชว์ค่าที่ AI อ่านได้ต่อ section (ยืนยันก่อน import + ดูว่า AI อ่านค่าได้ไหม)
+        function aiSectionValuesHtml(sectionId) {
+            const e = (aiImportState.testTables || {})[sectionId];
+            if (!e) return '';
+            const chip = (v) => `<span class="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px] font-bold mr-1 mb-1">${v}</span>`;
+            const warn = `<span class="text-[11px] text-amber-600">⚠️ AI ไม่ได้อ่านค่า — กรอกเอง</span>`;
+            let inner = '';
+            if (e.kind === 'phase_table' && e.table) {
+                const t = e.table;
+                const vals = ['L1', 'L2', 'L3'].filter(k => t[k]).map(k => chip(`${k}: ${t[k]}`));
+                inner = vals.length ? vals.join('') : warn;
+            } else if (e.kind === 'breaker_table' && e.breakers) {
+                const parts = e.breakers.flatMap(b => ['A', 'B', 'C'].filter(k => b[k]).map(k => chip(`${b.name || ''} ${k}: ${b[k]}`)));
+                inner = parts.length ? parts.join('') : warn;
+            } else if (e.kind === 'trip_table') {
+                const ft = e.function_test || {};
+                const parts = Object.entries(ft).filter(([, v]) => v && v.trip_time).map(([k, v]) => chip(`${k}: ${v.trip_time}s`));
+                inner = parts.length ? parts.join('') : warn;
+            } else return '';
+            return `<div class="px-3 py-1.5 bg-emerald-50/40 border-b border-emerald-100 text-[11px]">
+                <span class="text-slate-500 font-bold mr-1">📊 ค่าที่ AI อ่านได้:</span> ${inner}</div>`;
+        }
+
+        function renderAiPhotoCard(filename, sectionId) {
+            const file = aiImportState.photoFiles.get(filename);
+            const meta = aiImportState.photosByFilename.get(filename) || {};
+            const thumbUrl = file ? aiGetThumbUrl(filename) : null;
+            const missing = !file;
+            const shortName = filename.length > 28 ? filename.slice(-26) : filename;
+            const cap = (meta.caption_th || '').replace(/"/g,'&quot;');
+            const fnEsc = aiAttrJs(filename);
+            const secEsc = aiAttrJs(sectionId);
+            if (missing) {
+                return `<div class="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-2 aspect-square flex flex-col items-center justify-center text-amber-700 text-[10px] text-center" title="ไม่พบไฟล์: ${filename}">
+                    <i class="fa-solid fa-triangle-exclamation text-base mb-1"></i>
+                    ไม่พบไฟล์<br><span class="font-mono">${shortName}</span>
+                </div>`;
+            }
+            return `<div data-card-fn="${aiAttrHtml(filename)}" data-card-sec="${aiAttrHtml(sectionId)}" class="group relative bg-white border border-slate-200 rounded-lg overflow-hidden aspect-square hover:border-purple-400 transition-colors" title="${cap}">
+                <img src="${thumbUrl}" loading="lazy" decoding="async" class="w-full h-full object-cover" alt="">
+                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    ${cap.slice(0,60)}
+                </div>
+                <button type="button" onclick="aiRemovePhotoFromSection('${secEsc}','${fnEsc}')"
+                    class="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-10"
+                    title="ลบรูปนี้ออกจาก section">
+                    <i class="fa-solid fa-xmark text-[11px] pointer-events-none"></i>
+                </button>
+                <button type="button" onclick="aiOpenMovePopover(event,'${secEsc}','${fnEsc}')"
+                    class="absolute top-1 left-1 w-6 h-6 bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-10"
+                    title="ย้ายไป section อื่น">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-[10px] pointer-events-none"></i>
+                </button>
+            </div>`.replace(/\n/g, '');
+        }
+
+        // escape สำหรับใส่ใน HTML attribute (ปกติ — ไม่ต้องผ่าน JS)
+        function aiAttrHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+
+        function renderAiUnusedPool() {
+            // หารูปที่ไม่อยู่ใน section ไหนเลย
+            const usedSet = new Set();
+            for (const arr of Object.values(aiImportState.sections)) for (const fn of arr) usedSet.add(fn);
+            const unused = [];
+            for (const [fn, p] of aiImportState.photosByFilename.entries()) {
+                if (usedSet.has(fn)) continue;
+                if (!aiImportState.photoFiles.has(fn)) continue;   // ข้ามรูปที่ไม่มีไฟล์
+                unused.push(p);
+            }
+            document.getElementById('aiUnusedCount').textContent = unused.length;
+            const grid = document.getElementById('aiUnusedGrid');
+            if (unused.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 text-xs py-4">ทุกรูปถูกเลือกแล้ว</div>`;
+                return;
+            }
+            grid.innerHTML = unused.map(p => aiUnusedCardHtml(p)).join('');
+        }
+
+        function aiUnusedCardHtml(p) {
+            const url = aiGetThumbUrl(p.filename);
+            const cat = p.category || '?';
+            const cap = (p.caption_th || '').replace(/"/g,'&quot;');
+            const fnEsc = aiAttrJs(p.filename);
+            return `<div data-card-fn="${aiAttrHtml(p.filename)}" data-card-unused="1" class="group relative bg-white border border-slate-200 rounded-lg overflow-hidden aspect-square hover:border-purple-400 transition-colors cursor-pointer" title="${cap}" onclick="aiOpenMovePopover(event,null,'${fnEsc}')">
+                <img src="${url}" loading="lazy" decoding="async" class="w-full h-full object-cover pointer-events-none" alt="">
+                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1 text-[8px] text-white pointer-events-none">
+                    <span class="font-bold">${cat}</span>
+                </div>
+            </div>`.replace(/\n/g,'');
+        }
+
+        function toggleAiUnusedPool() {
+            const pool = document.getElementById('aiUnusedPool');
+            const ico = document.getElementById('aiUnusedToggle');
+            pool.classList.toggle('hidden');
+            ico.classList.toggle('fa-chevron-down');
+            ico.classList.toggle('fa-chevron-up');
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 EDIT actions — surgical DOM updates (no full re-render)
+        // ════════════════════════════════════════════════════════════
+        function aiFindSectionWrapper(sectionId) {
+            return Array.from(document.querySelectorAll('#aiSectionsList [data-section]'))
+                .find(el => el.dataset.section === sectionId) || null;
+        }
+        function aiFindCardInSection(sectionId, filename) {
+            const wrap = aiFindSectionWrapper(sectionId);
+            if (!wrap) return null;
+            return Array.from(wrap.querySelectorAll('[data-card-fn]'))
+                .find(el => el.dataset.cardFn === filename) || null;
+        }
+        function aiFindCardInUnused(filename) {
+            return Array.from(document.querySelectorAll('#aiUnusedGrid [data-card-fn]'))
+                .find(el => el.dataset.cardFn === filename) || null;
+        }
+        function aiUpdateSectionCount(sectionId) {
+            const wrap = aiFindSectionWrapper(sectionId);
+            if (!wrap) return;
+            const badge = wrap.querySelector('.ai-sec-count');
+            const n = wrap.querySelectorAll('[data-card-fn]').length;
+            if (badge) badge.textContent = n;
+            // ถ้าเหลือ 0 → ลบ wrapper + ลบจาก state
+            if (n === 0) {
+                wrap.remove();
+                delete aiImportState.sections[sectionId];
+            }
+        }
+        function aiRefreshTopCounts() {
+            // นับจาก state
+            let total = 0;
+            for (const arr of Object.values(aiImportState.sections)) {
+                for (const fn of arr) if (aiImportState.photoFiles.has(fn)) total++;
+            }
+            document.getElementById('aiPreviewCount').textContent = `${total} รูปจะ Import`;
+            document.getElementById('aiCommitBtn').disabled = total === 0;
+            // unused count
+            const usedSet = new Set();
+            for (const arr of Object.values(aiImportState.sections)) for (const fn of arr) usedSet.add(fn);
+            let unused = 0;
+            for (const fn of aiImportState.photosByFilename.keys()) {
+                if (!usedSet.has(fn) && aiImportState.photoFiles.has(fn)) unused++;
+            }
+            document.getElementById('aiUnusedCount').textContent = unused;
+        }
+        function aiAddCardToUnusedDom(filename) {
+            const grid = document.getElementById('aiUnusedGrid');
+            if (!grid) return;
+            if (aiFindCardInUnused(filename)) return;
+            const p = aiImportState.photosByFilename.get(filename) || { filename };
+            // ลบ placeholder "ทุกรูปถูกเลือกแล้ว" ถ้ามี
+            const ph = grid.querySelector('.col-span-full');
+            if (ph) ph.remove();
+            grid.insertAdjacentHTML('afterbegin', aiUnusedCardHtml(p));
+        }
+        function aiAddCardToSectionDom(sectionId, filename) {
+            let wrap = aiFindSectionWrapper(sectionId);
+            if (!wrap) {
+                // สร้าง section wrapper ใหม่
+                wrap = renderAiSection(sectionId, []);
+                document.getElementById('aiSectionsList').appendChild(wrap);
+                // ลบ "AI ไม่ได้เลือกรูปไหนเลย" ถ้ามี
+                const emptyMsg = document.querySelector('#aiSectionsList > .text-center');
+                if (emptyMsg) emptyMsg.remove();
+            }
+            const grid = wrap.querySelector('.ai-sec-grid');
+            if (!grid) return;
+            const html = renderAiPhotoCard(filename, sectionId);
+            grid.insertAdjacentHTML('beforeend', html);
+        }
+
+        function aiRemovePhotoFromSection(sectionId, filename) {
+            // state
+            const arr = aiImportState.sections[sectionId];
+            if (!arr) return;
+            const i = arr.indexOf(filename);
+            if (i >= 0) arr.splice(i, 1);
+            if (arr.length === 0) delete aiImportState.sections[sectionId];
+            // DOM — surgical
+            const card = aiFindCardInSection(sectionId, filename);
+            if (card) card.remove();
+            aiUpdateSectionCount(sectionId);
+            aiAddCardToUnusedDom(filename);
+            aiRefreshTopCounts();
+        }
+
+        function aiDeleteSection(sectionId) {
+            // ดึงรูปทั้งหมดของ section นี้ไปอยู่ใน unused pool
+            const arr = aiImportState.sections[sectionId] || [];
+            const fns = [...arr];
+            delete aiImportState.sections[sectionId];
+            // DOM
+            const wrap = aiFindSectionWrapper(sectionId);
+            if (wrap) wrap.remove();
+            for (const fn of fns) aiAddCardToUnusedDom(fn);
+            aiRefreshTopCounts();
+        }
+
+        function aiOpenMovePopover(event, fromSection, filename) {
+            event.stopPropagation();
+            const pop = document.getElementById('aiMovePopover');
+            // ย้ายไปยัง section instance ที่มีอยู่ (หัวข้อจริง)
+            const choices = Object.keys(aiImportState.sections);
+            const fnEsc = aiAttrJs(filename);
+            const fromEsc = fromSection ? `'${aiAttrJs(fromSection)}'` : 'null';
+            pop.innerHTML = `
+                <div class="text-[10px] font-bold text-slate-500 px-2 pt-1 pb-2 border-b border-slate-200">ย้ายไปหัวข้อ:</div>
+                <div class="max-h-64 overflow-y-auto py-1">
+                    ${choices.map(sec => {
+                        const lbl = (aiSecInfo(sec) && aiSecInfo(sec).title) || AI_SECTION_LABELS[sec] || sec;
+                        const cnt = (aiImportState.sections[sec] || []).length;
+                        const isCurrent = sec === fromSection;
+                        const secEsc = aiAttrJs(sec);
+                        return `<button type="button" onclick="aiMovePhoto(${fromEsc},'${secEsc}','${fnEsc}')"
+                            class="block w-full text-left px-3 py-1.5 text-xs hover:bg-purple-50 ${isCurrent ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'text-slate-700'}"
+                            ${isCurrent ? 'disabled' : ''}>
+                            ${lbl} <span class="text-slate-400">(${cnt})</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+                <button type="button" onclick="hideAiMovePopover()" class="block w-full text-center px-3 py-1.5 text-[10px] text-slate-500 border-t border-slate-200 hover:bg-slate-50">ยกเลิก</button>
+            `;
+            // วาง popover relative ต่อ modal — ใช้ตำแหน่ง absolute relative to modal
+            const btnRect = event.currentTarget.getBoundingClientRect();
+            const modal = document.getElementById('aiImportModal');
+            const mRect = modal.getBoundingClientRect();
+            const popW = 220;
+            // คำนวณตำแหน่งใน viewport
+            let left = btnRect.left;
+            if (left + popW > mRect.right) left = mRect.right - popW - 10;
+            if (left < mRect.left) left = mRect.left + 10;
+            pop.style.left = `${left}px`;
+            pop.style.top = `${btnRect.bottom + 4}px`;
+            pop.style.position = 'fixed';
+            pop.classList.remove('hidden');
+            // close on outside click (defer เพื่อไม่ให้ปิดทันที)
+            setTimeout(() => {
+                const closer = (e) => {
+                    if (!pop.contains(e.target)) {
+                        hideAiMovePopover();
+                        document.removeEventListener('click', closer);
+                    }
+                };
+                document.addEventListener('click', closer);
+                pop._closer = closer;
+            }, 0);
+        }
+
+        function hideAiMovePopover() {
+            const pop = document.getElementById('aiMovePopover');
+            pop.classList.add('hidden');
+            if (pop._closer) { document.removeEventListener('click', pop._closer); pop._closer = null; }
+        }
+
+        function aiMovePhoto(fromSection, toSection, filename) {
+            if (fromSection === toSection) { hideAiMovePopover(); return; }
+            // 1) update state
+            if (fromSection && aiImportState.sections[fromSection]) {
+                const i = aiImportState.sections[fromSection].indexOf(filename);
+                if (i >= 0) aiImportState.sections[fromSection].splice(i, 1);
+                if (aiImportState.sections[fromSection].length === 0) delete aiImportState.sections[fromSection];
+            }
+            if (!aiImportState.sections[toSection]) aiImportState.sections[toSection] = [];
+            if (!aiImportState.sections[toSection].includes(filename)) {
+                aiImportState.sections[toSection].push(filename);
+            }
+            // 2) DOM surgical
+            if (fromSection) {
+                const card = aiFindCardInSection(fromSection, filename);
+                if (card) card.remove();
+                aiUpdateSectionCount(fromSection);
+            } else {
+                // ย้ายจาก unused pool
+                const card = aiFindCardInUnused(filename);
+                if (card) card.remove();
+            }
+            aiAddCardToSectionDom(toSection, filename);
+            aiUpdateSectionCount(toSection);
+            aiRefreshTopCounts();
+            hideAiMovePopover();
+        }
+
+        function aiCompressFileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                try { compressImage(file, dataUrl => resolve(dataUrl)); }
+                catch (e) { reject(e); }
+            });
+        }
+
+        // ย่อรูปสำหรับ AI bulk import — ขนาดเล็กกว่า + คุณภาพต่ำกว่า → ลดแลค + ลดขนาด DOM
+        function aiCompressLow(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxSize = 900;   // เล็กกว่า compressImage (1200)
+                        let w = img.width, h = img.height;
+                        if (w > h && w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        const ctx = c.getContext('2d');
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(c.toDataURL('image/jpeg', 0.55));   // 0.55 vs 0.7 → ~25% เล็กลง
+                    };
+                    img.onerror = reject;
+                    img.src = ev.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function aiFindLastGrid(prefixShort) {
+            // หา grid_<prefixShort>_N ล่าสุดใน DOM (ตัวที่ id เลข สูงสุด)
+            const grids = document.querySelectorAll(`[id^="grid_${prefixShort}_"]`);
+            if (!grids.length) return null;
+            // sort ตามเลขท้าย id
+            return Array.from(grids).sort((a, b) => {
+                const na = parseInt(a.id.split('_').pop(), 10);
+                const nb = parseInt(b.id.split('_').pop(), 10);
+                return nb - na;
+            })[0];
+        }
+
+        // grid ว่าง = ยังไม่มีรูปที่ใส่จริง (ใช้ดูว่า block ที่ toggle auto-create ยังว่างอยู่ไหม)
+        function aiGridIsEmpty(grid) {
+            if (!grid) return true;
+            return !grid.querySelector('.photo-image:not(.hidden)');
+        }
+
+        async function aiInjectPhotoIntoGrid(grid, file, prefixShort) {
+            // หา empty photo-box ถ้าไม่พอ ค่อย addPhotoBox
+            let emptyImg = grid.querySelector('.photo-box .photo-image.hidden');
+            if (!emptyImg) {
+                addPhotoBox(grid.id, prefixShort);
+                emptyImg = grid.querySelector('.photo-box:last-child .photo-image.hidden');
+                if (!emptyImg) return false;
+            }
+            // ใช้ aiCompressLow (เล็กกว่า + คุณภาพต่ำกว่า) เพื่อลดแลค
+            const dataUrl = await aiCompressLow(file);
+            emptyImg.style.backgroundImage = `url('${dataUrl}')`;
+            emptyImg.classList.remove('hidden');
+            const box = emptyImg.closest('.photo-box');
+            if (box) {
+                const editBtn = box.querySelector('.edit-photo-btn');
+                if (editBtn) editBtn.classList.remove('hidden');
+                const cropBtn = box.querySelector('.crop-photo-btn');
+                if (cropBtn) cropBtn.classList.remove('hidden');
+            }
+            return true;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 COMMIT — ใช้ live state (sections + scope) ที่ user แก้แล้ว
+        // ════════════════════════════════════════════════════════════
+        function aiFillCoverInfo() {
+            // กรอก cover/project info ถ้า user ใส่ไว้
+            const sc = aiImportState.scope;
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && val && !el.value) { el.value = val; el.setAttribute('value', val); }
+            };
+            setVal('coverInputProject', sc.project_name);
+            setVal('coverInputDate', sc.working_date);
+        }
+
+        function aiSetPanelNameInLastBlock(modId, panelName) {
+            if (!panelName) return;
+            // หา block ใหม่ล่าสุดที่อยู่ใน module นี้ และ set eq-panel-input
+            const modNode = document.getElementById(modId);
+            if (!modNode) return;
+            const inputs = modNode.querySelectorAll('.eq-panel-input');
+            const last = inputs[inputs.length - 1];
+            if (last && !last.value) {
+                last.value = panelName;
+                last.setAttribute('value', panelName);
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 🌟 AUTO-FILL test tables จาก Stage 3 (test_tables)
+        // ════════════════════════════════════════════════════════════
+        function aiSetInput(inputEl, val) {
+            if (!inputEl || !val) return;
+            inputEl.value = val;
+            inputEl.setAttribute('value', val);
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Insulation: หา block ล่าสุด → fill Observation ของแถว L1/L2/L3
+        function aiFillInsulationTable(tableData) {
+            if (!tableData || !tableData.table) return;
+            const blocks = document.querySelectorAll('#ins_container .insulation-block, .insulation-block');
+            const block = blocks[blocks.length - 1];
+            if (!block) return;
+            const rows = block.querySelectorAll('table tr');
+            const want = tableData.table;   // {L1,L2,L3}
+            rows.forEach(tr => {
+                const firstCell = tr.querySelector('td');
+                if (!firstCell) return;
+                const label = firstCell.textContent.trim();
+                let key = null;
+                if (/^L1\b/.test(label)) key = 'L1';
+                else if (/^L2\b/.test(label)) key = 'L2';
+                else if (/^L3\b/.test(label)) key = 'L3';
+                if (!key || !want[key]) return;
+                // ช่อง Observation = input text-orange ในแถวนี้ (ไม่ใช่ voltage-test-input)
+                const obsInput = Array.from(tr.querySelectorAll('input[type="text"]'))
+                    .find(inp => !inp.classList.contains('voltage-test-input'));
+                aiSetInput(obsInput, want[key]);
+            });
+        }
+
+        // Contact: หา block ล่าสุด → เพิ่มแถวเบรกเกอร์ให้พอ → fill ชื่อ + L1/L2/L3
+        function aiFillContactTable(tableData) {
+            if (!tableData || !Array.isArray(tableData.breakers) || tableData.breakers.length === 0) return;
+            const blocks = document.querySelectorAll('#ct_container .contact-block, .contact-block');
+            const block = blocks[blocks.length - 1];
+            if (!block) return;
+            const tbody = block.querySelector('tbody[id^="tbody_"]');
+            if (!tbody) return;
+
+            const breakers = tableData.breakers;
+            // block สร้างมา 1 breaker group แล้ว — เพิ่มให้ครบจำนวน
+            const addBtn = block.querySelector('button[onclick^="addBreakerRow"]');
+            let existingGroups = tbody.querySelectorAll('.breaker-group').length;
+            while (existingGroups < breakers.length && addBtn) {
+                addBtn.click();
+                existingGroups = tbody.querySelectorAll('.breaker-group').length;
+            }
+
+            // เติมค่าแต่ละ breaker group
+            const groups = tbody.querySelectorAll('.breaker-group');  // แถวแรกของแต่ละ breaker (rowspan)
+            breakers.forEach((bk, gi) => {
+                const row1 = groups[gi];
+                if (!row1) return;
+                // ชื่อเบรกเกอร์ (sync-name input ในแถวแรก)
+                const nameInput = row1.querySelector('input[class*="sync-name-"]');
+                if (nameInput && bk.name) {
+                    aiSetInput(nameInput, bk.name);
+                    if (typeof syncInputs === 'function') {
+                        const cls = Array.from(nameInput.classList).find(c => c.startsWith('sync-name-'));
+                        if (cls) syncInputs(cls, bk.name);
+                    }
+                }
+                // row1 = L1, row2 = L2, row3 = L3 (id = breaker_row_N_1/2/3)
+                const rid = row1.id.match(/breaker_row_(\d+)_1/);
+                if (!rid) return;
+                const n = rid[1];
+                const map = { L1: bk.A, L2: bk.B, L3: bk.C };  // A/B/C → L1/L2/L3
+                [1, 2, 3].forEach(ri => {
+                    const r = document.getElementById(`breaker_row_${n}_${ri}`);
+                    if (!r) return;
+                    const phaseKey = ['', 'L1', 'L2', 'L3'][ri];
+                    const val = map[phaseKey];
+                    if (!val) return;
+                    // Observation input = text-orange ในแถว (ไม่ใช่ sync-amp / sync-name)
+                    const obsInput = Array.from(r.querySelectorAll('input[type="text"]'))
+                        .find(inp => !inp.className.includes('sync-'));
+                    aiSetInput(obsInput, val);
+                });
+            });
+        }
+
+        // Trip unit: หา block ล่าสุด → fill CB info + settings + function test
+        function aiFillTripTable(tableData) {
+            if (!tableData) return;
+            const blocks = document.querySelectorAll('#trip_container .trip-block, .trip-block');
+            const block = blocks[blocks.length - 1];
+            if (!block) return;
+
+            // ── 1) CB info (Details) — จับคู่ label cell → input cell ถัดไป ───
+            const info = tableData.info || {};
+            const labelMap = {
+                'manufacturer': info.manufacturer,
+                'micrologic trip unit': info.micrologic,
+                'circuit breaker': info.circuit_breaker,
+                'serial no': info.serial,
+                'rate current': info.rate_current,
+                'feeder name': info.feeder_name,
+            };
+            block.querySelectorAll('td').forEach(td => {
+                const t = td.textContent.trim().toLowerCase().replace(/\.$/, '');
+                for (const [key, val] of Object.entries(labelMap)) {
+                    if (!val) continue;
+                    if (t === key || t.startsWith(key)) {
+                        // input อยู่ใน td ถัดไป
+                        let next = td.nextElementSibling;
+                        if (next) {
+                            const inp = next.querySelector('input[type="text"]');
+                            if (inp && !inp.value) aiSetInput(inp, val);
+                        }
+                    }
+                }
+            });
+
+            // ── 2) เดินแถวในตาราง แยก section (setting / sensitive) ───
+            const settings = tableData.settings || {};
+            const ftest = tableData.function_test || {};
+            const fnFromLabel = (lbl) => {
+                lbl = lbl.toLowerCase();
+                if (lbl.startsWith('long-time') || lbl.startsWith('long time')) return 'long_time';
+                if (lbl.startsWith('short-time') || lbl.startsWith('short time')) return 'short_time';
+                if (lbl.startsWith('instantaneous')) return 'instantaneous';
+                if (lbl.startsWith('ground-fault') || lbl.startsWith('ground fault')) return 'ground_fault';
+                return null;
+            };
+
+            let section = null;
+            block.querySelectorAll('table tr').forEach(tr => {
+                const rowTxt = tr.textContent.trim();
+                if (/^Before test setting/i.test(rowTxt)) { section = 'setting'; return; }
+                if (/^Sensitive trip test/i.test(rowTxt)) { section = 'sensitive'; return; }
+                if (/^Function setting|^Function test/i.test(rowTxt)) return; // header row
+                const firstCell = tr.querySelector('td');
+                if (!firstCell) return;
+                const fn = fnFromLabel(firstCell.textContent.trim());
+                if (!fn || !section) return;
+                const textInputs = Array.from(tr.querySelectorAll('input[type="text"]'));
+
+                if (section === 'setting') {
+                    const s = settings[fn];
+                    if (!s) return;
+                    // ลำดับ input ในแถว setting:
+                    //  Long/Short/Ground: [setting, pri, time, remark]
+                    //  Instantaneous:     [setting, pri, remark]  (ไม่มี time cell)
+                    if (fn === 'instantaneous') {
+                        if (textInputs[0]) aiSetInput(textInputs[0], s.setting);
+                        if (textInputs[1]) aiSetInput(textInputs[1], s.pri);
+                    } else {
+                        if (textInputs[0]) aiSetInput(textInputs[0], s.setting);
+                        if (textInputs[1]) aiSetInput(textInputs[1], s.pri);
+                        if (textInputs[2]) aiSetInput(textInputs[2], s.time);
+                    }
+                } else if (section === 'sensitive') {
+                    const t = ftest[fn];
+                    if (!t) return;
+                    // [injected, trip_time, remark] + <select> result
+                    if (textInputs[0]) aiSetInput(textInputs[0], t.injected);
+                    if (textInputs[1]) aiSetInput(textInputs[1], t.trip_time);
+                    const sel = tr.querySelector('select');
+                    if (sel && t.result) {
+                        const val = /fail/i.test(t.result) ? 'Fail' : 'Pass';
+                        sel.value = val;
+                        if (typeof updateResultColor === 'function') updateResultColor(sel);
+                    }
+                }
+            });
+        }
+
+        function aiAutoFillTestTable(modId) {
+            // เรียกหลังสร้าง block — เลือก autofill ตาม module
+            const tables = aiImportState.testTables || {};
+            if (modId === 'mod_insulation' && tables.insulation_test) {
+                aiFillInsulationTable(tables.insulation_test);
+            } else if (modId === 'mod_contact' && tables.contact_test) {
+                aiFillContactTable(tables.contact_test);
+            } else if (modId === 'mod_trip' && tables.trip_unit_test) {
+                aiFillTripTable(tables.trip_unit_test);
+            }
+        }
+
+        // ตั้งหัวข้อ/ช่วง ของ block ล่าสุดของ module
+        //   - insulation (มีช่อง period "(Before)") → กรอก Before/After ในช่อง period, ชื่อหัวข้อคงเดิม
+        //   - photo-group/custom → ตั้งชื่อหัวข้อ (title input) = ชื่อโฟลเดอร์
+        //   - test อื่น (contact/grounding/trip) → ตั้ง block-base-title = ชื่อโฟลเดอร์
+        function aiSetBlockTitle(modId, title) {
+            if (!title) return;
+            const modNode = document.getElementById(modId);
+            if (!modNode) return;
+            // 1) ช่อง period (insulation) — ตั้งจากคำ before/after ในชื่อโฟลเดอร์ ไม่แตะชื่อหัวข้อ
+            const periods = modNode.querySelectorAll('input[placeholder*="ระบุช่วง"]');
+            if (periods.length) {
+                const period = /before|ก่อน/i.test(title) ? 'Before' : (/after|หลัง/i.test(title) ? 'After' : null);
+                if (period) {
+                    const el = periods[periods.length - 1];
+                    el.value = period; el.setAttribute('value', period);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                return;
+            }
+            // 2) photo-group / custom → ตั้งชื่อหัวข้อ
+            const tInputs = modNode.querySelectorAll('.photo-group-title-input');
+            if (tInputs.length) {
+                const el = tInputs[tInputs.length - 1];
+                el.value = title; el.setAttribute('value', title);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+            // 3) test อื่น → block-base-title
+            const bases = modNode.querySelectorAll('.block-base-title');
+            if (bases.length) bases[bases.length - 1].textContent = title;
+        }
+
+        // autofill ตารางจาก testTables ที่ key ด้วย instance (sectionId)
+        function aiAutoFillInstanceTable(modId, sectionId) {
+            const entry = (aiImportState.testTables || {})[sectionId];
+            if (!entry) return;
+            if (modId === 'mod_insulation' && entry.table) aiFillInsulationTable(entry);
+            else if (modId === 'mod_contact' && entry.breakers) aiFillContactTable(entry);
+            else if (modId === 'mod_trip' && (entry.settings || entry.function_test)) aiFillTripTable(entry);
+        }
+
+        async function commitAiImport() {
+            const files = aiImportState.photoFiles;
+            const sections = aiImportState.sections;
+            if (!files.size) return;
+
+            // 1 instance = 1 block (ไม่รวมหมวด — โฟลเดอร์/หัวข้อ แยก block กันชัด)
+            const tasks = [];   // [{sectionId, meta, filenames}]
+            let totalPhotos = 0;
+            for (const [sec, filenames] of Object.entries(sections)) {
+                const meta = aiSecInfo(sec);
+                if (!meta || !meta.mod_id || !meta.counter_key) continue;
+                const valid = filenames.filter(fn => files.has(fn));
+                if (valid.length === 0) continue;
+                tasks.push({ sectionId: sec, meta, filenames: valid });
+                totalPhotos += valid.length;
+            }
+            if (totalPhotos === 0) { showToast('ไม่มีรูปที่จะ import', 'error'); return; }
+
+            document.getElementById('aiPreviewArea').classList.add('hidden');
+            document.getElementById('aiProgressBox').classList.remove('hidden');
+            document.getElementById('aiCommitBtn').disabled = true;
+            hideAiMovePopover();
+
+            let done = 0;
+            const updateProgress = (msg) => {
+                document.getElementById('aiProgressText').textContent = msg;
+                document.getElementById('aiProgressBar').style.width = `${Math.round(done * 100 / totalPhotos)}%`;
+            };
+            updateProgress(`เตรียม Import ${totalPhotos} รูป...`);
+            await new Promise(r => setTimeout(r, 50));
+            aiFillCoverInfo();
+            const panelName = aiImportState.scope.panel_name || '';
+
+            for (const t of tasks) {
+                const modId = t.meta.mod_id, prefixShort = t.meta.counter_key;
+
+                // นับ block ของ module ก่อนเปิด (ใช้รู้ว่า toggle auto-create ให้หรือไม่ — ใช้ได้ทุก type รวม trip ที่ไม่มี grid)
+                const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block';
+                const modNode0 = document.getElementById(modId);
+                const blocksBefore = modNode0 ? modNode0.querySelectorAll(AI_BLOCK_SEL).length : 0;
+
+                // เปิด module
+                const modCheckbox = document.querySelector(`input[type="checkbox"][onchange*="${modId}"]`);
+                if (modCheckbox && !modCheckbox.checked) {
+                    modCheckbox.checked = true;
+                    if (typeof toggleModule === 'function') toggleModule(modId, true);
+                    await new Promise(r => setTimeout(r, 100));
+                }
+
+                const action = (typeof moduleAddActions !== 'undefined') ? moduleAddActions[modId] : null;
+                if (!action || typeof action.fn !== 'function') {
+                    console.warn(`ไม่พบ adder สำหรับ ${modId}`);
+                    done += t.filenames.length; updateProgress(`ข้าม ${t.meta.title}`); continue;
+                }
+
+                // สร้าง block ใหม่ — เว้นแต่ "ใช้ block เดิมได้":
+                //   (ก) toggle เพิ่ง auto-create block ให้ (block เพิ่มขึ้น) — รวม trip ที่ไม่มี grid ; หรือ
+                //   (ข) block ล่าสุดมี grid ที่ยังว่าง (กรณี module เปิดค้างไว้ก่อน)
+                const blocksAfter = modNode0 ? document.getElementById(modId)?.querySelectorAll(AI_BLOCK_SEL).length : 0;
+                const toggleCreated = blocksAfter > blocksBefore;
+                const lastGrid0 = aiFindLastGrid(prefixShort);
+                const canReuse = toggleCreated || (lastGrid0 && aiGridIsEmpty(lastGrid0));
+                if (!canReuse) {
+                    action.fn();
+                    await new Promise(r => setTimeout(r, 120));
+                }
+
+                // ตั้งชื่อหัวข้อ + panel + ตาราง (ต่อ instance)
+                aiSetBlockTitle(modId, t.meta.title);
+                aiSetPanelNameInLastBlock(modId, panelName);
+                try { aiAutoFillInstanceTable(modId, t.sectionId); } catch (e) { console.error('autofill', e); }
+
+                const grid = aiFindLastGrid(prefixShort);
+                if (!grid) { done += t.filenames.length; continue; }
+
+                for (const fn of t.filenames) {
+                    const file = files.get(fn);
+                    if (!file) { done++; continue; }
+                    if (done % 5 === 0) updateProgress(`${done}/${totalPhotos} — กำลังประมวลผลรูป...`);
+                    try { await aiInjectPhotoIntoGrid(grid, file, prefixShort); }
+                    catch (e) { console.error('inject', fn, e); }
+                    done++;
+                    if (done % 5 === 0) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 20)));
+                }
+            }
+
+            updateProgress(`✅ Import เสร็จ ${done}/${totalPhotos} รูป`);
+            document.getElementById('aiProgressBar').style.width = '100%';
+            showSaveStatus('<i class="fa-solid fa-wand-magic-sparkles"></i> AI Import สำเร็จ');
+            if (typeof markUnsaved === 'function') markUnsaved();
+            if (typeof saveDraft === 'function') setTimeout(() => { try { saveDraft(); } catch(e){ console.error(e); } }, 2000);
+            setTimeout(closeAiImportModal, 1200);
+        }
+
         // (ลบ closePreview แล้ว — ไม่ใช้ pdfModal อีกต่อไป)
     </script>
     <!-- ====================================================== -->
@@ -6577,12 +8199,198 @@
                     <!-- รายการจะถูก render โดย renderHistoryList() -->
                 </div>
             </div>
-            <div class="p-4 border-t bg-slate-50 shrink-0">
+            <div class="p-4 border-t bg-slate-50 shrink-0 space-y-2">
+                <!-- 🌟 นำออก/นำเข้าไฟล์ JSON (ย้ายมาจากแถบเมนูด้านบน) -->
+                <div class="flex gap-2">
+                    <button onclick="exportData()" class="flex-1 bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm border border-slate-200 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> นำออกไฟล์ (.json)
+                    </button>
+                    <button onclick="document.getElementById('importFile').click()" class="flex-1 bg-white hover:bg-slate-50 text-slate-600 hover:text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm border border-slate-200 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-upload"></i> นำเข้าไฟล์ (.json)
+                    </button>
+                </div>
                 <button onclick="startNewFromHistory()" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-plus"></i> เริ่มงานใหม่
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- 🌟 AI Import Modal — Phase 3: Full Preview UI -->
+    <div id="aiImportModal" class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-6xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200" style="max-height: 95vh;">
+            <div class="flex justify-between items-center p-5 border-b bg-gradient-to-r from-purple-50 to-indigo-50 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i>
+                    AI ช่วยทำรายงาน — อัปโหลดรูป แล้วให้ AI กรอกให้
+                </h3>
+                <button onclick="closeAiImportModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-5" id="aiModalBody">
+                <!-- STEP 1: Provider + API key -->
+                <div id="aiInputArea">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-md text-xs mr-2">1</span> AI Provider
+                            </label>
+                            <select id="aiProvider" onchange="onAiProviderChange()"
+                                class="block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                                <option value="anthropic">Claude (Anthropic) — แม่นสุด</option>
+                                <option value="google">Gemini 2.5 Pro</option>
+                                <option value="google-flash">Gemini Flash — มี free tier</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-md text-xs mr-2">2</span>
+                                API Key <span class="text-slate-400 font-normal">🔒 กรอกทุกครั้ง ไม่บันทึก</span>
+                            </label>
+                            <input type="password" id="aiApiKey" placeholder="วาง API key ที่นี่…"
+                                class="block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                            <div id="aiKeyHint" class="mt-1 text-[11px] text-slate-400"></div>
+                        </div>
+                    </div>
+                    <!-- STEP 2: report type + panel + upload -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-md text-xs mr-2">3</span> ประเภทงาน
+                            </label>
+                            <select id="aiReportType"
+                                class="block w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                                <option value="pm">PM (Preventive Maintenance)</option>
+                                <option value="modify">Modify / Add Busbar</option>
+                            </select>
+                            <input type="text" id="aiPanelName" placeholder="ชื่อตู้ เช่น MDB (เว้นว่างให้ AI เดา)"
+                                class="block w-full mt-2 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-md text-xs mr-2">4</span> อัปโหลดรูป
+                            </label>
+                            <!-- โหมดแนะนำ: เลือกโฟลเดอร์ตู้ที่จัดหัวข้อไว้ -->
+                            <input type="file" id="aiFolderPicker" webkitdirectory directory multiple onchange="handleAiFolderPick(event)"
+                                class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                            <div class="mt-1 text-[11px] text-emerald-600">
+                                📁 <b>แนะนำ:</b> เลือกโฟลเดอร์ตู้ที่จัดหัวข้อย่อยไว้ (Before/Insulation/Contact…) — AI ใช้ชื่อโฟลเดอร์เป็นหมวด → แม่น + ถูกกว่า
+                            </div>
+                            <details class="mt-1">
+                                <summary class="text-[11px] text-slate-500 cursor-pointer hover:text-slate-700">หรือเลือกรูปแบบไม่จัดโฟลเดอร์ (ให้ AI เดาหมวดเอง)</summary>
+                                <input type="file" id="aiPhotosPicker" accept="image/*" multiple onchange="handleAiPhotosPick(event)"
+                                    class="block w-full mt-1 text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
+                            </details>
+                            <div id="aiPhotosStatus" class="mt-2 text-xs text-slate-500"></div>
+                        </div>
+                    </div>
+
+                    <button id="aiAnalyzeBtn" onclick="runAiAnalysis()" disabled
+                        class="w-full py-3 rounded-xl font-bold text-sm bg-purple-600 text-white shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> วิเคราะห์ด้วย AI
+                    </button>
+
+                    <!-- progress ระหว่างวิเคราะห์ -->
+                    <div id="aiAnalyzeProgress" class="hidden mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <div class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span id="aiAnalyzeText">กำลังวิเคราะห์…</span>
+                        </div>
+                        <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                            <div id="aiAnalyzeBar" class="bg-blue-500 h-full transition-all duration-200" style="width:0%"></div>
+                        </div>
+                        <div id="aiAnalyzeLog" class="mt-2 text-[11px] text-slate-500 max-h-24 overflow-y-auto font-mono"></div>
+                    </div>
+
+                    <!-- ขั้นสูง: โหลด JSON ที่ทำไว้ -->
+                    <details class="mt-3">
+                        <summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-700">ขั้นสูง: โหลดไฟล์ JSON ที่ทำไว้แล้ว (จาก Python pipeline)</summary>
+                        <input type="file" id="aiJsonPicker" accept=".json" onchange="handleAiJsonPick(event)"
+                            class="block w-full mt-2 text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-600 cursor-pointer">
+                        <div id="aiJsonStatus" class="mt-2 text-xs text-slate-500"></div>
+                    </details>
+                </div>
+
+                <!-- STEP 3: Preview area (hidden until both files loaded) -->
+                <div id="aiPreviewArea" class="hidden">
+                    <!-- Scope block -->
+                    <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mb-4">
+                        <div class="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list"></i> Scope ของงาน (แก้ได้)
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm mb-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ชื่อโปรเจกต์</label>
+                                <input type="text" id="aiScopeProject" placeholder="(จะใส่ใน Cover)"
+                                    class="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ชื่อตู้ (Equipment / Panel)</label>
+                                <input type="text" id="aiScopePanel" placeholder="เช่น MDB-3"
+                                    class="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-sm font-bold text-orange-600 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">วันที่ทำงาน</label>
+                                <input type="text" id="aiScopeDate" placeholder="เช่น 29/07/2024"
+                                    class="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">รายละเอียดงาน (Scope)</label>
+                            <textarea id="aiScopeText" rows="2" placeholder="งานที่ทำ..."
+                                class="w-full px-2.5 py-1.5 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none resize-none"></textarea>
+                        </div>
+                        <div class="mt-3 text-xs text-purple-700" id="aiScopeAiNote"></div>
+                    </div>
+
+                    <!-- Sections -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <div class="text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-layer-group text-slate-500 mr-1"></i>
+                            รูปจัดตาม section <span id="aiPreviewCount" class="text-purple-600">— รูป</span>
+                        </div>
+                        <button onclick="toggleAiUnusedPool()" class="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+                            <i class="fa-solid fa-chevron-down" id="aiUnusedToggle"></i>
+                            รูปที่ไม่ได้เลือก <span id="aiUnusedCount">0</span>
+                        </button>
+                    </div>
+                    <div id="aiSectionsList" class="space-y-3"></div>
+
+                    <!-- Unused pool (collapsible) -->
+                    <div id="aiUnusedPool" class="hidden mt-4 border-t-2 border-dashed border-slate-200 pt-4">
+                        <div class="text-xs font-bold text-slate-600 mb-2">
+                            <i class="fa-solid fa-images mr-1"></i> รูปที่ AI ไม่ได้เลือก — คลิกเพื่อย้ายเข้า section
+                        </div>
+                        <div id="aiUnusedGrid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div id="aiProgressBox" class="hidden bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
+                    <div class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <span id="aiProgressText">กำลัง Import...</span>
+                    </div>
+                    <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                        <div id="aiProgressBar" class="bg-blue-500 h-full transition-all duration-200" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t bg-slate-50 shrink-0 flex gap-2 justify-end items-center">
+                <span id="aiCommitSummary" class="text-xs text-slate-500 mr-auto"></span>
+                <button onclick="closeAiImportModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors">
+                    ยกเลิก
+                </button>
+                <button id="aiCommitBtn" onclick="commitAiImport()" disabled
+                    class="px-5 py-2.5 rounded-xl font-bold text-sm bg-purple-600 text-white shadow-md hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> เริ่ม Import
+                </button>
+            </div>
+        </div>
+
+        <!-- Move-photo popover (lightweight) -->
+        <div id="aiMovePopover" class="hidden absolute z-[100000] bg-white border border-slate-300 rounded-xl shadow-2xl p-2 min-w-[180px]"></div>
     </div>
 
 </body>
