@@ -54,6 +54,71 @@ img{max-width:100%;display:block}
 .btn-home{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(255,255,255,.08);color:#fff;border-radius:8px;cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0}
 .btn-home:hover{background:rgba(245,158,11,.85);transform:translateX(-2px)}
 .btn-home svg{display:block}
+.btn-help{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(255,255,255,.08);color:#fff;border-radius:8px;cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0;position:relative}
+.btn-help:hover{background:rgba(34,197,94,.85);transform:scale(1.05)}
+.btn-help svg{display:block}
+
+/* Attention pulse — draws the eye until user dismisses the hint or opens help */
+.btn-help.has-hint{background:rgba(34,197,94,.4);animation:helpBtnPulse 1.8s ease-out infinite}
+@keyframes helpBtnPulse{
+  0%  {box-shadow:0 0 0 0 rgba(34,197,94,.7)}
+  70% {box-shadow:0 0 0 14px rgba(34,197,94,0)}
+  100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+}
+
+/* Hint bubble (first-visit tooltip pointing at help button) */
+.help-hint-bubble{position:fixed;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:10px 14px 10px 16px;border-radius:10px;font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:0 12px 28px -10px rgba(34,197,94,.55);z-index:999;cursor:pointer;animation:hintBob 1.5s ease-in-out infinite;display:flex;align-items:center;gap:10px;letter-spacing:.2px}
+.help-hint-bubble::before{content:'';position:absolute;bottom:100%;right:12px;width:0;height:0;border:7px solid transparent;border-bottom-color:#22c55e}
+.help-hint-bubble .hint-close{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(255,255,255,.25);border-radius:50%;font-size:11px;font-weight:700;opacity:.95;transition:background .12s}
+.help-hint-bubble .hint-close:hover{background:rgba(255,255,255,.5)}
+@keyframes hintBob{
+  0%,100%{transform:translateY(0)}
+  50%   {transform:translateY(-6px)}
+}
+
+/* === Help modal === */
+.help-modal{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:450;padding:20px;animation:procFadeIn .25s ease forwards;opacity:1}
+.help-card{background:#fff;border-radius:14px;width:min(96vw,580px);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 60px -15px rgba(0,0,0,.4);animation:procPop .35s cubic-bezier(.34,1.56,.64,1) forwards;opacity:1}
+.help-head{padding:16px 22px;background:linear-gradient(135deg,#f59e0b 0%,#f97316 100%);color:#fff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.help-head h3{margin:0;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px}
+.help-close{background:rgba(255,255,255,.2);color:#fff;border:none;width:30px;height:30px;border-radius:7px;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s}
+.help-close:hover{background:rgba(255,255,255,.35)}
+.help-body{padding:18px 22px 22px;overflow-y:auto;flex:1}
+.help-section{margin-bottom:20px}
+.help-section:last-child{margin-bottom:0}
+.help-section h4{font-size:14px;font-weight:800;color:#0f172a;margin:0 0 10px;display:flex;align-items:center;gap:8px;letter-spacing:.2px}
+.help-section h4 .icon{font-size:18px}
+.help-section .lead{font-size:12px;color:#64748b;line-height:1.55;margin-bottom:10px}
+
+/* 2-column folder layout (mobile photos vs Fluke exports side-by-side) */
+.folder-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.folder-cols{grid-template-columns:1fr}}
+.folder-col{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+.folder-col .fc-head{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:9px 12px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px}
+.folder-col.fluke .fc-head{background:linear-gradient(135deg,#b45309,#f59e0b)}
+.folder-col .fc-body{padding:12px 12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.7}
+.fc-row{display:flex;align-items:flex-start;gap:6px;color:#475569}
+.fc-row.dir{color:#0f172a;font-weight:600}
+.fc-row.file{color:#64748b}
+.fc-row.indent-1{padding-left:14px}
+.fc-row.indent-2{padding-left:28px}
+.fc-row.indent-3{padding-left:42px}
+.fc-row .fc-note{color:#94a3b8;font-weight:400;font-style:italic;font-size:10.5px;font-family:'Sarabun',sans-serif;margin-left:4px}
+
+.photo-steps{display:flex;flex-direction:column;gap:8px}
+.photo-step{display:flex;gap:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 14px;align-items:center}
+.photo-step .num{flex-shrink:0;min-width:26px;height:26px;border-radius:99px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;padding:0 8px;white-space:nowrap}
+.photo-step .icon{font-size:22px;flex-shrink:0;width:32px;text-align:center}
+.photo-step .text{flex:1;min-width:0}
+.photo-step .text .title{font-weight:700;color:#0f172a;font-size:13px}
+.photo-step .text .desc{font-size:11.5px;color:#64748b;margin-top:1px;line-height:1.4}
+
+.help-tip{display:flex;gap:10px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;margin-top:8px}
+.help-tip .icon{font-size:16px;flex-shrink:0}
+.help-tip .text{font-size:11.5px;color:#78350f;line-height:1.55}
+.help-tip .text b{color:#451a03}
+.help-tip.warning{background:#fee2e2;border-color:#ef4444}
+.help-tip.warning .text{color:#7f1d1d}
 
 /* === Tabs === */
 .tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--c-border);padding:0 16px;overflow-x:auto}
@@ -405,6 +470,9 @@ img{max-width:100%;display:block}
     <div class="title">Thermoscan Report Generator <small>Avatar Electric Co., Ltd.</small></div>
   </div>
   <div class="topbar-actions">
+    <button class="btn-help" id="btnHelp" title="วิธีใช้" aria-label="วิธีใช้">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
     <button id="btnHistory">ประวัติงาน</button>
     <button id="btnSave">บันทึก</button>
   </div>
@@ -1586,7 +1654,7 @@ async function categorizePhotosWithAI(cabinet){
   • ลักษณะป้าย: ใหญ่ มักอยู่บนหัวตู้/หน้าตู้ภายนอก, ตัวอักษรชัด
   • **กฎ:** มีได้แค่ 1 ภาพต่อตู้
 
-- "equipment_label": ป้าย**ชื่อจุดวัด/โหลด** — ป้ายดำ engraved หรือสติ๊กเกอร์เล็ก ที่ระบุชื่อจุด/feeder/load
+- "equipment_label": ป้าย**ชื่อจุดวัด/โหลด** — ป้ายเนมเพลทหรือเขียนมือระบุชื่อจุด/feeder/load
   • รูปแบบภาพได้ 2 แบบ:
     (ก) ภาพมุมเบรกเกอร์ + ป้ายชื่อข้าง ๆ (ถ่ายก่อนเปิดฝา)
     (ข) ภาพ **ป้ายอย่างเดียว** (zoom เข้าใกล้ป้ายโดยไม่เห็นเบรกเกอร์) — ทีมงานบางครั้งถ่ายแค่ป้ายก่อนแล้วค่อยเข้าไปถ่ายภาพ normal
@@ -2705,6 +2773,288 @@ function setExportProgress(pct, label){
 ===================================================================== */
 document.getElementById('btnHistory').addEventListener('click', ()=>showStartupModal(true));
 document.getElementById('btnSave').addEventListener('click', ()=>saveCurrentToHistory(false));
+document.getElementById('btnHelp').addEventListener('click', ()=>{ dismissHelpHint(); showHelpModal(); });
+
+/* ====================================================================
+   Help button attention hint — draws first-time users to "วิธีใช้".
+   Shows a pulsing ring + a green bubble pointing at the help button.
+   Auto-dismisses once the user clicks the help button OR the bubble.
+   Persists "seen" in localforage so it never bothers them again.
+===================================================================== */
+const HELP_HINT_KEY = 'thermoscan_help_seen_v1';
+async function setupHelpHint(){
+  try{
+    const seen = await localforage.getItem(HELP_HINT_KEY);
+    if(seen) return;
+    showHelpHintBubble();
+  }catch(e){ /* ignore */ }
+}
+function showHelpHintBubble(){
+  const btn = document.getElementById('btnHelp');
+  if(!btn || document.querySelector('.help-hint-bubble')) return;
+  btn.classList.add('has-hint');
+  const bubble = document.createElement('div');
+  bubble.className = 'help-hint-bubble no-print';
+  bubble.innerHTML = '👆 กดที่นี่เพื่อดูวิธีใช้ <span class="hint-close" title="ปิด">✕</span>';
+  document.body.appendChild(bubble);
+  // Anchor bubble below + right-aligned with the help button
+  const position = ()=>{
+    const r = btn.getBoundingClientRect();
+    bubble.style.top   = (r.bottom + 14) + 'px';
+    bubble.style.right = Math.max(8, window.innerWidth - r.right - 4) + 'px';
+  };
+  position();
+  window.addEventListener('resize', position);
+  bubble._cleanup = ()=> window.removeEventListener('resize', position);
+  bubble.onclick = (e)=>{
+    if(e.target.classList.contains('hint-close')){
+      // Just close — don't open help
+      dismissHelpHint();
+    } else {
+      // Click anywhere else on bubble → dismiss + open help
+      dismissHelpHint();
+      showHelpModal();
+    }
+  };
+}
+function dismissHelpHint(){
+  const bubble = document.querySelector('.help-hint-bubble');
+  if(bubble){ bubble._cleanup?.(); bubble.remove(); }
+  document.getElementById('btnHelp')?.classList.remove('has-hint');
+  localforage.setItem(HELP_HINT_KEY, true).catch(()=>{});
+}
+
+function showHelpModal(){
+  // Remove any existing help modal
+  document.querySelectorAll('.help-modal').forEach(m=>m.remove());
+  const modal = document.createElement('div');
+  modal.className = 'help-modal no-print';
+  modal.innerHTML = `
+    <div class="help-card">
+      <div class="help-head">
+        <h3><span>📖</span> วิธีใช้ Thermoscan Report</h3>
+        <button class="help-close" id="helpClose" aria-label="ปิด">✕</button>
+      </div>
+      <div class="help-body">
+
+        <!-- Section 1: Folder structure -->
+        <div class="help-section">
+          <h4><span class="icon">📁</span> 1. จัดเรียงโฟลเดอร์</h4>
+          <div class="lead">แยกภาพออกเป็น <b>2 โฟลเดอร์หลัก</b> ก่อนอัปโหลด — แอปจะอ่านชื่ออาคาร/ตู้จาก<b>ชื่อโฟลเดอร์โดยตรง</b> (ไม่ต้องเสีย token AI)</div>
+          <div class="folder-cols">
+            <div class="folder-col">
+              <div class="fc-head">📁 ภาพจากมือถือ</div>
+              <div class="fc-body">
+                <div class="fc-row dir">📁 ชั้น 1A (MDB ROOM)<span class="fc-note">ชื่ออาคาร</span></div>
+                <div class="fc-row dir indent-1">📁 DB1A1 PANEL<span class="fc-note">ชื่อตู้</span></div>
+                <div class="fc-row file indent-2">📷 IMG_001.jpg</div>
+                <div class="fc-row file indent-2">📷 IMG_002.jpg</div>
+                <div class="fc-row file indent-2">📷 ...</div>
+                <div class="fc-row dir indent-1">📁 DB1A2 PANEL</div>
+                <div class="fc-row file indent-2">📷 ...</div>
+                <div class="fc-row dir">📁 ชั้น 2 (EE ROOM A)</div>
+                <div class="fc-row dir indent-1">📁 DB2A1 PANEL</div>
+                <div class="fc-row file indent-2">📷 ...</div>
+              </div>
+            </div>
+            <div class="folder-col fluke">
+              <div class="fc-head">📁 ภาพจากกล้อง Fluke</div>
+              <div class="fc-body">
+                <div class="fc-row file">📷 Fluke_20260609_0001.jpg</div>
+                <div class="fc-row file">📷 Fluke_20260609_0002.jpg</div>
+                <div class="fc-row file">📷 Fluke_20260609_0003.jpg</div>
+                <div class="fc-row file">📷 Fluke_20260609_0004.jpg</div>
+                <div class="fc-row file">📷 ...</div>
+                <div class="fc-row" style="color:#94a3b8;font-style:italic;margin-top:6px;font-family:'Sarabun',sans-serif;font-size:11px">flat — ไม่แยกโฟลเดอร์ย่อย</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-tip">
+            <span class="icon">💡</span>
+            <span class="text">
+              ตอนอัปโหลดให้เลือกที่โฟลเดอร์ <b>"ภาพจากมือถือ"</b> — อย่าเข้าไปเลือกในโฟลเดอร์ตู้โดยตรง (จะอ่านชื่ออาคารไม่เจอ)
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 2: Photo sequence -->
+        <div class="help-section">
+          <h4><span class="icon">📷</span> 2. ลำดับการถ่ายรูปต่อตู้</h4>
+          <div class="lead">เริ่มจาก <b>ป้ายตู้</b> ก่อน แล้วถ่าย <b>3 ภาพ/จุดวัด</b> ตามลำดับนี้ (AI จะจับคู่กันอัตโนมัติ) <b>สำคัญ</b> ตั้งค่ามือถือให้ถ่ายแบบ Timestamp เพื่อให้ Ai ดึงเวลามากรอกลงรายงาน</div>
+          <div class="photo-steps">
+            <div class="photo-step">
+              <div class="num">1</div>
+              <div class="icon">📋</div>
+              <div class="text">
+                <div class="title">ป้ายชื่อตู้ (Cabinet Label) — 1 ภาพต่อตู้</div>
+                <div class="desc">ถ่ายก่อนเริ่มจุดวัดแรกของตู้ (ป้ายชื่อหน้าตู้ เช่น MDB / LP / EDB)</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">2</div>
+              <div class="icon">🏷️</div>
+              <div class="text">
+                <div class="title">ป้ายชื่อจุดวัด (Equipment Label)</div>
+                <div class="desc">ป้ายเนมเพลทหรือเขียนมือ เช่น "MAIN", "DBTW6" — zoom เข้าใกล้ให้อ่านชัด</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">3</div>
+              <div class="icon">🔌</div>
+              <div class="text">
+                <div class="title">รูป CB / Identification</div>
+                <div class="desc">ถ่ายภาพจุดวัดที่ต้องการให้แสดงในรายงาน</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">4</div>
+              <div class="icon">🌡️</div>
+              <div class="text">
+                <div class="title">ถ่ายภาพความร้อนด้วยกล้อง Fluke</div>
+                <div class="desc">ถ่ายภาพด้วยกล้องถ่ายความร้อน (เมื่อกดถ่ายแล้วที่หน้าจอจะมีชื่อไฟล์ขึ้นมา)</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">5</div>
+              <div class="icon">📺</div>
+              <div class="text">
+                <div class="title">หน้าจอกล้อง Fluke</div>
+                <div class="desc">ใช้มือถือถ่ายหน้าจอกล้อง Fluke ที่ <b>เห็นชื่อไฟล์ชัด</b> (เช่น Fluke_20260609_0042)</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-tip">
+            <span class="icon">💡</span>
+            <span class="text">
+              <b>ถ่ายเบรกเกอร์หลายตัวรวมในภาพเดียวได้</b> — AI จะอ่านชื่อทั้งหมดให้ คั่นด้วย "," เช่น "DBTW6, DBTW11"
+            </span>
+          </div>
+          <div class="help-tip warning">
+            <span class="icon">⚠️</span>
+            <span class="text">
+              ชื่อไฟล์ Fluke บน<b>หน้าจอ</b>ต้องตรงกับ<b>ไฟล์จริง</b>ที่ export จากกล้อง — ไม่งั้นจะ match thermal image ไม่เจอ
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 3: Sp marker placement -->
+        <div class="help-section">
+          <h4><span class="icon">🎯</span> 3. การมาร์คจุดร้อนในภาพถ่ายความร้อน</h4>
+          <div class="lead">บนกล้อง Fluke ก่อนกด Save ให้วาง <b>Spot marker 6 จุด</b> บนภาพ thermal ตามนี้ — แอปจะคำนวณ Delta T ของแต่ละ phase ให้อัตโนมัติ</div>
+          <div class="photo-steps">
+            <div class="photo-step">
+              <div class="num">Sp1-3</div>
+              <div class="icon">🔥</div>
+              <div class="text">
+                <div class="title">MP (Measurement Point) — จุดวัด</div>
+                <div class="desc">วางบน<b>จุดที่ต้องการวัด</b> เช่น จุดต่อสาย จุดต่อ Drop Fuse — ฝั่งที่ร้อนกว่า (3 จุด สำหรับ phase A, B, C)</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">Sp4-6</div>
+              <div class="icon">❄️</div>
+              <div class="text">
+                <div class="title">RP (Reference Point) — จุดอ้างอิง</div>
+                <div class="desc">วางบน<b>บัสบาร์หรือสายตัวนำ</b>ใน phase และระดับแรงดันเดียวกัน — ฝั่งที่อุณหภูมิปกติ</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">ΔT</div>
+              <div class="icon">➗</div>
+              <div class="text">
+                <div class="title">การจับคู่ (แอปคำนวณให้)</div>
+                <div class="desc">Phase A: |Sp1−Sp4| &nbsp;·&nbsp; Phase B: |Sp2−Sp5| &nbsp;·&nbsp; Phase C: |Sp3−Sp6|</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-tip">
+            <span class="icon">💡</span>
+            <span class="text">
+              <b>จับจุด Sp1-Sp6 (Sp1-3 = MP จุดวัด, Sp4-6 = RP จุดอ้างอิง) แล้วกด Save</b> — ทำตามลำดับนี้ทุกครั้ง AI จะอ่านค่าได้ถูก
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 4: Workflow -->
+        <div class="help-section">
+          <h4><span class="icon">⚡</span> 4. ขั้นตอนการใช้แอป</h4>
+          <div class="photo-steps">
+            <div class="photo-step">
+              <div class="num">1</div>
+              <div class="icon">⚙️</div>
+              <div class="text">
+                <div class="title">Tab 1 — ตั้งค่างาน</div>
+                <div class="desc">กรอกชื่อโครงการ, วันที่, บริษัท, ใส่ API Key (Anthropic หรือ Google)</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">2</div>
+              <div class="icon">📤</div>
+              <div class="text">
+                <div class="title">Tab 2 — อัปโหลดภาพ</div>
+                <div class="desc">เลือกโฟลเดอร์ "ภาพจากมือถือ" + โฟลเดอร์ "ภาพจากกล้อง Fluke" → กด <b>"ประมวลผลด้วย AI"</b> (จะเห็น popup คำนวณค่าใช้จ่ายให้ก่อน)</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">3</div>
+              <div class="icon">✏️</div>
+              <div class="text">
+                <div class="title">Tab 3 — ตรวจสอบ</div>
+                <div class="desc">แก้ไขชื่อ/ค่าที่ AI อ่านพลาด, ลากสลับลำดับอาคาร/ตู้/จุด, ยุบหัวข้อได้</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">4</div>
+              <div class="icon">👁️</div>
+              <div class="text">
+                <div class="title">Tab 4 — ดูตัวอย่าง</div>
+                <div class="desc">ดูหน้าตา PDF ก่อน export — ถ้าผิดกลับไป Tab 3</div>
+              </div>
+            </div>
+            <div class="photo-step">
+              <div class="num">5</div>
+              <div class="icon">💾</div>
+              <div class="text">
+                <div class="title">Tab 5 — Export PDF</div>
+                <div class="desc">บันทึกเป็น PDF (จะ auto-save งานเข้าประวัติด้วย)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Tips -->
+        <div class="help-section">
+          <h4><span class="icon">💡</span> 5. เคล็ดลับ &amp; เคสที่เจอบ่อย</h4>
+          <div class="help-tip">
+            <span class="icon">🤖</span>
+            <span class="text">
+              <b>เลือก Provider ตามต้องการ:</b> Sonnet 4.6 = แม่นสุด (แพง) · Gemini 2.5 Pro = สมดุล · Gemini 3.5 Flash = เร็วสุด
+            </span>
+          </div>
+          <div class="help-tip">
+            <span class="icon">📥</span>
+            <span class="text">
+              <b>ส่งงานต่อให้เพื่อน:</b> กดปุ่ม "ประวัติงาน" → "📤 ส่งออก JSON" — ได้ไฟล์เดียวมีทุกอย่าง รวมรูป
+            </span>
+          </div>
+          <div class="help-tip">
+            <span class="icon">🔄</span>
+            <span class="text">
+              <b>งานเซฟอัตโนมัติ:</b> ทุกการแก้ไขเซฟลง browser ทันที — ปิดเปิดใหม่จะเจอ popup ถามว่าทำต่อไหม
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = ()=> modal.remove();
+  modal.querySelector('#helpClose').onclick = close;
+  modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
+  // ESC key closes modal
+  const onKey = e=>{ if(e.key==='Escape'){ close(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
+}
 document.getElementById('btnHome').addEventListener('click', async ()=>{
   // Same guard as switching projects — warn before discarding unsaved edits.
   if(!(await proceedSwitch())) return;
@@ -3151,6 +3501,9 @@ window.addEventListener('beforeunload', ()=>{
   isDirty = false;
   // Startup chooser: only auto-popup if there's saved work or a non-empty draft
   await showStartupModal(false);
+  // First-time eye-catcher pointing at the Help button (auto-dismisses once
+  // the user opens help or clicks ✕). 1.5s delay lets any startup popups settle.
+  setTimeout(setupHelpHint, 1500);
 })();
 
 /* Expose for inline handlers */
