@@ -787,16 +787,12 @@
         </header>
 
         <!-- 🌟 แถบ "กำลังแก้รายงาน" — แสดงใต้ header เฉพาะตอนที่ link กับ history -->
-        <div id="currentHistoryIndicator" class="no-print bg-indigo-50 border-b border-indigo-100 px-4 py-1.5 text-xs text-slate-600 flex items-center justify-between gap-3 shrink-0" style="display:none;">
+        <div id="currentHistoryIndicator" class="no-print bg-indigo-50 border-b border-indigo-100 px-4 py-1.5 text-xs text-slate-600 flex items-center gap-3 shrink-0" style="display:none;">
             <div class="flex items-center gap-2 min-w-0">
                 <i class="fa-solid fa-bookmark text-indigo-500 shrink-0"></i>
                 <span class="shrink-0">กำลังแก้รายงาน:</span>
                 <span id="currentHistoryName" class="font-bold text-indigo-700 truncate"></span>
-                <span class="hidden sm:inline text-slate-400 shrink-0">• sync อัตโนมัติทุก 3 วินาที</span>
             </div>
-            <button onclick="detachFromHistory()" class="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold flex items-center gap-1 shrink-0" title="ยกเลิกการ sync — รายงานจะแยกออกจากประวัติ">
-                <i class="fa-solid fa-link-slash"></i> <span class="hidden sm:inline">ปลดล็อก</span>
-            </button>
         </div>
 
         <!-- 📜 A4 SCROLL AREA (พื้นที่แสดงกระดาษรายงาน) -->
@@ -3576,9 +3572,12 @@
                         else if (moduleId === 'mod_relay') addRelayBlock();
                         else if (moduleId === 'mod_cap') addCapBlock();
                         else if (moduleId === 'mod_blank') addBlankGroup('blk');
-                        // 🌟 เลื่อนไป block ใหม่ที่เพิ่ง auto-add
-                        scrollToLatestBlockOfModule(moduleId);
                     }
+                    // 🌟 เลื่อนไป block ของหัวข้อนี้เสมอ (ใหม่ที่เพิ่ง auto-add หรือเดิมที่กลับมาเปิดใหม่)
+                    scrollToLatestBlockOfModule(moduleId);
+                } else {
+                    // 🌟 module ไม่มี sub-block (เช่น mod_calibration) — scroll ไปที่ตัว module เอง
+                    scrollToNewBlock(moduleId);
                 }
             } else {
                 moduleDiv.classList.add('hidden');
@@ -4106,10 +4105,23 @@
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, type); }
         }
 
-        function removePhotoGroup(prefix) {
+        // 🌟 helper: ขอยืนยันก่อนลบ block — ใช้ร่วมกันทุก remove*Block
+        async function confirmRemoveBlock(prefix) {
             const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
+            if (!block) return false;
+            const ok = await showConfirm({
+                title: 'ลบหัวข้อนี้?',
+                message: 'ข้อมูลและรูปภาพในชุดนี้จะถูกลบถาวร และไม่สามารถกู้คืนได้',
+                confirmText: 'ลบ',
+                cancelText: 'ยกเลิก',
+                variant: 'danger'
+            });
+            if (!ok) return false;
+            block.remove();
+            return true;
         }
+
+        async function removePhotoGroup(prefix) { await confirmRemoveBlock(prefix); }
 
         function addBlankGroup(type) {
             groupCounts[type]++;
@@ -4208,10 +4220,7 @@
             defaultGeneralTasks.forEach(task => addGeneralCheckRow(`tbody_${prefix}`, task));
         }
 
-        function removeGeneralCheckBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeGeneralCheckBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addGeneralCheckRow(tbodyId, task = "") {
             const tbody = document.getElementById(tbodyId);
@@ -4339,10 +4348,7 @@
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'ins'); }
         }
 
-        function removeInsulationBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeInsulationBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addDielectricBlock() {
             dieCount++;
@@ -4410,10 +4416,7 @@
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'die'); }
         }
 
-        function removeDielectricBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeDielectricBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addGroundingBlock() {
             groCount++;
@@ -4469,10 +4472,7 @@
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'gro'); }
         }
 
-        function removeGroundingBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeGroundingBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         // 🌟 Ground Continuity — copy โครงสร้างจาก Grounding Test แต่:
         //   • ชื่อ block: "Ground Continuity"
@@ -4536,10 +4536,7 @@
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'gc'); }
         }
 
-        function removeGcBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeGcBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addContactBlock() {
             ctCount++;
@@ -4605,10 +4602,7 @@
             for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'ct'); }   // 6 กล่อง (เท่า insulation) — 6 ภาพ + ตาราง อยู่หน้าเดียว
         }
 
-        function removeContactBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeContactBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addTripBlock() {
             tripCount++;
@@ -4847,10 +4841,7 @@
             insertBlockAfterLastInGroup(container, blockHtml, 'trip-block', 'block_trip_');
         }
 
-        function removeTripBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeTripBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         // 🌟 Protection Relay Test — โครงสร้างอ้างอิงจาก Project-TOTO หนองแค (PM 2568)
         //    1 block = 1 ชุดทดสอบรีเลย์ (Sensitive Test Relay) — สามารถเพิ่มหลายชุดได้
@@ -4992,10 +4983,7 @@
             for(let i=0; i<4; i++) { addPhotoBox(`grid_${prefix}`, 'relay'); }
         }
 
-        function removeRelayBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeRelayBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         // 🌟 Capacitor Bank Check — โครงสร้างอ้างอิงจากไฟล์ capacitor check.pdf
         //    1 block = 1 ชุดทดสอบ Capacitor Bank (12 Steps × L1-L2/L2-L3/L3-L1)
@@ -5095,10 +5083,7 @@
             for(let i=0; i<2; i++) { addPhotoBox(`grid_${prefix}`, 'cap'); }
         }
 
-        function removeCapBlock(prefix) {
-            const block = document.getElementById(`block_${prefix}`);
-            if(block) block.remove();
-        }
+        async function removeCapBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function handleTripCurveSelection(prefix, value) {
             const previewId = `prev_trip_curve_${prefix}`;
@@ -5485,9 +5470,23 @@
                 });
             }
 
-            // 🌟 จำนวนแถวที่กระดาษ A4 1 หน้ารองรับได้ (ข้อมูลจริงจาก user — แถวที่ 20 จะไหลออกหน้า)
-            //    ใช้สำหรับแทรก page-break + repeat header ทุก N แถว ในโหมดพิมพ์
-            const TOC_ROWS_PER_PAGE = 19;
+            // 🌟 Measurement-based pagination
+            //    แทนที่จะ fix ที่ 19 แถว/หน้า → ใส่แถวลง DOM แล้ววัด offset จริง
+            //    ถ้าเลยพื้นที่ใช้งานของหน้า → แทรก break + repeat header
+            //    ทำให้รองรับแถวสูง (ชื่อตู้ wrap หลายบรรทัด) ได้อัตโนมัติ
+            //
+            //    คำนวณพื้นที่ใช้งานจริงต่อหน้า:
+            //      A4                   = 297mm
+            //      - @page margin-bottom = 12mm (เปิดที่ใส่ footer)
+            //      - thead repeat (12mm) = 12mm (table-header-group ซ้ำทุกหน้า)
+            //      - margin-top ของ toc-header-repeat ใน print = 10mm
+            //      - Chrome rounding/safety = ~5mm
+            //                              ──────
+            //      = ~258mm สำหรับ pages 2+
+            //    หน้าแรกไม่มี margin-top header → ใช้พื้นที่ได้มากกว่านิดหน่อย
+            //    แต่จะใช้ค่าเดียวเพื่อความเรียบง่าย (อิงตามขั้นต่ำ)
+            const PAGE_LIMIT_MM_FIRST = 240;   // หน้าแรก (ไม่มี margin-top จาก toc-header-repeat)
+            const PAGE_LIMIT_MM_REPEAT = 200;  // หน้า 2+ (มี margin-top: 10mm ก่อน header)
 
             // helper: สร้างแถว header (NO. / EQUIPMENT / SECTION / PAGE) — เรียกซ้ำได้ทุกหน้า
             function makeTocHeader(isRepeat) {
@@ -5503,14 +5502,28 @@
             }
 
             // 🌟 Render TOC แบบ inline function — สามารถเรียกซ้ำได้ด้วย offset ที่ต่างกัน
+            //    return: จำนวน break header ที่แทรก (= extra TOC pages)
             function renderTocRows(tocOffset) {
                 tocList.innerHTML = '';
                 tocList.appendChild(makeTocHeader(false));
+
+                const a4Page = tocList.closest('.a4-page');
+                // probe เพื่อหา px ต่อ mm (responsive ตาม zoom ปัจจุบัน)
+                let pxPerMm = 3.7795; // fallback (96dpi)
+                if (a4Page) {
+                    const probe = document.createElement('div');
+                    probe.style.cssText = 'position:absolute;width:100mm;height:0;visibility:hidden;pointer-events:none;';
+                    a4Page.appendChild(probe);
+                    if (probe.offsetWidth > 0) pxPerMm = probe.offsetWidth / 100;
+                    probe.remove();
+                }
+                const pageLimitFirstPx = PAGE_LIMIT_MM_FIRST * pxPerMm;
+                const pageLimitRepeatPx = PAGE_LIMIT_MM_REPEAT * pxPerMm;
+                const a4Top = a4Page ? a4Page.getBoundingClientRect().top : 0;
+                let pageBaselinePx = 0; // ตำแหน่งบนของหน้าปัจจุบัน เทียบกับ a4-page top
+                let isFirstPage = true; // หน้าแรก ใช้ limit ที่ใหญ่กว่า (ไม่มี repeat-header margin)
+
                 items.forEach((item, index) => {
-                    // 🌟 ถ้าครบหน้าแล้ว (รวมแถวที่ 19 ของหน้าก่อน) — แทรก header ใหม่ (พร้อม page-break) ก่อนแถวถัดไป
-                    if (index > 0 && index % TOC_ROWS_PER_PAGE === 0) {
-                        tocList.appendChild(makeTocHeader(true));
-                    }
                     const pageNum = calculatePageNumber(item.id);
                     const adjustedPageNum = pageNum !== null ? pageNum + tocOffset : null;
                     const displayNum = adjustedPageNum !== null ? String(adjustedPageNum).padStart(2, '0') : '-';
@@ -5531,15 +5544,31 @@
                         <div class="font-bold text-orange-600 text-[14px] w-[40px] text-right tabular-nums shrink-0">${displayNum}</div>
                     `;
                     tocList.appendChild(row);
+
+                    // วัดตำแหน่ง bottom ของแถวเทียบกับ a4-page top
+                    // ถ้าเลยพื้นที่ใช้งานของหน้าปัจจุบัน → แทรก break header ก่อนแถวนี้
+                    if (a4Page && index > 0) {
+                        const rowBottomFromA4 = row.getBoundingClientRect().bottom - a4Top;
+                        const currentLimit = isFirstPage ? pageLimitFirstPx : pageLimitRepeatPx;
+                        if (rowBottomFromA4 > pageBaselinePx + currentLimit) {
+                            const header = makeTocHeader(true);
+                            tocList.insertBefore(header, row);
+                            // baseline ใหม่ = ตำแหน่งบนของ header ที่เพิ่งแทรก
+                            pageBaselinePx = header.getBoundingClientRect().top - a4Top;
+                            isFirstPage = false; // หน้าต่อไปใช้ limit เล็กกว่า
+                        }
+                    }
                 });
+
+                return tocList.querySelectorAll('.toc-header-repeat').length;
             }
 
-            // 🌟 คำนวณจำนวนหน้า TOC แบบ deterministic จาก TOC_ROWS_PER_PAGE (มี explicit page-break แล้ว)
-            //    จำนวนแถวข้อมูล / 19 = จำนวนหน้า ; ปัดขึ้น
-            const tocPages = Math.max(1, Math.ceil(items.length / TOC_ROWS_PER_PAGE));
-            const extraTocPages = tocPages - 1;
-            // 2-pass: ถ้า TOC > 1 หน้า → re-render ด้วย offset เพื่อ shift page number ของ section อื่นๆ
-            renderTocRows(extraTocPages);
+            // 🌟 2-pass: pass 1 วัดเพื่อหาจำนวนหน้า, pass 2 re-render ด้วย offset ถูกต้อง
+            const extraTocPages = renderTocRows(0);
+            if (extraTocPages > 0) {
+                renderTocRows(extraTocPages);
+            }
+            const tocPages = extraTocPages + 1;
         }
 
         function calculatePageNumber(elementId) {
