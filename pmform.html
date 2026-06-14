@@ -54,6 +54,29 @@
 
         /* กฎการตัดหน้ากระดาษ (บังคับตัดก่อนโมดูล/บล็อกเสมอ) */
         .pdf-page-break { page-break-before: always !important; break-before: page !important; }
+
+        /* 🌟 TOC — repeated header (เมื่อ TOC > 1 หน้า) ห่างจากขอบบนหน้ากระดาษ */
+        .toc-header-repeat {
+            margin-top: 8mm;
+        }
+        @media print {
+            .toc-header-repeat {
+                margin-top: 10mm !important;
+            }
+        }
+
+        /* 🌟 Scope of work — Sub-items: หมายเลข 1.1, 1.2 ใช้ CSS counters */
+        #dynamicScopeList { counter-reset: scope-main; }
+        #dynamicScopeList > li { counter-increment: scope-main; }
+        .sub-scope-list { counter-reset: scope-sub; list-style: none; padding-left: 0; margin-top: 0.4rem; }
+        .sub-scope-list > li { counter-increment: scope-sub; position: relative; padding-left: 2.5rem; margin-bottom: 0.3rem; }
+        .sub-scope-list > li::before {
+            content: counter(scope-main) "." counter(scope-sub);
+            position: absolute; left: 0; top: 0.4rem;
+            font-weight: 700; color: #ea580c;
+            font-size: 14px;
+            min-width: 2rem;
+        }
         
         .photo-box { page-break-inside: avoid !important; break-inside: avoid !important; }
         tr { page-break-inside: avoid !important; break-inside: avoid !important; }
@@ -695,7 +718,7 @@
                 <!-- 14 -->
                 <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-circle-plus"></i></div>
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-helmet-safety"></i></div>
                         <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">14. Blank Page</span>
                     </div>
                     <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)">
@@ -887,28 +910,30 @@
                                     
                                     <div id="reportDocument" class="a4-page relative bg-white" style="box-shadow: none;">
                                         
-                                        <!-- 🌟 Web View Decorative Overlay -->
+                                        <!-- 🌟 Web View Decorative Overlay — design ตรงกับ print (rectangular: gray 30% + navy 70% + orange ขอบล่าง) -->
                                         <div class="absolute top-0 left-0 w-full h-[12mm] overflow-hidden rounded-t-[12px] print:hidden no-print pointer-events-none z-[0]">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                                <polygon points="0,0 15,12 125,12 110,0" fill="#334155" />
-                                                <polygon points="110,0 116,0 131,12 125,12" fill="#f97316" />
-                                                <polygon points="116,0 210,0 210,12 131,12" fill="#0f172a" />
-                                                <polygon points="14.375,11.5 210,11.5 210,12 15,12" fill="#f97316" />
+                                                <rect x="0" y="0" width="210" height="12" fill="#0f172a" />
+                                                <rect x="0" y="0" width="63" height="12" fill="#334155" />
+                                                <rect x="0" y="10.8" width="210" height="1.2" fill="#f97316" />
                                             </svg>
-                                            <div class="absolute bottom-[2mm] right-[15mm] z-[1]">
-                                                <span id="webViewHeaderTitle" class="text-[10px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
+                                            <div class="absolute top-[3mm] right-[15mm] z-[1]">
+                                                <span id="webViewHeaderTitle" class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">PREVENTIVE MAINTENANCE REPORT</span>
                                             </div>
                                         </div>
                                         
+                                        <!-- 🌟 Web View Footer — design ตรงกับ print (rectangular bands: orange ขอบบน 1.2 + เทา 30% ซ้าย + navy 70% ขวา) -->
                                         <div class="absolute bottom-0 left-0 w-full h-[12mm] overflow-hidden rounded-b-[12px] print:hidden no-print pointer-events-none z-[0]">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 210 12">
-                                                <polygon points="0,12 15,0 125,0 110,12" fill="#334155" />
-                                                <polygon points="125,0 131,0 116,12 110,12" fill="#f97316" />
-                                                <polygon points="131,0 210,0 210,12 116,12" fill="#0f172a" />
-                                                <polygon points="15,0 210,0 210,0.5 14.375,0.5" fill="#f97316" />
+                                                <rect x="0" y="0" width="210" height="12" fill="#0f172a" />
+                                                <rect x="0" y="0" width="63" height="12" fill="#334155" />
+                                                <rect x="0" y="0" width="210" height="1.2" fill="#f97316" />
                                             </svg>
-                                            <div class="absolute top-[3mm] left-[25mm] z-[1]">
-                                                <span class="text-[10.5px] font-bold text-slate-100 uppercase tracking-widest leading-none">AVATAR ELECTRIC CO., LTD.</span>
+                                            <div class="absolute top-[3.5mm] left-0 w-[63mm] text-center z-[1]">
+                                                <span class="text-[8pt] font-bold text-slate-100 uppercase leading-none" style="letter-spacing: 0.08em;">AVATAR ELECTRIC CO., LTD.</span>
+                                            </div>
+                                            <div class="absolute top-[3.5mm] right-[15mm] z-[1]">
+                                                <span class="text-[9pt] font-bold text-slate-100 leading-none">Web Preview</span>
                                             </div>
                                         </div>
 
@@ -919,17 +944,17 @@
                                         </div>
 
                                         <!-- 🌟 TOC SECTION (สารบัญ) -->
-                                        <div id="tocSection" class="mb-10 mt-12 pb-8 no-print-bg">
-                                            <div class="flex flex-col justify-center items-center mb-12">
-                                                <h2 class="text-[28px] font-extrabold text-slate-800 uppercase tracking-wider text-center relative px-6">
+                                        <div id="tocSection" class="mb-6 mt-8 pb-4 no-print-bg">
+                                            <div class="flex flex-col justify-center items-center mb-6">
+                                                <h2 class="text-[24px] font-extrabold text-slate-800 uppercase tracking-wider text-center relative px-6">
                                                     Table of Contents
-                                                    <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-32 h-[5px] bg-orange-500 rounded-full"></div>
+                                                    <div class="absolute bottom-[-8px] left-1/2 transform -translate-x-1/2 w-24 h-[4px] bg-orange-500 rounded-full"></div>
                                                 </h2>
                                             </div>
                                             <div class="w-[85%] mx-auto max-w-3xl relative z-10 print:w-[90%]">
-                                                <div id="tocList" class="flex flex-col gap-3">
-                                                    <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                                                        <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
+                                                <div id="tocList" class="flex flex-col rounded-lg overflow-hidden border border-slate-300 shadow-sm">
+                                                    <div class="text-center text-slate-400 italic py-8 font-medium bg-slate-50">
+                                                        <i class="fa-solid fa-list-ul text-3xl mb-2 text-slate-300 block"></i>
                                                         รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
                                                     </div>
                                                 </div>
@@ -2228,10 +2253,7 @@
         function buildDraftObject() {
             suppressDirty = true; // กัน observer นับการ sync ค่าเป็นการแก้
             syncDOMValues();
-            const scopeItemsData = [];
-            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
-                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
-            });
+            const scopeItemsData = getScopeData();
             const obj = {
                 globals: {
                     selectedModules, breakerCount, groupCounts, insCount, dieCount,
@@ -2592,10 +2614,7 @@
         // แกนกลางการบันทึก snapshot ลง history (overwrite ถ้าชื่อซ้ำ) แล้วผูก currentHistoryId
         async function commitSnapshot(name) {
             syncDOMValues();
-            const scopeItemsData = [];
-            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
-                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
-            });
+            const scopeItemsData = getScopeData();
             const snapshot = {
                 id: Date.now() + Math.floor(Math.random() * 1000),
                 name,
@@ -3013,7 +3032,11 @@
             if (listUl) {
                 listUl.innerHTML = '';
                 if (loadedCustomScopes.length > 0) {
-                    loadedCustomScopes.forEach(text => addCustomScope(text));
+                    loadedCustomScopes.forEach(item => {
+                        // backward compat: ของเก่าเป็น string ; ใหม่เป็น {text, subs}
+                        if (typeof item === 'string') addCustomScope(item, []);
+                        else addCustomScope(item.text || '', item.subs || []);
+                    });
                 } else {
                     checkEmptyScope();
                 }
@@ -3129,7 +3152,9 @@
             snapshot.modules.forEach(moduleData => {
                 moduleData.blocks.forEach(blockData => {
                     if (blockData.type === 'photo-group-block') {
-                        addPhotoGroup(blockData.photoGroupType);
+                        // 🌟 mod_blank ใช้ class 'photo-group-block' เหมือนกัน แต่ต้องเรียก addBlankGroup
+                        if (blockData.photoGroupType === 'blk') addBlankGroup('blk');
+                        else addPhotoGroup(blockData.photoGroupType);
                     } else if (blockData.type === 'blank-group-block') {
                         addBlankGroup('blk');
                     } else {
@@ -3227,6 +3252,7 @@
                 if (id.includes('_bf_') || id.startsWith('group_bf')) blockData.photoGroupType = 'bf';
                 else if (id.includes('_cl_') || id.startsWith('group_cl')) blockData.photoGroupType = 'cl';
                 else if (id.includes('_af_') || id.startsWith('group_af')) blockData.photoGroupType = 'af';
+                else if (id.includes('_blk_') || id.startsWith('group_blk')) blockData.photoGroupType = 'blk';
                 else blockData.photoGroupType = 'bf';  // fallback
             }
 
@@ -3421,10 +3447,7 @@
             showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังเตรียมไฟล์...');
             syncDOMValues();
 
-            const scopeItemsData = [];
-            document.querySelectorAll('#dynamicScopeList input').forEach(inp => {
-                if (inp.value.trim() !== '') scopeItemsData.push(inp.value);
-            });
+            const scopeItemsData = getScopeData();
 
             const draft = {
                 globals: { 
@@ -3945,7 +3968,7 @@
             });
         }
 
-        function addCustomScope(text = "") {
+        function addCustomScope(text = "", subs = []) {
             const listUl = document.getElementById('dynamicScopeList');
             const emptyText = document.getElementById('emptyScopeText');
             if(emptyText) emptyText.style.display = 'none';
@@ -3955,19 +3978,69 @@
             li.className = 'group relative mb-2 pl-1 scope-item-row print:mb-3';
             li.innerHTML = `
                 <div class="flex items-center w-full">
-                    <input type="text" data-scope-id="${customId}" value="${text}" class="paper-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-1 transition-colors text-[15px]" oninput="this.setAttribute('value', this.value)" placeholder="เพิ่ม Scope งานที่ทำ...">
+                    <input type="text" data-scope-id="${customId}" value="${text}" class="paper-input scope-main-input text-slate-800 font-medium w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-1 transition-colors text-[15px]" oninput="this.setAttribute('value', this.value)" placeholder="เพิ่ม Scope งานที่ทำ...">
+                    <button onclick="addSubScope(this)" class="text-orange-500 hover:text-orange-700 hover:bg-orange-50 px-2 py-1 rounded transition-colors no-print ml-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-bold whitespace-nowrap" title="เพิ่มรายการย่อย (1.1, 1.2 ...)"><i class="fa-solid fa-plus"></i> ย่อย</button>
                     <button onclick="removeCustomScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print absolute -right-8 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
+                <ul class="sub-scope-list"></ul>
             `;
             listUl.appendChild(li);
-            if (!text) li.querySelector('input').focus();
+            // restore sub-items ถ้ามี
+            (subs || []).forEach(subText => addSubScopeToLi(li, subText));
+            if (!text) li.querySelector('input.scope-main-input').focus();
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+        }
+
+        // เพิ่ม sub-item ภายใต้ <li> ที่ระบุ
+        function addSubScopeToLi(parentLi, text = "") {
+            const subUl = parentLi.querySelector('.sub-scope-list');
+            if (!subUl) return;
+            const subLi = document.createElement('li');
+            subLi.className = 'group/sub relative scope-sub-row';
+            subLi.innerHTML = `
+                <div class="flex items-center w-full">
+                    <input type="text" value="${text}" class="paper-input scope-sub-input text-slate-700 w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 py-1 transition-colors text-[14px]" oninput="this.setAttribute('value', this.value)" placeholder="เพิ่มรายการย่อย...">
+                    <button onclick="removeSubScope(this)" class="text-red-400 hover:text-red-600 px-2 py-1 rounded transition-colors no-print ml-1 opacity-0 group-hover/sub:opacity-100 flex items-center justify-center w-6 h-6" title="ลบรายการย่อยนี้"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            subUl.appendChild(subLi);
+            if (!text) subLi.querySelector('input').focus();
+        }
+
+        // เรียกจากปุ่ม "+ ย่อย" ใน main scope row
+        function addSubScope(btn) {
+            const parentLi = btn.closest('li.scope-item-row');
+            if (!parentLi) return;
+            addSubScopeToLi(parentLi, "");
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+        }
+
+        function removeSubScope(btn) {
+            btn.closest('li.scope-sub-row').remove();
             showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
         }
 
         function removeCustomScope(btn) {
-            btn.closest('li').remove();
+            btn.closest('li.scope-item-row').remove();
             checkEmptyScope();
             showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+        }
+
+        // เก็บ scope data แบบ hierarchical (main + subs) ใช้ตอน save
+        function getScopeData() {
+            const data = [];
+            document.querySelectorAll('#dynamicScopeList > li.scope-item-row').forEach(li => {
+                const mainInp = li.querySelector('input.scope-main-input');
+                const text = (mainInp ? mainInp.value : '').trim();
+                const subs = [];
+                li.querySelectorAll('.sub-scope-list input.scope-sub-input').forEach(subInp => {
+                    const v = subInp.value.trim();
+                    if (v !== '') subs.push(v);
+                });
+                // เก็บถ้ามี text หรือมี subs (subs ไม่มีค่าใน main ก็ยังคงไว้)
+                if (text !== '' || subs.length > 0) data.push({ text, subs });
+            });
+            return data;
         }
 
         function checkEmptyScope() {
@@ -4051,7 +4124,7 @@
                 <div id="block_${prefix}" class="photo-group-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
                     <div class="flex justify-between items-center mb-4">
                         <div class="section-title mb-0 flex-grow w-3/4">
-                            <div class="section-icon bg-slate-700 shrink-0"><i class="fa-solid fa-file-circle-plus text-white"></i></div>
+                            <div class="section-icon bg-slate-700 shrink-0"><i class="fa-solid fa-helmet-safety text-white"></i></div>
                             <input type="text" value="${currentTitle}" class="paper-input font-bold text-slate-800 text-xl w-full max-w-[400px] photo-group-title-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
                         </div>
                         <button onclick="removePhotoGroup('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
@@ -5325,7 +5398,7 @@
             
             const scopeSec = document.getElementById('scopeSection');
             if (scopeSec && !scopeSec.classList.contains('hidden') && window.getComputedStyle(scopeSec).display !== 'none') {
-                items.push({ title: 'Scope of work', id: 'scopeSection' });
+                items.push({ title: 'Scope of work', eqName: '', id: 'scopeSection' });
             }
 
             const container = document.getElementById('moduleContainer');
@@ -5374,10 +5447,10 @@
                             val = eqInput.value.trim() || eqInput.getAttribute('value');
                         }
                         if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
-                            eqName = ` (${val})`;
+                            eqName = val;
                         }
                     }
-                    return `${title}${eqName}`;
+                    return { title, eqName };
                 }
 
                 // 🌟 Walk ผ่าน moduleContainer ตามลำดับ DOM
@@ -5389,19 +5462,21 @@
 
                     if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block')) {
                         const modId = getModIdFromSubBlock(child) || 'mod_general';
-                        items.push({ title: extractBlockTitle(child, modId), id: child.id });
+                        const tb = extractBlockTitle(child, modId);
+                        items.push({ title: tb.title, eqName: tb.eqName, id: child.id });
                         return;
                     }
 
                     if (child.id && child.id.startsWith('mod_')) {
                         if (child.id === 'mod_calibration') {
-                            items.push({ title: 'Certificate of Calibration', id: child.id });
+                            items.push({ title: 'Certificate of Calibration', eqName: '', id: child.id });
                             return;
                         }
                         const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block'));
                         if (blocks.length > 0) {
                             blocks.forEach(block => {
-                                items.push({ title: extractBlockTitle(block, child.id), id: block.id });
+                                const tb = extractBlockTitle(block, child.id);
+                                items.push({ title: tb.title, eqName: tb.eqName, id: block.id });
                             });
                         }
                         // ถ้า mod_xxx ไม่มี sub-block ก็ไม่ต้องใส่ใน TOC
@@ -5410,62 +5485,61 @@
                 });
             }
 
+            // 🌟 จำนวนแถวที่กระดาษ A4 1 หน้ารองรับได้ (ข้อมูลจริงจาก user — แถวที่ 20 จะไหลออกหน้า)
+            //    ใช้สำหรับแทรก page-break + repeat header ทุก N แถว ในโหมดพิมพ์
+            const TOC_ROWS_PER_PAGE = 19;
+
+            // helper: สร้างแถว header (NO. / EQUIPMENT / SECTION / PAGE) — เรียกซ้ำได้ทุกหน้า
+            function makeTocHeader(isRepeat) {
+                const h = document.createElement('div');
+                h.className = `flex w-full items-center py-2 px-3 bg-slate-800 text-slate-100 text-[12px] font-bold uppercase tracking-wider toc-header-row ${isRepeat ? 'toc-header-repeat pdf-page-break' : ''}`;
+                h.innerHTML = `
+                    <div class="w-[36px] shrink-0">No.</div>
+                    <div class="w-[160px] shrink-0 px-2 text-center">Equipment</div>
+                    <div class="flex-grow pl-2">Section</div>
+                    <div class="w-[40px] text-right shrink-0">Page</div>
+                `;
+                return h;
+            }
+
             // 🌟 Render TOC แบบ inline function — สามารถเรียกซ้ำได้ด้วย offset ที่ต่างกัน
             function renderTocRows(tocOffset) {
                 tocList.innerHTML = '';
+                tocList.appendChild(makeTocHeader(false));
                 items.forEach((item, index) => {
+                    // 🌟 ถ้าครบหน้าแล้ว (รวมแถวที่ 19 ของหน้าก่อน) — แทรก header ใหม่ (พร้อม page-break) ก่อนแถวถัดไป
+                    if (index > 0 && index % TOC_ROWS_PER_PAGE === 0) {
+                        tocList.appendChild(makeTocHeader(true));
+                    }
                     const pageNum = calculatePageNumber(item.id);
                     const adjustedPageNum = pageNum !== null ? pageNum + tocOffset : null;
                     const displayNum = adjustedPageNum !== null ? String(adjustedPageNum).padStart(2, '0') : '-';
                     const indexStr = String(index + 1).padStart(2, '0');
-                    
+                    const eq = (item.eqName || '').trim();
+                    const eqHtml = eq
+                        ? `<span class="font-bold text-slate-800 text-[13.5px]">${eq}</span>`
+                        : `<span class="text-slate-300 text-[12px] italic">—</span>`;
+
                     const row = document.createElement('div');
-                    row.className = 'flex w-full items-end py-1.5 group';
+                    // table-style: zebra-striping + compact py + border-b แต่ละแถว
+                    const zebra = index % 2 === 1 ? 'bg-slate-50' : '';
+                    row.className = `flex w-full items-center py-[5px] px-3 border-b border-slate-200 ${zebra} group hover:bg-orange-50/40 transition-colors`;
                     row.innerHTML = `
-                        <div class="font-bold text-slate-700 text-[16px] tracking-wide whitespace-nowrap">
-                            <span class="text-orange-500 font-black mr-3 text-[16px]">${indexStr}.</span>${item.title}
-                        </div>
-                        <div class="flex-grow border-b-[2px] border-dotted border-slate-300 mx-4 relative top-[-6px] opacity-70 group-hover:opacity-100 transition-opacity min-w-[20px]"></div>
-                        <div class="font-black text-orange-600 text-[18px] whitespace-nowrap">
-                            ${displayNum}
-                        </div>
+                        <div class="font-bold text-orange-500 text-[13px] w-[36px] shrink-0 tabular-nums">${indexStr}</div>
+                        <div class="w-[160px] shrink-0 px-2 text-center break-words leading-tight">${eqHtml}</div>
+                        <div class="font-semibold text-slate-700 text-[14px] flex-grow truncate pl-2">${item.title}</div>
+                        <div class="font-bold text-orange-600 text-[14px] w-[40px] text-right tabular-nums shrink-0">${displayNum}</div>
                     `;
                     tocList.appendChild(row);
                 });
             }
 
-            // 🌟 2-pass: render รอบแรกด้วย offset=0, วัดความสูง TOC, ถ้าเกิน 1 หน้าก็ rebuild ด้วย offset เพิ่ม
-            // หน้า TOC พื้นที่จริงประมาณ 240mm (297mm - หัว-ท้าย 24mm - margin หน้า Content 33mm)
-            // ใช้ค่า threshold ที่ปลอดภัย: ถ้า tocSection สูงเกินค่านี้ → TOC กิน 2 หน้า
-            renderTocRows(0);
-
-            // วัดความสูงของ tocSection หลัง render
-            // tocSection มี mt-12 (48px) + content + mb-10 (40px) + pb-8 (32px)
-            // ถ้าสูงเกิน ~900px (≈ 240mm) → กินมากกว่า 1 หน้า
-            setTimeout(() => {
-                const tocSection = document.getElementById('tocSection');
-                if (!tocSection) return;
-                
-                // หา pxPerMm
-                const mmNode = document.createElement("div");
-                mmNode.style.cssText = "height: 100mm; position: absolute; visibility: hidden; top: 0;";
-                document.body.appendChild(mmNode);
-                const pxPerMm = mmNode.offsetHeight / 100;
-                document.body.removeChild(mmNode);
-                
-                const tocHeight = tocSection.offsetHeight;
-                // พื้นที่จริงที่ TOC ใช้ได้ในหน้าเดียว ≈ 240mm
-                const onePageTocHeight = 240 * pxPerMm;
-                
-                // คำนวณว่า TOC กินกี่หน้า (ปัดขึ้น)
-                const tocPages = Math.max(1, Math.ceil(tocHeight / onePageTocHeight));
-                const extraTocPages = tocPages - 1;  // หน้าเกินจาก 1 หน้าปกติ
-                
-                if (extraTocPages > 0) {
-                    // re-render ด้วย offset = หน้าเกินของ TOC
-                    renderTocRows(extraTocPages);
-                }
-            }, 100);
+            // 🌟 คำนวณจำนวนหน้า TOC แบบ deterministic จาก TOC_ROWS_PER_PAGE (มี explicit page-break แล้ว)
+            //    จำนวนแถวข้อมูล / 19 = จำนวนหน้า ; ปัดขึ้น
+            const tocPages = Math.max(1, Math.ceil(items.length / TOC_ROWS_PER_PAGE));
+            const extraTocPages = tocPages - 1;
+            // 2-pass: ถ้า TOC > 1 หน้า → re-render ด้วย offset เพื่อ shift page number ของ section อื่นๆ
+            renderTocRows(extraTocPages);
         }
 
         function calculatePageNumber(elementId) {
@@ -6266,8 +6340,8 @@
             const tocList = document.getElementById('tocList');
             if (tocList) {
                 tocList.innerHTML = `
-                    <div class="text-center text-slate-400 italic py-12 font-medium bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                        <i class="fa-solid fa-list-ul text-4xl mb-4 text-slate-300 block"></i>
+                    <div class="text-center text-slate-400 italic py-8 font-medium bg-slate-50">
+                        <i class="fa-solid fa-list-ul text-3xl mb-2 text-slate-300 block"></i>
                         รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
                     </div>
                 `;
@@ -6779,6 +6853,33 @@
         //   • read 1568px: ขนาดที่ Anthropic ใช้จริง (ใหญ่กว่านี้ API ย่อเองอยู่ดี) — จออ่านตัวเลขชัด ห้ามลด
         const AI_IMG_CLASSIFY = { maxDim: 1280, quality: 0.80 };
         const AI_IMG_READ     = { maxDim: 1568, quality: 0.88 };
+        // ── สำหรับ "เลือกรูปดีที่สุด N รูป" — เล็กพอเพื่อประหยัด token (รูปอาจเยอะมาก) ──
+        const AI_IMG_RANK     = { maxDim: 768,  quality: 0.72 };
+
+        // ── จำนวน slot รูปต่อ category — ตามจำนวน photo-box default ของแต่ละ block ──
+        const AI_SECTION_SLOTS = {
+            before:            6,
+            cleaning:          6,
+            after:             6,
+            retorque:          6,
+            insulation_test:   6,
+            contact_test:      6,
+            grounding_test:    4,
+            dielectric_test:   6,
+            trip_unit_test:    0,   // ไม่มี grid ในรายงาน
+            capacitor_check:   2,
+            general_check:     4,
+            acb_general_check: 4,
+            metering_check:    4,
+            nameplate:         4,
+            rackin_rackout:    4,
+            fuse:              4,
+            other:             6,
+            panel_marker:      0,
+        };
+        function aiSlotCountFor(category) {
+            return AI_SECTION_SLOTS[category] != null ? AI_SECTION_SLOTS[category] : 6;
+        }
 
         // ── รูป → base64 (ย่อก่อนส่ง) — default ใช้ค่าฝั่งอ่านค่า (ปลอดภัยสุด) ──
         function aiImageToBase64(file, maxDim = 1568, quality = 0.88) {
@@ -6976,20 +7077,121 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         }
 
         const AI_TEST_PROMPTS = {
-            insulation_test: (panel) => `อ่านผล Insulation Resistance Test ตู้ ${panel}. เครื่อง Metrel MI3201/MI3210, สายเหลือง, ค่า MΩ/GΩ.
-⭐ งานสำคัญสุด: อ่านตัวเลขบนจอ Megger จากทุกรูป "ค่า(reading)" แล้วกรอกลง table ให้ครบทั้ง L1 L2 L3 (เช่น "92.0 MΩ") — ห้ามเว้นว่างถ้าจอแสดงเลข
-แยกรูป "คีบสาย(probe)" vs "ค่าบนจอ(reading)". เฟส: ใหม่ น้ำตาล=L1 ดำ=L2 เทา=L3 / เก่า แดง=L1 เหลือง=L2 น้ำเงิน=L3.
-ถ้ามีหลาย session (เลขไฟล์เป็นกลุ่ม) เลือกกลุ่มเลขท้ายสุด ห้ามผสม. ตอบ JSON เท่านั้น:
-{"ordered_photos":[<คีบL1,ค่าL1,คีบL2,ค่าL2,คีบL3,ค่าL3>],"table":{"L1":"92.0 MΩ","L2":"...","L3":"..."},"notes":""}`,
-            contact_test: (panel) => `อ่านผล Contact Resistance Test ตู้ ${panel}. เครื่อง Metrel MI3252, สายดำใหญ่+แดงเล็ก/Kelvin4ขา, ค่า µΩ หรือ mΩ (อ่านหน่วยตามจอจริง).
-⭐ งานสำคัญสุด: อ่านตัวเลขบนจอจากทุกรูป "ค่า(reading)" กรอก A B C ให้ครบพร้อมหน่วย (เช่น "23.104 µΩ") — ห้ามเว้นว่างถ้าจอแสดงเลข
-ทดสอบที่เบรกเกอร์ เฟสนับซ้าย→ขวา A/B/C. แยก probe vs reading. ตอบ JSON เท่านั้น:
-{"ordered_photos":[<คีบA,ค่าA,คีบB,ค่าB,คีบC,ค่าC>],"breakers":[{"name":"Main ACB","is_main":true,"A":"23.104 µΩ","B":"...","C":"..."}],"notes":""}`,
-            trip_unit_test: (panel) => `อ่านผล Trip Unit Test ตู้ ${panel} จากจอ test kit (Schneider). อ่าน settings + function test. ตอบ JSON:
-{"info":{"manufacturer":"Schneider","circuit_breaker":"","micrologic":"","rate_current":"","serial":"","feeder_name":""},
-"settings":{"long_time":{"setting":"","pri":"","time":""},"short_time":{"setting":"","pri":"","time":""},"instantaneous":{"setting":"","pri":""},"ground_fault":{"setting":"","pri":"","time":""}},
-"function_test":{"long_time":{"injected":"","trip_time":"","result":"Pass"},"short_time":{"injected":"","trip_time":"","result":"Pass"},"instantaneous":{"injected":"","trip_time":"","result":"Pass"},"ground_fault":{"injected":"","trip_time":"","result":"Pass"}},
+            insulation_test: (panel) => `อ่านผล Insulation Resistance Test ตู้ ${panel} เครื่อง Metrel MI3201/MI3210 (สายเหลือง) ค่า MΩ/GΩ
+
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป: โฟลเดอร์อาจมีรูปหลายแบบปนกัน แยกเป็น 2 กลุ่มที่ใช้งาน
+  ✅ "รูปคีบสาย(probe)" = เห็นการคีบสาย (clip/hook สีเหลือง-แดง) ที่บัสบาร์/ขั้ว — เห็นสีเฟสชัด
+  ✅ "รูปค่าบนจอ(reading)" = เห็นจอ Megger แสดงตัวเลขที่นิ่งแล้ว (หน่วย MΩ หรือ GΩ)
+  ⚠️ ข้ามทิ้ง ห้ามใช้: รูปภาพรวมตู้, รูปบรรยากาศ, รูปเบลอ, รูปจอที่ค่ายังเปลี่ยน/ไม่นิ่ง
+  ถ้ามีหลาย session (เลขไฟล์เป็นกลุ่ม ห่างกัน) → เลือก session เลขท้ายสุด ห้ามผสมข้าม session
+
+⭐⭐ ขั้นที่ 2 — จับคู่ probe↔reading ต่อเฟส (L1/L2/L3)
+  เฟสมาตรฐานใหม่ (IEC): น้ำตาล=L1, ดำ=L2, เทา=L3 / เก่า: แดง=L1, เหลือง=L2, น้ำเงิน=L3
+  ลำดับ probe→reading ติดกันต่อเฟส (เลขไฟล์ใกล้กัน) → คีบL1→ค่าL1→คีบL2→ค่าL2→คีบL3→ค่าL3
+
+⭐⭐ ขั้นที่ 3 — อ่านตัวเลขจากจอ (⚠️ ระวังจุดทศนิยม!)
+  • นับจำนวนหลัก "ก่อน" และ "หลัง" จุดทศนิยมให้ตรงกับที่เห็นบนจอจริง ห้ามเลื่อน/ห้ามเพิ่ม/ห้ามตัดจุดออก
+  • จุดบน LCD เป็น dot เล็กระหว่างเลข ดูซ้ำหลายๆ รอบก่อนตอบ
+  • ตัวอย่างผิดบ่อย: เห็น "92.0" ต้องตอบ "92.0" ไม่ใช่ "9.20" หรือ "920" ; เห็น "307" (ไม่มีจุด) ต้องตอบ "307" ไม่ใช่ "30.7"
+  • ห้ามเดา/ห้ามเว้นว่างถ้าจอแสดงเลข ; ถ้าจอเบลออ่านไม่ออกจริงๆ ใส่ ""
+
+ตอบ JSON เท่านั้น:
+{"ordered_photos":[<คีบL1,ค่าL1,คีบL2,ค่าL2,คีบL3,ค่าL3>],
+"table":{"L1":"92.0 MΩ","L2":"57.3 MΩ","L3":"55.7 MΩ"},
+"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ เช่น "overview","blur">],
+"notes":""}`,
+            contact_test: (panel) => `อ่านผล Contact Resistance Test ตู้ ${panel} เครื่อง Metrel MI3252 (สายดำใหญ่+แดงเล็ก/Kelvin 4 ขา) ค่า µΩ หรือ mΩ
+
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป + ตรวจ "nameplate marker"
+  ✅ "รูปคีบสาย(probe)" = เห็นการคีบสาย Kelvin ที่ขั้วเบรกเกอร์ (4 ขา หรือ 2 เส้น ดำ-แดง)
+  ✅ "รูปค่าบนจอ(reading)" = เห็นจอ MI3252 แสดงตัวเลขที่นิ่งแล้ว (อ่านหน่วยตามจอจริง: µΩ หรือ mΩ)
+  📋 "รูป nameplate / กระดาษเขียนชื่อ" — ช่างถ่ายก่อนเทสแต่ละเบรกเกอร์เพื่อ "บอกขอบเขต" + ดึงชื่ออุปกรณ์
+    ✦ แบบ 1: ป้ายพลาสติกพิมพ์ติดบนตู้/เหนือเบรกเกอร์ (เช่น "BD-A", "Main ACB", "F1") — ตู้มีป้ายอยู่แล้ว
+    ✦ แบบ 2: ลายมือเขียนสีเข้ม (น้ำเงิน/ดำ) บนไวท์บอร์ดหรือกระดาษ (เช่น "BUSDUCT EMDB1", "Feeder 1") — ตู้ไม่มีป้าย เขียนเอง
+        • อาจมีข้อความเสริมเช่น "วัด IR", "Test", วันที่ — **ดึงเฉพาะ "ชื่ออุปกรณ์"** ไม่รวมคำว่า "วัด/Test/Measure" หรือชนิดการวัด
+        • ถ้ามีหลายบรรทัด เลือกบรรทัดที่เป็น "ชื่ออุปกรณ์" (มัก uppercase/ตัวใหญ่/มีตัวเลขลำดับ)
+    → รูป nameplate ทั้ง 2 แบบ **ไม่ใส่ใน ordered_photos** (ใช้แค่ดึงชื่อ → name field ใน breakers[])
+  ⚠️ ข้ามทิ้ง ห้ามใช้: รูปภาพรวมตู้, รูปบรรยากาศ, รูปเบลอ, รูปจอที่ค่ายังไม่นิ่ง
+
+⭐⭐ ขั้นที่ 2 — แยกชุดเบรกเกอร์ด้วย nameplate marker
+  รูปในโฟลเดอร์เรียงตามเลขไฟล์ → ทุกครั้งที่เจอ nameplate ใหม่ = "เริ่มเบรกเกอร์ตัวใหม่"
+  ลำดับมาตรฐานต่อเบรกเกอร์: [nameplate] → probeA → readingA → probeB → readingB → probeC → readingC
+  ดึงชื่อจาก nameplate กรอกใน "name" ของ breakers[] (อ่านข้อความบนป้าย เช่น "Main ACB", "Feeder 1")
+  ถ้าไม่มี nameplate (ช่างเก่า/ไม่ได้ถ่าย) → assume 1 ชุด = 6 รูปติดกัน ตั้งชื่อ "Breaker 1", "Breaker 2", ...
+  เฟสนับซ้าย→ขวา = A/B/C (=L1/L2/L3) ; ลำดับ probe→reading ติดกันต่อเฟส
+
+⭐⭐ ขั้นที่ 3 — อ่านตัวเลขจากจอ (⚠️ ระวังจุดทศนิยม + หน่วย!)
+  • นับจำนวนหลัก "ก่อน" และ "หลัง" จุดทศนิยมให้ตรงกับที่เห็น ห้ามเลื่อน/เพิ่ม/ลบจุด
+  • อ่านหน่วยตามสัญลักษณ์บนจอจริง: µΩ (microhm) หรือ mΩ (milliohm) — ดูสัญลักษณ์ที่จอแสดง
+  • ตัวอย่างผิดบ่อย: เห็น "23.104" ต้องตอบ "23.104" ไม่ใช่ "2.3104" หรือ "231.04"
+  • ห้ามเดา/ห้ามเว้นว่างถ้าจอแสดงเลข ; ถ้าจอเบลออ่านไม่ออกจริงๆ ใส่ ""
+
+ตอบ JSON เท่านั้น:
+{"ordered_photos":[<คีบA,ค่าA,คีบB,ค่าB,คีบC,ค่าC>],
+"breakers":[{"name":"Main ACB","is_main":true,"A":"23.104 µΩ","B":"20.639 µΩ","C":"19.260 µΩ"}],
+"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ>],
+"notes":""}`,
+            trip_unit_test: (panel) => `อ่านผล Trip Unit Test ตู้ ${panel} จากจอ test kit Schneider (Micrologic) — โฟลเดอร์อาจมีหลาย ACB
+
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป + ตรวจ "nameplate marker"
+  ✅ "รูปจอ test kit" = เห็นจอ Schneider แสดง settings (Ir/Isd/Ii/Ig) หรือ function test (injected/trip time/result)
+  📋 "รูป nameplate / กระดาษเขียนชื่อ" — ช่างถ่ายก่อนเทสแต่ละ ACB เพื่อ "บอกขอบเขต" + ดึงชื่ออุปกรณ์
+    ✦ แบบ 1: ป้ายพลาสติกพิมพ์ติดบนตู้/เหนือ ACB (เช่น "BD-A", "Main ACB", "ACB-1", "Tie") — ตู้มีป้ายอยู่แล้ว
+    ✦ แบบ 2: ลายมือเขียนสีเข้ม (น้ำเงิน/ดำ) บนไวท์บอร์ดหรือกระดาษ (เช่น "BUSDUCT EMDB1", "Main ACB Floor 5") — ตู้ไม่มีป้าย เขียนเอง
+        • อาจมีข้อความเสริมเช่น "Trip Test", "วัด IR", วันที่ — **ดึงเฉพาะ "ชื่ออุปกรณ์"** ไม่รวมคำว่า "Trip/วัด/Test/Measure"
+        • ถ้ามีหลายบรรทัด เลือกบรรทัดที่เป็น "ชื่ออุปกรณ์" (มัก uppercase/ตัวใหญ่/มีตัวเลขลำดับ)
+    → รูป nameplate ทั้ง 2 แบบ **ไม่ใส่ใน ordered_photos** (ใช้แค่ดึงชื่อ → name field ใน trip_units[])
+  ⚠️ ข้ามทิ้ง: รูปภาพรวมตู้, รูปบรรยากาศ, รูปเบลอ, รูปจอนับค่าอยู่/ไม่นิ่ง
+
+⭐⭐ ขั้นที่ 2 — แยกชุด ACB ด้วย nameplate marker
+  ทุก nameplate ใหม่ = "เริ่ม ACB ตัวใหม่" → ทุกรูปถัดไปจนถึง nameplate ถัดไป = ACB เดียวกัน
+  ลำดับใน 1 ACB: [nameplate] → long-time settings/function → short-time → instantaneous → ground-fault
+  ถ้าไม่มี nameplate (ACB เดียว/ไม่ถ่าย) → assume ทั้งโฟลเดอร์ = 1 ACB ตั้งชื่อจาก feeder_name บนจอ (ถ้าอ่านได้) หรือ "Trip Unit 1"
+
+⭐⭐ ขั้นที่ 3 — อ่านค่าจากจอ (ระวังจุดทศนิยม + หน่วย!)
+  • settings: Ir (x In), Pri (A), Tr (s), Isd (x Ir), Ii (x In), Ig (x In) ฯลฯ
+  • function test: injected current (A), trip time (s), result (Pass/Fail)
+  • นับจำนวนหลักก่อน/หลังจุด ห้ามเลื่อน ; ห้ามเดา ถ้าจอเบลอใส่ ""
+
+ตอบ JSON เท่านั้น (trip_units = array แม้มี ACB เดียว):
+{"trip_units":[
+  {"name":"Main ACB",
+   "info":{"manufacturer":"Schneider","circuit_breaker":"","micrologic":"","rate_current":"","serial":"","feeder_name":""},
+   "settings":{"long_time":{"setting":"","pri":"","time":""},"short_time":{"setting":"","pri":"","time":""},"instantaneous":{"setting":"","pri":""},"ground_fault":{"setting":"","pri":"","time":""}},
+   "function_test":{"long_time":{"injected":"","trip_time":"","result":"Pass"},"short_time":{"injected":"","trip_time":"","result":"Pass"},"instantaneous":{"injected":"","trip_time":"","result":"Pass"},"ground_fault":{"injected":"","trip_time":"","result":"Pass"}}
+  }
+],
+"skipped":[<filename ที่ข้าม + เหตุผล>],
 "ordered_photos":[],"notes":""}`,
+            capacitor_check: (panel) => `อ่านผล Capacitor Bank Check ตู้ ${panel} จากจอ LCR meter (หน่วย µF)
+
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป (สำคัญสุด): โฟลเดอร์อาจมีรูปหลายแบบปนกัน
+  ✅ "รูปวัด" = เห็นจอมิเตอร์ LCR แสดงตัวเลขชัดๆ (หน่วย µF/nF) — รูปพวกนี้เท่านั้นที่ใช้ในตาราง step
+  ⚠️ ข้ามทิ้ง ห้ามนับเป็น step: รูปภาพรวม cap.bank (มุมกว้างไม่เห็นจอ), รูปจิ้ม probe (ไม่เห็นจอ), รูปบรรยากาศ, รูปเบลอจนอ่านไม่ออก
+  📋 รูป "nameplate / ฉลาก capacitor unit" (เห็น KVAR + µF nominal เป็นข้อความพิมพ์) → อ่านเข้า "info" ไม่นับเป็น step
+
+⭐⭐ ขั้นที่ 2 — จัด step: หลังคัดเหลือเฉพาะ "รูปวัด" แล้ว
+  จัดกลุ่ม 3 รูปติดกัน (ตามลำดับเลขไฟล์) = 1 step → step 1, 2, 3, ...
+  ลำดับใน step: รูปที่ 1 = L1-L2, รูปที่ 2 = L2-L3, รูปที่ 3 = L3-L1
+  ถ้าเหลือ < 3 รูปท้ายสุด = step ไม่สมบูรณ์ → ใส่ค่าเท่าที่อ่านได้ในช่องตรงเฟส ที่เหลือ ""
+
+⭐⭐ ขั้นที่ 3 — อ่านตัวเลขจากจอ (⚠️ ระวังจุดทศนิยม! สำคัญมาก)
+  • นับจำนวนหลัก "ก่อน" และ "หลัง" จุดทศนิยมให้ตรงกับที่เห็นบนจอจริง ห้ามเลื่อน/ห้ามเพิ่ม/ห้ามตัดจุดออก
+  • จุดบน LCD เป็น dot เล็กระหว่างเลข ดูซ้ำหลายๆ รอบก่อนตอบ
+  • ⚠️ ผิดบ่อย: เห็น "307" (3 หลัก ไม่มีจุด) ต้องตอบ "307" ห้ามตอบ "30.7" ; เห็น "495.2" (3 หลัก-1 หลัง) ต้องตอบ "495.2" ห้ามตอบ "49.52" หรือ "4952"
+  • Sanity check: ค่าวัดได้ของ cap.bank แต่ละ step มักใกล้กัน (วัด cap ก้อนเดียวกัน) — ถ้า step 1 ได้ 495, 494, 496 แต่ step 2 อ่านเป็น "49.5" → น่าจะ "เลื่อนจุดผิด" ดูใหม่ (ควรเป็น 495 ไม่มีจุด หรือ 49.5 ถ้าจอแสดงแบบนั้นจริง)
+  • อีก Sanity check: ถ้ารูปก่อนหน้าอ่านได้ 3 หลัก (เช่น "307") รูปถัดไปในชุดเดียวกันมักจะ 3 หลักด้วย (ไม่ใช่ 2 หลักกับจุด) — เปรียบเทียบหลักของเลขข้าง ๆ
+  • ห้ามเดา ถ้าจอเบลอ/อ่านไม่ออกจริงๆ ใส่ "" (อย่าข้าม step — กรอกตามเฟสที่อ่านได้)
+
+⭐ ขั้นที่ 4 — เลือก representative ≤ 2 รูปใส่รายงาน: 1 รูปจิ้ม probe ที่ขั้ว capacitor + 1 รูปจอที่อ่านชัด (ถ้าหาได้)
+
+ตอบ JSON เท่านั้น:
+{"info":{"kvar":"50","uf":"497.4"},
+"steps":[{"step":1,"L1_L2":"495.2","L2_L3":"494.8","L3_L1":"496.0","remark":""},
+{"step":2,"L1_L2":"","L2_L3":"","L3_L1":"","remark":""}],
+"ordered_photos":[<filename รูปวัด/probe ที่เลือก ≤ 2>],
+"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ เช่น "overview", "blur", "nameplate(info แล้ว)">],
+"notes":""}`,
         };
 
         async function aiReadTest(photos, files, testId, panel) {
@@ -7012,6 +7214,48 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             const valid = new Set(set);
             r.ordered_photos = (r.ordered_photos || []).filter(f => valid.has(f));
             return r;
+        }
+
+        // ── เลือก N รูปดีที่สุดต่อ section (representative + คมชัด + ครอบคลุมมุม) ──
+        // ใช้กับ section ที่ไม่ใช่ test (test ใช้ ordered_photos จาก aiReadTest อยู่แล้ว)
+        // ส่ง thumbnail เล็ก (768px) → AI ตอบ index ที่เลือก → คืน filename ตามลำดับ
+        async function aiPickBestForSection(filenames, files, slotCount, sectionTitle, panelName) {
+            const valid = filenames.filter(fn => files.has(fn));
+            if (valid.length <= slotCount) return valid;
+            if (slotCount <= 0) return [];
+            const content = [{ type: 'text', text:
+                `เลือก ${slotCount} รูปที่ "ดีที่สุด" สำหรับหัวข้อ "${sectionTitle}"${panelName ? ' ตู้ ' + panelName : ''} ` +
+                `เกณฑ์: (1) ครอบคลุมมุม/จุดถ่ายที่หลากหลาย ไม่ซ้ำมุมเดิม (2) คมชัด ไม่เบลอ ไม่มืดเกิน (3) เห็นเนื้อหาหลักของหัวข้อชัด ` +
+                `ตอบ JSON เท่านั้น: {"selected_indices":[<index รูปที่เลือก เรียงตามที่ควรใส่ในรายงาน>]}`
+            }];
+            for (let i = 0; i < valid.length; i++) {
+                const b64 = await aiImageToBase64(files.get(valid[i]), AI_IMG_RANK.maxDim, AI_IMG_RANK.quality);
+                content.push(aiImgBlock(b64));
+                content.push({ type: 'text', text: `[index ${i}]` });
+            }
+            try {
+                const r = aiParseJson(await aiCall([{ role: 'user', content }], 512));
+                const idxs = Array.isArray(r.selected_indices) ? r.selected_indices : [];
+                const picked = [];
+                const seen = new Set();
+                for (const idx of idxs) {
+                    const n = parseInt(idx, 10);
+                    if (Number.isInteger(n) && n >= 0 && n < valid.length && !seen.has(n)) {
+                        seen.add(n); picked.push(valid[n]);
+                        if (picked.length >= slotCount) break;
+                    }
+                }
+                // เติมจนครบถ้า AI คืนน้อยกว่า slot (เอาตัวที่ยังไม่ถูกเลือก เรียงตามลำดับเดิม)
+                if (picked.length < slotCount) {
+                    for (let i = 0; i < valid.length && picked.length < slotCount; i++) {
+                        if (!seen.has(i)) { seen.add(i); picked.push(valid[i]); }
+                    }
+                }
+                return picked;
+            } catch (e) {
+                console.warn('aiPickBestForSection failed — fallback ตัด N รูปแรก:', e.message);
+                return valid.slice(0, slotCount);
+            }
         }
 
         // ════════════════════════════════════════════════════════════════════
@@ -7086,11 +7330,51 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                             const entry = { test_id: m.testId };
                             if (r.table) { entry.kind = 'phase_table'; entry.table = r.table; }
                             if (r.breakers) { entry.kind = 'breaker_table'; entry.breakers = r.breakers; }
-                            if (r.settings || r.function_test) { entry.kind = 'trip_table'; entry.info = r.info || {}; entry.settings = r.settings || {}; entry.function_test = r.function_test || {}; }
+                            // trip: รองรับทั้ง trip_units[] (multi-ACB) และ schema เก่า (single)
+                            if (Array.isArray(r.trip_units) && r.trip_units.length) {
+                                entry.kind = 'trip_table'; entry.trip_units = r.trip_units;
+                            } else if (r.settings || r.function_test) {
+                                entry.kind = 'trip_table';
+                                entry.trip_units = [{ name: '', info: r.info || {}, settings: r.settings || {}, function_test: r.function_test || {} }];
+                            }
+                            // capacitor: AI อาจคืน key เป็น steps / Steps / data ฯลฯ
+                            const capSteps = r.steps || r.Steps || r.step_values || r.data;
+                            if (Array.isArray(capSteps) && capSteps.length) {
+                                entry.kind = 'cap_table'; entry.info = r.info || {}; entry.steps = capSteps;
+                            }
+                            console.log(`[Stage 3 — ${m.testId}] r=`, r, 'entry=', entry);
                             testTables[inst] = entry;   // keyed by INSTANCE
                         }
                     } catch (e) { aiAnalyzeStatus(`Stage 3 — ${m.title} พลาด (ข้าม)`, null, `⚠️ ${m.title}: ${e.message}`); }
                     ti++;
+                }
+
+                // STAGE 4 — เลือก N รูปดีที่สุดต่อ section (ตามจำนวน slot ของ block)
+                //   test sections (insulation/contact): ใช้ ordered_photos จาก Stage 3 อยู่แล้ว — แค่ cap ถ้าเกิน
+                //   non-test sections (before/cleaning/after/general/…): เรียก AI rank ถ้าเกิน slot
+                const sectionInsts = Object.keys(sections);
+                let si = 0;
+                for (const inst of sectionInsts) {
+                    const m = sectionMeta[inst];
+                    if (!m) continue;
+                    const slotN = aiSlotCountFor(m.category);
+                    const cur = sections[inst].filter(f => files.has(f));
+                    if (slotN === 0) { sections[inst] = []; si++; continue; }
+                    if (cur.length <= slotN) { sections[inst] = cur; si++; continue; }
+                    if (m.kind === 'test') {
+                        // test: ordered_photos ถูกจัดลำดับมาแล้ว (probe→reading ต่อเฟส) — cap N พอ
+                        sections[inst] = cur.slice(0, slotN);
+                    } else {
+                        aiAnalyzeStatus(`Stage 4 — เลือกรูปดีที่สุด ${m.title} (${cur.length}→${slotN})…`,
+                            96 + Math.round(3 * si / sectionInsts.length), `✨ rank ${m.title}…`);
+                        try {
+                            sections[inst] = await aiPickBestForSection(cur, files, slotN, m.title, panelName || scope.panel_name);
+                        } catch (e) {
+                            aiAnalyzeStatus(`Stage 4 — ${m.title} ใช้ N รูปแรกแทน`, null, `⚠️ ${m.title}: ${e.message}`);
+                            sections[inst] = cur.slice(0, slotN);
+                        }
+                    }
+                    si++;
                 }
 
                 // populate state ให้ preview/commit ใช้
@@ -7381,8 +7665,10 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             sectionsList.innerHTML = '';
 
             // section instances ที่มี meta (รักษาลำดับโฟลเดอร์ ไม่ sort — before/after จะเรียงตามที่จัด)
+            // section ที่ไม่มีรูป (เช่น trip — slot=0) ยังแสดงถ้ามี testTables ให้กรอก
+            const testTables = aiImportState.testTables || {};
             const sortedSections = Object.entries(aiImportState.sections)
-                .filter(([sec, files]) => files.length > 0 && aiSecInfo(sec));
+                .filter(([sec, files]) => aiSecInfo(sec) && (files.length > 0 || testTables[sec]));
 
             let totalSelected = 0, totalMissing = 0;
             for (const [sec, filenames] of sortedSections) {
@@ -7404,11 +7690,16 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             renderAiUnusedPool();
 
             // counter
-            document.getElementById('aiPreviewCount').textContent = `${totalSelected} รูปจะ Import`;
+            const tableOnly = sortedSections.filter(([sec, fns]) => fns.length === 0 && testTables[sec]).length;
+            const countText = tableOnly > 0
+                ? `${totalSelected} รูป + ${tableOnly} ตาราง จะ Import`
+                : `${totalSelected} รูปจะ Import`;
+            document.getElementById('aiPreviewCount').textContent = countText;
             const warnings = [];
             if (totalMissing) warnings.push(`⚠️ ${totalMissing} รูปใน JSON ไม่พบไฟล์`);
             document.getElementById('aiCommitSummary').textContent = warnings.join(' · ') || `จะสร้าง ${sortedSections.length} block`;
-            document.getElementById('aiCommitBtn').disabled = totalSelected === 0;
+            // เปิดปุ่ม Import ถ้ามี section ที่จะ process (มีรูป หรือ มีค่าตารางให้กรอก)
+            document.getElementById('aiCommitBtn').disabled = sortedSections.length === 0;
             document.getElementById('aiPreviewArea').classList.remove('hidden');
         }
 
@@ -7784,6 +8075,27 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             return !grid.querySelector('.photo-image:not(.hidden)');
         }
 
+        // block ล่าสุดของ module ว่างอยู่ไหม — ใช้กับ block ที่ "ไม่มี grid" (เช่น trip)
+        // เกณฑ์ "ว่าง": ไม่มีรูปในกริด (ถ้ามี) + panel name ว่าง + ทุก text input ว่าง (ยกเว้น default "Schneider")
+        // (กันบั๊ก: trip-block ที่ toggle auto-create แล้ว canReuse ไม่ติด เพราะ lastGrid0 = null → สร้างซ้ำเป็นฟอร์มเปล่า)
+        function aiLastBlockIsEmpty(modId) {
+            const modNode = document.getElementById(modId);
+            if (!modNode) return false;
+            const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block';
+            const blocks = modNode.querySelectorAll(AI_BLOCK_SEL);
+            if (!blocks.length) return false;
+            const last = blocks[blocks.length - 1];
+            if (last.querySelector('.photo-image:not(.hidden)')) return false;
+            const panelInp = last.querySelector('.eq-panel-input');
+            if (panelInp && panelInp.value.trim()) return false;
+            const textInputs = last.querySelectorAll('input[type="text"]');
+            for (const inp of textInputs) {
+                const v = (inp.value || '').trim();
+                if (v && v !== 'Schneider') return false;
+            }
+            return true;
+        }
+
         async function aiInjectPhotoIntoGrid(grid, file, prefixShort) {
             // หา empty photo-box ถ้าไม่พอ ค่อย addPhotoBox
             let emptyImg = grid.querySelector('.photo-box .photo-image.hidden');
@@ -7918,29 +8230,62 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             });
         }
 
-        // Trip unit: หา block ล่าสุด → fill CB info + settings + function test
+        // Trip unit: รองรับ trip_units[] (multi-ACB) — fill ก้อนล่าสุดด้วย unit[0] + สร้างก้อนใหม่สำหรับ unit[1..N]
         function aiFillTripTable(tableData) {
             if (!tableData) return;
-            const blocks = document.querySelectorAll('#trip_container .trip-block, .trip-block');
-            const block = blocks[blocks.length - 1];
-            if (!block) return;
+            // normalize: ถ้ามี trip_units[] ใช้เลย ; ถ้าเป็น schema เก่า (info/settings/function_test) ห่อเป็น array
+            const units = Array.isArray(tableData.trip_units) && tableData.trip_units.length
+                ? tableData.trip_units
+                : [{ name: '', info: tableData.info, settings: tableData.settings, function_test: tableData.function_test }];
 
-            // ── 1) CB info (Details) — จับคู่ label cell → input cell ถัดไป ───
-            const info = tableData.info || {};
+            // หาก้อนล่าสุด (toggle/canReuse สร้างมา) — ใช้กับ unit[0]
+            let blocks = document.querySelectorAll('#trip_container .trip-block, .trip-block');
+            let firstBlock = blocks[blocks.length - 1];
+            if (!firstBlock) { console.warn('[aiFillTripTable] no trip-block found'); return; }
+            // เก็บ panel name ของก้อนแรก (commit set ไว้แล้ว) เพื่อ copy ไปก้อนใหม่
+            const panelInp0 = firstBlock.querySelector('.eq-panel-input');
+            const panelName = panelInp0 ? panelInp0.value : '';
+
+            units.forEach((unit, i) => {
+                let block = firstBlock;
+                if (i > 0) {
+                    // สร้างก้อนใหม่สำหรับ ACB ตัวถัดไป
+                    if (typeof addTripBlock === 'function') addTripBlock();
+                    blocks = document.querySelectorAll('#trip_container .trip-block, .trip-block');
+                    block = blocks[blocks.length - 1];
+                    if (!block) return;
+                    // copy panel name (ตู้เดียวกันสำหรับทุก ACB ในโฟลเดอร์เดียวกัน)
+                    const pi = block.querySelector('.eq-panel-input');
+                    if (pi && panelName && !pi.value) { pi.value = panelName; pi.setAttribute('value', panelName); }
+                }
+                aiFillTripBlock(block, unit);
+            });
+            console.log(`[aiFillTripTable] filled ${units.length} ACB block(s)`);
+        }
+
+        // เติมค่าใน trip-block 1 ก้อนจาก 1 unit
+        function aiFillTripBlock(block, unit) {
+            if (!block || !unit) return;
+            // ── 0) ชื่อ ACB (จาก nameplate) → block-base-title ──
+            if (unit.name) {
+                const baseTitle = block.querySelector('.block-base-title');
+                if (baseTitle) baseTitle.textContent = unit.name;
+            }
+            // ── 1) CB info (Details) — จับคู่ label cell → input cell ถัดไป ──
+            const info = unit.info || {};
             const labelMap = {
                 'manufacturer': info.manufacturer,
                 'micrologic trip unit': info.micrologic,
                 'circuit breaker': info.circuit_breaker,
                 'serial no': info.serial,
                 'rate current': info.rate_current,
-                'feeder name': info.feeder_name,
+                'feeder name': unit.name || info.feeder_name,   // ชื่อจาก nameplate มาก่อน (ตู้จริง) ; fallback ใช้ค่าจากจอ
             };
             block.querySelectorAll('td').forEach(td => {
                 const t = td.textContent.trim().toLowerCase().replace(/\.$/, '');
                 for (const [key, val] of Object.entries(labelMap)) {
                     if (!val) continue;
                     if (t === key || t.startsWith(key)) {
-                        // input อยู่ใน td ถัดไป
                         let next = td.nextElementSibling;
                         if (next) {
                             const inp = next.querySelector('input[type="text"]');
@@ -7950,9 +8295,9 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 }
             });
 
-            // ── 2) เดินแถวในตาราง แยก section (setting / sensitive) ───
-            const settings = tableData.settings || {};
-            const ftest = tableData.function_test || {};
+            // ── 2) เดินแถวในตาราง แยก section (setting / sensitive) ──
+            const settings = unit.settings || {};
+            const ftest = unit.function_test || {};
             const fnFromLabel = (lbl) => {
                 lbl = lbl.toLowerCase();
                 if (lbl.startsWith('long-time') || lbl.startsWith('long time')) return 'long_time';
@@ -7967,7 +8312,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const rowTxt = tr.textContent.trim();
                 if (/^Before test setting/i.test(rowTxt)) { section = 'setting'; return; }
                 if (/^Sensitive trip test/i.test(rowTxt)) { section = 'sensitive'; return; }
-                if (/^Function setting|^Function test/i.test(rowTxt)) return; // header row
+                if (/^Function setting|^Function test/i.test(rowTxt)) return;
                 const firstCell = tr.querySelector('td');
                 if (!firstCell) return;
                 const fn = fnFromLabel(firstCell.textContent.trim());
@@ -7977,9 +8322,6 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 if (section === 'setting') {
                     const s = settings[fn];
                     if (!s) return;
-                    // ลำดับ input ในแถว setting:
-                    //  Long/Short/Ground: [setting, pri, time, remark]
-                    //  Instantaneous:     [setting, pri, remark]  (ไม่มี time cell)
                     if (fn === 'instantaneous') {
                         if (textInputs[0]) aiSetInput(textInputs[0], s.setting);
                         if (textInputs[1]) aiSetInput(textInputs[1], s.pri);
@@ -7991,7 +8333,6 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 } else if (section === 'sensitive') {
                     const t = ftest[fn];
                     if (!t) return;
-                    // [injected, trip_time, remark] + <select> result
                     if (textInputs[0]) aiSetInput(textInputs[0], t.injected);
                     if (textInputs[1]) aiSetInput(textInputs[1], t.trip_time);
                     const sel = tr.querySelector('select');
@@ -8004,6 +8345,66 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             });
         }
 
+        // Capacitor bank: หา block ล่าสุด → fill KVAR/µF nominal (header) + steps 1..N (L1-L2 / L2-L3 / L3-L1)
+        function aiFillCapTable(tableData) {
+            if (!tableData) { console.warn('[aiFillCapTable] no tableData'); return; }
+            const blocks = document.querySelectorAll('#cap_container .cap-block, .cap-block');
+            const block = blocks[blocks.length - 1];
+            if (!block) { console.warn('[aiFillCapTable] no cap-block found'); return; }
+
+            // ── helper: AI อาจคืน key เป็น L1_L2 / L1-L2 / "L1-L2" / l1l2 ฯลฯ ──
+            const pickVal = (obj, ...keys) => {
+                for (const k of keys) {
+                    if (obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
+                }
+                return '';
+            };
+
+            // ── 1) info (KVAR + µf nominal) ที่หัวตาราง ──
+            const info = tableData.info || {};
+            const kvarV = pickVal(info, 'kvar', 'KVAR', 'kVAR', 'qvar', 'QVar');
+            const ufV   = pickVal(info, 'uf', 'µf', 'µF', 'uF', 'micro_farad', 'microfarad');
+            const headerRow = block.querySelector('table tr');
+            if (headerRow) {
+                const headerInputs = headerRow.querySelectorAll('input[type="text"]');
+                if (kvarV && headerInputs[0]) aiSetInput(headerInputs[0], String(kvarV));
+                if (ufV   && headerInputs[1]) aiSetInput(headerInputs[1], String(ufV));
+            }
+
+            // ── 2) steps — map step number → values ──
+            const steps = tableData.steps || [];
+            const stepMap = {};
+            steps.forEach(s => {
+                const n = parseInt(s.step || s.Step || s.no || s.n, 10);
+                if (n) stepMap[n] = s;
+            });
+            console.log('[aiFillCapTable] info:', info, 'stepMap keys:', Object.keys(stepMap));
+
+            let filled = 0;
+            block.querySelectorAll('table tr').forEach(tr => {
+                const firstCell = tr.querySelector('td');
+                if (!firstCell) return;
+                const m = firstCell.textContent.trim().match(/^Step\s+(\d+)/i);
+                if (!m) return;
+                const n = parseInt(m[1], 10);
+                const s = stepMap[n];
+                if (!s) return;
+                const inputs = tr.querySelectorAll('input[type="text"]');
+                // AI อาจใช้ key หลากหลาย — ลอง variants ทุกแบบ
+                const l12 = pickVal(s, 'L1_L2', 'L1-L2', 'l1_l2', 'l1l2', 'L12');
+                const l23 = pickVal(s, 'L2_L3', 'L2-L3', 'l2_l3', 'l2l3', 'L23');
+                const l31 = pickVal(s, 'L3_L1', 'L3-L1', 'l3_l1', 'l3l1', 'L31');
+                const rem = pickVal(s, 'remark', 'Remark', 'note', 'notes');
+                // [L1-L2, L2-L3, L3-L1, remark]
+                if (inputs[0] && l12) aiSetInput(inputs[0], String(l12));
+                if (inputs[1] && l23) aiSetInput(inputs[1], String(l23));
+                if (inputs[2] && l31) aiSetInput(inputs[2], String(l31));
+                if (inputs[3] && rem) aiSetInput(inputs[3], String(rem));
+                if (l12 || l23 || l31) filled++;
+            });
+            console.log(`[aiFillCapTable] filled ${filled} step rows`);
+        }
+
         function aiAutoFillTestTable(modId) {
             // เรียกหลังสร้าง block — เลือก autofill ตาม module
             const tables = aiImportState.testTables || {};
@@ -8013,6 +8414,8 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 aiFillContactTable(tables.contact_test);
             } else if (modId === 'mod_trip' && tables.trip_unit_test) {
                 aiFillTripTable(tables.trip_unit_test);
+            } else if (modId === 'mod_cap' && tables.capacitor_check) {
+                aiFillCapTable(tables.capacitor_check);
             }
         }
 
@@ -8054,7 +8457,8 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             if (!entry) return;
             if (modId === 'mod_insulation' && entry.table) aiFillInsulationTable(entry);
             else if (modId === 'mod_contact' && entry.breakers) aiFillContactTable(entry);
-            else if (modId === 'mod_trip' && (entry.settings || entry.function_test)) aiFillTripTable(entry);
+            else if (modId === 'mod_trip' && (entry.trip_units || entry.settings || entry.function_test)) aiFillTripTable(entry);
+            else if (modId === 'mod_cap' && entry.steps) aiFillCapTable(entry);
         }
 
         async function commitAiImport() {
@@ -8069,11 +8473,13 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const meta = aiSecInfo(sec);
                 if (!meta || !meta.mod_id || !meta.counter_key) continue;
                 const valid = filenames.filter(fn => files.has(fn));
-                if (valid.length === 0) continue;
+                // section ที่ "ไม่มีรูปในรายงาน" (เช่น trip — slot=0) ยังต้อง process ถ้ามี testTables ให้กรอก
+                const hasTestData = !!((aiImportState.testTables || {})[sec]);
+                if (valid.length === 0 && !hasTestData) continue;
                 tasks.push({ sectionId: sec, meta, filenames: valid });
                 totalPhotos += valid.length;
             }
-            if (totalPhotos === 0) { showToast('ไม่มีรูปที่จะ import', 'error'); return; }
+            if (tasks.length === 0) { showToast('ไม่มีงานที่จะ import', 'error'); return; }
 
             document.getElementById('aiPreviewArea').classList.add('hidden');
             document.getElementById('aiProgressBox').classList.remove('hidden');
@@ -8083,7 +8489,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             let done = 0;
             const updateProgress = (msg) => {
                 document.getElementById('aiProgressText').textContent = msg;
-                document.getElementById('aiProgressBar').style.width = `${Math.round(done * 100 / totalPhotos)}%`;
+                document.getElementById('aiProgressBar').style.width = `${totalPhotos > 0 ? Math.round(done * 100 / totalPhotos) : 100}%`;
             };
             updateProgress(`เตรียม Import ${totalPhotos} รูป...`);
             await new Promise(r => setTimeout(r, 50));
@@ -8118,7 +8524,9 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const blocksAfter = modNode0 ? document.getElementById(modId)?.querySelectorAll(AI_BLOCK_SEL).length : 0;
                 const toggleCreated = blocksAfter > blocksBefore;
                 const lastGrid0 = aiFindLastGrid(prefixShort);
-                const canReuse = toggleCreated || (lastGrid0 && aiGridIsEmpty(lastGrid0));
+                const canReuse = toggleCreated
+                    || (lastGrid0 && aiGridIsEmpty(lastGrid0))
+                    || (!lastGrid0 && aiLastBlockIsEmpty(modId));
                 if (!canReuse) {
                     action.fn();
                     await new Promise(r => setTimeout(r, 120));
