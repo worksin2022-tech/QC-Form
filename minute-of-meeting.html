@@ -2512,7 +2512,7 @@ function showPdfSaveButton(file, filename){
 }
 
 async function exportPDF() {
-  console.log('[exportPDF] BUILD-v5 (doctype dropdown: ' + (state.meeting.docType || 'Minute of Meeting') + ')');
+  console.log('[exportPDF] BUILD-v6 (hide-empty-before-2 + doctype: ' + (state.meeting.docType || 'Minute of Meeting') + ')');
   if (state.categories.length === 0) {
     showToast('ไม่มีข้อมูลให้ export');
     return;
@@ -2954,19 +2954,31 @@ function buildCategoryPageForPdf(cat, catIdx, comments, startIdx, pageNum, total
 function buildCommentForPdf(cat, cmt, catNum, cmtNum) {
   const bg = cmt.mode === 'after' ? '#f0fdf4' : '#eff6ff';
   const borderColor = cmt.mode === 'after' ? '#a7f3d0' : '#bfdbfe';
-  const photos = cmt.mode === 'after'
-    ? [buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
-       buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe'),
-       buildPhotoForPdf(cmt, 'after', 0, '#a7f3d0')]
-    : [buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
-       buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe')];
-       
+
+  // After mode: ทั้ง 3 ช่องเสมอ (Before 1, Before 2, After)
+  // Before mode: ถ้ามีรูปแค่ใบเดียว ซ่อนกรอบที่ว่าง → แสดงเฉพาะใบที่มี (จัดกลางคอมเมนต์)
+  //   ทั้งคู่ว่าง หรือ ทั้งคู่มีรูป → แสดง 2 ช่องเหมือนเดิม
+  let photos;
+  if (cmt.mode === 'after') {
+    photos = [
+      buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe'),
+      buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe'),
+      buildPhotoForPdf(cmt, 'after', 0, '#a7f3d0')
+    ];
+  } else {
+    const b0 = buildPhotoForPdf(cmt, 'before', 0, '#bfdbfe');
+    const b1 = buildPhotoForPdf(cmt, 'before', 1, '#bfdbfe');
+    if (b0.hasImg && !b1.hasImg)      photos = [b0];
+    else if (!b0.hasImg && b1.hasImg) photos = [b1];
+    else                              photos = [b0, b1];
+  }
+
   // Before mode: กรอบ 4:3 เป๊ะ (236×177) ตรงกับ .photo-slot ตอนกรอกข้อมูล
-  //   - คอลัมน์เป็น fixed-width 236px (ไม่ใช่ 1fr) แล้ว justify-content:center → กลุ่มรูปอยู่กลางคอมเมนต์
-  //   - มีพื้นที่สีพื้นหลังคอมเมนต์ (ฟ้าอ่อน) ข้างละ ~78px กรอบเดิม
+  //   - คอลัมน์เป็น fixed-width 236px × จำนวนจริง (1 หรือ 2) แล้ว justify-content:center → จัดกลางคอมเมนต์
+  //   - มีพื้นที่สีพื้นหลังคอมเมนต์ (ฟ้าอ่อน) คั่นข้าง — รูปเดียวก็อยู่กลางสวย
   //   - net-zero ในแนวตั้ง (pad 6 + photo 177 + label 20 + pad 6 = 209) → ไม่กระทบ 3 คอม/หน้า
-  // After mode: คงเดิมทุกอย่าง (ผู้ใช้ยืนยัน OK แล้ว)
-  const gridCols           = cmt.mode === 'after' ? 'repeat(3,1fr)' : 'repeat(2,236px)';
+  // After mode: คงเดิมทุกอย่าง
+  const gridCols           = cmt.mode === 'after' ? 'repeat(3,1fr)' : `repeat(${photos.length},236px)`;
   const gridJustifyStyle   = cmt.mode === 'after' ? '' : 'justify-content:center;';
   const photoHeight        = cmt.mode === 'after' ? '140px' : '177px';
   const gridPadY           = cmt.mode === 'after' ? '10px' : '6px';
