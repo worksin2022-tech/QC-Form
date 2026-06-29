@@ -3051,6 +3051,11 @@
             // 🌟 ใส่ contenteditable ให้ .block-base-title ทุกตัว (เผื่อ draft เก่าก่อนฟีเจอร์นี้ยังไม่มี attribute)
             if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable();
 
+            // 🌟 เปิด drag-and-drop sortable ให้ทุก photo grid ที่ restore จาก draft
+            if (typeof ensurePhotoGridSortable === 'function') {
+                document.querySelectorAll('[id^="grid_"]').forEach(ensurePhotoGridSortable);
+            }
+
             // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการโหลดถูกประมวลผลเสร็จ (observer callback เป็น async)
             //    แล้วเคลียร์ flag dirty — เพราะเพิ่งโหลดมา = ตรงกับที่บันทึกไว้ ยังไม่มีการแก้
             setTimeout(() => {
@@ -5151,6 +5156,25 @@
         }
 
         // 🌟 เปลี่ยนการทำงานของ addPhotoBox ให้รองรับการอัปโหลดหลายไฟล์ และปุ่มวาดรูป
+        // 🌟 เปิด drag-and-drop sortable ให้ photo grid (เรียกซ้ำได้ — init แค่ครั้งเดียวต่อ grid)
+        //    Use case: AI เรียงรูปผิด → ผู้ใช้ลากสลับเองได้
+        function ensurePhotoGridSortable(grid) {
+            if (!grid || grid.dataset.sortableInit === '1') return;
+            if (typeof Sortable === 'undefined') return;
+            grid.dataset.sortableInit = '1';
+            new Sortable(grid, {
+                animation: 200,
+                draggable: '.photo-box',
+                ghostClass: 'sortable-ghost',
+                // กันการเริ่ม drag จากปุ่มภายในกล่อง (ลบ/วาด/ครอบตัด/file input)
+                filter: '.delete-photo-btn, .edit-photo-btn, .crop-photo-btn, input',
+                preventOnFilter: false,
+                onEnd: () => {
+                    if (typeof markUnsaved === 'function') markUnsaved();
+                }
+            });
+        }
+
         function addPhotoBox(gridId, prefix) {
             photoCounters[prefix]++;
             const i = photoCounters[prefix];
@@ -5189,6 +5213,7 @@
                 </div>
             `;
             grid.appendChild(box);
+            ensurePhotoGridSortable(grid);
         }
 
         function compressImage(file, callback) {
@@ -6786,10 +6811,9 @@
                     `<span class="text-red-600 font-bold">ไม่พบรูปในโฟลเดอร์</span>`;
                 return;
             }
-            // ตู้ที่พบบ่อยสุด → เติมช่องชื่อตู้ (ถ้ายังว่าง)
+            // ตู้ที่พบบ่อยสุด → เติมช่องชื่อตู้ (overwrite ของเก่าเสมอ เพราะเลือกโฟลเดอร์ใหม่ = ตู้ใหม่)
             const topCab = Object.entries(cabinets).sort((a, b) => b[1] - a[1])[0];
-            if (topCab && !document.getElementById('aiPanelName').value.trim())
-                document.getElementById('aiPanelName').value = topCab[0];
+            if (topCab) document.getElementById('aiPanelName').value = topCab[0];
 
             const secSummary = Object.entries(folderCount).map(([c, n]) => `${c}:${n}`).join(', ');
             document.getElementById('aiPhotosStatus').innerHTML =
@@ -7106,28 +7130,40 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         }
 
         const AI_TEST_PROMPTS = {
-            insulation_test: (panel) => `อ่านผล Insulation Resistance Test ตู้ ${panel} เครื่อง Metrel MI3201/MI3210 (สายเหลือง) ค่า MΩ/GΩ
+            insulation_test: (panel) => `อ่านผล Insulation Resistance Test ตู้ ${panel} — รองรับ 2 เครื่อง:
+  • Metrel MI3201/MI3210 (สายเหลือง) — Megger แบบเก่า
+  • Fluke 1587 FC INSULATION MULTIMETER (ตัวเครื่องเหลือง สาย/clip แดง-ดำ) — จอแสดง MΩ หรือ GΩ + "1000V" badge ล่างซ้าย + "1048 VDC" ล่างขวา
 
-⭐⭐ ขั้นที่ 1 — คัดกรองรูป: โฟลเดอร์อาจมีรูปหลายแบบปนกัน แยกเป็น 2 กลุ่มที่ใช้งาน
-  ✅ "รูปคีบสาย(probe)" = เห็นการคีบสาย (clip/hook สีเหลือง-แดง) ที่บัสบาร์/ขั้ว — เห็นสีเฟสชัด
-  ✅ "รูปค่าบนจอ(reading)" = เห็นจอ Megger แสดงตัวเลขที่นิ่งแล้ว (หน่วย MΩ หรือ GΩ)
-  ⚠️ ข้ามทิ้ง ห้ามใช้: รูปภาพรวมตู้, รูปบรรยากาศ, รูปเบลอ, รูปจอที่ค่ายังเปลี่ยน/ไม่นิ่ง
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป: โฟลเดอร์อาจมี 2 รูปแบบ ปนกันได้
+  รูปแบบ A: "แยก probe + reading" (สไตล์ Metrel เก่า)
+    ✅ "รูปคีบสาย(probe)" = เห็นการคีบสายที่บัสบาร์/ขั้ว ชัดๆ ไม่เห็นจอ
+    ✅ "รูปค่าบนจอ(reading)" = เห็นจอ Megger ตัวเลขนิ่ง (MΩ/GΩ) ไม่เห็น probe
+    → 2 รูปต่อเฟส, รวม 6 รูป (3 probe + 3 reading)
+  รูปแบบ B: "รวม probe + reading ในรูปเดียว" (สไตล์ Fluke 1587 FC พบบ่อย)
+    ✅ "รูปรวม" = เห็นจอ Fluke ถือไว้ด้านหน้า + เห็นคีบสายในฉากหลัง (บัสบาร์/clip แดงคีบที่ขั้ว)
+    → 1 รูปต่อเฟส, รวม 3 รูป
+  ⚠️ ข้ามทิ้ง ห้ามใช้: รูปภาพรวมตู้ที่ไม่เห็นจอ, รูปบรรยากาศ, รูปเบลอ, รูปจอที่ค่ายังเปลี่ยน/ไม่นิ่ง
+  ⚠️ ข้ามทิ้ง: รูป Earth Ground Clamp (Fluke 1630-2 FC, ตัวเครื่องเหลือง+clamp แดงห่วงใหญ่ + จอแสดงหน่วย Ω เปล่า ไม่ใช่ MΩ/GΩ) — นั่นคือ Grounding ไม่ใช่ Insulation
   ถ้ามีหลาย session (เลขไฟล์เป็นกลุ่ม ห่างกัน) → เลือก session เลขท้ายสุด ห้ามผสมข้าม session
 
-⭐⭐ ขั้นที่ 2 — จับคู่ probe↔reading ต่อเฟส (L1/L2/L3)
-  เฟสมาตรฐานใหม่ (IEC): น้ำตาล=L1, ดำ=L2, เทา=L3 / เก่า: แดง=L1, เหลือง=L2, น้ำเงิน=L3
-  ลำดับ probe→reading ติดกันต่อเฟส (เลขไฟล์ใกล้กัน) → คีบL1→ค่าL1→คีบL2→ค่าL2→คีบL3→ค่าL3
+⭐⭐ ขั้นที่ 2 — แมปเฟส L1/L2/L3
+  • รูปแบบ A: ลำดับ probe→reading ติดกันต่อเฟส (เลขไฟล์ใกล้กัน) → คีบL1→ค่าL1→คีบL2→ค่าL2→คีบL3→ค่าL3
+  • รูปแบบ B: ลำดับไฟล์ = ลำดับเฟส (รูปแรก=L1, รูปสอง=L2, รูปสาม=L3) — ช่างมักทำเรียงเฟสตามลำดับ ไม่ต้องเดาเฟสจากตำแหน่งคีบในฉากหลัง
 
-⭐⭐ ขั้นที่ 3 — อ่านตัวเลขจากจอ (⚠️ ระวังจุดทศนิยม!)
+⭐⭐ ขั้นที่ 3 — อ่านตัวเลข + หน่วย จากจอ (⚠️ ระวังจุดทศนิยม + หน่วย!)
+  • Fluke 1587 FC: เลขใหญ่กลางจอ + หน่วย MΩ หรือ GΩ ทางขวา → ต้อง**อ่านหน่วยตามที่จอแสดงจริง**
+    - ค่าต่ำ (~ <1000 MΩ) → จอแสดง "642 MΩ"
+    - ค่าสูง (~ ≥1 GΩ) → จอสลับเป็น GΩ อัตโนมัติ เช่น "0.8 GΩ", "1.3 GΩ"
+    - "1000V" และ "1048 VDC" บนจอ = test voltage setting / applied voltage **ไม่ใช่ค่าวัด** อย่าใส่ใน table
   • นับจำนวนหลัก "ก่อน" และ "หลัง" จุดทศนิยมให้ตรงกับที่เห็นบนจอจริง ห้ามเลื่อน/ห้ามเพิ่ม/ห้ามตัดจุดออก
   • จุดบน LCD เป็น dot เล็กระหว่างเลข ดูซ้ำหลายๆ รอบก่อนตอบ
-  • ตัวอย่างผิดบ่อย: เห็น "92.0" ต้องตอบ "92.0" ไม่ใช่ "9.20" หรือ "920" ; เห็น "307" (ไม่มีจุด) ต้องตอบ "307" ไม่ใช่ "30.7"
+  • ตัวอย่างผิดบ่อย: เห็น "92.0" ต้องตอบ "92.0" ไม่ใช่ "9.20" หรือ "920" ; เห็น "307" (ไม่มีจุด) ต้องตอบ "307" ไม่ใช่ "30.7" ; เห็น "0.8" ต้องตอบ "0.8" ไม่ใช่ "8" หรือ "0.08"
   • ห้ามเดา/ห้ามเว้นว่างถ้าจอแสดงเลข ; ถ้าจอเบลออ่านไม่ออกจริงๆ ใส่ ""
 
 ตอบ JSON เท่านั้น:
-{"ordered_photos":[<คีบL1,ค่าL1,คีบL2,ค่าL2,คีบL3,ค่าL3>],
-"table":{"L1":"92.0 MΩ","L2":"57.3 MΩ","L3":"55.7 MΩ"},
-"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ เช่น "overview","blur">],
+{"ordered_photos":[<รูปที่ใช้จริง ตามลำดับเฟส L1→L2→L3 — รูปแบบ A = 6 รูป, รูปแบบ B = 3 รูป>],
+"table":{"L1":"92.0 MΩ","L2":"57.3 MΩ","L3":"0.8 GΩ"},
+"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ เช่น "overview","blur","grounding-clamp">],
 "notes":""}`,
             contact_test: (panel) => `อ่านผล Contact Resistance Test ตู้ ${panel} เครื่อง Metrel MI3252 (สายดำใหญ่+แดงเล็ก/Kelvin 4 ขา) ค่า µΩ หรือ mΩ
 
@@ -7192,6 +7228,33 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 ],
 "skipped":[<filename ที่ข้าม + เหตุผล>],
 "ordered_photos":[],"notes":""}`,
+            grounding_test: (panel) => `อ่านผล Grounding Resistance Test ตู้ ${panel} เครื่อง Fluke 1630-2 FC EARTH GROUND CLAMP
+
+⭐⭐ ขั้นที่ 1 — คัดกรองรูป + ระบุเครื่อง
+  ✅ "รูปวัด" = เห็นจอ Fluke 1630-2 FC แสดงตัวเลข + หน่วย Ω (ohm เปล่า ไม่ใช่ MΩ/GΩ)
+    ลักษณะเครื่อง: ตัวเครื่องเหลือง + clamp ห่วงสีแดงใหญ่ (ห่วง stack แม่เหล็ก) + จอ LCD เล็ก
+    มักเห็นห่วงคีบรอบสายลงดิน/บัสบาร์ดิน + ป้ายระบุจุดเช่น "CU-TW2-1-G", "CU-TW2-2-G"
+  ⚠️ ข้ามทิ้ง ห้ามใช้: รูปภาพรวมตู้, รูปบรรยากาศ, รูปเบลอ
+  ⚠️ ข้ามทิ้ง: รูป Insulation (Fluke 1587 FC) ที่จออาจมี "Ω" ปนมา — Fluke 1587 FC จะมีหน่วย MΩ/GΩ + มีข้อความ "1000V" บนจอ ไม่ใช่ Grounding
+
+⭐⭐ ขั้นที่ 2 — อ่านค่า (⚠️ ระวังจุดทศนิยม!)
+  • นับจำนวนหลักก่อน/หลังจุดให้ตรงกับจอจริง ห้ามเลื่อนจุด
+  • ตัวอย่าง: เห็น "0.505" ต้องตอบ "0.505" ไม่ใช่ "0.505" → "5.05" หรือ "50.5"
+  • หน่วยตามจอ: ปกติเป็น Ω (ohm) — ถ้าค่าสูงมาก จออาจสลับเป็น kΩ
+  • ถ้ามีหลายรูป (วัดหลายจุด) → เลือกค่ารูปที่ชัดที่สุด/นิ่งที่สุดเป็นค่าตัวแทน (อ่านได้แค่ค่าเดียวลงในตาราง)
+
+⭐⭐ ขั้นที่ 3 — ตัดสิน Pass/Fail
+  • Reference (ว.ส.ท): ≤ 5 Ω
+  • observation ≤ 5 → "Pass" ; observation > 5 → "Fail"
+
+⚠️ **Schema สำคัญ** — ต้องใช้ key ชื่อ "grounding" เท่านั้น ห้ามใช้ "table" หรือ key อื่น
+⚠️ ค่าที่อ่านได้ (เช่น "0.505 Ω") ต้องอยู่ใน "grounding.observation" เท่านั้น **ห้ามใส่ใน panel_name หรือ scope หรือที่อื่น**
+
+ตอบ JSON เท่านั้น:
+{"ordered_photos":[<filename รูปวัดที่เลือก (1 รูปก็พอ)>],
+"grounding":{"observation":"0.505 Ω","result":"Pass"},
+"skipped":[<filename ที่ข้าม + เหตุผลสั้นๆ เช่น "overview","blur","insulation-meter">],
+"notes":""}`,
             capacitor_check: (panel) => `อ่านผล Capacitor Bank Check ตู้ ${panel} จากจอ LCR meter (หน่วย µF)
 
 ⭐⭐ ขั้นที่ 1 — คัดกรองรูป (สำคัญสุด): โฟลเดอร์อาจมีรูปหลายแบบปนกัน
@@ -7345,8 +7408,10 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const testTables = {};
                 const testInstances = Object.keys(sections).filter(inst => {
                     const m = sectionMeta[inst];
-                    return m && m.kind === 'test' && AI_TEST_PROMPTS[m.testId] &&
-                           sections[inst].filter(f => files.has(f)).length >= 2;
+                    if (!m || m.kind !== 'test' || !AI_TEST_PROMPTS[m.testId]) return false;
+                    // 🌟 ขั้นต่ำต่างกันตามชนิดเทส: grounding 1 รูปพอ, อื่นๆ ≥2
+                    const minPhotos = m.testId === 'grounding_test' ? 1 : 2;
+                    return sections[inst].filter(f => files.has(f)).length >= minPhotos;
                 });
                 let ti = 0;
                 for (const inst of testInstances) {
@@ -7357,7 +7422,18 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                         if (r) {
                             if (r.ordered_photos && r.ordered_photos.length) sections[inst] = r.ordered_photos;
                             const entry = { test_id: m.testId };
-                            if (r.table) { entry.kind = 'phase_table'; entry.table = r.table; }
+                            // 🌟 grounding: รับได้ทั้ง r.grounding (nested) หรือ r.observation (flat) — เช็คก่อน r.table
+                            //    เพราะ AI บางครั้ง flatten/ใช้ key "table" ปนกัน
+                            if (m.testId === 'grounding_test') {
+                                const gObs = r.grounding?.observation || r.observation || r.value || r.reading || r.table?.observation;
+                                const gRes = r.grounding?.result || r.result || r.table?.result;
+                                if (gObs) {
+                                    entry.kind = 'grounding_table';
+                                    entry.grounding = { observation: String(gObs), result: gRes ? String(gRes) : '' };
+                                }
+                            } else {
+                                if (r.table) { entry.kind = 'phase_table'; entry.table = r.table; }
+                            }
                             if (r.breakers) { entry.kind = 'breaker_table'; entry.breakers = r.breakers; }
                             // trip: รองรับทั้ง trip_units[] (multi-ACB) และ schema เก่า (single)
                             if (Array.isArray(r.trip_units) && r.trip_units.length) {
@@ -8208,6 +8284,45 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             });
         }
 
+        // Grounding: หา block ล่าสุด → fill ช่อง Observation (Ω) + result Pass/Fail
+        //   ⚠️ ระวัง — ห้ามแตะ eq-panel-input (ชื่อตู้) ที่อยู่นอกตาราง
+        //   วิธี: หาแถวที่มี "Ground Busbar to Earth" → input ที่ไม่ใช่ eq-panel-input
+        function aiFillGroundingTable(tableData) {
+            if (!tableData || !tableData.grounding) return;
+            const blocks = document.querySelectorAll('#gro_container .grounding-block, .grounding-block');
+            const block = blocks[blocks.length - 1];
+            if (!block) return;
+            const g = tableData.grounding;
+
+            // หาแถวข้อมูลในตาราง (แถวที่มี <td> เริ่มต้น "Ground" — กันแถว header ที่ใช้ <th>)
+            let dataRow = null;
+            block.querySelectorAll('table tr').forEach(tr => {
+                const firstTd = tr.querySelector('td');
+                if (firstTd && /Ground/i.test(firstTd.textContent)) dataRow = tr;
+            });
+            if (!dataRow) {
+                console.warn('[aiFillGroundingTable] ไม่พบแถว Ground Busbar — ข้าม');
+                return;
+            }
+
+            // ช่อง Observation = input text ในแถวนี้ (ที่ไม่ใช่ eq-panel-input)
+            const obsInput = Array.from(dataRow.querySelectorAll('input[type="text"]'))
+                .find(inp => !inp.classList.contains('eq-panel-input'));
+            if (obsInput && g.observation) {
+                aiSetInput(obsInput, String(g.observation));
+                console.log(`[aiFillGroundingTable] obs=${g.observation}`);
+            }
+
+            // ผล Pass/Fail = select ในแถวนี้
+            const sel = dataRow.querySelector('select');
+            if (sel && g.result) {
+                const v = /fail|ไม่ผ่าน/i.test(g.result) ? 'Fail' : 'Pass';
+                sel.value = v;
+                if (typeof updateResultColor === 'function') updateResultColor(sel);
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
         // Contact: หา block ล่าสุด → เพิ่มแถวเบรกเกอร์ให้พอ → fill ชื่อ + L1/L2/L3
         function aiFillContactTable(tableData) {
             if (!tableData || !Array.isArray(tableData.breakers) || tableData.breakers.length === 0) return;
@@ -8441,6 +8556,8 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 aiFillInsulationTable(tables.insulation_test);
             } else if (modId === 'mod_contact' && tables.contact_test) {
                 aiFillContactTable(tables.contact_test);
+            } else if (modId === 'mod_grounding' && tables.grounding_test) {
+                aiFillGroundingTable(tables.grounding_test);
             } else if (modId === 'mod_trip' && tables.trip_unit_test) {
                 aiFillTripTable(tables.trip_unit_test);
             } else if (modId === 'mod_cap' && tables.capacitor_check) {
@@ -8486,6 +8603,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             if (!entry) return;
             if (modId === 'mod_insulation' && entry.table) aiFillInsulationTable(entry);
             else if (modId === 'mod_contact' && entry.breakers) aiFillContactTable(entry);
+            else if (modId === 'mod_grounding' && entry.grounding) aiFillGroundingTable(entry);
             else if (modId === 'mod_trip' && (entry.trip_units || entry.settings || entry.function_test)) aiFillTripTable(entry);
             else if (modId === 'mod_cap' && entry.steps) aiFillCapTable(entry);
         }
@@ -8563,7 +8681,14 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
                 // ตั้งชื่อหัวข้อ + panel + ตาราง (ต่อ instance)
                 aiSetBlockTitle(modId, t.meta.title);
-                aiSetPanelNameInLastBlock(modId, panelName);
+                // 🌟 ดึง cabinet (ชื่อตู้) ของ task นี้จาก folderInfo ของรูปแรก —
+                //    ทำให้ทุก instance ได้ panel name ของตู้ตัวเอง (ไม่ใช่ global topCab)
+                let taskPanel = panelName;
+                if (aiImportState.folderInfo && t.filenames.length > 0) {
+                    const fi = aiImportState.folderInfo.get(t.filenames[0]);
+                    if (fi && fi.cabinet) taskPanel = fi.cabinet;
+                }
+                aiSetPanelNameInLastBlock(modId, taskPanel);
                 try { aiAutoFillInstanceTable(modId, t.sectionId); } catch (e) { console.error('autofill', e); }
 
                 const grid = aiFindLastGrid(prefixShort);
