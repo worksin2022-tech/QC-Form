@@ -325,7 +325,7 @@
             <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
+                    <button onclick="smartPrint()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
                 <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -464,7 +464,7 @@
             <div id="claimReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="editClaimForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
+                    <button onclick="smartPrint()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
                <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -744,7 +744,7 @@
             <div id="tf_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="tf_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
+                    <button onclick="smartPrint()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
                 <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -1055,7 +1055,7 @@
             <div id="ts_reportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="ts_editForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
+                    <button onclick="smartPrint()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center">พิมพ์เป็น PDF (Print)</button>
                <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -1898,6 +1898,22 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             setInterval(saveDraft, 3000);
         });
      // ==========================================
+        // ฟังก์ชันเช็คว่าเปิดจาก iPad/iPhone (Safari) หรือไม่
+        // เพราะ Safari บน iOS/iPadOS จะแทรก header/footer (ลิงก์+วันที่) ตอน window.print() แบบปิดไม่ได้
+        // จึงสลับไปใช้ downloadDirectPDF() แทนโดยอัตโนมัติเฉพาะเครื่องกลุ่มนี้ เครื่องอื่น (Edge ฯลฯ) ยังพิมพ์ปกติ
+        // ==========================================
+        function isIOSDevice() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+        function smartPrint() {
+            if (isIOSDevice()) {
+                downloadDirectPDF();
+            } else {
+                window.print();
+            }
+        }
+     // ==========================================
         // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================
         function downloadDirectPDF() {
@@ -2115,5 +2131,31 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
     </button>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    reg.addEventListener('updatefound', () => {
+                        const nw = reg.installing;
+                        nw.addEventListener('statechange', () => {
+                            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                                if (confirm('มีเวอร์ชันใหม่พร้อมใช้งาน — โหลดใหม่เลยไหม?')) {
+                                    nw.postMessage('SKIP_WAITING');
+                                }
+                            }
+                        });
+                    });
+                    setInterval(() => reg.update(), 60 * 60 * 1000);
+                });
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+    </script>
 </body>
 </html>
