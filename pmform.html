@@ -6798,8 +6798,10 @@
                 let folderName, cabinet;
                 if (cat) { folderName = parts[secIdx]; cabinet = secIdx > 0 ? parts[secIdx - 1] : (parts[0] || ''); }
                 else { unmatched++; cat = 'other'; folderName = parts.length >= 2 ? parts[parts.length - 2] : 'อื่นๆ'; cabinet = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] || ''); }
+                // 🌟 key ต้อง unique เสมอ — ชื่อไฟล์อาจซ้ำข้ามตู้/ข้ามหัวข้อ (เช่น IMG_224030.jpg
+                //    มีทั้งใน DBTW2/Grounding และ DBTW2/Grounding Test) → ถ้าชน ใช้ full path
                 let key = f.name;
-                if (aiImportState.photoFiles.has(key)) key = parts.slice(-2).join('/');
+                if (aiImportState.photoFiles.has(key)) key = rel;
                 aiImportState.photoFiles.set(key, f);
                 aiImportState.folderInfo.set(key, { category: cat, folderName, cabinet });
                 if (cabinet) cabinets[cabinet] = (cabinets[cabinet] || 0) + 1;
@@ -7375,19 +7377,22 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                     // ── โหมดโฟลเดอร์: แต่ละโฟลเดอร์ = 1 instance (1 block) ── ชื่อโฟลเดอร์ = ชื่อหัวข้อ
                     aiAnalyzeStatus('ใช้โฟลเดอร์ที่จัดไว้ — ข้าม classify…', 55, '📁 จัดตามโฟลเดอร์');
                     photos = [];
-                    const instCat = {};
+                    const instInfo = {};   // inst → {cat, folderName, cabinet}
                     let skippedOther = 0;
                     for (const [key, info] of aiImportState.folderInfo.entries()) {
                         if (info.category === 'other') { skippedOther++; continue; }  // ไม่อยู่ในโฟลเดอร์หัวข้อ → ไม่เลือก
-                        const inst = info.folderName;
+                        // 🌟 inst ต้อง unique ต่อ "ตู้ + หัวข้อ" — ไม่งั้น DBTW2/Grounding Test กับ
+                        //    DBTW3/Grounding Test จะรวมเป็น block เดียว (bug: แยกตู้ไม่ได้)
+                        const inst = info.cabinet ? `${info.cabinet}/${info.folderName}` : info.folderName;
                         (sections[inst] ||= []).push(key);
-                        instCat[inst] = info.category;
+                        instInfo[inst] = { cat: info.category, folderName: info.folderName, cabinet: info.cabinet };
                         photos.push({ filename: key, category: info.category, caption_th: inst, notes: '', confidence: 1 });
                     }
                     if (skippedOther) aiAnalyzeStatus(`ข้าม ${skippedOther} รูป (ไม่อยู่ในโฟลเดอร์หัวข้อ)`, null, `⏭ ข้าม ${skippedOther} รูปนอกหัวข้อ`);
-                    for (const [inst, cat] of Object.entries(instCat)) {
-                        const tpl = aiResolveTemplate(cat);
-                        sectionMeta[inst] = { title: inst, category: cat, mod_id: tpl.mod_id, counter_key: tpl.counter_key, kind: tpl.kind, testId: tpl.testId };
+                    for (const [inst, ii] of Object.entries(instInfo)) {
+                        const tpl = aiResolveTemplate(ii.cat);
+                        // title = ชื่อหัวข้อเทส (folderName) ; cabinet เก็บแยกไว้ใส่ช่อง Equipment/Panel
+                        sectionMeta[inst] = { title: ii.folderName, cabinet: ii.cabinet, category: ii.cat, mod_id: tpl.mod_id, counter_key: tpl.counter_key, kind: tpl.kind, testId: tpl.testId };
                     }
                     scope = { panel_name: panelName || '', project_name: '', working_date: '', scope_th: '', tests_performed: [], tests_not_performed: [] };
                 } else {
@@ -7810,7 +7815,9 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
         function renderAiSection(sectionId, filenames) {
             const meta = aiSecInfo(sectionId) || {};
-            const label = meta.title || AI_SECTION_LABELS[sectionId] || sectionId;
+            const baseLabel = meta.title || AI_SECTION_LABELS[sectionId] || sectionId;
+            // แสดงชื่อตู้กำกับหน้าหัวข้อ เพื่อแยกตู้ที่มีหัวข้อชื่อเดียวกัน (เช่น DBTW2 · Grounding Test)
+            const label = meta.cabinet ? `${meta.cabinet} · ${baseLabel}` : baseLabel;
             const validCount = filenames.filter(fn => aiImportState.photoFiles.has(fn)).length;
             const wrap = document.createElement('div');
             wrap.className = 'border border-slate-200 rounded-xl bg-white overflow-hidden';
@@ -8681,10 +8688,10 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
                 // ตั้งชื่อหัวข้อ + panel + ตาราง (ต่อ instance)
                 aiSetBlockTitle(modId, t.meta.title);
-                // 🌟 ดึง cabinet (ชื่อตู้) ของ task นี้จาก folderInfo ของรูปแรก —
-                //    ทำให้ทุก instance ได้ panel name ของตู้ตัวเอง (ไม่ใช่ global topCab)
-                let taskPanel = panelName;
-                if (aiImportState.folderInfo && t.filenames.length > 0) {
+                // 🌟 ชื่อตู้ของ task นี้ — ใช้ cabinet จาก meta (ต่อ instance) ถ้ามี, ไม่งั้น fallback
+                //    folderInfo ของรูปแรก แล้วค่อย global panelName
+                let taskPanel = t.meta.cabinet || panelName;
+                if (!taskPanel && aiImportState.folderInfo && t.filenames.length > 0) {
                     const fi = aiImportState.folderInfo.get(t.filenames[0]);
                     if (fi && fi.cabinet) taskPanel = fi.cabinet;
                 }
