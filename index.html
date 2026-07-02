@@ -124,6 +124,7 @@
                         <button onclick="window.location.href='pmform.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-purple-300">PM Report</button>
                         <button onclick="window.location.href='minute-of-meeting.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-teal-300">Minute of Meeting</button>
                         <button onclick="window.location.href='thermoscan_report.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-yellow-300">Thermoscan</button>
+                        <button onclick="window.location.href='qr.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-cyan-300">Drive QR</button>
                     </div>
                 </div>
                 <div class="md:hidden flex items-center">
@@ -142,6 +143,7 @@
             <button onclick="window.location.href='pmform.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-purple-300 hover:bg-gray-600">PM Report</button>
             <button onclick="window.location.href='minute-of-meeting.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-teal-300 hover:bg-gray-600">Minute of Meeting</button>
             <button onclick="window.location.href='thermoscan_report.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-yellow-300 hover:bg-gray-600">Thermoscan Report</button>
+            <button onclick="window.location.href='qr.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-cyan-300 hover:bg-gray-600">Drive → QR Code</button>
         </div>
     </nav>
 
@@ -236,6 +238,16 @@
                         </div>
                         <h3 class="text-lg font-bold text-gray-800 mb-1">Thermoscan Report</h3>
                         <p class="text-gray-500 text-sm">รายงานผลการตรวจวัดอุณหภูมิด้วยกล้อง Thermal Scan พร้อมรูปภาพ</p>
+                    </div>
+                </div>
+                <div onclick="window.location.href='qr.html'" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                    <div class="h-2 bg-cyan-500 w-full"></div>
+                    <div class="p-6">
+                        <div class="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mb-4 text-cyan-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">Drive → QR Code</h3>
+                        <p class="text-gray-500 text-sm">แปลงลิงค์หรือโฟลเดอร์ Google Drive เป็น QR Code พร้อมดาวน์โหลดรูป</p>
                     </div>
                 </div>
             </div>
