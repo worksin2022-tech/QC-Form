@@ -87,6 +87,51 @@
         .drag-handle:active { cursor: grabbing; }
 
         /* ========================================================= */
+        /* 🌟 Pixel character อนิเมชั่นระหว่าง AI ทำงาน 🌟           */
+        /*    ตัวละคร pixel นั่งพิมพ์งานที่โต๊ะ + จอกระพริบ + Zzz    */
+        /* ========================================================= */
+        .pixel-scene {
+            position: relative; width: 160px; height: 110px; margin: 0 auto;
+            image-rendering: pixelated; image-rendering: crisp-edges;
+        }
+        .pixel-scene .px { position: absolute; }
+        /* โต๊ะ */
+        .px-desk { left: 20px; top: 88px; width: 120px; height: 10px; background: #8b5e3c; box-shadow: 0 4px 0 #6b4423; }
+        /* เก้าอี้พนักพิง */
+        .px-chair { left: 108px; top: 58px; width: 8px; height: 34px; background: #475569; }
+        /* ตัว (เสื้อ) */
+        .px-body { left: 74px; top: 60px; width: 30px; height: 30px; background: #6366f1; border-radius: 4px 4px 0 0; }
+        /* หัว */
+        .px-head { left: 78px; top: 34px; width: 24px; height: 24px; background: #f6c99f; border-radius: 5px; }
+        /* ผม */
+        .px-hair { left: 76px; top: 30px; width: 28px; height: 12px; background: #2f2f37; border-radius: 6px 6px 0 0; }
+        /* ตา */
+        .px-eye { top: 44px; width: 3px; height: 4px; background: #2f2f37; animation: pxBlink 3.2s infinite steps(1); }
+        .px-eye.l { left: 84px; } .px-eye.r { left: 93px; }
+        /* แขน 2 ข้าง — สลับพิมพ์ */
+        .px-arm { top: 66px; width: 9px; height: 16px; background: #f6c99f; border-radius: 3px; transform-origin: top center; }
+        .px-arm.l { left: 68px; animation: pxTypeL .5s infinite steps(2); }
+        .px-arm.r { left: 96px; animation: pxTypeR .5s infinite steps(2); }
+        /* แล็ปท็อป: ฐาน + จอ */
+        .px-lap-base { left: 52px; top: 82px; width: 40px; height: 8px; background: #cbd5e1; border-radius: 2px; }
+        .px-lap-screen { left: 40px; top: 60px; width: 24px; height: 24px; background: #1e293b; border: 2px solid #94a3b8; border-radius: 3px; transform: skewY(-8deg); }
+        .px-lap-glow { left: 44px; top: 64px; width: 16px; height: 4px; background: #38bdf8; animation: pxScreen .8s infinite steps(1); }
+        /* Zzz / โค้ดลอยขึ้น */
+        .px-spark { top: 30px; font: 700 11px monospace; color: #a78bfa; opacity: 0; }
+        .px-spark.s1 { left: 108px; animation: pxFloat 2.4s infinite ease-out; }
+        .px-spark.s2 { left: 120px; animation: pxFloat 2.4s .8s infinite ease-out; }
+        .px-spark.s3 { left: 114px; animation: pxFloat 2.4s 1.6s infinite ease-out; }
+
+        @keyframes pxTypeL { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+        @keyframes pxTypeR { 0%,100% { transform: translateY(3px); } 50% { transform: translateY(0); } }
+        @keyframes pxScreen { 0% { opacity: 1; width: 16px; } 50% { opacity: .5; width: 10px; } 100% { opacity: 1; width: 14px; } }
+        @keyframes pxBlink { 0%,96%,100% { transform: scaleY(1); } 98% { transform: scaleY(0.1); } }
+        @keyframes pxFloat { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.1); } }
+        /* หัวโยกเบาๆ ทั้งตัวช่วงคิด */
+        .px-figure { animation: pxBob 1.6s infinite ease-in-out; }
+        @keyframes pxBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+
+        /* ========================================================= */
         /* 🌟 1. CSS โหมด PDF ภาพ (HTML2PDF) 🌟 */
         /* ========================================================= */
         body.html2pdf-body-lock, body.html2pdf-body-lock main, body.html2pdf-body-lock #a4ScrollArea {
@@ -6783,6 +6828,7 @@
             aiImportState.folderInfo = new Map();   // key → {category, folderName, cabinet}
             const cabinets = {};
             const folderCount = {};
+            const tree = {};   // cabinet → { folderName → {count, cat} }  (สำหรับสรุปรายละเอียดคอนเฟิร์ม)
             let count = 0, unmatched = 0;
             for (const f of event.target.files) {
                 if (!/\.(jpe?g|png|webp)$/i.test(f.name)) continue;
@@ -6806,6 +6852,11 @@
                 aiImportState.folderInfo.set(key, { category: cat, folderName, cabinet });
                 if (cabinet) cabinets[cabinet] = (cabinets[cabinet] || 0) + 1;
                 folderCount[folderName] = (folderCount[folderName] || 0) + 1;
+                // เก็บ tree: ตู้ → หัวข้อ → จำนวนรูป + หมวดที่ระบบจับได้
+                const cabKey = cabinet || '(ไม่ระบุตู้)';
+                (tree[cabKey] ||= {});
+                (tree[cabKey][folderName] ||= { count: 0, cat });
+                tree[cabKey][folderName].count++;
                 count++;
             }
             if (count === 0) {
@@ -6817,13 +6868,48 @@
             const topCab = Object.entries(cabinets).sort((a, b) => b[1] - a[1])[0];
             if (topCab) document.getElementById('aiPanelName').value = topCab[0];
 
-            const secSummary = Object.entries(folderCount).map(([c, n]) => `${c}:${n}`).join(', ');
             document.getElementById('aiPhotosStatus').innerHTML =
                 `<span class="text-blue-600 font-bold"><i class="fa-solid fa-folder-tree mr-1"></i> ${count} รูป — เตรียมรูปย่อ…</span>`;
             await aiGenerateAllThumbnails();
+
+            // 🌟 สรุปรายละเอียดแบบ tree เพื่อคอนเฟิร์มก่อนยิง AI (กันเสียเงินฟรี)
+            //    ตู้ไหนบ้าง → ในตู้มีหัวข้ออะไร กี่รูป + เตือนโฟลเดอร์ที่ระบบไม่รู้จัก (จะไม่ถูกอ่าน)
+            const cabKeys = Object.keys(tree).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+            const cabCount = cabKeys.length;
+            let treeHtml = '';
+            for (const cab of cabKeys) {
+                const topics = tree[cab];
+                const topicNames = Object.keys(topics).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                const cabPhotos = topicNames.reduce((s, t) => s + topics[t].count, 0);
+                const rows = topicNames.map(t => {
+                    const it = topics[t];
+                    const isOther = it.cat === 'other';
+                    const icon = isOther
+                        ? '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i>'
+                        : '<i class="fa-solid fa-circle-check text-emerald-500"></i>';
+                    const nameCls = isOther ? 'text-amber-600' : 'text-slate-700';
+                    const note = isOther ? ' <span class="text-amber-600 text-[11px]">(ไม่รู้จักหัวข้อ — จะไม่ถูกอ่าน)</span>' : '';
+                    return `<div class="flex items-center gap-2 pl-5 py-0.5 text-[12.5px]">
+                        ${icon}<span class="font-semibold ${nameCls}">${t}</span>
+                        <span class="text-slate-400">— ${it.count} รูป</span>${note}
+                    </div>`;
+                }).join('');
+                treeHtml += `<div class="mb-2">
+                    <div class="flex items-center gap-2 font-bold text-[13px] text-indigo-700">
+                        <i class="fa-solid fa-box-archive text-indigo-500"></i> ${cab}
+                        <span class="text-slate-400 font-normal">(${topicNames.length} หัวข้อ · ${cabPhotos} รูป)</span>
+                    </div>${rows}
+                </div>`;
+            }
+            const otherTotal = unmatched;
             document.getElementById('aiPhotosStatus').innerHTML =
-                `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> ${count} รูป จัดตามโฟลเดอร์: ${secSummary}` +
-                (unmatched ? ` <span class="text-amber-600">(${unmatched} รูปหาหมวดไม่ได้ → other)</span>` : '') + `</span>`;
+                `<div class="border border-slate-200 rounded-xl bg-slate-50 p-3 text-left max-h-64 overflow-y-auto custom-scrollbar">
+                    <div class="flex items-center gap-2 font-bold text-emerald-700 mb-2 pb-2 border-b border-slate-200">
+                        <i class="fa-solid fa-circle-check"></i> พบ ${cabCount} ตู้ · ${count} รูป — ตรวจสอบก่อนกด "วิเคราะห์ด้วย AI"
+                    </div>
+                    ${treeHtml}
+                    ${otherTotal ? `<div class="mt-2 pt-2 border-t border-slate-200 text-amber-600 text-[12px] font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${otherTotal} รูปอยู่ในโฟลเดอร์ที่ระบบไม่รู้จักหัวข้อ — จะไม่ถูกนำไปอ่าน</div>` : ''}
+                </div>`;
             document.getElementById('aiAnalyzeBtn').disabled = false;
         }
 
@@ -7025,11 +7111,31 @@
         function aiAnalyzeStatus(msg, pct, logLine) {
             document.getElementById('aiAnalyzeText').textContent = msg;
             if (pct != null) document.getElementById('aiAnalyzeBar').style.width = `${pct}%`;
+            // 🌟 อัปเดต full-screen overlay ด้วย
+            const oMsg = document.getElementById('aiOverlayMsg'); if (oMsg) oMsg.textContent = msg;
+            if (pct != null) {
+                const oPct = document.getElementById('aiOverlayPct'); if (oPct) oPct.textContent = `${Math.round(pct)}%`;
+                const oBar = document.getElementById('aiOverlayBar'); if (oBar) oBar.style.width = `${pct}%`;
+            }
             if (logLine) {
                 const el = document.getElementById('aiAnalyzeLog');
                 el.innerHTML += logLine + '<br>';
                 el.scrollTop = el.scrollHeight;
+                const oLog = document.getElementById('aiOverlayLog'); if (oLog) oLog.textContent = logLine.replace(/<[^>]+>/g, '');
             }
+        }
+
+        function showAiWorkingOverlay() {
+            const m = document.getElementById('aiWorkingOverlay');
+            if (!m) return;
+            const p = document.getElementById('aiOverlayPct'); if (p) p.textContent = '0%';
+            const b = document.getElementById('aiOverlayBar'); if (b) b.style.width = '0%';
+            const l = document.getElementById('aiOverlayLog'); if (l) l.textContent = '';
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+        function hideAiWorkingOverlay() {
+            const m = document.getElementById('aiWorkingOverlay');
+            if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
         }
 
         // ════════════════════════════════════════════════════════════════════
@@ -7366,6 +7472,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             document.getElementById('aiAnalyzeBtn').disabled = true;
             document.getElementById('aiAnalyzeProgress').classList.remove('hidden');
             document.getElementById('aiAnalyzeLog').innerHTML = '';
+            showAiWorkingOverlay();   // 🌟 เด้ง overlay เต็มจอ + pixel character
             const onProg = (msg, frac) => aiAnalyzeStatus(msg, frac != null ? Math.round(frac * 60) : null, msg);
 
             try {
@@ -7379,8 +7486,32 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                     photos = [];
                     const instInfo = {};   // inst → {cat, folderName, cabinet}
                     let skippedOther = 0;
-                    for (const [key, info] of aiImportState.folderInfo.entries()) {
-                        if (info.category === 'other') { skippedOther++; continue; }  // ไม่อยู่ในโฟลเดอร์หัวข้อ → ไม่เลือก
+
+                    // 🌟 บังคับ sort เอง — ไม่พึ่งลำดับที่ OS ส่ง File[] มา (บางเครื่องส่งกลับด้าน
+                    //    ทำให้ block เรียงล่างขึ้นบน) เรียงให้อ่านจากบนลงล่างเสมอ:
+                    //    (1) ตู้ (cabinet) แบบ natural (DBTW2 < DBTW3 < DBTW10)
+                    //    (2) ลำดับหัวข้อตาม report (before→…→insulation→grounding→…)
+                    //    (3) Before ก่อน After  (4) เลขไฟล์
+                    const CAT_ORDER = ['before','cleaning','after','retorque','nameplate',
+                        'general_check','acb_general_check','metering_check',
+                        'insulation_test','dielectric_test','grounding_test','contact_test',
+                        'trip_unit_test','capacitor_check','fuse','rackin_rackout','other'];
+                    const catRank = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? 999 : i; };
+                    const periodRank = name => /before|ก่อน/i.test(name) ? 0 : (/after|หลัง/i.test(name) ? 1 : 0);
+                    const sortedEntries = Array.from(aiImportState.folderInfo.entries())
+                        .filter(([, info]) => info.category !== 'other')
+                        .sort(([ka, a], [kb, b]) => {
+                            const cab = (a.cabinet || '').localeCompare(b.cabinet || '', undefined, { numeric: true, sensitivity: 'base' });
+                            if (cab !== 0) return cab;
+                            const cr = catRank(a.category) - catRank(b.category);
+                            if (cr !== 0) return cr;
+                            const pr = periodRank(a.folderName) - periodRank(b.folderName);
+                            if (pr !== 0) return pr;
+                            return aiNumKey(ka) - aiNumKey(kb);
+                        });
+                    skippedOther = aiImportState.folderInfo.size - sortedEntries.length;
+
+                    for (const [key, info] of sortedEntries) {
                         // 🌟 inst ต้อง unique ต่อ "ตู้ + หัวข้อ" — ไม่งั้น DBTW2/Grounding Test กับ
                         //    DBTW3/Grounding Test จะรวมเป็น block เดียว (bug: แยกตู้ไม่ได้)
                         const inst = info.cabinet ? `${info.cabinet}/${info.folderName}` : info.folderName;
@@ -7501,12 +7632,24 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 };
 
                 aiAnalyzeStatus('✅ วิเคราะห์เสร็จ', 100, '✅ เสร็จ — แสดง preview');
+                await new Promise(r => setTimeout(r, 500));   // โชว์ 100% แป๊บนึงก่อนปิด
+                hideAiWorkingOverlay();
                 document.getElementById('aiInputArea').classList.add('hidden');
                 renderAiPreview();
             } catch (e) {
+                hideAiWorkingOverlay();
                 aiAnalyzeStatus('❌ ' + e.message, null, '❌ ' + e.message);
                 document.getElementById('aiAnalyzeBtn').disabled = false;
             }
+        }
+
+        function openAiHelp() {
+            const m = document.getElementById('aiHelpModal');
+            if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+        }
+        function closeAiHelp() {
+            const m = document.getElementById('aiHelpModal');
+            if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
         }
 
         function openAiImportModal() {
@@ -8615,6 +8758,74 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             else if (modId === 'mod_cap' && entry.steps) aiFillCapTable(entry);
         }
 
+        // 🌟 จัดเรียง block ใหม่แบบ cabinet-major — "รวมเป็นตู้ ๆ ไป"
+        //    เดิม: block รวมตามหัวข้อ (Insulation ของทุกตู้ติดกัน → Grounding ของทุกตู้)
+        //    ใหม่: ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน (DBTW2: Ins Before, Ins After, Grounding →
+        //          จบแล้วขึ้น DBTW3 …) โดยลำดับหัวข้อในตู้ยังตาม report order (before→…→grounding)
+        //    ใช้กลไก DOM แบบเดียวกับ applyReorder: ย้าย sub-block มาเป็น direct child ของ
+        //    moduleContainer + ซ่อน mod_xxx shell (reorder-hidden)
+        function aiApplyCabinetMajorOrder() {
+            const container = document.getElementById('moduleContainer');
+            if (!container) return;
+
+            const MODULE_ORDER = ['mod_before','mod_cleaning','mod_after','mod_general',
+                'mod_insulation','mod_dielectric','mod_grounding','mod_gc','mod_contact',
+                'mod_trip','mod_relay','mod_cap','mod_blank'];
+            const modRank = id => { const i = MODULE_ORDER.indexOf(id); return i < 0 ? 999 : i; };
+
+            // sub-block ที่แสดงอยู่จริง (ข้าม hidden / reorder-hidden)
+            //   ⚠️ ต้องเช็ค "บรรพบุรุษ" ด้วย — block เปล่าที่ค้างใน module ที่ไม่ได้ติ๊ก (mod_xxx.hidden)
+            //   ตัว block เองไม่มี .hidden → ถ้าเช็คแค่ตัวเองจะหลุดออกมาโผล่ใน report (bug: หัวข้อเปล่า 02-09)
+            const blocks = Array.from(container.querySelectorAll(SUB_BLOCK_SELECTOR))
+                .filter(b => !b.classList.contains('reorder-hidden')
+                          && !b.classList.contains('hidden')
+                          && !b.closest('.hidden')
+                          && !b.closest('.reorder-hidden'));
+            if (blocks.length < 2) return;
+
+            const info = blocks.map((b, idx) => {
+                const cabinet = (b.querySelector('.eq-panel-input')?.value || '').trim();
+                const modId = getModIdFromSubBlock(b) || '';
+                const periodEl = b.querySelector('input[placeholder*="ระบุช่วง"]');
+                const period = periodEl && /after|หลัง/i.test(periodEl.value) ? 1 : 0;
+                return { b, cabinet, modId, period, idx };
+            });
+
+            // ต้องมี ≥2 ตู้ถึงจัด cabinet-major (ตู้เดียว = เหมือนเดิม ไม่ต้องยุ่ง)
+            const distinctCabs = new Set(info.map(i => i.cabinet).filter(Boolean));
+            if (distinctCabs.size < 2) return;
+
+            info.sort((a, b) => {
+                const cab = a.cabinet.localeCompare(b.cabinet, undefined, { numeric: true, sensitivity: 'base' });
+                if (cab !== 0) return cab;
+                const mr = modRank(a.modId) - modRank(b.modId);
+                if (mr !== 0) return mr;
+                if (a.period !== b.period) return a.period - b.period;
+                return a.idx - b.idx;   // stable
+            });
+
+            // ── ย้าย DOM (เลียนแบบ applyReorder ขั้น 3–7) ──
+            // detach sub-blocks
+            info.forEach(i => { if (i.b.parentNode) i.b.parentNode.removeChild(i.b); });
+            // ซ่อน mod_xxx shell (เก็บไว้ให้ toggle/adder ใช้) + ย้ายไปท้าย container
+            MODULE_ORDER.forEach(modId => {
+                const el = document.getElementById(modId);
+                if (el) { el.classList.add('reorder-hidden'); container.appendChild(el); }
+            });
+            // append sub-block ตามลำดับ cabinet-major
+            info.forEach(i => container.appendChild(i.b));
+            // certificate (calibration) ไปท้ายสุดถ้าเปิดอยู่
+            const calib = document.getElementById('mod_calibration');
+            if (calib && !calib.classList.contains('hidden')) container.appendChild(calib);
+
+            // page-break: ทุก block ขึ้นหน้าใหม่ ยกเว้นตัวแรกของเอกสาร
+            info.forEach(i => i.b.classList.add('pdf-page-break', 'pt-3'));
+            info[0].b.classList.remove('pdf-page-break', 'pt-3');
+
+            if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
+            if (typeof updateTOC === 'function') updateTOC();
+        }
+
         async function commitAiImport() {
             const files = aiImportState.photoFiles;
             const sections = aiImportState.sections;
@@ -8712,6 +8923,10 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 }
             }
 
+            // 🌟 จัดเรียงใหม่แบบ "รวมเป็นตู้ ๆ" (cabinet-major) — ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน
+            //    ก่อนขึ้นตู้ถัดไป (แทนที่จะรวมตามหัวข้อ) — ทำเฉพาะเมื่อมี ≥2 ตู้
+            try { aiApplyCabinetMajorOrder(); } catch (e) { console.error('cabinet-major order', e); }
+
             updateProgress(`✅ Import เสร็จ ${done}/${totalPhotos} รูป`);
             document.getElementById('aiProgressBar').style.width = '100%';
             showSaveStatus('<i class="fa-solid fa-wand-magic-sparkles"></i> AI Import สำเร็จ');
@@ -8795,6 +9010,9 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i>
                     AI ช่วยทำรายงาน — อัปโหลดรูป แล้วให้ AI กรอกให้
+                    <button onclick="openAiHelp()" title="วิธีใช้งาน" class="ml-1 w-6 h-6 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 flex items-center justify-center text-sm font-bold transition-colors shrink-0">
+                        <i class="fa-solid fa-question"></i>
+                    </button>
                 </h3>
                 <button onclick="closeAiImportModal()" class="text-slate-400 hover:text-red-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -8865,7 +9083,27 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
                     <!-- progress ระหว่างวิเคราะห์ -->
                     <div id="aiAnalyzeProgress" class="hidden mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
-                        <div class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
+                        <!-- 🌟 Pixel character นั่งพิมพ์งานระหว่างรอ -->
+                        <div class="pixel-scene mb-3">
+                            <div class="px px-spark s1">&lt;/&gt;</div>
+                            <div class="px px-spark s2">01</div>
+                            <div class="px px-spark s3">✦</div>
+                            <div class="px px-chair"></div>
+                            <div class="px-figure">
+                                <div class="px px-hair"></div>
+                                <div class="px px-head"></div>
+                                <div class="px px-eye l"></div>
+                                <div class="px px-eye r"></div>
+                                <div class="px px-body"></div>
+                                <div class="px px-arm l"></div>
+                                <div class="px px-arm r"></div>
+                            </div>
+                            <div class="px px-lap-screen"></div>
+                            <div class="px px-lap-glow"></div>
+                            <div class="px px-desk"></div>
+                            <div class="px px-lap-base"></div>
+                        </div>
+                        <div class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2 justify-center">
                             <i class="fa-solid fa-spinner fa-spin"></i>
                             <span id="aiAnalyzeText">กำลังวิเคราะห์…</span>
                         </div>
@@ -8963,6 +9201,151 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
         <!-- Move-photo popover (lightweight) -->
         <div id="aiMovePopover" class="hidden absolute z-[100000] bg-white border border-slate-300 rounded-xl shadow-2xl p-2 min-w-[180px]"></div>
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- 🌟 MODAL: วิธีใช้งาน AI ช่วยทำรายงาน                     -->
+    <!-- ====================================================== -->
+    <div id="aiHelpModal" class="fixed inset-0 z-[100001] bg-slate-900/70 backdrop-blur-sm hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200" style="max-height: 90vh;">
+            <div class="flex justify-between items-center p-5 border-b bg-gradient-to-r from-purple-50 to-indigo-50 shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-purple-500"></i> วิธีใช้ AI ช่วยทำรายงาน
+                </h3>
+                <button onclick="closeAiHelp()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-6 text-slate-700 text-[14px] leading-relaxed space-y-5">
+
+                <!-- ขั้น 1: จัดโฟลเดอร์ -->
+                <div>
+                    <div class="font-bold text-slate-800 text-[15px] mb-2 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center shrink-0">1</span>
+                        จัดโฟลเดอร์รูปให้ถูกโครงสร้าง (สำคัญที่สุด)
+                    </div>
+                    <p class="mb-2 text-slate-600">วางรูปเป็น <b>3 ชั้น</b>: โฟลเดอร์งาน → ชื่อตู้ → หัวข้อเทส แล้วค่อยวางรูปในหัวข้อ</p>
+                    <pre class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12.5px] font-mono text-slate-700 overflow-x-auto">📁 ตู้ร้านค้า            ← โฟลเดอร์งาน (เลือกอันนี้ตอนอัปโหลด)
+   📁 DBTW2             ← ชื่อตู้ (ไปลงช่อง Equipment/Panel)
+      📁 Insulation Before   ← หัวข้อเทส
+         🖼 รูป 1..3
+      📁 Insulation After
+      📁 Grounding Test
+   📁 DBTW3
+      📁 ...</pre>
+                    <div class="mt-2 text-[12.5px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+                        <i class="fa-solid fa-lightbulb mr-1"></i> ชื่อหัวข้อใช้คำที่ระบบรู้จักได้เลย เช่น <b>Insulation / Contact / Grounding / Trip / Capacitor / Before / After / Cleaning / General</b> — ระบบจับหมวดจากชื่อโฟลเดอร์อัตโนมัติ
+                    </div>
+                </div>
+
+                <!-- ขั้น 2: กรอก provider + key -->
+                <div>
+                    <div class="font-bold text-slate-800 text-[15px] mb-2 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center shrink-0">2</span>
+                        เลือก AI + วาง API Key
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                        <li><b>Claude (Anthropic)</b> — แม่นสุด แนะนำสำหรับอ่านค่ามิเตอร์</li>
+                        <li><b>Gemini Flash</b> — มี free tier ประหยัด เหมาะทดลอง</li>
+                        <li>🔒 Key ไม่ถูกบันทึก ต้องวางใหม่ทุกครั้งที่เปิด</li>
+                    </ul>
+                </div>
+
+                <!-- ขั้น 3: อัปโหลด + คอนเฟิร์ม -->
+                <div>
+                    <div class="font-bold text-slate-800 text-[15px] mb-2 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center shrink-0">3</span>
+                        อัปโหลดโฟลเดอร์ แล้ว<u>ตรวจสรุปก่อนยิง AI</u>
+                    </div>
+                    <p class="text-slate-600">กดช่อง "อัปโหลดรูป" แล้วเลือก<b>โฟลเดอร์งาน</b> (เช่น ตู้ร้านค้า) ระบบจะแสดงสรุปแบบ tree ว่าเจอกี่ตู้ แต่ละตู้มีหัวข้ออะไร กี่รูป</p>
+                    <div class="mt-2 text-[12.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> ถ้ามีหัวข้อขึ้น<b>สีเหลือง "(ไม่รู้จักหัวข้อ)"</b> = ระบบไม่เข้าใจชื่อโฟลเดอร์ รูปนั้นจะไม่ถูกอ่าน → แก้ชื่อโฟลเดอร์ก่อน จะได้ไม่เสียเงิน AI ฟรี
+                    </div>
+                </div>
+
+                <!-- ขั้น 4: วิเคราะห์ + ตรวจ -->
+                <div>
+                    <div class="font-bold text-slate-800 text-[15px] mb-2 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center shrink-0">4</span>
+                        กด "วิเคราะห์ด้วย AI" → ตรวจ preview → "เริ่ม Import"
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                        <li>AI จะเลือกรูปที่ดีที่สุดให้พอดีจำนวนช่อง + อ่านค่าจากมิเตอร์ (Insulation MΩ/GΩ, Grounding Ω, Contact µΩ, Trip, Capacitor)</li>
+                        <li>หน้า preview ตรวจค่าที่อ่านได้ + สลับ/เพิ่ม/ลบรูปได้ก่อน import</li>
+                        <li>กด <b>เริ่ม Import</b> → บล็อกจะถูกสร้าง <b>จัดกลุ่มเป็นตู้ ๆ</b> (ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน)</li>
+                    </ul>
+                </div>
+
+                <!-- ขั้น 5: แก้ไขหลัง import -->
+                <div>
+                    <div class="font-bold text-slate-800 text-[15px] mb-2 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center shrink-0">5</span>
+                        แก้ไขหลัง Import
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                        <li><b>ลากสลับรูป</b>ในบล็อกได้ ถ้า AI เรียงเฟสผิด</li>
+                        <li>แก้ค่าที่อ่านผิดในตารางได้โดยตรง</li>
+                        <li>ปุ่ม <b>จัดเรียง</b> — ย้ายลำดับหัวข้อ/ตู้ข้ามกลุ่มได้</li>
+                        <li>อย่าลืมกด <b>บันทึก</b> เก็บเข้าประวัติก่อนปิด</li>
+                    </ul>
+                </div>
+
+                <div class="text-[12.5px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>
+                    <b>เคล็ดลับประหยัด:</b> จัดโฟลเดอร์ให้ดี + ตรวจสรุป tree ทุกครั้งก่อนยิง AI — ลดการอ่านรูปที่ไม่จำเป็น = ประหยัดค่า API
+                </div>
+            </div>
+            <div class="p-4 border-t bg-slate-50 shrink-0 flex justify-end">
+                <button onclick="closeAiHelp()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-purple-600 text-white shadow-md hover:bg-purple-700 transition-colors">
+                    เข้าใจแล้ว
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- 🌟 OVERLAY เต็มจอ: AI กำลังทำงาน (pixel character + %)   -->
+    <!-- ====================================================== -->
+    <div id="aiWorkingOverlay" class="fixed inset-0 z-[100002] hidden flex-col items-center justify-center bg-slate-900/20 backdrop-blur-sm">
+        <div class="flex flex-col items-center gap-6 px-8 py-8 text-center rounded-3xl bg-slate-900/80 border border-white/15 shadow-2xl">
+            <!-- pixel scene ขยายใหญ่ -->
+            <div style="transform: scale(2); margin: 34px 0 24px;">
+                <div class="pixel-scene">
+                    <div class="px px-spark s1">&lt;/&gt;</div>
+                    <div class="px px-spark s2">01</div>
+                    <div class="px px-spark s3">✦</div>
+                    <div class="px px-chair"></div>
+                    <div class="px-figure">
+                        <div class="px px-hair"></div>
+                        <div class="px px-head"></div>
+                        <div class="px px-eye l"></div>
+                        <div class="px px-eye r"></div>
+                        <div class="px px-body"></div>
+                        <div class="px px-arm l"></div>
+                        <div class="px px-arm r"></div>
+                    </div>
+                    <div class="px px-lap-screen"></div>
+                    <div class="px px-lap-glow"></div>
+                    <div class="px px-desk"></div>
+                    <div class="px px-lap-base"></div>
+                </div>
+            </div>
+            <!-- % ใหญ่ + สถานะ -->
+            <div class="text-white">
+                <div class="text-6xl font-black tabular-nums tracking-tight" id="aiOverlayPct">0%</div>
+                <div class="mt-3 text-base font-bold text-indigo-100 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-300"></i>
+                    <span>AI กำลังทำรายงานให้…</span>
+                </div>
+                <div class="mt-1 text-sm text-indigo-300" id="aiOverlayMsg">กำลังเริ่ม…</div>
+            </div>
+            <!-- progress bar -->
+            <div class="w-80 max-w-[80vw] bg-white/15 rounded-full h-3 overflow-hidden shadow-inner">
+                <div id="aiOverlayBar" class="h-full bg-gradient-to-r from-purple-400 via-fuchsia-400 to-indigo-400 transition-all duration-300" style="width:0%"></div>
+            </div>
+            <div class="text-[11px] text-indigo-300/60 font-mono max-w-[80vw] truncate" id="aiOverlayLog"></div>
+            <div class="text-[11px] text-indigo-300/40">อย่าปิดหน้าต่างระหว่าง AI ทำงาน</div>
+        </div>
     </div>
 
 </body>
