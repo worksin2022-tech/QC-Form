@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Photograph Inspection</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { font-family:'Sarabun',sans-serif; background:#e2e8f0; margin:0; padding:0; }
+  .custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb { background:#94a3b8; }
+
+  /* ---------- A4 document page (เทมเพลตตรงตามต้นฉบับ SMDB) ---------- */
+  .doc-page{
+    width:794px; min-width:794px; height:1123px; flex-shrink:0;  /* กันโดน flex บีบใน editor */
+    background:#dadada;                 /* กรอบเทารอบหน้า */
+    box-sizing:border-box; padding:7px;
+    display:flex; flex-direction:column; position:relative;
+    color:#1f2937;
+  }
+  .doc-page.screen{
+    box-shadow:0 18px 40px -12px rgba(0,0,0,.30);
+    margin:0 auto 26px auto;
+  }
+  .doc-header{
+    height:30px; flex:0 0 30px;
+    background:linear-gradient(180deg,#d6d6d6 0%,#c8c8c8 100%);
+    border-bottom:1px solid #b9b9b9;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .doc-body{ flex:1 1 auto; padding:16px 22px; overflow:hidden;
+             background:#ededed;
+             display:flex; flex-direction:column; gap:14px; }
+  .doc-footer{
+    flex:0 0 122px; height:122px; padding:8px 10px 10px 10px;
+    background:#ededed;
+    display:flex; gap:10px; align-items:stretch;
+  }
+  .sig-box{ flex:1; background:#f5f5f5; border:1px solid #cdcdcd;
+            padding:7px 14px 9px 14px; display:flex; flex-direction:column; }
+  .sig-signspace{ flex:1.5 1 0; min-height:24px; }  /* พื้นที่ว่างไว้เซ็นเหนือเส้น */
+  .sig-gap{ flex:1 1 0; }
+  .sig-date{ display:flex; align-items:flex-end; gap:5px; }
+
+  .sec-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .sec-title{ font-size:13px; color:#111827; font-weight:600; line-height:1.25; }
+  .sec-title-input{ font-size:13px; color:#111827; font-weight:600; border:none; outline:none;
+                    background:transparent; width:100%; padding:1px 2px; border-radius:4px; }
+  .sec-title-input:focus{ background:#fef3c7; }
+  .sub-label{ font-size:11.5px; color:#1f2937; line-height:1.2; }
+  .sub-label-input{ font-size:11.5px; color:#1f2937; border:none; outline:none;
+                    background:transparent; width:100%; padding:1px 2px; border-radius:4px; }
+  .sub-label-input:focus{ background:#fef3c7; }
+
+  .pgrid{ display:grid; }
+  .pcell{ position:relative; border:1px solid #e2e8f0; background:#fafafa; border-radius:4px;
+          overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .pcell img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pcell.empty{ cursor:pointer; border:1.5px dashed #cbd5e1; background:#f8fafc; color:#94a3b8; }
+  .pcell.empty:hover{ border-color:#f97316; color:#f97316; background:#fff7ed; }
+  .pcell .rm{ position:absolute; top:3px; right:3px; width:20px; height:20px; border:none;
+              border-radius:50%; background:rgba(15,23,42,.72); color:#fff; font-size:11px;
+              cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .pcell .rm:hover{ background:#dc2626; }
+  .pcell .repl{ position:absolute; bottom:3px; right:3px; width:20px; height:20px; border:none;
+              border-radius:50%; background:rgba(15,23,42,.55); color:#fff; font-size:10px;
+              cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .pcell .repl:hover{ background:#2563eb; }
+
+  .mini-btn{ font-size:10.5px; font-weight:600; color:#f97316; background:#fff7ed;
+             border:1px solid #fed7aa; border-radius:6px; padding:2px 8px; cursor:pointer;
+             white-space:nowrap; }
+  .mini-btn:hover{ background:#ffedd5; }
+  .mini-btn.gray{ color:#64748b; background:#f1f5f9; border-color:#e2e8f0; }
+  .mini-btn.gray:hover{ background:#e2e8f0; }
+
+  .custom-checkbox{ width:1.2rem; height:1.2rem; cursor:pointer; accent-color:#f97316; }
+
+  #pdfProgress{ position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:100;
+                display:none; align-items:center; justify-content:center; }
+  @media print{ .no-print{ display:none !important; } }
+
+  /* ---------- modal / dialog / history / toast ---------- */
+  .modal-bg{ position:fixed; inset:0; background:rgba(15,23,42,.5); display:flex; align-items:center;
+             justify-content:center; padding:16px; opacity:0; pointer-events:none; transition:opacity .15s; }
+  .modal-bg.open{ opacity:1; pointer-events:auto; }
+  .modal-box{ background:#fff; border-radius:16px; box-shadow:0 24px 60px -12px rgba(0,0,0,.4);
+              width:min(94vw,460px); max-height:90vh; overflow:hidden; display:flex; flex-direction:column; }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:15px 20px;
+               border-bottom:1px solid #eef2f7; font-weight:800; font-size:16px; color:#0b1220; }
+  .modal-body{ padding:18px 20px; overflow-y:auto; }
+  .modal-foot{ display:flex; gap:10px; padding:14px 20px; border-top:1px solid #eef2f7; justify-content:flex-end; }
+  .close-btn{ cursor:pointer; color:#94a3b8; font-size:18px; width:28px; height:28px; display:flex;
+              align-items:center; justify-content:center; border-radius:8px; }
+  .close-btn:hover{ background:#f1f5f9; }
+  .top-btn{ border:1px solid #e2e8f0; background:#fff; color:#334155; font-weight:700; font-size:13px;
+            padding:9px 14px; border-radius:10px; cursor:pointer; display:flex; align-items:center;
+            gap:6px; white-space:nowrap; }
+  .top-btn:hover{ background:#f8fafc; }
+  .top-btn.primary{ background:linear-gradient(135deg,#f97316,#ea580c); color:#fff; border-color:transparent; }
+  .top-btn.primary:hover{ filter:brightness(1.05); }
+
+  .hist-list{ display:flex; flex-direction:column; gap:8px; max-height:48vh; overflow-y:auto; }
+  .hist-item{ display:flex; align-items:center; gap:10px; border:1px solid #e2e8f0; border-radius:10px;
+              padding:11px 12px; background:#fff; transition:box-shadow .15s; }
+  .hist-item:hover{ box-shadow:0 2px 8px -2px rgba(0,0,0,.08); }
+  .hist-info{ flex:1; cursor:pointer; min-width:0; }
+  .hist-name{ font-weight:700; font-size:14px; color:#0b1220; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hist-date{ font-size:11.5px; color:#64748b; margin-top:2px; }
+  .hist-tag{ font-size:9px; font-weight:800; color:#92400e; background:linear-gradient(135deg,#fef3c7,#fde68a);
+             padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .hist-del{ border:none; background:#fef2f2; color:#ef4444; width:36px; height:36px; border-radius:8px;
+             cursor:pointer; font-size:15px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .hist-del:hover{ background:#fee2e2; }
+  .hist-continue{ width:100%; text-align:left; border:none; border-radius:11px; padding:13px 16px; cursor:pointer;
+                  color:#fff; background:linear-gradient(135deg,#f5a623,#ff8a00); box-shadow:0 4px 12px -2px rgba(245,166,35,.4); }
+
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#0f172a;
+          color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:600; z-index:600;
+          opacity:0; transition:.25s; pointer-events:none; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body class="overflow-hidden">
+
+<div class="flex h-screen w-screen overflow-hidden">
+
+  <!-- ============== SIDEBAR ============== -->
+  <aside id="sidebar" class="w-[290px] bg-white border-r border-slate-200 flex flex-col shadow-xl z-50 shrink-0 no-print absolute lg:relative h-full -translate-x-full lg:translate-x-0 transition-transform duration-300">
+    <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+          <i class="fa-solid fa-images text-lg"></i>
+        </div>
+        <div>
+          <h2 class="text-[16px] font-extrabold text-slate-800 leading-tight">Photograph</h2>
+          <p class="text-[11px] text-slate-400 font-bold -mt-0.5">Inspection</p>
+        </div>
+      </div>
+      <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+      <span class="text-[11.5px] font-extrabold text-slate-400 uppercase tracking-wider"><i class="fa-solid fa-layer-group mr-1"></i> เลือกหัวข้อ</span>
+      <div class="flex gap-1.5">
+        <button onclick="setAll(true)" class="mini-btn">ทั้งหมด</button>
+        <button onclick="setAll(false)" class="mini-btn gray">ล้าง</button>
+      </div>
+    </div>
+
+    <div id="topicList" class="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar flex flex-col gap-2"></div>
+
+    <div class="p-3 border-t border-slate-200 bg-white text-center">
+      <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ยึดเทมเพลตจากตัวอย่าง SMDB</p>
+    </div>
+  </aside>
+
+  <!-- ============== MAIN ============== -->
+  <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 px-4 py-2.5 flex justify-between items-center z-40 no-print shadow-sm shrink-0">
+      <div class="flex items-center gap-2">
+        <button onclick="toggleSidebar()" class="lg:hidden text-slate-500 bg-white border border-slate-200 w-9 h-9 rounded-lg flex items-center justify-center"><i class="fa-solid fa-bars"></i></button>
+        <a href="index.html" title="กลับหน้าแรก" class="text-slate-500 bg-white border border-slate-200 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-house"></i></a>
+        <div>
+          <h1 class="text-[15px] font-extrabold text-slate-800 leading-tight">เอกสารรูปถ่าย — Inspection</h1>
+          <p class="text-[11px] text-slate-400 -mt-0.5"><span id="pageCount">0</span> หน้า · <span id="photoCount">0</span> รูป · <span id="saveStatus" class="text-emerald-600 font-semibold">บันทึกแล้ว</span></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <input id="projName" placeholder="ชื่องาน..." oninput="onProjName(this.value)"
+               class="text-[12.5px] border border-slate-200 rounded-lg px-2.5 py-2 w-32 md:w-44 focus:outline-none focus:border-orange-400">
+        <button onclick="openHistory()" title="งานที่บันทึกไว้" class="text-[12.5px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-folder-open mr-1"></i><span class="hidden lg:inline">งาน</span></button>
+        <button onclick="doSave()" class="text-[12.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-floppy-disk mr-1"></i><span class="hidden sm:inline">บันทึก</span></button>
+        <button onclick="clearAllPhotos()" class="text-[12.5px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-trash-can mr-1"></i><span class="hidden sm:inline">ล้างรูป</span></button>
+        <button onclick="exportPDF()" class="text-[12.5px] font-bold text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg shadow-md"><i class="fa-solid fa-file-pdf mr-1"></i> Export PDF</button>
+      </div>
+    </header>
+
+    <div id="docArea" class="flex-1 overflow-auto custom-scrollbar p-6 flex flex-col items-center"></div>
+  </main>
+</div>
+
+<!-- PDF progress overlay -->
+<div id="pdfProgress" class="no-print">
+  <div class="bg-white rounded-2xl px-8 py-6 shadow-2xl text-center">
+    <i class="fa-solid fa-spinner fa-spin text-3xl text-orange-500"></i>
+    <p id="pdfProgressText" class="mt-3 text-slate-700 font-bold text-sm">กำลังเตรียม...</p>
+    <div id="pdfSaveBtnWrap" class="mt-4 hidden"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   Section template — ยึดการจัดเรียงหน้าจากตัวอย่าง SMDB (10 หน้า)
+   group = หมายเลขหน้าในตัวอย่าง (หัวข้อ group เดียวกัน = อยู่หน้าเดียวกัน)
+   ========================================================================= */
+// ความกว้างกล่องรูป (คอลัมน์) ; ความสูงยืดเต็มหน้าด้วย flex แล้ว cap ไม่ให้สูงเกิน
+const STD_W=300, STD_H=177;   // ความกว้างมาตรฐาน (landscape ~3:2 เหมือนต้นฉบับ) ; STD_H ใช้คำนวณแบ่งหน้า
+const BIG_W=348, BIG_H=261;   // รูปใหญ่ 2 ช่อง (Ground Continuity / Adjusted AT)
+const STD_CAP=212, BIG_CAP=300;  // ความสูงรูปสูงสุดต่อแถว (กันหน้าที่มีรูปน้อยรูปสูงเวอร์)
+const SECTION_DEFS = [
+  { key:'color',        group:1, icon:'fa-palette',          title:'Color thickness',                              type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+  { key:'frame',        group:1, icon:'fa-ruler-combined',   title:'Frame size',                                   type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:6 },
+  { key:'busbar',       group:2, icon:'fa-grip-lines',       title:'Busbar Cross-section',                         type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:4 },
+  { key:'nut',          group:2, icon:'fa-screwdriver-wrench',title:'Nut and bolt tightening torque',              type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:4 },
+  { key:'ins_before',   group:3, icon:'fa-omega',            title:'Insulation Resistance Test before Dielectric', type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+        subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
+  { key:'dielectric',   group:4, icon:'fa-bolt',             title:'Dielectric Strength',                          type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+        subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
+  { key:'ins_after',    group:5, icon:'fa-omega',            title:'Insulation Resistance Test after Dielectric',  type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+        subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
+  { key:'ground_cont',  group:6, icon:'fa-wave-square',      title:'Ground Continuity',                            type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+  { key:'metering',     group:7, icon:'fa-gauge-high',       title:'Measurement of Metering',                      type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+        subs:['CT Ratio Setting','Voltage Measurement','Current Measurement','Rated CT'] },
+  { key:'phase_prot',   group:8, icon:'fa-diagram-project',  title:'Phase Protection Test',                        type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+        subs:['Over Voltage: 450 Vac','Under Voltage: 350 Vac','Phase Unbalance and Phase Fail','Phase Sequence'] },
+  { key:'indicator',    group:9, icon:'fa-lightbulb',        title:'Indicator Lamp',                               type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+  { key:'ground_fault', group:9, icon:'fa-plug-circle-bolt', title:'Ground Fault test for Main Breaker',           type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+  { key:'external_trip',group:9, icon:'fa-toggle-off',       title:'External Trip',                                type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+  { key:'adjusted_at',  group:10,icon:'fa-sliders',          title:'Adjusted AT for Main Breaker',                 type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
+];
+
+/* ---------- layout / pagination constants ---------- */
+const PAGE_W=794, PAGE_H=1123, SCALE=3;
+const HEADING_H=26, SUBLABEL_H=20, ROW_GAP=8, SUB_GAP=12, BLOCK_GAP=14;
+const BODY_BUDGET = PAGE_H - 14 /*page pad*/ - 30 /*header*/ - 122 /*footer*/ - 32 /*body pad*/; // = 925
+const SAFE_BUDGET = BODY_BUDGET - 6; // 919
+
+/* ---------- state ---------- */
+let state = { projectName:'', data:{}, _histId:null };
+let isDirty = false;
+function markDirty(){ isDirty = true; }
+function freshData(){
+  const d = {};
+  SECTION_DEFS.forEach(def=>{
+    if(def.type==='grid'){
+      d[def.key] = { enabled:true, title:def.title, photos:new Array(def.slots).fill(null) };
+    } else {
+      d[def.key] = { enabled:true, title:def.title,
+        subs:def.subs.map(l=>({label:l, photos:[null,null]})) };
+    }
+  });
+  return d;
+}
+
+/* =========================================================================
+   IMAGE helpers (จาก skill avatar-ipad-pdf-export)
+   ========================================================================= */
+function downscaleDataUrl(src, maxDim){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.naturalWidth,h=img.naturalHeight;
+      if(!w||!h){resolve(src);return;}
+      if(Math.max(w,h)<=maxDim){resolve(src);return;}
+      const s=maxDim/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      try{ resolve(c.toDataURL('image/jpeg',0.9)); }catch(e){ resolve(src); }
+    };
+    img.onerror=()=>resolve(src);
+    img.src=src;
+  });
+}
+// COVER pre-crop (เต็มกรอบเหมือนตัวอย่าง) — html2canvas ไม่รองรับ object-fit
+function fitImageToDataUrl(src, boxW, boxH, scale){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const tw=Math.max(1,Math.round(boxW*scale)), th=Math.max(1,Math.round(boxH*scale));
+        const cv=document.createElement('canvas'); cv.width=tw; cv.height=th;
+        const ctx=cv.getContext('2d');
+        const iw=img.naturalWidth, ih=img.naturalHeight;
+        const r=Math.max(tw/iw, th/ih);           // cover
+        const dw=iw*r, dh=ih*r, dx=(tw-dw)/2, dy=(th-dh)/2;
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,tw,th);
+        ctx.drawImage(img,0,0,iw,ih,dx,dy,dw,dh);
+        resolve(cv.toDataURL('image/jpeg',0.95));
+      }catch(e){ reject(e); }
+    };
+    img.onerror=reject; img.src=src;
+  });
+}
+async function prepareFitPhotos(root, scale){
+  const boxes=root.querySelectorAll('.pdf-photo-box[data-src]');
+  for(const box of boxes){
+    const src=box.getAttribute('data-src');
+    const w=box.clientWidth, h=box.clientHeight;
+    if(!src||!w||!h) continue;
+    try{
+      const fitted=await fitImageToDataUrl(src,w,h,scale);
+      const im=document.createElement('img');
+      im.src=fitted; im.style.cssText='width:100%;height:100%;display:block;';
+      box.innerHTML=''; box.appendChild(im); box.removeAttribute('data-src');
+    }catch(e){}
+  }
+}
+
+/* =========================================================================
+   PAGINATION — แตกแต่ละ section เป็น "blocks" แล้วแพ็กลงหน้าตาม group
+   ========================================================================= */
+function gridRows(n,cols){ return Math.max(1, Math.ceil(n/cols)); }
+function gridBlockH(n,cols,photoH){ const r=gridRows(n,cols); return HEADING_H + r*photoH + (r-1)*ROW_GAP; }
+
+function buildBlocks(){
+  const blocks=[];
+  SECTION_DEFS.forEach(def=>{
+    const d=state.data[def.key];
+    if(!d || !d.enabled) return;
+    if(def.type==='grid'){
+      const photos=d.photos;
+      const rowsPerPage=Math.max(1, Math.floor((SAFE_BUDGET-HEADING_H)/(def.photoH+ROW_GAP)));
+      const perPage=rowsPerPage*def.cols;
+      if(photos.length<=perPage){
+        blocks.push({def, kind:'grid', title:d.title, photos, baseIndex:0, cont:false,
+                     rows:gridRows(photos.length,def.cols),
+                     h:gridBlockH(photos.length,def.cols,def.photoH)});
+      } else {
+        for(let i=0;i<photos.length;i+=perPage){
+          const chunk=photos.slice(i,i+perPage);
+          blocks.push({def, kind:'grid', title:d.title, photos:chunk, baseIndex:i, cont:i>0,
+                       rows:gridRows(chunk.length,def.cols),
+                       h:gridBlockH(chunk.length,def.cols,def.photoH)});
+        }
+      }
+    } else {
+      // หัวข้อแบบมี label ย่อย (ข้อ 5,6,7,9,10) ผูก keepId ให้ทั้งชุดอยู่หน้าเดียวกันเสมอ
+      d.subs.forEach((sub,si)=>{
+        const first = si===0;
+        blocks.push({def, kind:'sub', keepId:def.key, title:d.title, sub, subIndex:si, showTitle:first, rows:1,
+                     h:(first?HEADING_H:0)+SUBLABEL_H+def.photoH+SUB_GAP});
+      });
+    }
+  });
+  return blocks;
+}
+// แพ็กตามความสูงจริง: หัวข้อถัดไปต่อท้ายหน้าเดิมถ้ายังมีที่ (ไม่เหลือหน้าโหรงเหรง)
+// block ที่มี keepId เดียวกัน (หัวข้อที่มี label ย่อย) ถูกมัดเป็นหน่วยเดียว — ย้ายหน้าทั้งชุด ไม่ผ่ากลาง
+function paginate(blocks){
+  // 1) มัด block ตาม keepId
+  const units=[];
+  for(const b of blocks){
+    const last=units[units.length-1];
+    if(b.keepId && last && last.keepId===b.keepId){ last.blocks.push(b); last.h+=BLOCK_GAP+b.h; }
+    else units.push({keepId:b.keepId||null, blocks:[b], h:b.h});
+  }
+  // 2) แพ็กหน่วยลงหน้า (ถ้าหน่วยใหญ่เกินหน้าเปล่า ค่อยยอมแยกเป็นราย block)
+  const pages=[]; let cur=[], curH=0;
+  for(const u of units){
+    const parts=(u.h>SAFE_BUDGET && u.blocks.length>1) ? u.blocks.map(b=>({blocks:[b],h:b.h})) : [u];
+    for(const p of parts){
+      const needNew = cur.length && (curH+BLOCK_GAP+p.h)>SAFE_BUDGET;
+      if(needNew){ pages.push(cur); cur=[]; curH=0; }
+      if(cur.length) curH+=BLOCK_GAP;
+      cur.push(...p.blocks); curH+=p.h;
+    }
+  }
+  if(cur.length) pages.push(cur);
+  return pages;
+}
+
+/* =========================================================================
+   RENDER (on-screen, interactive)
+   ========================================================================= */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/`/g,'&#96;'); }
+
+function photographHeaderSVG(){
+  // Latin text -> SVG ให้กึ่งกลางเป๊ะใน html2canvas
+  return `<svg width="240" height="22" viewBox="0 0 240 22" style="display:block;">
+    <text x="120" y="11" dy="0.35em" text-anchor="middle" fill="#222222"
+      font-size="14" font-weight="600" letter-spacing="2.5"
+      font-family="Arial,Helvetica,sans-serif">PHOTOGRAPH</text></svg>`;
+}
+const THAI_RE=/[฀-๿]/;
+// ตัวอักษรคงที่ใน PDF: อังกฤษ -> SVG <text> (กันลอยต่ำ), ไทย -> HTML span (กัน tofu)
+// align: 'start' | 'middle'
+function pdfText(txt, width, fontSize, weight, color, align){
+  const t=(txt==null?'':String(txt));
+  const h=Math.round(fontSize*1.45);
+  if(THAI_RE.test(t)){
+    const ta=align==='middle'?'center':'left';
+    return `<div style="width:${width}px;height:${h}px;line-height:${h}px;font-size:${fontSize}px;font-weight:${weight};color:${color};text-align:${ta};overflow:hidden;white-space:nowrap;">${escapeHtml(t)}</div>`;
+  }
+  const x=align==='middle'?width/2:0;
+  const anchor=align==='middle'?'middle':'start';
+  return `<svg width="${width}" height="${h}" viewBox="0 0 ${width} ${h}" style="display:block;">
+    <text x="${x}" y="${h/2}" dy="0.35em" text-anchor="${anchor}" fill="${color}"
+      font-size="${fontSize}" font-weight="${weight}" font-family="Arial,Helvetica,sans-serif">${escapeHtml(t)}</text></svg>`;
+}
+const BODY_INNER_W = PAGE_W - 14 /*page pad*/ - 44 /*body pad*/; // 736
+// เส้นไขปลา: html2canvas เรนเดอร์ border:dotted ไม่ได้ -> ใช้ SVG dashed line
+function dottedSVG(w){
+  return `<svg width="${w}" height="3" viewBox="0 0 ${w} 3" style="display:block;">
+    <line x1="0.5" y1="1.5" x2="${w-0.5}" y2="1.5" stroke="#9a9a9a" stroke-width="1.1"
+      stroke-dasharray="1.4 2.6" stroke-linecap="round"/></svg>`;
+}
+
+// ความสูงรูปคำนวณต่อหน้า (photoH) — ทุกแถวเท่ากัน แถวชิดกันเสมอ
+function cellEdit(src, key, si, idx, h){
+  const st=`height:${h}px`;
+  if(src){
+    return `<div class="pcell" style="${st}">
+      <img src="${src}">
+      <button class="repl" title="เปลี่ยนรูป" onclick="replacePhoto('${key}',${si},${idx})"><i class="fa-solid fa-arrows-rotate"></i></button>
+      <button class="rm" title="ลบรูป" onclick="removePhoto('${key}',${si},${idx})"><i class="fa-solid fa-xmark"></i></button>
+    </div>`;
+  }
+  return `<label class="pcell empty" style="${st}">
+    <input type="file" accept="image/*" hidden onchange="onPick(event,'${key}',${si},${idx})">
+    <span style="text-align:center;font-size:11px;"><i class="fa-solid fa-camera" style="font-size:16px;display:block;margin-bottom:3px;"></i>เพิ่มรูป</span>
+  </label>`;
+}
+function cellPdf(src, h){
+  const st=`height:${h}px;border:1px solid #e2e8f0;`;
+  if(src) return `<div class="pdf-photo-box pcell" data-src="${src}" style="${st}background:#fff;"></div>`;
+  return `<div class="pcell" style="${st}background:#fafafa;"></div>`;
+}
+function gridStyle(def){
+  return `grid-template-columns:repeat(${def.cols},${def.boxW}px);gap:${ROW_GAP}px;justify-content:center;`;
+}
+function gridBlockHTML(b, mode, photoH){
+  const def=b.def;
+  const head = (mode==='edit')
+    ? `<div class="sec-head">
+         <input class="sec-title-input" value="${escapeAttr(b.title)}${b.cont?' (ต่อ)':''}" ${b.cont?'disabled':''}
+                oninput="setTitle('${def.key}',this.value)">
+         ${b.cont?'':`<button class="mini-btn" onclick="addSlot('${def.key}',-1)"><i class="fa-solid fa-plus"></i> รูป</button>`}
+       </div>`
+    : pdfText('- '+b.title+(b.cont?' (ต่อ)':'')+':', BODY_INNER_W, 13, 600, '#111827', 'start');
+  const cells=b.photos.map((src,i)=>{
+    const idx=b.baseIndex+i;
+    return mode==='edit' ? cellEdit(src,def.key,-1,idx,photoH) : cellPdf(src,photoH);
+  }).join('');
+  return `<div style="flex:0 0 auto;">
+     ${head}
+     <div class="pgrid" style="${gridStyle(def)}margin-top:4px;">${cells}</div>
+   </div>`;
+}
+function subBlockHTML(b, mode, photoH){
+  const def=b.def;
+  const titleHTML = b.showTitle
+    ? ( mode==='edit'
+        ? `<input class="sec-title-input" value="${escapeAttr(b.title)}" oninput="state.data['${def.key}'].title=this.value">`
+        : pdfText('- '+b.title+':', BODY_INNER_W, 13, 600, '#111827', 'start') )
+    : '';
+  const labelHTML = (mode==='edit')
+    ? `<div class="sec-head" style="margin-top:${b.showTitle?'4':'0'}px;">
+         <input class="sub-label-input" value="${escapeAttr(b.sub.label)}"
+                oninput="setSubLabel('${def.key}',${b.subIndex},this.value)">
+       </div>`
+    : `<div style="margin-top:${b.showTitle?'4':'0'}px;">${pdfText(b.sub.label+':', BODY_INNER_W, 11.5, 500, '#1f2937', 'start')}</div>`;
+  const cells=b.sub.photos.map((src,i)=>
+    mode==='edit' ? cellEdit(src,def.key,b.subIndex,i,photoH) : cellPdf(src,photoH)
+  ).join('');
+  return `<div style="flex:0 0 auto;">
+     ${titleHTML}
+     ${labelHTML}
+     <div class="pgrid" style="${gridStyle(def)}margin-top:3px;">${cells}</div>
+   </div>`;
+}
+
+function pageNode(blocks, mode){
+  // จัดเต็มหน้า: เอาพื้นที่ว่างที่เหลือมาเฉลี่ยเพิ่มความสูงรูปทุกแถวเท่าๆ กัน (ไม่เกิน STD_CAP)
+  const nominal = blocks.reduce((a,b)=>a+b.h,0) + BLOCK_GAP*Math.max(0,blocks.length-1);
+  const totalRows = blocks.reduce((a,b)=>a+(b.rows||1),0) || 1;
+  const slack = Math.max(0, BODY_BUDGET - nominal);
+  const photoH = Math.min(STD_CAP, STD_H + Math.floor(slack/totalRows));
+  const body = blocks.map(b=> b.kind==='grid' ? gridBlockHTML(b,mode,photoH) : subBlockHTML(b,mode,photoH)).join('');
+  const SIG_W=212, DATE_DOTS_W=174;
+  const footer = ['Quality Control','Customer Witnessed','User Witnessed'].map(n=>`
+     <div class="sig-box">
+       <div class="sig-signspace"></div>
+       ${dottedSVG(SIG_W)}
+       <div style="margin-top:3px;">${pdfText(n, SIG_W, 12, 500, '#6e6e6e', 'middle')}</div>
+       <div class="sig-gap"></div>
+       <div class="sig-date">
+         ${pdfText('Date:', 36, 11, 400, '#6e6e6e', 'start')}
+         <div style="padding-bottom:3px;">${dottedSVG(DATE_DOTS_W)}</div>
+       </div>
+     </div>`).join('');
+  const node=document.createElement('div');
+  node.className='doc-page'+(mode==='edit'?' screen':'');
+  node.innerHTML = `
+     <div class="doc-header">${photographHeaderSVG()}</div>
+     <div class="doc-body">${body}</div>
+     <div class="doc-footer">${footer}</div>`;
+  return node;
+}
+
+function render(){
+  renderSidebar();
+  const area=document.getElementById('docArea');
+  area.innerHTML='';
+  const blocks=buildBlocks();
+  const pages=paginate(blocks);
+  if(pages.length===0){
+    area.innerHTML='<div class="text-slate-400 text-center mt-20"><i class="fa-regular fa-folder-open text-4xl mb-3 block"></i>ยังไม่ได้เลือกหัวข้อ — ติ๊กหัวข้อจากแถบด้านซ้าย</div>';
+  } else {
+    pages.forEach(p=> area.appendChild(pageNode(p,'edit')));
+  }
+  document.getElementById('pageCount').textContent=pages.length;
+  document.getElementById('photoCount').textContent=countPhotos();
+  scheduleSave();
+}
+function renderSidebar(){
+  const list=document.getElementById('topicList');
+  list.innerHTML=SECTION_DEFS.map((def,i)=>{
+    const on=state.data[def.key].enabled;
+    return `<label class="flex items-center justify-between bg-white p-2.5 rounded-xl border ${on?'border-orange-200':'border-slate-200'} cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg ${on?'bg-orange-500 text-white':'bg-slate-100 text-slate-500'} flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid ${def.icon} text-[13px]"></i></div>
+        <span class="font-bold text-slate-700 text-[12.5px] leading-tight">${i+1}. ${escapeHtml(def.title)}</span>
+      </div>
+      <input type="checkbox" class="custom-checkbox shrink-0 ml-1" ${on?'checked':''} onchange="toggleTopic('${def.key}',this.checked)">
+    </label>`;
+  }).join('');
+}
+function countPhotos(){
+  let n=0;
+  SECTION_DEFS.forEach(def=>{
+    const d=state.data[def.key];
+    if(def.type==='grid') d.photos.forEach(p=>{if(p)n++;});
+    else d.subs.forEach(s=>s.photos.forEach(p=>{if(p)n++;}));
+  });
+  return n;
+}
+
+/* =========================================================================
+   INTERACTIONS
+   ========================================================================= */
+function toggleTopic(key,on){ state.data[key].enabled=on; markDirty(); render(); }
+function setAll(on){ SECTION_DEFS.forEach(d=>state.data[d.key].enabled=on); markDirty(); render(); }
+function setTitle(key,val){ state.data[key].title=val; markDirty(); scheduleSave(); }
+function setSubLabel(key,si,val){ state.data[key].subs[si].label=val; markDirty(); scheduleSave(); }
+function onProjName(val){ state.projectName=val; markDirty(); scheduleSave(); }
+function toggleSidebar(){
+  const s=document.getElementById('sidebar');
+  s.classList.toggle('-translate-x-full');
+}
+
+function arrFor(key,si){
+  return si<0 ? state.data[key].photos : state.data[key].subs[si].photos;
+}
+async function onPick(e,key,si,idx){
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const small=await downscaleDataUrl(reader.result,2000);
+    arrFor(key,si)[idx]=small;
+    markDirty(); render();
+  };
+  reader.readAsDataURL(f);
+}
+function removePhoto(key,si,idx){
+  const arr=arrFor(key,si);
+  // grid: ลบช่องทิ้ง ; subrow: ปล่อยช่องว่างไว้ (คงโครง 2 รูป) ถ้าเหลือ <=2
+  if(si<0) arr.splice(idx,1);
+  else { if(arr.length>2) arr.splice(idx,1); else arr[idx]=null; }
+  if(si<0 && arr.length===0) arr.push(null);
+  markDirty(); render();
+}
+function replacePhoto(key,si,idx){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=(e)=>onPick(e,key,si,idx);
+  inp.click();
+}
+function addSlot(key,si){ arrFor(key,si).push(null); markDirty(); render(); }
+async function clearAllPhotos(){
+  const ok=await confirmDialog({ title:'ล้างรูปทั้งหมด',
+    message:'ต้องการล้างรูปทั้งหมดในงานนี้ใช่ไหม? (โครงหัวข้อยังอยู่)<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>',
+    confirmText:'ล้างรูป', cancelText:'ยกเลิก', danger:true });
+  if(!ok) return;
+  SECTION_DEFS.forEach(def=>{
+    const d=state.data[def.key];
+    if(def.type==='grid') d.photos=new Array(def.slots).fill(null);
+    else d.subs.forEach(s=>s.photos=[null,null]);
+  });
+  markDirty(); render();
+}
+
+/* =========================================================================
+   PERSISTENCE (localforage / IndexedDB)
+   ========================================================================= */
+const DRAFT_KEY='ppv_draft_v1';
+let saveTimer=null;
+function scheduleSave(){
+  setSaveStatus('กำลังบันทึก...','text-amber-600');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveDraft,600);
+}
+async function saveDraft(){
+  try{
+    await localforage.setItem(DRAFT_KEY, { projectName:state.projectName||'', data:state.data, _histId:state._histId||null });
+    setSaveStatus('บันทึกแล้ว','text-emerald-600');
+  }
+  catch(e){ setSaveStatus('บันทึกไม่สำเร็จ','text-red-600'); }
+}
+function setSaveStatus(t,cls){
+  const el=document.getElementById('saveStatus');
+  el.textContent=t; el.className=cls+' font-semibold';
+}
+// merge saved section-data เข้ากับ template ปัจจุบัน (กันคีย์ใหม่/เก่าไม่ตรง)
+function normalizeData(saved){
+  const base=freshData();
+  if(saved && typeof saved==='object'){
+    SECTION_DEFS.forEach(def=>{
+      const s=saved[def.key]; if(!s) return;
+      if(typeof s.enabled==='boolean') base[def.key].enabled=s.enabled;
+      if(typeof s.title==='string') base[def.key].title=s.title;
+      if(def.type==='grid'){ if(Array.isArray(s.photos)) base[def.key].photos=s.photos; }
+      else if(Array.isArray(s.subs)){
+        s.subs.forEach((sub,i)=>{ if(base[def.key].subs[i]){
+          if(typeof sub.label==='string') base[def.key].subs[i].label=sub.label;
+          if(Array.isArray(sub.photos)) base[def.key].subs[i].photos=sub.photos;
+        }});
+      }
+    });
+  }
+  return base;
+}
+async function loadDraft(){
+  try{
+    const saved=await localforage.getItem(DRAFT_KEY);
+    if(saved && typeof saved==='object'){
+      if(saved.data){ // รูปแบบใหม่ { projectName, data, _histId }
+        state.projectName = saved.projectName||'';
+        state._histId = saved._histId||null;
+        state.data = normalizeData(saved.data);
+      } else { // รูปแบบเก่า (เก็บ data map ตรงๆ)
+        state.data = normalizeData(saved);
+      }
+      return;
+    }
+  }catch(e){}
+  state.data=freshData();
+}
+
+/* =========================================================================
+   EXPORT PDF (pipeline จาก skill avatar-ipad-pdf-export)
+   ========================================================================= */
+function showPdfProgress(t){ document.getElementById('pdfProgressText').textContent=t;
+  document.getElementById('pdfSaveBtnWrap').classList.add('hidden');
+  document.getElementById('pdfSaveBtnWrap').innerHTML='';
+  document.getElementById('pdfProgress').style.display='flex'; }
+function hidePdfProgress(){ document.getElementById('pdfProgress').style.display='none'; }
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function exportPDF(){
+  const blocks=buildBlocks();
+  const pages=paginate(blocks);
+  if(pages.length===0){ alert('ยังไม่ได้เลือกหัวข้อ'); return; }
+  await saveDraft();
+  showPdfProgress('กำลังเตรียม...');
+  try{
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+
+    const rc=document.createElement('div');
+    rc.style.cssText=`position:fixed;left:-99999px;top:0;width:${PAGE_W}px;height:${PAGE_H}px;background:#fff;z-index:-1;`;
+    document.body.appendChild(rc);
+
+    const renderToImage=async(node)=>{
+      rc.innerHTML=''; rc.appendChild(node);
+      await delay(100);
+      await prepareFitPhotos(node,SCALE);
+      const canvas=await html2canvas(node,{scale:SCALE,useCORS:true,backgroundColor:'#ffffff',
+        width:PAGE_W,height:PAGE_H,windowWidth:PAGE_W,windowHeight:PAGE_H});
+      return {imgData:canvas.toDataURL('image/jpeg',0.95),width:canvas.width,height:canvas.height};
+    };
+    const addToPdf=(res,first)=>{
+      if(!first) pdf.addPage();
+      const w=pdf.internal.pageSize.getWidth();
+      const h=(res.height*w)/res.width;
+      pdf.addImage(res.imgData,'JPEG',0,0,w,h,undefined,'FAST');
+    };
+
+    for(let i=0;i<pages.length;i++){
+      showPdfProgress(`กำลังสร้างหน้า ${i+1}/${pages.length}...`);
+      const node=pageNode(pages[i],'pdf');
+      node.style.cssText+=';margin:0;box-shadow:none;border-radius:0;';
+      addToPdf(await renderToImage(node), i===0);
+    }
+    document.body.removeChild(rc);
+    await saveCurrentToHistory();   // เก็บ snapshot ลงประวัติอัตโนมัติเมื่อ export
+
+    const filename='Photograph Inspection.pdf';
+    const titleNoExt='Photograph Inspection';
+    try{ pdf.setProperties({title:titleNoExt}); }catch(_){}
+    showPdfProgress('กำลังบันทึก...');
+
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    let shareFile=null;
+    try{ shareFile=new File([pdf.output('blob')],filename,{type:'application/pdf'}); }catch(_){}
+
+    if(isIOS && shareFile && navigator.canShare && navigator.canShare({files:[shareFile]})){
+      showPdfSaveButton(shareFile);
+    } else if(isIOS){
+      const prev=document.title; document.title=titleNoExt;
+      pdf.save(filename); setTimeout(()=>{document.title=prev;},2500);
+      hidePdfProgress();
+    } else {
+      pdf.save(filename); hidePdfProgress();
+    }
+  }catch(err){
+    console.error(err); hidePdfProgress(); alert('สร้าง PDF ไม่สำเร็จ: '+err.message);
+  }
+}
+function showPdfSaveButton(file){
+  document.getElementById('pdfProgressText').textContent='พร้อมบันทึกแล้ว';
+  const wrap=document.getElementById('pdfSaveBtnWrap');
+  wrap.classList.remove('hidden');
+  wrap.innerHTML='<button id="iosSaveBtn" class="bg-orange-500 text-white font-bold px-5 py-2.5 rounded-lg shadow">บันทึก / แชร์ PDF</button>'+
+                 '<button onclick="hidePdfProgress()" class="ml-2 text-slate-500 text-sm">ปิด</button>';
+  document.getElementById('iosSaveBtn').onclick=async()=>{
+    try{ await navigator.share({files:[file],title:'Photograph Inspection'}); }catch(e){}
+    hidePdfProgress();
+  };
+}
+
+/* =========================================================================
+   WORK HISTORY + DIALOGS (แพทเทิร์นจาก skill webapp-history-and-dialogs)
+   ========================================================================= */
+const HISTORY_KEY='ppv_history_v1';
+const MAX_HISTORY=5;
+function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+let toastTimer=null;
+function showToast(msg){
+  let t=document.getElementById('appToast');
+  if(!t){ t=document.createElement('div'); t.id='appToast'; t.className='toast no-print'; document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+function renderProjectName(){ const el=document.getElementById('projName'); if(el) el.value=state.projectName||''; }
+
+/* ----- dialog primitive ----- */
+function buildModalOverlay(innerHTML){
+  const bg=document.createElement('div');
+  bg.className='modal-bg open no-print'; bg.style.zIndex=400;
+  bg.innerHTML=`<div class="modal-box">${innerHTML}</div>`;
+  document.body.appendChild(bg);
+  return bg;
+}
+function confirmDialog({title='ยืนยัน', message='', confirmText='ตกลง', cancelText='ยกเลิก', danger=false}={}){
+  return new Promise(resolve=>{
+    const iconHtml=`<div style="width:52px;height:52px;border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;background:${danger?'#fef2f2':'#fff7ed'};color:${danger?'#ef4444':'#f97316'};">
+      ${danger?'<i class="fa-regular fa-trash-can" style="font-size:22px;"></i>':'<i class="fa-solid fa-circle-info" style="font-size:22px;"></i>'}</div>`;
+    const bg=buildModalOverlay(`
+      <div class="modal-body" style="text-align:center;padding:24px 22px 8px;">
+        ${iconHtml}
+        <div style="font-weight:800;font-size:17px;color:#0b1220;margin-bottom:8px;">${escapeHtml(title)}</div>
+        <div style="font-size:13.5px;color:#475569;line-height:1.6;">${message}</div>
+      </div>
+      <div class="modal-foot" style="gap:10px;">
+        <button class="top-btn" id="cdCancel" style="flex:1;justify-content:center;">${escapeHtml(cancelText)}</button>
+        <button class="top-btn ${danger?'':'primary'}" id="cdOk" style="flex:1;justify-content:center;${danger?'background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border-color:transparent;':''}">${escapeHtml(confirmText)}</button>
+      </div>`);
+    bg.style.zIndex=440;
+    const done=v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#cdOk').onclick=()=>done(true);
+    bg.querySelector('#cdCancel').onclick=()=>done(false);
+    bg.addEventListener('click',e=>{ if(e.target===bg) done(false); });
+  });
+}
+
+/* ----- history store ----- */
+async function getHistory(){ try{ return (await localforage.getItem(HISTORY_KEY))||[]; }catch(e){ return []; } }
+async function setHistory(list){ try{ await localforage.setItem(HISTORY_KEY, list); }catch(e){ console.error(e); } }
+function draftHasContent(){ return (state.projectName||'').trim()!=='' || countPhotos()>0; }
+
+function loadStateIntoApp(s){
+  state={ projectName:s.projectName||'', data:normalizeData(s.data||s), _histId:s._histId||null };
+  renderProjectName(); render(); saveDraft();
+  isDirty=false;
+}
+async function startNewProject(){
+  state={ projectName:'', data:freshData(), _histId:null };
+  renderProjectName(); render(); await saveDraft();
+  isDirty=false; showToast('เริ่มงานใหม่');
+}
+
+async function saveCurrentToHistory(){
+  const id=state._histId||uid('hist');
+  state._histId=id;
+  await saveDraft();
+  const snap={ id,
+    name:(state.projectName||'').trim()||'ไม่ระบุชื่องาน',
+    date:new Date().toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    ts:Date.now(),
+    state:JSON.parse(JSON.stringify(state)) };
+  let list=await getHistory();
+  const idx=list.findIndex(h=>h.id===id);
+  let saved=true;
+  if(idx>=0){ list[idx]=snap; await setHistory(list); }
+  else if(list.length<MAX_HISTORY){ list.push(snap); await setHistory(list); }
+  else { saved=await showHistoryFullModal(list, snap); }
+  if(saved) isDirty=false;
+  return saved;
+}
+async function doSave(){
+  const ok=await saveCurrentToHistory();
+  if(ok) showToast('บันทึกงานแล้ว');
+}
+function openHistory(){ showStartupModal(true); }
+
+/* ----- unsaved-changes guard ----- */
+function confirmUnsavedChanges(){
+  return new Promise(resolve=>{
+    const bg=buildModalOverlay(`
+      <div class="modal-head"><span>ยังไม่ได้บันทึก</span></div>
+      <div class="modal-body"><p style="font-size:14px;color:#475569;line-height:1.6;">งานปัจจุบันมีการแก้ไขที่ยังไม่ได้บันทึก<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p></div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <button class="top-btn" id="unsCancel">ยกเลิก</button>
+        <button class="top-btn" id="unsDiscard" style="color:#ef4444;border-color:#fecaca;">ไม่บันทึก</button>
+        <button class="top-btn primary" id="unsSave">บันทึก</button>
+      </div>`);
+    bg.style.zIndex=420;
+    const done=v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#unsCancel').onclick=()=>done('cancel');
+    bg.querySelector('#unsDiscard').onclick=()=>done('discard');
+    bg.querySelector('#unsSave').onclick=()=>done('save');
+    bg.addEventListener('click',e=>{ if(e.target===bg) done('cancel'); });
+  });
+}
+async function proceedSwitch(){
+  if(isDirty && draftHasContent()){
+    const c=await confirmUnsavedChanges();
+    if(c==='cancel') return false;
+    if(c==='save'){ if(!(await saveCurrentToHistory())) return false; }
+  }
+  return true;
+}
+
+/* ----- history full: choose which to delete ----- */
+function showHistoryFullModal(list, snap){
+  return new Promise(resolve=>{
+    const sorted=list.slice().sort((a,b)=>b.ts-a.ts);
+    const itemsHtml=sorted.map(h=>`
+      <label class="hist-item" style="cursor:pointer;">
+        <input type="radio" name="histDel" value="${h.id}" style="width:18px;height:18px;flex-shrink:0;accent-color:#ef4444;">
+        <div class="hist-info"><div class="hist-name">${escapeHtml(h.name)}</div><div class="hist-date">${escapeHtml(h.date)}</div></div>
+      </label>`).join('');
+    const bg=buildModalOverlay(`
+      <div class="modal-head"><span>ประวัติเต็ม (${MAX_HISTORY}/${MAX_HISTORY})</span></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#475569;margin-bottom:12px;">กำลังบันทึกงาน "<b>${escapeHtml(snap.name)}</b>" — เลือกงานเก่าที่จะลบออก 1 งาน</p>
+        <div class="hist-list">${itemsHtml}</div>
+      </div>
+      <div class="modal-foot">
+        <button class="top-btn" id="hfCancel">ไม่บันทึกประวัติ</button>
+        <button class="top-btn primary" id="hfOk">ลบแล้วบันทึก</button>
+      </div>`);
+    bg.style.zIndex=440;
+    const close=()=>bg.remove();
+    bg.querySelector('#hfCancel').onclick=()=>{ close(); resolve(false); };
+    bg.querySelector('#hfOk').onclick=async()=>{
+      const sel=bg.querySelector('input[name="histDel"]:checked');
+      if(!sel){ showToast('เลือกงานที่จะลบก่อน'); return; }
+      let l=await getHistory();
+      l=l.filter(x=>x.id!==sel.value); l.push(snap);
+      await setHistory(l); close(); resolve(true); showToast('บันทึกประวัติแล้ว');
+    };
+    bg.addEventListener('click',e=>{ if(e.target===bg){ close(); resolve(false); } });
+  });
+}
+
+/* ----- startup / history picker ----- */
+async function showStartupModal(force){
+  const list=(await getHistory()).sort((a,b)=>b.ts-a.ts);
+  const hasDraft=draftHasContent();
+  if(!force && list.length===0 && !hasDraft) return;
+
+  const continueHtml = hasDraft ? `
+    <button class="hist-continue" id="histContinue">
+      <div style="font-weight:800;font-size:14px;">&#9654; ทำงานต่อ (ล่าสุด)</div>
+      <div style="font-size:12px;opacity:.9;margin-top:2px;">${escapeHtml((state.projectName||'').trim()||'งานที่ค้างไว้')}</div>
+    </button>
+    <div style="height:1px;background:#e2e8f0;margin:14px 0;"></div>` : '';
+
+  const itemsHtml = list.length ? list.map(h=>`
+      <div class="hist-item">
+        <div class="hist-info" data-open="${h.id}">
+          <div class="hist-name">${escapeHtml(h.name)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
+          <div class="hist-date">${escapeHtml(h.date)}</div>
+        </div>
+        <button class="hist-del" data-del="${h.id}" title="ลบ"><i class="fa-regular fa-trash-can"></i></button>
+      </div>`).join('')
+    : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานที่บันทึกไว้</div>`;
+
+  const bg=buildModalOverlay(`
+    <div class="modal-head"><span>เลือกงานที่จะทำต่อ</span><span class="close-btn" id="histClose"><i class="fa-solid fa-xmark"></i></span></div>
+    <div class="modal-body">
+      ${continueHtml}
+      <div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">งานที่บันทึกไว้ (${list.length}/${MAX_HISTORY})</div>
+      <div class="hist-list">${itemsHtml}</div>
+    </div>
+    <div class="modal-foot"><button class="top-btn primary" id="histNew" style="width:100%;justify-content:center;"><i class="fa-solid fa-plus"></i> เริ่มงานใหม่</button></div>`);
+  const close=()=>bg.remove();
+  bg.querySelector('#histClose').onclick=close;
+  bg.addEventListener('click',e=>{ if(e.target===bg) close(); });
+  const cont=bg.querySelector('#histContinue'); if(cont) cont.onclick=close;
+  bg.querySelector('#histNew').onclick=async()=>{ if(!(await proceedSwitch())) return; close(); startNewProject(); };
+  bg.querySelectorAll('[data-open]').forEach(el=> el.onclick=async()=>{
+    if(!(await proceedSwitch())) return;
+    const h=list.find(x=>x.id===el.dataset.open);
+    if(h && h.state){ loadStateIntoApp(JSON.parse(JSON.stringify(h.state))); showToast('เปิดงานแล้ว'); }
+    close();
+  });
+  bg.querySelectorAll('[data-del]').forEach(el=> el.onclick=async(e)=>{
+    e.stopPropagation();
+    const h=list.find(x=>x.id===el.dataset.del);
+    const ok=await confirmDialog({ title:'ลบงานที่บันทึก',
+      message:`ต้องการลบงาน "<b>${escapeHtml(h?h.name:'')}</b>" ออกจากประวัติใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
+      confirmText:'ลบ', cancelText:'ยกเลิก', danger:true });
+    if(!ok) return;
+    let l=await getHistory();
+    await setHistory(l.filter(x=>x.id!==el.dataset.del));
+    close(); showStartupModal(true);
+  });
+}
+
+/* ---------- boot ---------- */
+(async function(){ await loadDraft(); renderProjectName(); render(); isDirty=false; await showStartupModal(false); })();
+</script>
+</body>
+</html>
