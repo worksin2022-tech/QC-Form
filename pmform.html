@@ -5214,6 +5214,11 @@
                 // กันการเริ่ม drag จากปุ่มภายในกล่อง (ลบ/วาด/ครอบตัด/file input)
                 filter: '.delete-photo-btn, .edit-photo-btn, .crop-photo-btn, input',
                 preventOnFilter: false,
+                // 🌟 จอสัมผัส (iPad): ต้องกดค้าง 150ms ก่อนถึงเริ่มลาก — ไม่งั้นนิ้วปัด scroll จะกลายเป็นลากรูป
+                //    delayOnTouchOnly = เมาส์ desktop ลากได้ทันทีเหมือนเดิม
+                delay: 150,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 5,
                 onEnd: () => {
                     if (typeof markUnsaved === 'function') markUnsaved();
                 }
@@ -5555,8 +5560,11 @@
             //      = ~258mm สำหรับ pages 2+
             //    หน้าแรกไม่มี margin-top header → ใช้พื้นที่ได้มากกว่านิดหน่อย
             //    แต่จะใช้ค่าเดียวเพื่อความเรียบง่าย (อิงตามขั้นต่ำ)
+            //    ⚠️ ค่าคงที่ 2 ตัวนี้จูนมือกับสไตล์แถวปัจจุบัน (py-[5px], text-[13-14px], thead 12mm)
+            //       ถ้าแก้ขนาดแถว/ฟอนต์ของ TOC ต้องเทสการแบ่งหน้าใหม่แล้วจูนตาม
             const PAGE_LIMIT_MM_FIRST = 240;   // หน้าแรก (ไม่มี margin-top จาก toc-header-repeat)
             const PAGE_LIMIT_MM_REPEAT = 200;  // หน้า 2+ (มี margin-top: 10mm ก่อน header)
+            const TOC_ROWS_FALLBACK = 18;      // ใช้เฉพาะตอนวัด DOM ไม่ได้ (ซ่อนอยู่) — ตัดทุก N แถวแบบ conservative
 
             // helper: สร้างแถว header (NO. / EQUIPMENT / SECTION / PAGE) — เรียกซ้ำได้ทุกหน้า
             function makeTocHeader(isRepeat) {
@@ -5593,6 +5601,14 @@
                 let pageBaselinePx = 0; // ตำแหน่งบนของหน้าปัจจุบัน เทียบกับ a4-page top
                 let isFirstPage = true; // หน้าแรก ใช้ limit ที่ใหญ่กว่า (ไม่มี repeat-header margin)
 
+                // 🌟 กับดัก: ถ้า DOM ถูกซ่อนอยู่ (display:none) getBoundingClientRect จะได้ 0 ทั้งหมด
+                //    → เงื่อนไขวัดไม่มีทางเกิน limit → ไม่แทรก break เลย → พิมพ์ออกมาล้นหน้า
+                //    เช็คก่อนว่าวัดได้จริง ถ้าไม่ได้ → fallback ตัดทุก TOC_ROWS_FALLBACK แถว
+                const measurable = !!(a4Page
+                    && a4Page.getBoundingClientRect().height > 0
+                    && tocList.offsetParent !== null);
+                if (!measurable) console.warn('[renderTocRows] วัด DOM ไม่ได้ (ซ่อนอยู่?) — ใช้ fallback ตัดทุก', TOC_ROWS_FALLBACK, 'แถว');
+
                 items.forEach((item, index) => {
                     const pageNum = calculatePageNumber(item.id);
                     const adjustedPageNum = pageNum !== null ? pageNum + tocOffset : null;
@@ -5617,7 +5633,7 @@
 
                     // วัดตำแหน่ง bottom ของแถวเทียบกับ a4-page top
                     // ถ้าเลยพื้นที่ใช้งานของหน้าปัจจุบัน → แทรก break header ก่อนแถวนี้
-                    if (a4Page && index > 0) {
+                    if (measurable && index > 0) {
                         const rowBottomFromA4 = row.getBoundingClientRect().bottom - a4Top;
                         const currentLimit = isFirstPage ? pageLimitFirstPx : pageLimitRepeatPx;
                         if (rowBottomFromA4 > pageBaselinePx + currentLimit) {
@@ -5627,6 +5643,9 @@
                             pageBaselinePx = header.getBoundingClientRect().top - a4Top;
                             isFirstPage = false; // หน้าต่อไปใช้ limit เล็กกว่า
                         }
+                    } else if (!measurable && index > 0 && index % TOC_ROWS_FALLBACK === 0) {
+                        // fallback: วัดไม่ได้ → ตัดทุก N แถวแบบตายตัว (ดีกว่าไม่ตัดเลยจนล้นหน้า)
+                        tocList.insertBefore(makeTocHeader(true), row);
                     }
                 });
 
@@ -6841,9 +6860,12 @@
                     if (c) { cat = c; secIdx = i; }
                 }
                 // folderName = ชื่อหัวข้อจริงที่ผู้ใช้ตั้ง (ใช้เป็นชื่อ block); ถ้าไม่ match → ใช้โฟลเดอร์ที่ติดไฟล์
+                // 🌟 cabinet = โฟลเดอร์แม่ของหัวข้อเท่านั้น — ถ้าเลือกโฟลเดอร์หัวข้อตรงๆ (secIdx=0 ไม่มีแม่)
+                //    ให้เป็น '' (ไม่รู้ชื่อตู้) — ห้าม fallback เป็นชื่อหัวข้อเอง ไม่งั้น "Grounding Test"
+                //    จะไปโผล่ช่อง Equipment/Panel
                 let folderName, cabinet;
-                if (cat) { folderName = parts[secIdx]; cabinet = secIdx > 0 ? parts[secIdx - 1] : (parts[0] || ''); }
-                else { unmatched++; cat = 'other'; folderName = parts.length >= 2 ? parts[parts.length - 2] : 'อื่นๆ'; cabinet = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] || ''); }
+                if (cat) { folderName = parts[secIdx]; cabinet = secIdx > 0 ? parts[secIdx - 1] : ''; }
+                else { unmatched++; cat = 'other'; folderName = parts.length >= 2 ? parts[parts.length - 2] : 'อื่นๆ'; cabinet = parts.length >= 3 ? parts[parts.length - 3] : ''; }
                 // 🌟 key ต้อง unique เสมอ — ชื่อไฟล์อาจซ้ำข้ามตู้/ข้ามหัวข้อ (เช่น IMG_224030.jpg
                 //    มีทั้งใน DBTW2/Grounding และ DBTW2/Grounding Test) → ถ้าชน ใช้ full path
                 let key = f.name;
@@ -6890,13 +6912,13 @@
                     const nameCls = isOther ? 'text-amber-600' : 'text-slate-700';
                     const note = isOther ? ' <span class="text-amber-600 text-[11px]">(ไม่รู้จักหัวข้อ — จะไม่ถูกอ่าน)</span>' : '';
                     return `<div class="flex items-center gap-2 pl-5 py-0.5 text-[12.5px]">
-                        ${icon}<span class="font-semibold ${nameCls}">${t}</span>
+                        ${icon}<span class="font-semibold ${nameCls}">${aiEscHtml(t)}</span>
                         <span class="text-slate-400">— ${it.count} รูป</span>${note}
                     </div>`;
                 }).join('');
                 treeHtml += `<div class="mb-2">
                     <div class="flex items-center gap-2 font-bold text-[13px] text-indigo-700">
-                        <i class="fa-solid fa-box-archive text-indigo-500"></i> ${cab}
+                        <i class="fa-solid fa-box-archive text-indigo-500"></i> ${aiEscHtml(cab)}
                         <span class="text-slate-400 font-normal">(${topicNames.length} หัวข้อ · ${cabPhotos} รูป)</span>
                     </div>${rows}
                 </div>`;
@@ -6914,18 +6936,44 @@
         }
 
         // ── call API (อิง pattern จาก thermoscan ที่พิสูจน์แล้ว) ──
+        // 🌟 ยกเลิกได้ + timeout ต่อ request — กัน overlay เต็มจอค้างถาวรตอน API แขวน/เน็ตหลุด
+        let aiCurrentAbort = null;          // AbortController ของ request ที่กำลังยิงอยู่
+        let aiCancelRequested = false;      // user กดยกเลิก → หยุดทั้ง pipeline
+        const AI_CALL_TIMEOUT_MS = 180000;  // 3 นาที/request
+
+        function cancelAiAnalysis() {
+            aiCancelRequested = true;
+            try { if (aiCurrentAbort) aiCurrentAbort.abort(); } catch (e) {}
+            const oMsg = document.getElementById('aiOverlayMsg');
+            if (oMsg) oMsg.textContent = 'กำลังยกเลิก…';
+        }
+
         async function aiCall(messages, maxTokens = 1500) {
+            if (aiCancelRequested) throw new Error('ยกเลิกโดยผู้ใช้');
             const provider = document.getElementById('aiProvider').value;
             const key = document.getElementById('aiApiKey').value.trim();
             if (!key) throw new Error('ยังไม่กรอก API key');
-            if (provider === 'google') return aiCallGemini(messages, maxTokens, key, 'gemini-2.5-pro');
-            if (provider === 'google-flash') return aiCallGemini(messages, maxTokens, key, 'gemini-2.5-flash');
-            return aiCallAnthropic(messages, maxTokens, key);
+            const ctrl = new AbortController();
+            aiCurrentAbort = ctrl;
+            const timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, AI_CALL_TIMEOUT_MS);
+            try {
+                if (provider === 'google') return await aiCallGemini(messages, maxTokens, key, 'gemini-2.5-pro', ctrl.signal);
+                if (provider === 'google-flash') return await aiCallGemini(messages, maxTokens, key, 'gemini-2.5-flash', ctrl.signal);
+                return await aiCallAnthropic(messages, maxTokens, key, ctrl.signal);
+            } catch (e) {
+                if (e.name === 'AbortError')
+                    throw new Error(aiCancelRequested ? 'ยกเลิกโดยผู้ใช้' : 'AI ไม่ตอบภายใน 3 นาที (timeout) — ลองใหม่หรือเปลี่ยน provider');
+                throw e;
+            } finally {
+                clearTimeout(timer);
+                if (aiCurrentAbort === ctrl) aiCurrentAbort = null;
+            }
         }
 
-        async function aiCallAnthropic(messages, maxTokens, key) {
+        async function aiCallAnthropic(messages, maxTokens, key, signal) {
             const resp = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
+                signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': key,
@@ -6944,7 +6992,7 @@
             return (data.content || []).map(c => c.text || '').join('').trim();
         }
 
-        async function aiCallGemini(messages, maxTokens, key, model) {
+        async function aiCallGemini(messages, maxTokens, key, model, signal) {
             const contents = messages.map(m => {
                 const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content || '') }];
                 const parts = raw.map(p => p.type === 'image' && p.source?.type === 'base64'
@@ -6962,7 +7010,7 @@
                 },
             };
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-            const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const resp = await fetch(url, { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             if (!resp.ok) {
                 const t = await resp.text();
                 throw new Error(`Gemini ${resp.status}: ${t.slice(0, 160)}`);
@@ -7221,6 +7269,36 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         // ════════════════════════════════════════════════════════════════════
         function aiNumKey(fn) { const m = String(fn).match(/\d+/g); return m ? +m[m.length - 1] : -1; }
 
+        // 🌟 map ชื่อไฟล์ที่ AI ตอบกลับ → key จริงใน photoFiles
+        //    ปัญหา: ตอนชื่อไฟล์ซ้ำข้ามตู้ key เป็น full path ("DBTW2/Grounding Test/IMG_x.jpg")
+        //    แต่ LLM มักตัด path เหลือ basename ตอน echo กลับ → files.has() ไม่เจอ → รูปหายเงียบๆ
+        //    วิธีแก้: exact match ก่อน → ไม่เจอค่อย match ด้วย basename (case-insensitive)
+        function aiResolveFilenames(returned, candidateKeys) {
+            const keys = candidateKeys || [];
+            const exact = new Set(keys);
+            const byBase = new Map();   // basename(lower) → [key, ...]
+            for (const k of keys) {
+                const b = String(k).split('/').pop().toLowerCase();
+                if (!byBase.has(b)) byBase.set(b, []);
+                byBase.get(b).push(k);
+            }
+            const out = [];
+            const seen = new Set();
+            for (const fn of (returned || [])) {
+                const s = String(fn).trim();
+                let hit = null;
+                if (exact.has(s)) hit = s;
+                else {
+                    const cands = byBase.get(s.split('/').pop().toLowerCase());
+                    if (cands && cands.length === 1) hit = cands[0];
+                    else if (cands && cands.length > 1) hit = cands.find(k => k.endsWith(s)) || cands[0];
+                }
+                if (hit && !seen.has(hit)) { out.push(hit); seen.add(hit); }
+                else if (!hit) console.warn('[aiResolveFilenames] ไม่พบไฟล์ที่ AI อ้างถึง:', s);
+            }
+            return out;
+        }
+
         function aiTestPhotoSet(photos, testId) {
             const test = photos.filter(p => p.category === testId);
             if (!test.length) return [];
@@ -7347,7 +7425,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
 ⭐⭐ ขั้นที่ 2 — อ่านค่า (⚠️ ระวังจุดทศนิยม!)
   • นับจำนวนหลักก่อน/หลังจุดให้ตรงกับจอจริง ห้ามเลื่อนจุด
-  • ตัวอย่าง: เห็น "0.505" ต้องตอบ "0.505" ไม่ใช่ "0.505" → "5.05" หรือ "50.5"
+  • ตัวอย่าง: จอแสดง "0.505" ต้องตอบ "0.505" — ห้ามเลื่อนจุดเป็น "5.05" หรือ "50.5" หรือ "505"
   • หน่วยตามจอ: ปกติเป็น Ω (ohm) — ถ้าค่าสูงมาก จออาจสลับเป็น kΩ
   • ถ้ามีหลายรูป (วัดหลายจุด) → เลือกค่ารูปที่ชัดที่สุด/นิ่งที่สุดเป็นค่าตัวแทน (อ่านได้แค่ค่าเดียวลงในตาราง)
 
@@ -7472,6 +7550,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             document.getElementById('aiAnalyzeBtn').disabled = true;
             document.getElementById('aiAnalyzeProgress').classList.remove('hidden');
             document.getElementById('aiAnalyzeLog').innerHTML = '';
+            aiCancelRequested = false;   // 🌟 reset สถานะยกเลิกของรอบก่อน
             showAiWorkingOverlay();   // 🌟 เด้ง overlay เต็มจอ + pixel character
             const onProg = (msg, frac) => aiAnalyzeStatus(msg, frac != null ? Math.round(frac * 60) : null, msg);
 
@@ -7551,12 +7630,14 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 });
                 let ti = 0;
                 for (const inst of testInstances) {
+                    if (aiCancelRequested) throw new Error('ยกเลิกโดยผู้ใช้');   // 🌟 หยุดทั้ง pipeline (นอก try — ไม่โดน catch ต่อ instance กลืน)
                     const m = sectionMeta[inst];
                     aiAnalyzeStatus(`Stage 3 — อ่านค่า ${m.title}…`, 70 + Math.round(25 * ti / testInstances.length), `🔬 ${m.title}…`);
                     try {
                         const r = await aiReadTestExplicit(sections[inst], files, m.testId, panelName || scope.panel_name);
                         if (r) {
-                            if (r.ordered_photos && r.ordered_photos.length) sections[inst] = r.ordered_photos;
+                            // 🌟 map ชื่อไฟล์ที่ AI ตอบ → key จริง (ทน AI ตัด path ทิ้งตอน key เป็น full path)
+                            if (r.ordered_photos && r.ordered_photos.length) sections[inst] = aiResolveFilenames(r.ordered_photos, sections[inst]);
                             const entry = { test_id: m.testId };
                             // 🌟 grounding: รับได้ทั้ง r.grounding (nested) หรือ r.observation (flat) — เช็คก่อน r.table
                             //    เพราะ AI บางครั้ง flatten/ใช้ key "table" ปนกัน
@@ -7596,6 +7677,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const sectionInsts = Object.keys(sections);
                 let si = 0;
                 for (const inst of sectionInsts) {
+                    if (aiCancelRequested) throw new Error('ยกเลิกโดยผู้ใช้');   // 🌟 หยุดทั้ง pipeline
                     const m = sectionMeta[inst];
                     if (!m) continue;
                     const slotN = aiSlotCountFor(m.category);
@@ -7609,7 +7691,10 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                         aiAnalyzeStatus(`Stage 4 — เลือกรูปดีที่สุด ${m.title} (${cur.length}→${slotN})…`,
                             96 + Math.round(3 * si / sectionInsts.length), `✨ rank ${m.title}…`);
                         try {
-                            sections[inst] = await aiPickBestForSection(cur, files, slotN, m.title, panelName || scope.panel_name);
+                            // 🌟 map ชื่อไฟล์ที่ AI ตอบ → key จริง (ทน AI ตัด path)
+                            sections[inst] = aiResolveFilenames(
+                                await aiPickBestForSection(cur, files, slotN, m.title, panelName || scope.panel_name), cur);
+                            if (!sections[inst].length) sections[inst] = cur.slice(0, slotN);   // resolve ไม่เจอเลย → fallback N รูปแรก
                         } catch (e) {
                             aiAnalyzeStatus(`Stage 4 — ${m.title} ใช้ N รูปแรกแทน`, null, `⚠️ ${m.title}: ${e.message}`);
                             sections[inst] = cur.slice(0, slotN);
@@ -7887,6 +7972,15 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 .replace(/"/g, '&quot;');
         }
 
+        // 🌟 escape สำหรับใส่เป็น text content ใน innerHTML (ชื่อโฟลเดอร์/ตู้ที่ user ตั้งเอง
+        //    อาจมี < > & ทำ layout แตกได้)
+        function aiEscHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
         // ════════════════════════════════════════════════════════════
         // 🌟 RENDER preview
         // ════════════════════════════════════════════════════════════
@@ -7960,7 +8054,8 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             const meta = aiSecInfo(sectionId) || {};
             const baseLabel = meta.title || AI_SECTION_LABELS[sectionId] || sectionId;
             // แสดงชื่อตู้กำกับหน้าหัวข้อ เพื่อแยกตู้ที่มีหัวข้อชื่อเดียวกัน (เช่น DBTW2 · Grounding Test)
-            const label = meta.cabinet ? `${meta.cabinet} · ${baseLabel}` : baseLabel;
+            // escape เพราะมาจากชื่อโฟลเดอร์ที่ user ตั้งเอง (อาจมี < > &)
+            const label = aiEscHtml(meta.cabinet ? `${meta.cabinet} · ${baseLabel}` : baseLabel);
             const validCount = filenames.filter(fn => aiImportState.photoFiles.has(fn)).length;
             const wrap = document.createElement('div');
             wrap.className = 'border border-slate-200 rounded-xl bg-white overflow-hidden';
@@ -8759,12 +8854,11 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         }
 
         // 🌟 จัดเรียง block ใหม่แบบ cabinet-major — "รวมเป็นตู้ ๆ ไป"
-        //    เดิม: block รวมตามหัวข้อ (Insulation ของทุกตู้ติดกัน → Grounding ของทุกตู้)
-        //    ใหม่: ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน (DBTW2: Ins Before, Ins After, Grounding →
-        //          จบแล้วขึ้น DBTW3 …) โดยลำดับหัวข้อในตู้ยังตาม report order (before→…→grounding)
-        //    ใช้กลไก DOM แบบเดียวกับ applyReorder: ย้าย sub-block มาเป็น direct child ของ
-        //    moduleContainer + ซ่อน mod_xxx shell (reorder-hidden)
-        function aiApplyCabinetMajorOrder() {
+        //    ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน (DBTW2: Ins Before, Ins After, Grounding →
+        //    จบแล้วขึ้น DBTW3 …) โดยลำดับหัวข้อในตู้ยังตาม report order (before→…→grounding)
+        //    ⚠️ จัดเฉพาะ block ที่ส่งมาใน importedBlocks (ที่เพิ่งสร้าง/ใช้ใน import รอบนี้)
+        //    — ห้ามรื้อลำดับ block เดิมที่ผู้ใช้จัดไว้เอง (ของเดิมอยู่ที่เดิม, imported ต่อท้าย)
+        function aiApplyCabinetMajorOrder(importedBlocks) {
             const container = document.getElementById('moduleContainer');
             if (!container) return;
 
@@ -8772,18 +8866,16 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 'mod_insulation','mod_dielectric','mod_grounding','mod_gc','mod_contact',
                 'mod_trip','mod_relay','mod_cap','mod_blank'];
             const modRank = id => { const i = MODULE_ORDER.indexOf(id); return i < 0 ? 999 : i; };
-
-            // sub-block ที่แสดงอยู่จริง (ข้าม hidden / reorder-hidden)
-            //   ⚠️ ต้องเช็ค "บรรพบุรุษ" ด้วย — block เปล่าที่ค้างใน module ที่ไม่ได้ติ๊ก (mod_xxx.hidden)
-            //   ตัว block เองไม่มี .hidden → ถ้าเช็คแค่ตัวเองจะหลุดออกมาโผล่ใน report (bug: หัวข้อเปล่า 02-09)
-            const blocks = Array.from(container.querySelectorAll(SUB_BLOCK_SELECTOR))
-                .filter(b => !b.classList.contains('reorder-hidden')
+            const isVisible = b => !b.classList.contains('reorder-hidden')
                           && !b.classList.contains('hidden')
                           && !b.closest('.hidden')
-                          && !b.closest('.reorder-hidden'));
-            if (blocks.length < 2) return;
+                          && !b.closest('.reorder-hidden');
 
-            const info = blocks.map((b, idx) => {
+            // เอาเฉพาะ block ของ import รอบนี้ที่ยังอยู่ใน DOM และแสดงอยู่จริง
+            const targets = (importedBlocks || []).filter(b => b && document.body.contains(b) && isVisible(b));
+            if (targets.length < 2) return;
+
+            const info = targets.map((b, idx) => {
                 const cabinet = (b.querySelector('.eq-panel-input')?.value || '').trim();
                 const modId = getModIdFromSubBlock(b) || '';
                 const periodEl = b.querySelector('input[placeholder*="ระบุช่วง"]');
@@ -8804,23 +8896,33 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 return a.idx - b.idx;   // stable
             });
 
-            // ── ย้าย DOM (เลียนแบบ applyReorder ขั้น 3–7) ──
-            // detach sub-blocks
-            info.forEach(i => { if (i.b.parentNode) i.b.parentNode.removeChild(i.b); });
-            // ซ่อน mod_xxx shell (เก็บไว้ให้ toggle/adder ใช้) + ย้ายไปท้าย container
-            MODULE_ORDER.forEach(modId => {
-                const el = document.getElementById(modId);
-                if (el) { el.classList.add('reorder-hidden'); container.appendChild(el); }
-            });
-            // append sub-block ตามลำดับ cabinet-major
-            info.forEach(i => container.appendChild(i.b));
-            // certificate (calibration) ไปท้ายสุดถ้าเปิดอยู่
-            const calib = document.getElementById('mod_calibration');
-            if (calib && !calib.classList.contains('hidden')) container.appendChild(calib);
+            // module ต้นทางของ block ที่จะย้ายออก — ไว้เช็คทีหลังว่า shell ว่างแล้วต้องซ่อนไหม
+            const touchedMods = new Set();
+            info.forEach(i => { if (i.modId) touchedMods.add(i.modId); });
 
-            // page-break: ทุก block ขึ้นหน้าใหม่ ยกเว้นตัวแรกของเอกสาร
+            // ── ย้ายเฉพาะ imported: detach → append ต่อท้าย container ตามลำดับ cabinet-major ──
+            info.forEach(i => { if (i.b.parentNode) i.b.parentNode.removeChild(i.b); });
+            info.forEach(i => container.appendChild(i.b));
+            // certificate (calibration) คงอยู่ท้ายสุดถ้าเปิดอยู่และเป็น child ของ container
+            const calib = document.getElementById('mod_calibration');
+            if (calib && calib.parentNode === container && !calib.classList.contains('hidden')) container.appendChild(calib);
+
+            // ซ่อนเฉพาะ mod shell ที่ "ว่าง" หลังย้าย block ออก (กัน header เปล่าโผล่ในรายงาน)
+            // shell ที่ยังมี block เดิมของผู้ใช้อยู่ → ไม่แตะ
+            touchedMods.forEach(modId => {
+                const shell = document.getElementById(modId);
+                if (!shell || shell.classList.contains('hidden')) return;
+                const remain = Array.from(shell.querySelectorAll(SUB_BLOCK_SELECTOR))
+                    .filter(b => !b.classList.contains('reorder-hidden') && !b.classList.contains('hidden'));
+                if (remain.length === 0) shell.classList.add('reorder-hidden');
+            });
+
+            // page-break: imported ทุกก้อนขึ้นหน้าใหม่ — ยกเว้นกรณีก้อนแรกกลายเป็น block แรกของทั้งเอกสาร
             info.forEach(i => i.b.classList.add('pdf-page-break', 'pt-3'));
-            info[0].b.classList.remove('pdf-page-break', 'pt-3');
+            const allVisible = Array.from(container.querySelectorAll(SUB_BLOCK_SELECTOR)).filter(isVisible);
+            if (allVisible.length && allVisible[0] === info[0].b) {
+                allVisible[0].classList.remove('pdf-page-break', 'pt-3');
+            }
 
             if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
             if (typeof updateTOC === 'function') updateTOC();
@@ -8860,6 +8962,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             await new Promise(r => setTimeout(r, 50));
             aiFillCoverInfo();
             const panelName = aiImportState.scope.panel_name || '';
+            const importedBlocks = [];   // 🌟 block ที่สร้าง/ใช้ใน import รอบนี้ — cabinet-major จัดเฉพาะกลุ่มนี้
 
             for (const t of tasks) {
                 const modId = t.meta.mod_id, prefixShort = t.meta.counter_key;
@@ -8910,6 +9013,17 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 try { aiAutoFillInstanceTable(modId, t.sectionId); } catch (e) { console.error('autofill', e); }
 
                 const grid = aiFindLastGrid(prefixShort);
+
+                // 🌟 จำ block ที่ task นี้ใช้ (ใหม่หรือ reuse ก็ตาม) — ไว้ให้ cabinet-major จัดเฉพาะกลุ่มนี้
+                //    มี grid → block ที่ครอบ grid ; ไม่มี grid (trip) → block ล่าสุดใน module
+                let usedBlock = grid ? grid.closest(AI_BLOCK_SEL) : null;
+                if (!usedBlock) {
+                    const modNodeNow = document.getElementById(modId);
+                    const bs = modNodeNow ? modNodeNow.querySelectorAll(AI_BLOCK_SEL) : [];
+                    if (bs.length) usedBlock = bs[bs.length - 1];
+                }
+                if (usedBlock && !importedBlocks.includes(usedBlock)) importedBlocks.push(usedBlock);
+
                 if (!grid) { done += t.filenames.length; continue; }
 
                 for (const fn of t.filenames) {
@@ -8924,8 +9038,8 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             }
 
             // 🌟 จัดเรียงใหม่แบบ "รวมเป็นตู้ ๆ" (cabinet-major) — ทุกหัวข้อของตู้เดียวกันอยู่ติดกัน
-            //    ก่อนขึ้นตู้ถัดไป (แทนที่จะรวมตามหัวข้อ) — ทำเฉพาะเมื่อมี ≥2 ตู้
-            try { aiApplyCabinetMajorOrder(); } catch (e) { console.error('cabinet-major order', e); }
+            //    ก่อนขึ้นตู้ถัดไป — จัดเฉพาะ block ที่ import รอบนี้ (≥2 ตู้) ไม่รื้อของเดิม
+            try { aiApplyCabinetMajorOrder(importedBlocks); } catch (e) { console.error('cabinet-major order', e); }
 
             updateProgress(`✅ Import เสร็จ ${done}/${totalPhotos} รูป`);
             document.getElementById('aiProgressBar').style.width = '100%';
@@ -9344,7 +9458,11 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 <div id="aiOverlayBar" class="h-full bg-gradient-to-r from-purple-400 via-fuchsia-400 to-indigo-400 transition-all duration-300" style="width:0%"></div>
             </div>
             <div class="text-[11px] text-indigo-300/60 font-mono max-w-[80vw] truncate" id="aiOverlayLog"></div>
-            <div class="text-[11px] text-indigo-300/40">อย่าปิดหน้าต่างระหว่าง AI ทำงาน</div>
+            <!-- 🌟 ปุ่มยกเลิก — กัน overlay ค้างถาวรตอน API แขวน (abort request ที่ค้างอยู่ + หยุด pipeline) -->
+            <button onclick="cancelAiAnalysis()" class="mt-1 px-5 py-2 rounded-xl font-bold text-sm bg-white/10 border border-white/25 text-indigo-100 hover:bg-red-500/70 hover:border-red-400 transition-colors">
+                <i class="fa-solid fa-xmark mr-1"></i> ยกเลิก
+            </button>
+            <div class="text-[11px] text-indigo-300/40">ยกเลิกได้ทุกเมื่อ — รูปและ key ยังอยู่ กดวิเคราะห์ใหม่ได้เลย</div>
         </div>
     </div>
 
