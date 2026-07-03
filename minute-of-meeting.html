@@ -1711,21 +1711,7 @@ function buildCommentEl(cat, cmt, catNum, cmtNum){
     const sidx = parseInt(slot.dataset.sidx, 10);
     slot.addEventListener('click', ()=>{
       if(slot.classList.contains('has-image')) return;
-      const finput = document.createElement('input');
-      finput.type = 'file'; finput.accept = 'image/*';
-      finput.onchange = ev=>{
-        const file = ev.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async e2=>{
-          const small = await downscaleDataUrl(e2.target.result, 2000);
-          if(!cmt.photos[which]) cmt.photos[which] = [];
-          cmt.photos[which][sidx] = { dataUrl: small };
-          render(); saveDraft();
-        };
-        reader.readAsDataURL(file);
-      };
-      finput.click();
+      addPhotoViaInput(cmt, which, sidx);
     });
     const removeBtn = slot.querySelector('.remove-btn');
     if(removeBtn){
@@ -1783,6 +1769,117 @@ async function downscaleExistingPhotos(){
         }
       }
   if(changed){ await saveDraft(); isDirty = false; render(); }
+}
+
+/* ========================================================================
+   เพิ่มรูป: ใช้เมนู iOS เดิม (Photo Library / Take Photo / Choose File)
+   → แทรกรูปลงฟอร์มให้เสร็จก่อนเสมอ แล้วถ้าดูเป็น "รูปเพิ่งถ่าย" ค่อยเสนอ
+     บันทึกภาพต้นฉบับลงเครื่อง (Photos) ทีหลัง — ไม่ขวางการแทรกรูป
+   หมายเหตุ iOS: เว็บเขียนลง Photos เงียบๆ ไม่ได้ และ navigator.share ใช้ได้
+   เฉพาะ HTTPS — บน HTTP (เปิดผ่าน IP วง LAN) ใช้วิธีแตะค้างที่รูป → บันทึกลงในรูปภาพ
+   ======================================================================== */
+function addPhotoViaInput(cmt, which, sidx){
+  const finput = document.createElement('input');
+  finput.type = 'file'; finput.accept = 'image/*';   // ไม่ใส่ capture → iOS เด้งเมนูเลือกเองตามเดิม
+  finput.onchange = ev=>{
+    const file = ev.target.files && ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async e2=>{
+      // 1) แทรกรูปลงฟอร์มให้จบก่อน (สำคัญสุด)
+      const small = await downscaleDataUrl(e2.target.result, 2000);
+      if(!cmt.photos[which]) cmt.photos[which] = [];
+      cmt.photos[which][sidx] = { dataUrl: small };
+      render(); saveDraft();
+      // 2) ถ้าไฟล์เพิ่งถูกสร้างเมื่อครู่ (= เพิ่งถ่ายจากกล้อง) → เสนอเซฟต้นฉบับ
+      if(isFreshCapture(file)) offerSaveOriginal(file);
+    };
+    reader.readAsDataURL(file);
+  };
+  finput.click();
+}
+
+/* เดาว่ารูปมาจากกล้อง: ไฟล์ที่เพิ่งถ่ายจะมี lastModified ≈ ตอนนี้
+   ส่วนรูปจากคลังจะติดเวลาที่ถ่ายจริง (เก่ากว่า) — ใช้เกณฑ์ 2 นาที */
+function isFreshCapture(file){
+  return file && typeof file.lastModified === 'number' &&
+         (Date.now() - file.lastModified) < 2 * 60 * 1000;
+}
+
+/* ตั้งชื่อไฟล์ต้นฉบับให้สื่อความหมาย: MoM_<โครงการ>_<วันเวลา>.<นามสกุล> */
+function suggestPhotoFilename(file){
+  const proj = ((state.meeting && state.meeting.name) || 'photo')
+    .trim().replace(/[\\/:*?"<>|]+/g, '_').slice(0, 40) || 'photo';
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  let ext = 'jpg';
+  if(file && file.name && file.name.includes('.')) ext = file.name.split('.').pop().toLowerCase();
+  else if(file && file.type && file.type.includes('/')) ext = file.type.split('/')[1];
+  return `MoM_${proj}_${stamp}.${ext}`;
+}
+
+/* คืน File เดิมแต่ตั้งชื่อใหม่ (กัน share/ดาวน์โหลดได้ชื่อ image.jpg โล้นๆ) */
+function makeNamedFile(file){
+  try{ return new File([file], suggestPhotoFilename(file), { type: file.type || 'image/jpeg' }); }
+  catch(e){ return file; }
+}
+
+/* เสนอบันทึกภาพต้นฉบับลงเครื่อง (เรียกหลังแทรกรูปเสร็จแล้วเท่านั้น)
+   - มี Web Share (HTTPS): ปุ่ม "บันทึกลงเครื่อง" → Share Sheet → Save Image
+   - iOS บน HTTP: โชว์รูปให้แตะค้าง → "บันทึกลงในรูปภาพ" (เมนู Safari เอง ใช้ได้เสมอ)
+   - Desktop: ปุ่มดาวน์โหลดไฟล์ */
+function offerSaveOriginal(file){
+  const named = makeNamedFile(file);
+  let canWebShare = false;
+  try{ canWebShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files:[named] })); }catch(e){}
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent));   // iPadOS รายงานตัวเป็น Mac
+  const url = URL.createObjectURL(file);
+  // HTTPS (มี Web Share): ปุ่มเดียว "บันทึกลงเครื่อง" → Share Sheet → Save Image จบในที่เดียว
+  // HTTP บน iOS: ปุ่มเว็บเซฟลงคลังรูปตรงๆ ไม่ได้ (Safari บล็อก) → แตะค้างที่รูปคือวิธีเดียว
+  const hint = canWebShare
+    ? 'กด “บันทึกลงเครื่อง” แล้วเลือก “บันทึกรูปภาพ / Save Image” เพื่อเก็บลงคลังรูป'
+    : (isIOS
+        ? '<b style="color:#c2410c;">แตะค้างที่รูปด้านบน</b> แล้วเลือก <b>“บันทึกลงในรูปภาพ”</b><br>เพื่อเก็บต้นฉบับลงคลังรูป<br><span style="font-size:11.5px;color:#94a3b8;">(เปิดผ่าน http — Safari ไม่ให้ปุ่มเว็บเซฟลงคลังรูปโดยตรง)</span>'
+        : 'ต้องการดาวน์โหลดไฟล์ภาพต้นฉบับเก็บไว้ไหม?');
+  const actionBtn = canWebShare
+    ? '<button class="top-btn primary" id="osShare">บันทึกลงเครื่อง</button>'
+    : (isIOS ? '' : '<button class="top-btn primary" id="osDl">ดาวน์โหลด</button>');
+  const bg = buildModalOverlay(`
+    <div class="modal-head"><span>บันทึกภาพต้นฉบับ</span></div>
+    <div class="modal-body" style="padding:14px 18px 6px;text-align:center;">
+      <img src="${url}" alt="ภาพต้นฉบับ" style="max-width:100%;max-height:320px;border-radius:10px;border:1px solid #e2e8f0;">
+      <p style="font-size:13.5px;color:#475569;line-height:1.65;margin:10px 4px 4px;">${hint}</p>
+    </div>
+    <div class="modal-foot">
+      <button class="top-btn" id="osClose">${isIOS && !canWebShare ? 'ปิด' : 'ไม่บันทึก'}</button>
+      ${actionBtn}
+    </div>
+  `);
+  bg.style.zIndex = 430;
+  const close = ()=>{ bg.remove(); setTimeout(()=> URL.revokeObjectURL(url), 1000); };
+  bg.querySelector('#osClose').onclick = close;
+  // ไม่ปิดเมื่อแตะฉากหลัง — กันเผลอปิดระหว่างพยายามแตะค้างที่รูป
+  const shareBtn = bg.querySelector('#osShare');
+  if(shareBtn) shareBtn.onclick = async ()=>{
+    try{ await navigator.share({ files:[named] }); }
+    catch(e){ if(e && e.name !== 'AbortError') downloadFile(named); }
+    close();
+  };
+  const dlBtn = bg.querySelector('#osDl');
+  if(dlBtn) dlBtn.onclick = ()=>{ downloadFile(named); close(); };
+}
+
+/* ดาวน์โหลดไฟล์ต้นฉบับ (desktop / ไม่มีทางอื่น) */
+function downloadFile(file){
+  try{
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url; a.download = file.name || 'photo.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 4000);
+    showToast('ดาวน์โหลดภาพต้นฉบับแล้ว');
+  }catch(e){ console.error(e); }
 }
 
 function buildPhotoSlot(cmt, which, sidx){
@@ -2512,7 +2609,7 @@ function showPdfSaveButton(file, filename){
 }
 
 async function exportPDF() {
-  console.log('[exportPDF] BUILD-v6 (hide-empty-before-2 + doctype: ' + (state.meeting.docType || 'Minute of Meeting') + ')');
+  console.log('[exportPDF] BUILD-v9 (adaptive save-original modal: share-button on https / longpress on http)');
   if (state.categories.length === 0) {
     showToast('ไม่มีข้อมูลให้ export');
     return;
