@@ -332,7 +332,7 @@
                             </div>
                             <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                             <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ หรือถ่ายภาพ</p>
-                            <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews)">
+                            <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews, 'MissingItem')">
                         </div>
                         <div id="imagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
                     </div>
@@ -471,7 +471,7 @@
                                 </div>
                                 <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                                 <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ</p>
-                                <input type="file" id="claimImageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, claimUploadedImages, 3, 'claimImgLimitWarning', 'claimLoadingOverlay', renderClaimImagePreviews)">
+                                <input type="file" id="claimImageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, claimUploadedImages, 3, 'claimImgLimitWarning', 'claimLoadingOverlay', renderClaimImagePreviews, 'EquipmentClaim')">
                             </div>
                             <div id="claimImagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
                         </div>
@@ -1226,26 +1226,127 @@
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
         }
 
+        // ==========================================
+        // บันทึกภาพต้นฉบับลงเครื่อง/แกลลอรี่ (skill: avatar-photo-save-original)
+        // แทรกรูปลงฟอร์มให้เสร็จก่อนเสมอ → ถ้าเป็น "รูปเพิ่งถ่าย" ค่อยเสนอเซฟต้นฉบับ
+        // ==========================================
+
+        /* เดาว่ารูปมาจากกล้อง: ไฟล์ที่เพิ่งถ่ายจะมี lastModified ≈ ตอนนี้
+           ส่วนรูปจากคลังจะติดเวลาที่ถ่ายจริง (เก่ากว่า) — ใช้เกณฑ์ 2 นาที */
+        function isFreshCapture(file) {
+            return file && typeof file.lastModified === 'number' &&
+                   (Date.now() - file.lastModified) < 2 * 60 * 1000;
+        }
+
+        /* ตั้งชื่อไฟล์ต้นฉบับให้สื่อความหมาย: <prefix>_<วันเวลา>.<นามสกุล> */
+        function suggestPhotoFilename(file, prefix) {
+            const d = new Date(), p = n => String(n).padStart(2, '0');
+            const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+            let ext = 'jpg';
+            if (file && file.name && file.name.includes('.')) ext = file.name.split('.').pop().toLowerCase();
+            else if (file && file.type && file.type.includes('/')) ext = file.type.split('/')[1];
+            return `${prefix || 'Photo'}_${stamp}.${ext}`;
+        }
+
+        /* คืน File เดิมแต่ตั้งชื่อใหม่ (กัน share/ดาวน์โหลดได้ชื่อ image.jpg โล้นๆ) */
+        function makeNamedFile(file, prefix) {
+            try { return new File([file], suggestPhotoFilename(file, prefix), { type: file.type || 'image/jpeg' }); }
+            catch (e) { return file; }
+        }
+
+        /* ดาวน์โหลดไฟล์ต้นฉบับ (desktop / ไม่มีทางอื่น) */
+        function downloadOriginalFile(file) {
+            try {
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url; a.download = file.name || 'photo.jpg';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 4000);
+            } catch (e) { console.error(e); }
+        }
+
+        /* เสนอบันทึกภาพต้นฉบับลงเครื่อง (เรียกหลังแทรกรูปเสร็จแล้วเท่านั้น)
+           คืน Promise ที่ resolve เมื่อปิด modal — ใช้ต่อคิวหลายรูปได้ */
+        function offerSaveOriginal(file, prefix) {
+            return new Promise(resolve => {
+                const named = makeNamedFile(file, prefix);
+                let canWebShare = false;
+                try { canWebShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [named] })); } catch (e) {}
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                              (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)); // iPadOS รายงานตัวเป็น Mac
+                const url = URL.createObjectURL(file);
+
+                const hint = canWebShare
+                    ? 'กด “บันทึกลงเครื่อง” แล้วเลือก “บันทึกรูปภาพ / Save Image” เพื่อเก็บลงคลังรูป'
+                    : (isIOS
+                        ? '<b style="color:#c2410c;">แตะค้างที่รูปด้านบน</b> แล้วเลือก <b>“บันทึกลงในรูปภาพ”</b><br>เพื่อเก็บต้นฉบับลงคลังรูป<br><span style="font-size:11.5px;color:#94a3b8;">(เปิดผ่าน http — Safari ไม่ให้ปุ่มเว็บเซฟลงคลังรูปโดยตรง)</span>'
+                        : 'ต้องการดาวน์โหลดไฟล์ภาพต้นฉบับเก็บไว้ไหม?');
+                const actionBtn = canWebShare
+                    ? '<button id="osShare" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm">บันทึกลงเครื่อง</button>'
+                    : (isIOS ? '' : '<button id="osDl" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm">ดาวน์โหลด</button>');
+                const closeLabel = (isIOS && !canWebShare) ? 'ปิด' : 'ไม่บันทึก';
+
+                const bg = document.createElement('div');
+                bg.className = 'fixed inset-0 bg-gray-900 bg-opacity-70 z-[120] flex items-center justify-center no-print backdrop-blur-sm p-4';
+                bg.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b font-bold text-gray-800">บันทึกภาพต้นฉบับ</div>
+                        <div class="px-5 py-4 text-center">
+                            <img src="${url}" alt="ภาพต้นฉบับ" class="mx-auto rounded-lg border border-gray-200" style="max-width:100%;max-height:320px;">
+                            <p class="text-sm text-gray-600 leading-relaxed mt-3">${hint}</p>
+                        </div>
+                        <div class="px-5 py-3 border-t flex justify-end gap-3">
+                            <button id="osClose" class="px-5 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50">${closeLabel}</button>
+                            ${actionBtn}
+                        </div>
+                    </div>`;
+                document.body.appendChild(bg);
+
+                const close = () => { bg.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); resolve(); };
+                // ไม่ปิดเมื่อแตะฉากหลัง — กันเผลอปิดระหว่างพยายามแตะค้างที่รูป
+                bg.querySelector('#osClose').onclick = close;
+                const shareBtn = bg.querySelector('#osShare');
+                if (shareBtn) shareBtn.onclick = async () => {
+                    try { await navigator.share({ files: [named] }); }
+                    catch (e) { if (e && e.name !== 'AbortError') downloadOriginalFile(named); }
+                    close();
+                };
+                const dlBtn = bg.querySelector('#osDl');
+                if (dlBtn) dlBtn.onclick = () => { downloadOriginalFile(named); close(); };
+            });
+        }
+
+        /* เสนอเซฟทีละรูป (กัน modal ซ้อนกันเวลาเลือกหลายรูป) */
+        function offerSaveOriginalQueue(files, prefix) {
+            let i = 0;
+            const next = () => { if (i >= files.length) return; offerSaveOriginal(files[i++], prefix).then(next); };
+            next();
+        }
+
         // Shared Image Compression Helper
-        function sharedHandleImageSelection(event, targetArray, maxLimit, warningId, loadingId, renderCallback) {
+        function sharedHandleImageSelection(event, targetArray, maxLimit, warningId, loadingId, renderCallback, galleryPrefix) {
             const files = event.target.files;
             if (!files || files.length === 0) return;
             let filesToProcess = Array.from(files);
-            
+
             if (targetArray.length + filesToProcess.length > maxLimit) {
                 document.getElementById(warningId).classList.remove('hidden');
                 filesToProcess = filesToProcess.slice(0, maxLimit - targetArray.length);
             } else {
                 document.getElementById(warningId).classList.add('hidden');
             }
-            
+
             const loadingOverlay = document.getElementById(loadingId);
             loadingOverlay.classList.remove('hidden');
-            let processedCount = 0; 
+            let processedCount = 0;
+            const freshOriginals = []; // ต้นฉบับของรูปที่ "เพิ่งถ่าย" — เสนอเซฟหลังแทรกรูปเสร็จ
 
             for (let i = 0; i < filesToProcess.length; i++) {
                 const file = filesToProcess[i];
                 if (!file.type.match('image.*')) { processedCount++; continue; }
+
+                // เก็บต้นฉบับไว้ก่อน ถ้าเป็นรูปเพิ่งถ่ายจากกล้อง (ยังไม่เสนอเซฟตอนนี้)
+                if (galleryPrefix && isFreshCapture(file)) freshOriginals.push(file);
 
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -1266,8 +1367,10 @@
                         targetArray.push({ id: Date.now() + i, data: canvas.toDataURL('image/jpeg', 0.7) });
                         processedCount++;
                         if(processedCount === filesToProcess.length) {
+                             // แทรกรูปลงฟอร์มเสร็จสมบูรณ์ก่อน แล้วค่อยเสนอเซฟต้นฉบับ
                              renderCallback();
                              loadingOverlay.classList.add('hidden');
+                             if (freshOriginals.length) offerSaveOriginalQueue(freshOriginals, galleryPrefix);
                         }
                     };
                     img.src = e.target.result;
