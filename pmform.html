@@ -495,13 +495,19 @@
             max-height: 96vh !important;
             height: 96vh;
         }
+        /* 🌟 ใช้ CSS columns (ไม่ใช่ grid) — ลำดับไหล "บนลงล่าง" จบคอลัมน์แรกค่อยขึ้นคอลัมน์ถัดไป
+           (grid auto-fill เดิมไหลซ้าย→ขวา ทำให้ลำดับ 1,2,3 กระจายแนวนอน อ่านยาก) */
         #reorderPanel.reorder-fs #reorderList {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 8px;
-            align-content: start;
+            display: block;
+            column-width: 320px;
+            column-gap: 8px;
         }
-        #reorderPanel.reorder-fs #reorderList > li { margin-top: 0 !important; }
+        #reorderPanel.reorder-fs #reorderList > li {
+            margin-top: 0 !important;
+            margin-bottom: 8px;
+            break-inside: avoid;        /* กันการ์ดโดนผ่าครึ่งข้ามคอลัมน์ */
+            -webkit-column-break-inside: avoid;
+        }
 
         /* 🌟 ป้ายเลขลำดับ (คลิกเพื่อพิมพ์ตำแหน่งใหม่) */
         .reorder-pos-badge {
@@ -553,6 +559,17 @@
         @keyframes reorderMovedPulse {
             0%   { box-shadow: 0 0 0 3px #34d399, 0 6px 16px -4px rgba(16,185,129,0.5); background: #ecfdf5; }
             100% { box-shadow: none; background: #fff; }
+        }
+
+        /* 🌟 รายการที่ถูกติ๊กเลือก (multi-select move) */
+        .reorder-selected {
+            background: #eef2ff !important;
+            border-color: #818cf8 !important;
+            box-shadow: 0 0 0 1.5px #a5b4fc;
+        }
+        .reorder-select-cb {
+            width: 16px; height: 16px; accent-color: #6366f1;
+            cursor: pointer; flex-shrink: 0;
         }
 
         /* 🌟 ไฮไลท์รายการที่ user กำลังดูอยู่ใน modal จัดเรียง */
@@ -1115,7 +1132,28 @@
                 </div>
             </div>
             <div class="px-4 pt-3 pb-2 bg-slate-50 border-b shrink-0">
-                <p class="text-xs text-slate-500 text-center">ลากรายการเพื่อจัดเรียง — หรือ <b class="text-indigo-600">คลิกตัวเลขลำดับ</b> แล้วพิมพ์ตำแหน่งใหม่ (เช่น ย้ายจาก 100 → 50 ได้ทันที) — แถบสีซ้ายบอกกลุ่ม</p>
+                <p class="text-xs text-slate-500 text-center">ลากรายการเพื่อจัดเรียง — <b class="text-indigo-600">คลิกตัวเลขลำดับ</b> แล้วพิมพ์ตำแหน่งใหม่ — หรือ <b class="text-indigo-600">ติ๊ก ☑</b> หลายรายการแล้วย้ายพร้อมกันทีเดียว</p>
+            </div>
+            <!-- 🌟 แถบเครื่องมือ multi-select — โผล่เมื่อติ๊กเลือก ≥1 รายการ -->
+            <div id="reorderSelBar" class="hidden px-4 py-2 bg-indigo-50 border-b border-indigo-100 shrink-0 items-center gap-2 flex-wrap">
+                <span id="reorderSelCount" class="text-xs font-bold text-indigo-700 shrink-0"></span>
+                <div class="flex items-center gap-1.5 ml-auto flex-wrap">
+                    <input id="reorderSelPos" type="number" min="1" placeholder="ตำแหน่ง"
+                        class="w-[72px] px-2 py-1 border border-indigo-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();moveSelectedToPosition();}">
+                    <button onclick="moveSelectedToPosition()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                        <i class="fa-solid fa-arrow-turn-down mr-0.5"></i> ย้ายไป
+                    </button>
+                    <button onclick="moveSelectedToEdge(true)" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors" title="ย้ายไปบนสุด">
+                        <i class="fa-solid fa-angles-up"></i> บนสุด
+                    </button>
+                    <button onclick="moveSelectedToEdge(false)" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors" title="ย้ายไปล่างสุด">
+                        <i class="fa-solid fa-angles-down"></i> ล่างสุด
+                    </button>
+                    <button onclick="clearReorderSelection()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors" title="ยกเลิกการเลือกทั้งหมด">
+                        <i class="fa-solid fa-xmark"></i> ล้าง
+                    </button>
+                </div>
             </div>
             <div id="reorderListWrap" class="p-4 bg-slate-100 flex-grow overflow-y-auto">
                 <ul id="reorderList" class="space-y-2">
@@ -1123,6 +1161,9 @@
                 </ul>
             </div>
             <div class="p-4 border-t bg-white flex justify-end gap-3 shrink-0">
+                <button id="reorderUndoBtn" onclick="undoReorderMove()" class="hidden mr-auto px-4 py-2 rounded-xl font-bold text-sm bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors" title="ย้อนกลับการย้ายล่าสุด (Ctrl+Z)">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> ย้อนกลับ
+                </button>
                 <button onclick="closeReorderModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">ยกเลิก</button>
                 <button id="reorderSaveBtn" onclick="applyReorder()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all opacity-50">บันทึกตำแหน่ง</button>
             </div>
@@ -1459,13 +1500,19 @@
             }
             if (!li) return;
             const modId = li.getAttribute('data-mod-id');
-            let newLabel;
-            try { newLabel = getReorderItemLabel(modId, block); } catch (e) { return; }
-            const labelSpan = li.querySelector('.reorder-handle span[title]');
-            if (labelSpan && newLabel) {
-                labelSpan.textContent = newLabel;
-                labelSpan.setAttribute('title', newLabel);
+            let parts;
+            try { parts = getReorderItemParts(modId, block); } catch (e) { return; }
+            if (!parts) return;
+            // 🌟 layout ใหม่: title กับชื่อตู้แยกกันคนละ span (title truncate ได้, eq โชว์เสมอ)
+            const titleSpan = li.querySelector('.reorder-label-title');
+            const eqSpan = li.querySelector('.reorder-label-eq');
+            const handle = li.querySelector('.reorder-handle');
+            if (titleSpan) titleSpan.textContent = parts.title;
+            if (eqSpan) {
+                eqSpan.textContent = parts.eq || '';
+                eqSpan.classList.toggle('hidden', !parts.eq);
             }
+            if (handle) handle.setAttribute('title', parts.eq ? `${parts.title} (${parts.eq})` : parts.title);
         }
 
         // 🌟 Event delegation: ฟังการแก้ไขช่องที่มีผลต่อ "ชื่อหัวข้อ" แล้วอัปเดต TOC + reorder modal สด
@@ -1778,7 +1825,7 @@
             'mod_calibration': { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' }
         };
 
-        function getReorderItemLabel(modId, subBlock) {
+        function getReorderItemParts(modId, subBlock) {
             // 🌟 ใช้ logic เดียวกับ updateTOC เพื่อให้ชื่อใน "จัดเรียง" ตรงกับสารบัญ
             let blockTitle = '';
             const titleInput = subBlock.querySelector('input.photo-group-title-input');
@@ -1823,10 +1870,17 @@
                     val = eqInput.value.trim() || eqInput.getAttribute('value');
                 }
                 if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
-                    eqName = ` (${val})`;
+                    eqName = val;
                 }
             }
-            return `${blockTitle}${eqName}`;
+            // 🌟 คืนเป็น 2 ส่วนแยก — ให้ UI เลือกได้ว่าจะ truncate เฉพาะ title แล้วคงชื่อตู้ไว้
+            return { title: blockTitle, eq: eqName };
+        }
+
+        // แบบ string เดิม (สำหรับ title attribute / จุดที่ต้องการข้อความเต็ม)
+        function getReorderItemLabel(modId, subBlock) {
+            const p = getReorderItemParts(modId, subBlock);
+            return p.eq ? `${p.title} (${p.eq})` : p.title;
         }
 
         // 🌟 หา modId จาก sub-block element โดยดูจาก class
@@ -1877,6 +1931,7 @@
         function moveLiToPosition(li, pos1) {
             const list = document.getElementById('reorderList');
             if (!list || !li) return;
+            pushReorderUndo();   // 🌟 เก็บลำดับก่อนย้าย — กดย้อนกลับได้
             const others = Array.from(list.children).filter(x => x !== li);
             const idx = Math.max(0, Math.min(others.length, pos1 - 1));
             const ref = others[idx] || null;
@@ -1887,6 +1942,124 @@
             li.classList.add('reorder-just-moved');
             setTimeout(() => li.classList.remove('reorder-just-moved'), 1200);
             try { li.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 🌟 UNDO — ย้อนกลับการย้ายลำดับใน modal จัดเรียง (สูงสุด 20 ครั้ง)
+        //    ครอบคลุม: ย้ายกลุ่ม (ย้ายไป/บนสุด/ล่างสุด), พิมพ์เลขเดี่ยว, ลาก drag
+        // ══════════════════════════════════════════════════════════
+        let reorderUndoStack = [];
+        let reorderDragSnapshot = null;   // snapshot ก่อนเริ่มลาก (push เมื่อ order เปลี่ยนจริง)
+        const REORDER_UNDO_MAX = 20;
+
+        function snapshotReorderOrder() {
+            const list = document.getElementById('reorderList');
+            return list ? Array.from(list.children) : null;
+        }
+
+        function pushReorderUndo(snap) {
+            const s = snap || snapshotReorderOrder();
+            if (!s || !s.length) return;
+            reorderUndoStack.push(s);
+            if (reorderUndoStack.length > REORDER_UNDO_MAX) reorderUndoStack.shift();
+            updateReorderUndoBtn();
+        }
+
+        function updateReorderUndoBtn() {
+            const btn = document.getElementById('reorderUndoBtn');
+            if (btn) btn.classList.toggle('hidden', reorderUndoStack.length === 0);
+        }
+
+        function undoReorderMove() {
+            const list = document.getElementById('reorderList');
+            if (!list || !reorderUndoStack.length) return;
+            const snap = reorderUndoStack.pop();
+            // appendChild ตามลำดับ snapshot → ทั้ง list กลับเป็นลำดับเดิม (ตัวที่หายไปแล้วถูกข้าม)
+            snap.forEach(li => { if (li && li.parentNode === list) list.appendChild(li); });
+            renumberReorderList();
+            markReorderChanged();
+            updateReorderUndoBtn();
+            showToast('ย้อนกลับลำดับแล้ว');
+        }
+
+        // Ctrl+Z / Cmd+Z ขณะ modal จัดเรียงเปิดอยู่ (ไม่ทำงานตอนกำลังพิมพ์ใน input)
+        document.addEventListener('keydown', (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+            const m = document.getElementById('reorderModal');
+            if (!m || m.classList.contains('hidden')) return;
+            if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+            e.preventDefault();
+            undoReorderMove();
+        });
+
+        // ══════════════════════════════════════════════════════════
+        // 🌟 MULTI-SELECT MOVE — ติ๊กเลือกหลายรายการแล้วย้ายพร้อมกันทีเดียว
+        //    (แก้ปัญหาย้ายทีละอันลำบากตอนมีหัวข้อเยอะๆ)
+        // ══════════════════════════════════════════════════════════
+        function getSelectedReorderLis() {
+            const list = document.getElementById('reorderList');
+            if (!list) return [];
+            return Array.from(list.children).filter(li => li.classList.contains('reorder-selected'));
+        }
+
+        function toggleReorderSelect(cb, ev) {
+            if (ev) ev.stopPropagation();
+            const li = cb.closest('li');
+            if (!li) return;
+            li.classList.toggle('reorder-selected', cb.checked);
+            updateReorderSelToolbar();
+        }
+
+        function updateReorderSelToolbar() {
+            const bar = document.getElementById('reorderSelBar');
+            const countEl = document.getElementById('reorderSelCount');
+            if (!bar || !countEl) return;
+            const n = getSelectedReorderLis().length;
+            bar.classList.toggle('hidden', n === 0);
+            bar.classList.toggle('flex', n > 0);
+            countEl.textContent = n > 0 ? `เลือกแล้ว ${n} รายการ` : '';
+        }
+
+        function clearReorderSelection() {
+            const list = document.getElementById('reorderList');
+            if (!list) return;
+            list.querySelectorAll('li.reorder-selected').forEach(li => li.classList.remove('reorder-selected'));
+            list.querySelectorAll('.reorder-select-cb:checked').forEach(cb => { cb.checked = false; });
+            updateReorderSelToolbar();
+        }
+
+        // ย้ายรายการที่เลือกทั้งหมด (คงลำดับสัมพัทธ์เดิม) ไปเริ่มที่ตำแหน่ง pos1 (1-based)
+        function moveSelectedToPosition(posArg) {
+            const list = document.getElementById('reorderList');
+            const sel = getSelectedReorderLis();   // เรียงตาม DOM = ลำดับที่เห็นบนจอ
+            if (!list || !sel.length) return;
+            let pos1 = posArg;
+            if (pos1 == null) {
+                const inp = document.getElementById('reorderSelPos');
+                pos1 = parseInt(inp && inp.value, 10);
+                if (isNaN(pos1)) { showToast('พิมพ์เลขตำแหน่งก่อนครับ', 'error'); return; }
+            }
+            pushReorderUndo();   // 🌟 เก็บลำดับก่อนย้ายกลุ่ม — กดย้อนกลับได้
+            const others = Array.from(list.children).filter(li => !li.classList.contains('reorder-selected'));
+            pos1 = Math.max(1, Math.min(others.length + 1, pos1));
+            const ref = others[pos1 - 1] || null;
+            // insertBefore ทีละตัวก่อน ref เดียวกัน → กลุ่มไปอยู่ติดกันตามลำดับเดิม
+            sel.forEach(li => list.insertBefore(li, ref));
+            renumberReorderList();
+            markReorderChanged();
+            sel.forEach(li => {
+                li.classList.remove('reorder-just-moved');
+                void li.offsetWidth;
+                li.classList.add('reorder-just-moved');
+                setTimeout(() => li.classList.remove('reorder-just-moved'), 1200);
+            });
+            try { sel[0].scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+        }
+
+        function moveSelectedToEdge(toTop) {
+            const list = document.getElementById('reorderList');
+            if (!list) return;
+            moveSelectedToPosition(toTop ? 1 : list.children.length + 1);
         }
 
         // 🌟 คลิกเลขลำดับ → กลายเป็นช่องพิมพ์ตัวเลข → Enter เพื่อย้ายไปตำแหน่งนั้น
@@ -2031,7 +2204,14 @@
 
                 if (item.kind === 'sub') {
                     const subInfo = getSubContainerInfo(item.modId);
-                    const itemLabel = getReorderItemLabel(item.modId, item.subBlock);
+                    // 🌟 label 2 ส่วน: title truncate ได้ / ชื่อตู้ (eq) โชว์เสมอไม่โดนตัด
+                    //    เช่น "Insulation Resistance Te… (Before)  MDB-ACB PANEL"
+                    const parts = getReorderItemParts(item.modId, item.subBlock);
+                    const fullLabel = parts.eq ? `${parts.title} (${parts.eq})` : parts.title;
+                    const titleAttr = aiEscHtml(fullLabel).replace(/"/g, '&quot;');
+                    const eqHtml = parts.eq
+                        ? `<span class="reorder-label-eq text-[12px] font-bold text-orange-600 whitespace-nowrap shrink-0 pointer-events-none max-w-[45%] truncate">${aiEscHtml(parts.eq)}</span>`
+                        : `<span class="reorder-label-eq text-[12px] font-bold text-orange-600 whitespace-nowrap shrink-0 pointer-events-none max-w-[45%] truncate hidden"></span>`;
                     li.setAttribute('data-kind', 'sub');
                     if (subInfo) {
                         li.setAttribute('data-parent', subInfo.id);
@@ -2039,10 +2219,12 @@
                     }
                     li.setAttribute('data-sub-id', item.subBlock.id);
                     li.innerHTML = `
+                        <input type="checkbox" class="reorder-select-cb" onclick="toggleReorderSelect(this, event)" title="เลือกเพื่อย้ายพร้อมกันหลายรายการ">
                         <button onclick="startPosEdit(this, event)" class="reorder-pos-badge" title="คลิกเพื่อพิมพ์ตำแหน่งใหม่">0</button>
-                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
+                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1" title="${titleAttr}">
                             <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
-                            <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${itemLabel}">${itemLabel}</span>
+                            <span class="reorder-label-title text-sm font-semibold text-slate-700 pointer-events-none truncate min-w-0">${aiEscHtml(parts.title)}</span>
+                            ${eqHtml}
                         </div>
                         <button onclick="scrollToElement('${item.subBlock.id}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่รายการนี้">
                             <i class="fa-solid fa-arrow-right text-xs"></i>
@@ -2051,10 +2233,12 @@
                 } else {
                     li.setAttribute('data-kind', 'module');
                     li.innerHTML = `
+                        <input type="checkbox" class="reorder-select-cb" onclick="toggleReorderSelect(this, event)" title="เลือกเพื่อย้ายพร้อมกันหลายรายการ">
                         <button onclick="startPosEdit(this, event)" class="reorder-pos-badge" title="คลิกเพื่อพิมพ์ตำแหน่งใหม่">0</button>
-                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1">
+                        <div class="reorder-handle flex items-center gap-2 cursor-grab active:cursor-grabbing w-full overflow-hidden p-1" title="${aiEscHtml(groupLabel).replace(/"/g, '&quot;')}">
                             <i class="fa-solid fa-grip-vertical text-slate-300 pointer-events-none text-sm shrink-0"></i>
-                            <span class="text-sm font-semibold text-slate-700 pointer-events-none truncate" title="${groupLabel}">${groupLabel}</span>
+                            <span class="reorder-label-title text-sm font-semibold text-slate-700 pointer-events-none truncate min-w-0">${aiEscHtml(groupLabel)}</span>
+                            <span class="reorder-label-eq text-[12px] font-bold text-orange-600 whitespace-nowrap shrink-0 pointer-events-none max-w-[45%] truncate hidden"></span>
                         </div>
                         <button onclick="scrollToElement('${item.modId}')" class="go-to-btn text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0" title="ไปที่หัวข้อนี้">
                             <i class="fa-solid fa-arrow-right text-xs"></i>
@@ -2068,6 +2252,16 @@
             // 🌟 ใส่เลขลำดับให้ทุกแถว + อัปเดตจำนวนรวมบน header
             renumberReorderList();
 
+            // 🌟 รีเซ็ตสถานะ multi-select (list เพิ่งถูกสร้างใหม่ — ไม่มีอะไรถูกเลือก)
+            updateReorderSelToolbar();
+            const selPosInp = document.getElementById('reorderSelPos');
+            if (selPosInp) selPosInp.value = '';
+
+            // 🌟 รีเซ็ต undo stack (li ถูกสร้างใหม่หมด — snapshot เก่าอ้างถึง element ที่ไม่อยู่ใน list แล้ว)
+            reorderUndoStack = [];
+            reorderDragSnapshot = null;
+            updateReorderUndoBtn();
+
             document.getElementById('reorderModal').classList.remove('hidden');
             document.getElementById('reorderModal').classList.add('flex');
 
@@ -2079,12 +2273,18 @@
                 draggable: 'li',
                 forceFallback: true,
                 fallbackTolerance: 5,
+                onStart: function() {
+                    // 🌟 เก็บลำดับก่อนเริ่มลาก — จะ push เข้า undo stack เมื่อ order เปลี่ยนจริง (onUpdate)
+                    reorderDragSnapshot = snapshotReorderOrder();
+                },
                 onUpdate: function(evt) {
-                    // 🌟 user เลื่อนรายการแล้ว — ให้ปุ่ม "บันทึกตำแหน่ง" กลับมาเป็นสีปกติ + อัปเดตเลขลำดับ
+                    // 🌟 user เลื่อนรายการแล้ว — push undo + ให้ปุ่ม "บันทึกตำแหน่ง" กลับมาเป็นสีปกติ + อัปเดตเลขลำดับ
+                    if (reorderDragSnapshot) { pushReorderUndo(reorderDragSnapshot); reorderDragSnapshot = null; }
                     markReorderChanged();
                     renumberReorderList();
                 },
                 onEnd: function(evt) {
+                    reorderDragSnapshot = null;   // ลากแล้ววางที่เดิม (ไม่มี onUpdate) → ทิ้ง snapshot
                     renumberReorderList();
                 }
             });
