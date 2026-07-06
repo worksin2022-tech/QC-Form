@@ -282,7 +282,9 @@
                 @bottom-center { content: none; background: none; }
                 @bottom-right { content: none; background: none; }
             }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            /* 🌟 outline: none — ไฮไลท์ UI (กรอบเขียว/ส้ม) ไม่มีที่ยืนบนกระดาษ
+               stylesheet !important ชนะ inline style ธรรมดา → ฆ่าได้แม้กรอบที่เคยถูกเซฟฝังใน draft เก่า */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; outline: none !important; }
             
             body, html, main, #a4ScrollArea { 
                 background: white !important; display: block !important; margin: 0 !important; 
@@ -359,7 +361,26 @@
                 break-inside: avoid !important;
             }
             
-            /* 🌟 photo-group-block (Before/After/Cleaning) — รูปอาจเกิน 6 รูป จึงไม่ avoid 
+            /* 🌟 Contact ที่มีเบรกเกอร์เกิน 8 ตัว (.contact-multipage — JS ติด class ให้ใน checkContactPageBreak):
+               ตาราง 1 หน้าใส่ได้ ~8 ตัว (ตัวละ 3 แถว) → ต้องยอมให้ block แบ่งหน้าได้
+               + บังคับเบรกเกอร์ตัวที่ 9, 17, 25, ... ขึ้นหน้าใหม่แบบสมบูรณ์ (ทุก 8 ตัว = 24 แถว)
+               <thead> ของตารางจะถูก Chrome ซ้ำให้ทุกหน้าอัตโนมัติ ; แถวไม่โดนผ่าเพราะ tr มี avoid global */
+            .native-print-mode .contact-block.contact-multipage {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            .native-print-mode .contact-block.contact-multipage tbody tr:nth-child(24n+25) {
+                page-break-before: always !important;
+                break-before: page !important;
+            }
+            /* หน้าที่ตารางไหลต่อ (thead ซ้ำ) ไม่มี pt-3 เหมือน block ปกติ → หัวตารางชิดแถบ header
+               ใช้ "แถว spacer โปร่งใส" ใน thead (ไม่มีขอบ/พื้น = เห็นเป็นช่องว่างเปล่าๆ เหมือนหน้าอื่น)
+               thead ซ้ำทุกหน้า → ช่องว่างซ้ำทุกหน้าอัตโนมัติ ; บนจอซ่อนไว้ไม่ให้เกะกะ */
+            .native-print-mode .contact-block.contact-multipage .contact-thead-spacer {
+                display: table-row !important;
+            }
+
+            /* 🌟 photo-group-block (Before/After/Cleaning) — รูปอาจเกิน 6 รูป จึงไม่ avoid
                แต่บังคับให้ตัดหน้าทุก 6 รูป (รูปที่ 7, 13, 19, ... ขึ้นหน้าใหม่) */
             .native-print-mode .photo-group-block { 
                 margin-bottom: 5mm !important; 
@@ -486,6 +507,30 @@
                 margin: 0 !important;
             }
             .block-base-title[contenteditable="true"]:empty:before { content: ''; }
+        }
+
+        /* 🌟 แถว spacer ใน thead ของ contact multipage — ซ่อนบนจอ (โชว์เฉพาะตอนพิมพ์ ดู @media print) */
+        .contact-thead-spacer { display: none; }
+
+        /* 🌟 ไฮไลท์ block ชั่วคราว (เขียว=เพิ่งเพิ่ม, ส้ม=กระโดดไปหา)
+           ⚠️ ต้องเป็น class เท่านั้น ห้ามใช้ inline style — inline เคยโดน autosave (debounce 1.5 วิ)
+           เซฟ innerHTML ตอนกรอบยังติดอยู่ → กรอบเขียวฝังลง draft ถาวร + ติดไปตอนพิมพ์ */
+        .block-flash-new, .block-flash-goto {
+            outline-offset: 4px;
+            border-radius: 8px;
+            transition: outline-color 0.3s ease;
+        }
+        .block-flash-new  { outline: 4px solid #10b981; }
+        .block-flash-goto { outline: 4px solid #f97316; }
+
+        /* 🌟 ช่อง Test connection (insulation/dielectric) — พิมพ์แก้ได้ (contenteditable) */
+        .tc-edit { cursor: text; transition: background 0.15s ease; }
+        .tc-edit:hover { background: #fff7ed; }
+        .tc-edit:focus {
+            outline: 2px solid #fb923c;
+            outline-offset: -2px;
+            background: #fff7ed;
+            border-radius: 4px;
         }
 
         /* 🌟 โหมดเต็มจอของ modal จัดเรียง — กว้าง/สูงเกือบเต็มจอ + จัดเป็นหลายคอลัมน์ */
@@ -1403,6 +1448,19 @@
             return best;
         }
 
+        // 🌟 ไฮไลท์ block ชั่วคราวด้วย "class" (ห้าม inline style — เคยโดน autosave เซฟค้างลง draft)
+        //    เก็บ timer ไว้บน element → ถูกเรียกซ้ำเร็วๆ ก็ไม่ค้าง (timer เก่าถูก clear ก่อนเสมอ)
+        function flashBlock(el, cls) {
+            if (!el) return;
+            clearTimeout(el._flashTimer);
+            el.classList.remove('block-flash-new', 'block-flash-goto');
+            void el.offsetWidth;   // restart CSS transition
+            el.classList.add(cls);
+            el._flashTimer = setTimeout(() => {
+                el.classList.remove('block-flash-new', 'block-flash-goto');
+            }, 1800);
+        }
+
         // 🌟 เลื่อนหน้ารายงานไปยัง block ที่กำหนด (ไม่ปิด modal, ไฮไลท์สีเขียวสด)
         //    ใช้สำหรับ "+" สร้าง block ใหม่ — ผู้ใช้จะได้เห็น block ที่เพิ่งสร้างทันที
         function scrollToNewBlock(elementId) {
@@ -1414,22 +1472,7 @@
                 const scrollAreaRect = scrollArea.getBoundingClientRect();
                 const topPos = elRect.top - scrollAreaRect.top + scrollArea.scrollTop - 40;
                 scrollArea.scrollTo({ top: topPos, behavior: 'smooth' });
-
-                const oldOutline = el.style.outline;
-                const oldOutlineOffset = el.style.outlineOffset;
-                const oldTransition = el.style.transition;
-                el.style.transition = 'outline 0.3s ease';
-                el.style.outline = '4px solid #10b981'; // emerald — "block ใหม่"
-                el.style.outlineOffset = '4px';
-                el.style.borderRadius = '8px';
-                setTimeout(() => {
-                    el.style.outline = '4px solid transparent';
-                    setTimeout(() => {
-                        el.style.outline = oldOutline;
-                        el.style.outlineOffset = oldOutlineOffset;
-                        el.style.transition = oldTransition;
-                    }, 300);
-                }, 1500);
+                flashBlock(el, 'block-flash-new');   // emerald — "block ใหม่"
             }, 50);
         }
 
@@ -1464,24 +1507,7 @@
                     const topPos = elRect.top - scrollAreaRect.top + scrollArea.scrollTop - 40; 
                     
                     scrollArea.scrollTo({ top: topPos, behavior: 'smooth' });
-                    
-                    const oldOutline = el.style.outline;
-                    const oldOutlineOffset = el.style.outlineOffset;
-                    const oldTransition = el.style.transition;
-                    
-                    el.style.transition = 'outline 0.3s ease';
-                    el.style.outline = '4px solid #f97316';
-                    el.style.outlineOffset = '4px';
-                    el.style.borderRadius = '8px';
-                    
-                    setTimeout(() => {
-                        el.style.outline = '4px solid transparent';
-                        setTimeout(() => {
-                            el.style.outline = oldOutline;
-                            el.style.outlineOffset = oldOutlineOffset;
-                            el.style.transition = oldTransition;
-                        }, 300);
-                    }, 1500);
+                    flashBlock(el, 'block-flash-goto');   // orange — "กระโดดไปหา"
                 }
             }, 150);
         }
@@ -2501,7 +2527,8 @@
                     groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
-                html: document.getElementById('exportWrapper').innerHTML
+                // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
+                html: document.getElementById('exportWrapper').innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '')
             };
             setTimeout(() => { suppressDirty = false; }, 0); // ปลดล็อกหลัง mutation ของ syncDOMValues ถูกประมวลผลแล้ว
             return obj;
@@ -2865,7 +2892,8 @@
                     groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
-                html: document.getElementById('exportWrapper').innerHTML
+                // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
+                html: document.getElementById('exportWrapper').innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '')
             };
             let history = await getHistory();
             const dupIdx = history.findIndex(h => h.name === name);
@@ -3301,6 +3329,45 @@
                 document.querySelectorAll('[id^="grid_"]').forEach(ensurePhotoGridSortable);
             }
 
+            // 🌟 sync การจัดหน้า contact block จาก draft เก่า (เซฟก่อนมีฟีเจอร์ multipage)
+            //    เรียก checkContactPageBreak เต็มๆ — จัดทั้ง class contact-multipage + break ของรูปให้ตรงเงื่อนไขปัจจุบัน
+            document.querySelectorAll('.contact-block').forEach(blk => {
+                const tb = blk.querySelector('tbody[id^="tbody_"]');
+                const ps = blk.querySelector('[id^="photoSec_"]');
+                if (tb && ps && typeof checkContactPageBreak === 'function') checkContactPageBreak(tb.id, ps.id);
+                // retrofit: แทรกแถว spacer ใน thead ถ้ายังไม่มี (draft เก่าก่อนฟีเจอร์นี้)
+                const thead = blk.querySelector('table thead');
+                if (thead && !thead.querySelector('.contact-thead-spacer')) {
+                    thead.insertAdjacentHTML('afterbegin',
+                        '<tr class="contact-thead-spacer"><td colspan="6" style="height: 8mm; border: none !important; padding: 0 !important; background: transparent !important;"></td></tr>');
+                }
+            });
+
+            // 🌟 retrofit: ช่อง Test connection (insulation/dielectric) จาก draft เก่า → ให้พิมพ์แก้ได้
+            document.querySelectorAll('.insulation-block table td:first-child, .dielectric-block table td:first-child').forEach(td => {
+                if (!td.hasAttribute('contenteditable')) {
+                    td.setAttribute('contenteditable', 'true');
+                    td.setAttribute('spellcheck', 'false');
+                    td.classList.add('tc-edit');
+                }
+            });
+
+            // 🌟 ล้างไฮไลท์ที่ถูกเซฟค้างใน draft (บั๊กเก่า: autosave ยิงตอนกรอบเขียว/ส้มยังโชว์
+            //    → inline outline ฝังลง innerHTML ถาวร + ติดตอนพิมพ์)
+            document.querySelectorAll('#exportWrapper .block-flash-new, #exportWrapper .block-flash-goto').forEach(el => {
+                el.classList.remove('block-flash-new', 'block-flash-goto');
+            });
+            document.querySelectorAll('#exportWrapper [style*="outline"]').forEach(el => {
+                // ⚠️ ห้ามเช็คด้วย /4px solid/ — เบราว์เซอร์ serialize กลับด้านเป็น "rgb(16,185,129) solid 4px"
+                //    inline outline ในเนื้อรายงานมีที่มาเดียวคือบั๊กไฮไลท์เก่า → ล้างทิ้งได้เลยไม่มีเงื่อนไข
+                el.style.outline = '';
+                el.style.outlineOffset = '';
+                if (/outline/.test(el.style.transition || '')) el.style.transition = '';
+                if ((el.style.borderRadius || '') === '8px') el.style.borderRadius = '';   // ของแถมจากบั๊กเดิม (ไม่เคยถูกคืนค่า)
+                const st = el.getAttribute('style');
+                if (!st || !st.trim()) el.removeAttribute('style');
+            });
+
             // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการโหลดถูกประมวลผลเสร็จ (observer callback เป็น async)
             //    แล้วเคลียร์ flag dirty — เพราะเพิ่งโหลดมา = ตรงกับที่บันทึกไว้ ยังไม่มีการแก้
             setTimeout(() => {
@@ -3701,7 +3768,8 @@
                     groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
-                html: document.getElementById('exportWrapper').innerHTML
+                // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
+                html: document.getElementById('exportWrapper').innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '')
             };
             const jsonStr = JSON.stringify(draft);
             const blob = new Blob([jsonStr], { type: "application/json" });
@@ -4553,7 +4621,7 @@
                             <th class="w-[15%]">Result</th>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L1 to L2+L3+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L1 to L2+L3+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="align-middle text-center" rowspan="3">
@@ -4572,13 +4640,13 @@
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L2 to L1+L3+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L2 to L1+L3+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L3 to L1+L2+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L3 to L1+L2+GND</td>
                             <td class="p-1"><input type="text" value="1000 Vdc 1 min" class="paper-input text-center text-slate-600 voltage-test-input"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
@@ -4633,20 +4701,20 @@
                             <th class="w-[15%]">Result</th>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L1 to L2+L3+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L1 to L2+L3+GND</td>
                             <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="text-slate-500 font-medium leading-tight align-middle" rowspan="3">IEC61439-1<br><span class="text-[11px] text-slate-400 font-normal mt-1 block">No Puncture<br>No Flash Over</span></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L2 to L1+L3+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L2 to L1+L3+GND</td>
                             <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
                         </tr>
                         <tr>
-                            <td class="font-bold text-slate-700 text-left pl-4">L3 to L1+L2+GND</td>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L3 to L1+L2+GND</td>
                             <td class="p-1"><input type="text" value="2.5 kV 1 min" class="paper-input text-center text-slate-600"></td>
                             <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
                             <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
@@ -4815,6 +4883,9 @@
                     </div>
                     <table class="w-full text-sm text-center mb-6">
                         <thead>
+                            <!-- 🌟 spacer โปร่งใส — เว้นช่องว่างระหว่างแถบ header กับหัวตารางในหน้าที่ตารางไหลต่อ
+                                 (โชว์เฉพาะ print + multipage ; thead ซ้ำทุกหน้าอัตโนมัติ) -->
+                            <tr class="contact-thead-spacer"><td colspan="6" style="height: 8mm; border: none !important; padding: 0 !important; background: transparent !important;"></td></tr>
                             <tr>
                                 <th class="w-[15%]">Breaker</th>
                                 <th class="w-[15%]">Phase</th>
@@ -5396,8 +5467,20 @@
             const photoSec = document.getElementById(photoSecId);
             if (!tbody || !photoSec) return;
             const rows = tbody.querySelectorAll('.breaker-group').length;
-            if(rows >= 4) { photoSec.classList.add('pdf-page-break', 'pt-3'); } 
+            const multi = rows > 8;   // เกิน 8 ตัว = ตารางแบ่งหลายหน้า (contact-multipage)
+
+            // การจัดหน้าของรูป:
+            //   • 4-8 ตัว  → ตารางกินเกือบเต็มหน้า รูปไม่พอที่ → บังคับรูปขึ้นหน้าใหม่ (เงื่อนไขเดิม)
+            //   • >8 ตัว   → ตารางแบ่งหน้าเอง จบกลางหน้า มีที่ว่างเหลือ → ให้รูป "ไหลต่อท้ายตาราง"
+            //     (ห้ามใส่ pdf-page-break — ไม่งั้นรูปหนีไปหน้าใหม่ทั้งที่มีที่ว่าง ; photo-box แต่ละกล่อง
+            //      มี break-inside: avoid อยู่แล้ว กล่องที่ไม่พอที่จะไหลไปหน้าถัดไปเอง)
+            if (rows >= 4 && !multi) { photoSec.classList.add('pdf-page-break', 'pt-3'); }
             else { photoSec.classList.remove('pdf-page-break', 'pt-3'); }
+
+            // 🌟 เกิน 8 ตัว → ติด class ให้ CSS ปล่อยตารางแบ่งหน้าได้
+            //    + บังคับตัวที่ 9, 17, 25, ... ขึ้นหน้าใหม่สมบูรณ์ (ดู @media print .contact-multipage)
+            const block = tbody.closest('.contact-block');
+            if (block) block.classList.toggle('contact-multipage', multi);
         }
 
         // 🌟 เปลี่ยนการทำงานของ addPhotoBox ให้รองรับการอัปโหลดหลายไฟล์ และปุ่มวาดรูป
