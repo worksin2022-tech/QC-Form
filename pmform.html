@@ -380,6 +380,25 @@
                 display: table-row !important;
             }
 
+            /* 🌟 TOC: ย้ายขอบจาก "กรอบใหญ่" (element เดียวยาวข้ามหน้า → ขอบข้างลากลงมาในช่องว่าง)
+               มาเป็น "ขอบของแต่ละแถว" แทน → พอหมดแถว เส้นก็จบพอดี ไม่ลากเลยลงมา
+               แต่ละแถวได้ขอบซ้าย-ขวา ; แถวแรก+header ซ้ำ (ขึ้นหน้าใหม่) ได้ขอบบน ; แถวข้อมูลมี border-b ปิดล่างอยู่แล้ว */
+            .native-print-mode #tocList {
+                border: none !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+                box-shadow: none !important;   /* เงาลากตามความสูงกรอบข้ามหน้า = เส้นลางๆ ที่ยังเห็น */
+            }
+            .native-print-mode #tocList > div {
+                border-left: 1px solid #cbd5e1 !important;
+                border-right: 1px solid #cbd5e1 !important;
+                border-bottom: 1px solid #cbd5e1 !important;
+            }
+            .native-print-mode #tocList > div:first-child,
+            .native-print-mode #tocList > .toc-header-repeat {
+                border-top: 1px solid #cbd5e1 !important;
+            }
+
             /* 🌟 photo-group-block (Before/After/Cleaning) — รูปอาจเกิน 6 รูป จึงไม่ avoid
                แต่บังคับให้ตัดหน้าทุก 6 รูป (รูปที่ 7, 13, 19, ... ขึ้นหน้าใหม่) */
             .native-print-mode .photo-group-block { 
@@ -884,6 +903,17 @@
                 <button onclick="openReorderModal()" class="whitespace-nowrap justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="จัดเรียงลำดับหัวข้อ">
                     <i class="fa-solid fa-sort"></i> <span class="hidden lg:inline">จัดเรียง</span>
                 </button>
+
+                <!-- 🌟 ปรับจำนวนแถว TOC ต่อหน้า (สารบัญ) — กด +/− หรือพิมพ์เลข แล้ว TOC จัดหน้าใหม่ทันที -->
+                <div class="whitespace-nowrap no-print flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 shadow-sm" title="จำนวนแถวสารบัญ (TOC) ต่อ 1 หน้ากระดาษ — ปรับให้พอดีหน้า">
+                    <i class="fa-solid fa-table-list text-slate-400 text-sm"></i>
+                    <span class="hidden xl:inline text-[12px] font-bold text-slate-500">TOC/หน้า</span>
+                    <button onclick="adjustTocRowsPerPage(-1)" class="w-6 h-6 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold flex items-center justify-center transition-colors leading-none">−</button>
+                    <input type="number" id="tocRowsPerPageInput" min="5" max="60" value="27" onchange="setTocRowsPerPage(this.value)"
+                        class="w-11 text-center text-sm font-bold text-orange-600 border border-slate-300 rounded-md py-0.5 focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                    <button onclick="adjustTocRowsPerPage(1)" class="w-6 h-6 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold flex items-center justify-center transition-colors leading-none">+</button>
+                </div>
+
                 <button id="previewBtn" onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="พรีวิว / พิมพ์เอกสาร (Ctrl+P)">
                     <i class="fa-solid fa-eye"></i> <span class="hidden lg:inline">พรีวิว</span>
                 </button>
@@ -3228,7 +3258,14 @@
 
                 if (oldScope) document.getElementById('scopeSection').innerHTML = oldScope.innerHTML;
                 if (oldModule) document.getElementById('moduleContainer').innerHTML = oldModule.innerHTML;
-                if (oldToc && document.getElementById('tocSection')) document.getElementById('tocSection').innerHTML = oldToc.innerHTML;
+                // 🌟 restore เฉพาะ "แถวในสารบัญ" (#tocList) — ไม่ทับทั้ง #tocSection
+                //    เพราะส่วนหัวมีปุ่มควบคุม (แถวต่อหน้า) ที่เป็น static HTML ; ถ้าทับทั้งก้อน
+                //    draft เก่าที่ไม่มีปุ่มจะลบปุ่มทิ้ง ; TOC ถูก updateTOC() สร้างใหม่ตอน preview/print อยู่แล้ว
+                if (oldToc) {
+                    const oldTocList = oldToc.querySelector('#tocList');
+                    const curTocList = document.getElementById('tocList');
+                    if (oldTocList && curTocList) curTocList.innerHTML = oldTocList.innerHTML;
+                }
             }
 
             // 🌟 Recover: ถ้า draft/JSON ถูก save ตอนอยู่ใน print mode (เช่น autosave บังเอิญรัน
@@ -5732,7 +5769,33 @@
             }
         }
 
+        // 🌟 จำนวนแถว TOC ต่อหน้า — ผู้ใช้ปรับได้ (จำค่าไว้ใน localStorage)
+        const TOC_ROWS_KEY = 'smart_pm_toc_rows_per_page';
+        const TOC_ROWS_DEFAULT = 27;
+        const TOC_TITLE_ROWS = 3;   // "Table of Contents" heading กินที่ ≈ 3 แถว (หน้าแรกเท่านั้น)
+
+        function getTocRowsPerPage() {
+            const v = parseInt(localStorage.getItem(TOC_ROWS_KEY), 10);
+            return (!isNaN(v) && v >= 5 && v <= 60) ? v : TOC_ROWS_DEFAULT;
+        }
+        function setTocRowsPerPage(val) {
+            let v = parseInt(val, 10);
+            if (isNaN(v)) v = TOC_ROWS_DEFAULT;
+            v = Math.max(5, Math.min(60, v));
+            localStorage.setItem(TOC_ROWS_KEY, String(v));
+            const inp = document.getElementById('tocRowsPerPageInput');
+            if (inp) inp.value = v;
+            if (typeof updateTOC === 'function') updateTOC();   // re-render ทันทีให้เห็นผล
+        }
+        function adjustTocRowsPerPage(delta) {
+            setTocRowsPerPage(getTocRowsPerPage() + delta);
+        }
+
         function updateTOC() {
+            // sync ค่าในช่อง input ให้ตรงกับที่เก็บไว้ (เผื่อเปิดจาก draft คนละเครื่อง)
+            const rppInput = document.getElementById('tocRowsPerPageInput');
+            if (rppInput) rppInput.value = getTocRowsPerPage();
+
             const tocList = document.getElementById('tocList');
             if (!tocList) return;
             tocList.innerHTML = '';
@@ -5828,26 +5891,18 @@
                 });
             }
 
-            // 🌟 Measurement-based pagination
-            //    แทนที่จะ fix ที่ 19 แถว/หน้า → ใส่แถวลง DOM แล้ววัด offset จริง
-            //    ถ้าเลยพื้นที่ใช้งานของหน้า → แทรก break + repeat header
-            //    ทำให้รองรับแถวสูง (ชื่อตู้ wrap หลายบรรทัด) ได้อัตโนมัติ
-            //
-            //    คำนวณพื้นที่ใช้งานจริงต่อหน้า:
-            //      A4                   = 297mm
-            //      - @page margin-bottom = 12mm (เปิดที่ใส่ footer)
-            //      - thead repeat (12mm) = 12mm (table-header-group ซ้ำทุกหน้า)
-            //      - margin-top ของ toc-header-repeat ใน print = 10mm
-            //      - Chrome rounding/safety = ~5mm
-            //                              ──────
-            //      = ~258mm สำหรับ pages 2+
-            //    หน้าแรกไม่มี margin-top header → ใช้พื้นที่ได้มากกว่านิดหน่อย
-            //    แต่จะใช้ค่าเดียวเพื่อความเรียบง่าย (อิงตามขั้นต่ำ)
-            //    ⚠️ ค่าคงที่ 2 ตัวนี้จูนมือกับสไตล์แถวปัจจุบัน (py-[5px], text-[13-14px], thead 12mm)
-            //       ถ้าแก้ขนาดแถว/ฟอนต์ของ TOC ต้องเทสการแบ่งหน้าใหม่แล้วจูนตาม
-            const PAGE_LIMIT_MM_FIRST = 240;   // หน้าแรก (ไม่มี margin-top จาก toc-header-repeat)
-            const PAGE_LIMIT_MM_REPEAT = 200;  // หน้า 2+ (มี margin-top: 10mm ก่อน header)
-            const TOC_ROWS_FALLBACK = 18;      // ใช้เฉพาะตอนวัด DOM ไม่ได้ (ซ่อนอยู่) — ตัดทุก N แถวแบบ conservative
+            // 🌟 TOC pagination แบบ "นับหน่วยแถว" deterministic (ไม่วัด DOM)
+            //    ⚠️ ประวัติ: เคยลองวัดตำแหน่งจริง (getBoundingClientRect/offsetTop) แต่ความสูงแถว
+            //       "บนจอ" กับ "ตอนพิมพ์" ไม่ใช่สเกลเดียวกัน → จูน mm เท่าไหร่ก็ไม่ลงตัว เอกสารใหญ่ยิ่งเพี้ยน
+            //    วิธีปัจจุบัน: ผู้ใช้ตั้ง "แถวต่อหน้า" เอง (ช่องบนหัว TOC, จำใน localStorage)
+            //       แถวปกติ = 1 หน่วย ; ชื่อตู้ยาวจน wrap = +1 หน่วยต่อบรรทัดที่เพิ่ม (Section truncate ไม่ wrap)
+            // 🌟 1:1 ตรงตัวทุกหน้า — ใส่ N = N แถว/หน้าเป๊ะ (ไม่หักลบ) ให้ผู้ใช้เดาผลได้ตรง
+            //    title หน้าแรกแค่กินพื้นที่ margin ที่เหลือ ; ถ้าตั้งสูงจนหน้าแรกล้น ผู้ใช้ลดเลขเอง
+            const TOC_UNITS_REPEAT = getTocRowsPerPage();
+            const TOC_UNITS_FIRST = TOC_UNITS_REPEAT;
+            const TOC_EQ_CHARS_PER_LINE = 18;  // คอลัมน์ Equipment กว้าง 160px ≈ 18 ตัวอักษร/บรรทัด (bold 13.5px)
+            // หน่วยของแถว: 1 + จำนวนบรรทัดที่ชื่อตู้ wrap เกินบรรทัดแรก
+            const tocRowUnits = eq => 1 + Math.max(0, Math.ceil((eq || '').length / TOC_EQ_CHARS_PER_LINE) - 1);
 
             // helper: สร้างแถว header (NO. / EQUIPMENT / SECTION / PAGE) — เรียกซ้ำได้ทุกหน้า
             function makeTocHeader(isRepeat) {
@@ -5864,33 +5919,14 @@
 
             // 🌟 Render TOC แบบ inline function — สามารถเรียกซ้ำได้ด้วย offset ที่ต่างกัน
             //    return: จำนวน break header ที่แทรก (= extra TOC pages)
+            //    การแบ่งหน้า: นับหน่วยแถวล้วนๆ (deterministic) — ไม่วัด DOM เลย
+            //    ทำงานได้แม้ DOM ซ่อนอยู่ / เอกสารใหญ่แค่ไหนก็ให้ผลเท่ากันทุกครั้ง
             function renderTocRows(tocOffset) {
                 tocList.innerHTML = '';
                 tocList.appendChild(makeTocHeader(false));
 
-                const a4Page = tocList.closest('.a4-page');
-                // probe เพื่อหา px ต่อ mm (responsive ตาม zoom ปัจจุบัน)
-                let pxPerMm = 3.7795; // fallback (96dpi)
-                if (a4Page) {
-                    const probe = document.createElement('div');
-                    probe.style.cssText = 'position:absolute;width:100mm;height:0;visibility:hidden;pointer-events:none;';
-                    a4Page.appendChild(probe);
-                    if (probe.offsetWidth > 0) pxPerMm = probe.offsetWidth / 100;
-                    probe.remove();
-                }
-                const pageLimitFirstPx = PAGE_LIMIT_MM_FIRST * pxPerMm;
-                const pageLimitRepeatPx = PAGE_LIMIT_MM_REPEAT * pxPerMm;
-                const a4Top = a4Page ? a4Page.getBoundingClientRect().top : 0;
-                let pageBaselinePx = 0; // ตำแหน่งบนของหน้าปัจจุบัน เทียบกับ a4-page top
-                let isFirstPage = true; // หน้าแรก ใช้ limit ที่ใหญ่กว่า (ไม่มี repeat-header margin)
-
-                // 🌟 กับดัก: ถ้า DOM ถูกซ่อนอยู่ (display:none) getBoundingClientRect จะได้ 0 ทั้งหมด
-                //    → เงื่อนไขวัดไม่มีทางเกิน limit → ไม่แทรก break เลย → พิมพ์ออกมาล้นหน้า
-                //    เช็คก่อนว่าวัดได้จริง ถ้าไม่ได้ → fallback ตัดทุก TOC_ROWS_FALLBACK แถว
-                const measurable = !!(a4Page
-                    && a4Page.getBoundingClientRect().height > 0
-                    && tocList.offsetParent !== null);
-                if (!measurable) console.warn('[renderTocRows] วัด DOM ไม่ได้ (ซ่อนอยู่?) — ใช้ fallback ตัดทุก', TOC_ROWS_FALLBACK, 'แถว');
+                let unitsUsed = 0;      // หน่วยที่ใช้ไปแล้วบนหน้าปัจจุบัน
+                let isFirstPage = true; // หน้าแรกมี title กินที่ → capacity ต่างจากหน้า 2+
 
                 items.forEach((item, index) => {
                     const pageNum = calculatePageNumber(item.id);
@@ -5914,22 +5950,15 @@
                     `;
                     tocList.appendChild(row);
 
-                    // วัดตำแหน่ง bottom ของแถวเทียบกับ a4-page top
-                    // ถ้าเลยพื้นที่ใช้งานของหน้าปัจจุบัน → แทรก break header ก่อนแถวนี้
-                    if (measurable && index > 0) {
-                        const rowBottomFromA4 = row.getBoundingClientRect().bottom - a4Top;
-                        const currentLimit = isFirstPage ? pageLimitFirstPx : pageLimitRepeatPx;
-                        if (rowBottomFromA4 > pageBaselinePx + currentLimit) {
-                            const header = makeTocHeader(true);
-                            tocList.insertBefore(header, row);
-                            // baseline ใหม่ = ตำแหน่งบนของ header ที่เพิ่งแทรก
-                            pageBaselinePx = header.getBoundingClientRect().top - a4Top;
-                            isFirstPage = false; // หน้าต่อไปใช้ limit เล็กกว่า
-                        }
-                    } else if (!measurable && index > 0 && index % TOC_ROWS_FALLBACK === 0) {
-                        // fallback: วัดไม่ได้ → ตัดทุก N แถวแบบตายตัว (ดีกว่าไม่ตัดเลยจนล้นหน้า)
+                    // 🌟 นับหน่วยแถว: ถ้าแถวนี้ทำให้เกิน capacity ของหน้าปัจจุบัน → แทรก break header ก่อน
+                    const units = tocRowUnits(eq);
+                    const capacity = isFirstPage ? TOC_UNITS_FIRST : TOC_UNITS_REPEAT;
+                    if (index > 0 && unitsUsed + units > capacity) {
                         tocList.insertBefore(makeTocHeader(true), row);
+                        unitsUsed = 0;
+                        isFirstPage = false;
                     }
+                    unitsUsed += units;
                 });
 
                 return tocList.querySelectorAll('.toc-header-repeat').length;
@@ -5959,13 +5988,28 @@
                 if (brk.closest('.hidden') || brk.closest('.tmp-no-print')) continue;
 
                 const pos = brk.compareDocumentPosition(el);
-                
+
                 if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
                     pageCount++;
                 } else if (brk === el) {
                     pageCount++;
                 }
             }
+
+            // 🌟 contact multipage (>8 เบรกเกอร์): การแบ่งหน้าใช้ CSS nth-child (ตัวที่ 9,17,... ขึ้นหน้าใหม่)
+            //    ไม่มี element .pdf-page-break ให้นับ → บวกหน้าเพิ่มของ block ที่อยู่ "ก่อน" el ด้วย
+            //    (block ของตัวเอง el ไม่บวก — หน้าเพิ่มอยู่หลังจุดเริ่ม block)
+            document.querySelectorAll('.contact-block.contact-multipage').forEach(cb => {
+                if (cb.classList.contains('hidden') || cb.classList.contains('reorder-hidden')) return;
+                if (cb.closest('.hidden') || cb.closest('.reorder-hidden') || cb.closest('.tmp-no-print')) return;
+                if (cb === el || cb.contains(el)) return;
+                const pos = cb.compareDocumentPosition(el);
+                if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    const g = cb.querySelectorAll('.breaker-group').length;
+                    pageCount += Math.max(0, Math.ceil(g / 8) - 1);
+                }
+            });
+
             return pageCount;
         }
 
