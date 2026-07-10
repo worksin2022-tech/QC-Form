@@ -2268,5 +2268,69 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             });
         }
     </script>
+
+<!-- ============================================================
+     BOT PREFILL HOOK — วางไว้ก่อนปิดแท็ก body ในไฟล์ QC-Form (index.html)
+     เติมฟอร์ม Trip Unit (Trading) จากข้อมูลใน URL แล้วสร้าง report ให้
+       URL:  <form-url>#ts=<base64url(JSON)>[&pdf=1]
+     - ไม่มี #ts= ในลิงก์ = ไม่ทำอะไร (เปิดเว็บปกติ)
+     - ใช้เฉพาะ id ที่ส่งมาใน payload.fields → เพิ่ม/ลดช่องได้โดยไม่ต้องแก้ hook
+     ============================================================ -->
+<script>
+(function () {
+  function b64urlDecode(s) {
+    s = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    // atob + escape/unescape เพื่อรองรับ UTF-8 (ไทย)
+    return decodeURIComponent(escape(atob(s)));
+  }
+  function getPayload() {
+    var m = /[#&]ts=([^&]+)/.exec(location.hash || '');
+    if (!m) return null;
+    try { return JSON.parse(b64urlDecode(m[1])); }
+    catch (e) { console.error('[bot hook] payload parse failed', e); return null; }
+  }
+  function setVal(id, v) {
+    var el = document.getElementById(id);
+    if (el && v != null) el.value = v;
+  }
+  function setRadio(name, v) {
+    var el = document.querySelector('input[name="' + name + '"][value="' + (v || 'Good') + '"]');
+    if (el) el.checked = true;
+  }
+  function run() {
+    var p = getPayload();
+    if (!p) return;                         // ไม่มีข้อมูล = เปิดปกติ
+    if (typeof switchApp === 'function') switchApp('trip-site');
+
+    var f = p.fields || {};
+    Object.keys(f).forEach(function (id) { setVal(id, f[id]); });
+
+    var ins = p.inspection || {};
+    setRadio('ts_insBody', ins.body);
+    setRadio('ts_insIndicator', ins.indicator);
+    setRadio('ts_insTestMode', ins.mode);
+
+    if (typeof ts_generateReport === 'function') ts_generateReport({ preventDefault: function () {} });
+
+    // รูป tripping curve (ส่งมาเป็น data URI) — เซ็ตทับหลังสร้าง report
+    if (p.curveDataUri) {
+      var img = document.getElementById('ts_rCurveImage');
+      var empty = document.getElementById('ts_rCurveEmpty');
+      if (img) { img.src = p.curveDataUri; img.classList.remove('hidden'); }
+      if (empty) empty.classList.add('hidden');
+    }
+
+    window.__botReportReady = true;        // ให้ตัวเรนเดอร์ (Playwright) รอ flag นี้
+    if (/[#&]pdf=1/.test(location.hash) && typeof downloadDirectPDF === 'function') {
+      setTimeout(downloadDirectPDF, 500);  // โหมด auto (สำหรับทดสอบเปิดเอง)
+    }
+  }
+  // รันหลังโหลดครบ (ให้ loadDraft ของฟอร์มทำงานก่อน แล้วค่อยทับด้วยข้อมูลบอท)
+  if (document.readyState === 'complete') run();
+  else window.addEventListener('load', run);
+})();
+</script>
+
 </body>
 </html>
