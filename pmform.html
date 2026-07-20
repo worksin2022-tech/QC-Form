@@ -207,13 +207,36 @@
         .html2pdf-mode-active .photo-group-block,
         .html2pdf-mode-active .trip-block,
         .html2pdf-mode-active .relay-block,
-        .html2pdf-mode-active .cap-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
+        .html2pdf-mode-active .cap-block,
+        .html2pdf-mode-active .hipot-block,
+        .html2pdf-mode-active .dchipot-block { margin-bottom: 5mm !important; border-bottom: none !important; padding-bottom: 0 !important; }
         .html2pdf-mode-active .mb-10, .html2pdf-mode-active .mb-8, .html2pdf-mode-active .pb-8 { margin-bottom: 0 !important; padding-bottom: 0 !important; }
         
         .html2pdf-mode-active .general-block > .flex.mb-3, .html2pdf-mode-active .insulation-block > .flex.mb-4, .html2pdf-mode-active .dielectric-block > .flex.mb-4, .html2pdf-mode-active .grounding-block > .flex.mb-4, .html2pdf-mode-active .gc-block > .flex.mb-4, .html2pdf-mode-active .contact-block > .flex.mb-3, .html2pdf-mode-active .photo-group-block > .flex.mb-4 { margin-bottom: 10px !important; }
         .html2pdf-mode-active .general-block table.mb-6, .html2pdf-mode-active .insulation-block table.mb-6, .html2pdf-mode-active .dielectric-block table.mb-6, .html2pdf-mode-active .grounding-block table.mb-6, .html2pdf-mode-active .gc-block table.mb-6, .html2pdf-mode-active .contact-block table.mb-6 { margin-bottom: 12px !important; }
         .html2pdf-mode-active table th, .html2pdf-mode-active table td { padding: 4px 6px !important; line-height: 1.2 !important; }
-        .html2pdf-mode-active .dielectric-block table th { font-size: 9.5px !important; letter-spacing: -0.2px !important; }
+        .html2pdf-mode-active .dielectric-block table th, .html2pdf-mode-active .hipot-block table th { font-size: 9.5px !important; letter-spacing: -0.2px !important; }
+        /* DC Hi-Pot: ฟอนต์เท่า AC (th 11px / connection+voltage 14px) ; obs 11px (ช่อง 15 คอลัมน์แคบ ~28px)
+           🔑 ความสูง: ไม่บังคับ height ตายตัว (min-height ทำให้ DC สูงกว่า AC ตอนพิมพ์)
+              แต่ให้ padding "แนวตั้ง" คงเดิม (= AC) เปลี่ยนแค่ padding "แนวนอน" ให้แคบ
+              → แถวถูกกำหนดสูงโดยเซลล์ 14px (connection/voltage) ที่เหมือน AC → ตารางสูงเท่ากันเอง */
+        .native-print-mode .dchipot-block table th,
+        .html2pdf-mode-active .dchipot-block table th { font-size: 11px !important; }
+        .native-print-mode .dchipot-block table td.tc-edit,
+        .html2pdf-mode-active .dchipot-block table td.tc-edit { font-size: 14px !important; }
+        .native-print-mode .dchipot-block table th,
+        .native-print-mode .dchipot-block table td,
+        .html2pdf-mode-active .dchipot-block table th,
+        .html2pdf-mode-active .dchipot-block table td {
+            padding-left: 1px !important;    /* แคบเฉพาะแนวนอน (คอลัมน์ obs เยอะ) */
+            padding-right: 1px !important;
+            vertical-align: middle !important;   /* padding แนวตั้งปล่อยตาม global = เท่า AC */
+        }
+        .native-print-mode .dchipot-block table td input, .html2pdf-mode-active .dchipot-block table td input {
+            font-size: 9px !important;       /* obs — เล็กลงให้ไม่แน่น (ช่อง 28px มี 15 คอลัมน์) */
+            padding-top: 0 !important;        /* ตัด py-1.5 ไม่ให้ดันแถวสูงเกิน AC */
+            padding-bottom: 0 !important;
+        }
 
         /* ========================================================= */
         /* 🌟 CSS สำหรับโหมด Native Print (PDF แก้ไขข้อความได้) 🌟 */
@@ -351,7 +374,9 @@
             .native-print-mode .contact-block,
             .native-print-mode .trip-block,
             .native-print-mode .relay-block,
-            .native-print-mode .cap-block {
+            .native-print-mode .cap-block,
+            .native-print-mode .hipot-block,
+            .native-print-mode .dchipot-block {
                 margin-bottom: 5mm !important;
                 border-bottom: none !important;
                 padding-bottom: 0 !important;
@@ -541,6 +566,20 @@
         }
         .block-flash-new  { outline: 4px solid #10b981; }
         .block-flash-goto { outline: 4px solid #f97316; }
+
+        /* 🌟 AC Hi-Pot: จัดข้อความช่อง Test connection ให้อยู่กึ่งกลาง (ทั้งหัวตาราง + เซลล์ข้อมูล) */
+        .hipot-block td.tc-edit { text-align: center !important; vertical-align: middle !important; padding-left: 0.25rem !important; }
+        .hipot-block table th:first-child { text-align: center !important; padding-left: 0.25rem !important; }
+
+        /* 🌟 จัดคอลัมน์แรก (Test connection) ให้กึ่งกลาง — ข้อ 5 Insulation, 6 Dielectric, 7 Grounding, 8 Ground Continuity */
+        .insulation-block table th:first-child, .insulation-block table td:first-child,
+        .dielectric-block table th:first-child, .dielectric-block table td:first-child,
+        .grounding-block table th:first-child, .grounding-block table td:first-child,
+        .gc-block table th:first-child, .gc-block table td:first-child {
+            text-align: center !important;
+            padding-left: 0.25rem !important;
+            vertical-align: middle !important;
+        }
 
         /* 🌟 ช่อง Test connection (insulation/dielectric) — พิมพ์แก้ได้ (contenteditable) */
         .tc-edit { cursor: text; transition: background 0.15s ease; }
@@ -836,16 +875,32 @@
                 <!-- 13 -->
                 <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-contract"></i></div>
-                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">13. Calibration</span>
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-bolt-lightning"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">13. AC Hi-Pot Test</span>
                     </div>
-                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)">
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_hipot', this.checked)">
                 </label>
                 <!-- 14 -->
                 <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
                     <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-bolt-lightning"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">14. DC Hi-Pot Test</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_dchipot', this.checked)">
+                </label>
+                <!-- 15 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-file-contract"></i></div>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">15. Calibration</span>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_calibration', this.checked)">
+                </label>
+                <!-- 16 -->
+                <label class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0"><i class="fa-solid fa-helmet-safety"></i></div>
-                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">14. Blank Page</span>
+                        <span class="font-bold text-slate-700 text-[13.5px] group-hover:text-orange-600 transition-colors">16. Blank Page</span>
                     </div>
                     <input type="checkbox" class="custom-checkbox" onchange="toggleModule('mod_blank', this.checked)">
                 </label>
@@ -1162,6 +1217,14 @@
                                                 <div id="cap_container"></div>
                                             </div>
 
+                                            <div id="mod_hipot" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div id="hipot_container"></div>
+                                            </div>
+
+                                            <div id="mod_dchipot" class="mb-10 hidden pt-4 pdf-page-break">
+                                                <div id="dchipot_container"></div>
+                                            </div>
+
                                             <!-- 🌟 โมดูล Blank -->
                                             <div id="mod_blank" class="mb-10 hidden pt-4 relative pdf-page-break">
                                                 <div id="blk_container"></div>
@@ -1373,7 +1436,9 @@
         let tripCount = 0;
         let relayCount = 0;
         let capCount = 0;
-        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
+        let hipotCount = 0;   // AC Hi-Pot Test (โครงสร้างเหมือน Dielectric)
+        let dchipotCount = 0; // DC Hi-Pot Test (ตาราง Observation grid หลายช่อง)
+        let photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, hip: 0, dch: 0, blk: 0 };
         let reorderSortable = null;
         let reorderHasChanges = false; // 🌟 ติดตามว่ามีการเลื่อนใน modal "จัดเรียง" หรือไม่ — ใช้คุมปุ่ม "บันทึกตำแหน่ง"
         let isGridCollapsed = false;
@@ -1625,13 +1690,15 @@
             'mod_trip': 'Trip Unit Test',
             'mod_relay': 'Protection Relay Test',
             'mod_cap': 'Capacitor Bank Check',
+            'mod_hipot': 'AC Hi-Pot Test',
+            'mod_dchipot': 'DC Hi-Pot Test',
             'mod_blank': 'Custom Section',
             'mod_calibration': 'Certificate of Calibration'
         };
 
         const defaultModuleOrder = [
             'mod_before', 'mod_cleaning', 'mod_after',
-            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_gc', 'mod_contact', 'mod_trip', 'mod_relay', 'mod_cap', 'mod_blank', 'mod_calibration'
+            'mod_general', 'mod_insulation', 'mod_dielectric', 'mod_grounding', 'mod_gc', 'mod_contact', 'mod_trip', 'mod_relay', 'mod_cap', 'mod_hipot', 'mod_dchipot', 'mod_blank', 'mod_calibration'
         ];
 
         const defaultGeneralTasks = [
@@ -1812,6 +1879,8 @@
                 'mod_trip': { id: 'trip_container', cls: 'trip-block' },
                 'mod_relay': { id: 'relay_container', cls: 'relay-block' },
                 'mod_cap': { id: 'cap_container', cls: 'cap-block' },
+                'mod_hipot': { id: 'hipot_container', cls: 'hipot-block' },
+                'mod_dchipot': { id: 'dchipot_container', cls: 'dchipot-block' },
                 'mod_blank': { id: 'blk_container', cls: 'photo-group-block' }
             };
             return map[modId];
@@ -1876,6 +1945,8 @@
             'mod_trip':        { bg: 'bg-pink-100',    text: 'text-pink-700',    border: 'border-pink-200' },
             'mod_relay':       { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
             'mod_cap':         { bg: 'bg-blue-100',    text: 'text-blue-700',    border: 'border-blue-200' },
+            'mod_hipot':       { bg: 'bg-red-100',     text: 'text-red-700',     border: 'border-red-200' },
+            'mod_dchipot':     { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' },
             'mod_blank':       { bg: 'bg-indigo-100',  text: 'text-indigo-700',  border: 'border-indigo-200' },
             'mod_calibration': { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' }
         };
@@ -1948,6 +2019,8 @@
             if (subBlock.classList.contains('trip-block')) return 'mod_trip';
             if (subBlock.classList.contains('relay-block')) return 'mod_relay';
             if (subBlock.classList.contains('cap-block')) return 'mod_cap';
+            if (subBlock.classList.contains('hipot-block')) return 'mod_hipot';
+            if (subBlock.classList.contains('dchipot-block')) return 'mod_dchipot';
             if (subBlock.classList.contains('general-block')) return 'mod_general';
             if (subBlock.classList.contains('photo-group-block')) {
                 // photo-group-block ใช้ใน before/cleaning/after/blank — ดูจาก id prefix
@@ -1960,7 +2033,7 @@
             return null;
         }
 
-        const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block';
+        const SUB_BLOCK_SELECTOR = '.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block';
 
         // 🌟 มาร์คว่ามีการเปลี่ยนลำดับ → เปิดปุ่ม "บันทึกตำแหน่ง" ให้เป็นสีปกติ
         function markReorderChanged() {
@@ -2245,6 +2318,8 @@
                 'mod_trip':        'border-l-pink-400',
                 'mod_relay':       'border-l-fuchsia-400',
                 'mod_cap':         'border-l-blue-400',
+                'mod_hipot':       'border-l-red-400',
+                'mod_dchipot':     'border-l-rose-400',
                 'mod_blank':       'border-l-indigo-400',
                 'mod_calibration': 'border-l-rose-400'
             };
@@ -2487,7 +2562,7 @@
                 block.classList.add('pdf-page-break', 'pt-3');
             });
             // อันแรกของทั้ง moduleContainer ไม่ต้องมี page-break
-            const allBlocks = container.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block');
+            const allBlocks = container.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block');
             if (allBlocks.length > 0) {
                 allBlocks[0].classList.remove('pdf-page-break', 'pt-3');
             }
@@ -2553,7 +2628,7 @@
             const obj = {
                 globals: {
                     selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, hipotCount, dchipotCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
                 // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
@@ -2918,7 +2993,7 @@
                 savedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
                 globals: {
                     selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, hipotCount, dchipotCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
                 // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
@@ -3236,11 +3311,15 @@
             tripCount = draft.globals.tripCount || 0;
             relayCount = draft.globals.relayCount || 0;
             capCount = draft.globals.capCount || 0;
-            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
+            hipotCount = draft.globals.hipotCount || 0;
+            dchipotCount = draft.globals.dchipotCount || 0;
+            photoCounters = draft.globals.photoCounters || { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, hip: 0, dch: 0, blk: 0 };
             if (photoCounters.blk === undefined) photoCounters.blk = 0;
             if (photoCounters.gc === undefined) photoCounters.gc = 0;
             if (photoCounters.relay === undefined) photoCounters.relay = 0;
             if (photoCounters.cap === undefined) photoCounters.cap = 0;
+            if (photoCounters.hip === undefined) photoCounters.hip = 0;
+            if (photoCounters.dch === undefined) photoCounters.dch = 0;
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
             
             const loadedCustomScopes = draft.globals.customScopes || [];
@@ -3380,7 +3459,7 @@
             });
 
             // 🌟 retrofit: ช่อง Test connection (insulation/dielectric) จาก draft เก่า → ให้พิมพ์แก้ได้
-            document.querySelectorAll('.insulation-block table td:first-child, .dielectric-block table td:first-child').forEach(td => {
+            document.querySelectorAll('.insulation-block table td:first-child, .dielectric-block table td:first-child, .hipot-block table td:first-child, .dchipot-block table td:first-child').forEach(td => {
                 if (!td.hasAttribute('contenteditable')) {
                     td.setAttribute('contenteditable', 'true');
                     td.setAttribute('spellcheck', 'false');
@@ -3456,7 +3535,7 @@
                 const moduleData = { moduleId, blocks: [] };
                 
                 // หา blocks ทั้งหมดใน module นี้ (insulation-block, photo-group-block, etc.)
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .general-block, .photo-group-block, .blank-group-block';
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block, .general-block, .photo-group-block, .blank-group-block';
                 const blocks = modNode.querySelectorAll(blockSelectors);
                 
                 blocks.forEach(block => {
@@ -3470,12 +3549,12 @@
             // ════════════════════════════════════════════════════════════
             // 2. Clear moduleContainer + reset counters
             // ════════════════════════════════════════════════════════════
-            insCount = 0; dieCount = 0; groCount = 0; gcCount = 0; ctCount = 0; tripCount = 0; relayCount = 0; capCount = 0; genCount = 0;
+            insCount = 0; dieCount = 0; groCount = 0; gcCount = 0; ctCount = 0; tripCount = 0; relayCount = 0; capCount = 0; hipotCount = 0; dchipotCount = 0; genCount = 0;
             groupCounts = { bf: 0, cl: 0, af: 0, blk: 0 };
-            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, blk: 0 };
+            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, hip: 0, dch: 0, blk: 0 };
 
             // ลบ blocks ทั้งหมดออกจาก container ของแต่ละ module (แต่เก็บโครง module ไว้)
-            ['ins_container', 'die_container', 'gro_container', 'gc_container', 'ct_container', 'trip_container', 'relay_container', 'cap_container',
+            ['ins_container', 'die_container', 'gro_container', 'gc_container', 'ct_container', 'trip_container', 'relay_container', 'cap_container', 'hipot_container', 'dchipot_container',
              'gen_container', 'bf_container', 'cl_container', 'af_container', 'blk_container'].forEach(containerId => {
                 const c = document.getElementById(containerId);
                 if (c) c.innerHTML = '';
@@ -3493,6 +3572,8 @@
                 'trip-block': addTripBlock,
                 'relay-block': addRelayBlock,
                 'cap-block': addCapBlock,
+                'hipot-block': addHipotBlock,
+                'dchipot-block': addDcHipotBlock,
                 'general-block': addGeneralCheckBlock,
                 'photo-group-block': null,  // ใช้ addPhotoGroup ที่ต้องการ type argument
                 'blank-group-block': null,  // ใช้ addBlankGroup
@@ -3521,7 +3602,7 @@
             snapshot.modules.forEach(moduleData => {
                 const modNode = document.getElementById(moduleData.moduleId);
                 if (!modNode) return;
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .general-block, .photo-group-block, .blank-group-block';
+                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block, .general-block, .photo-group-block, .blank-group-block';
                 const newBlocks = modNode.querySelectorAll(blockSelectors);
                 
                 moduleData.blocks.forEach((blockData, idx) => {
@@ -3620,7 +3701,7 @@
 
         function detectBlockType(block) {
             const types = ['insulation-block', 'dielectric-block', 'grounding-block', 'gc-block', 'contact-block',
-                          'trip-block', 'relay-block', 'cap-block', 'general-block', 'photo-group-block', 'blank-group-block'];
+                          'trip-block', 'relay-block', 'cap-block', 'hipot-block', 'dchipot-block', 'general-block', 'photo-group-block', 'blank-group-block'];
             for (const t of types) {
                 if (block.classList.contains(t)) return t;
             }
@@ -3801,7 +3882,7 @@
             const draft = {
                 globals: { 
                     selectedModules, breakerCount, groupCounts, insCount, dieCount, 
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, photoCounters, moduleTitles,
+                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, hipotCount, dchipotCount, photoCounters, moduleTitles,
                     customScopes: scopeItemsData
                 },
                 // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
@@ -3925,6 +4006,8 @@
                         else if (moduleId === 'mod_trip') addTripBlock();
                         else if (moduleId === 'mod_relay') addRelayBlock();
                         else if (moduleId === 'mod_cap') addCapBlock();
+                        else if (moduleId === 'mod_hipot') addHipotBlock();
+                        else if (moduleId === 'mod_dchipot') addDcHipotBlock();
                         else if (moduleId === 'mod_blank') addBlankGroup('blk');
                     }
                     // 🌟 เลื่อนไป block ของหัวข้อนี้เสมอ (ใหม่ที่เพิ่ง auto-add หรือเดิมที่กลับมาเปิดใหม่)
@@ -3972,6 +4055,8 @@
             'mod_trip':       { fn: () => addTripBlock(),            label: 'Trip Unit',           cls: 'bg-pink-100 hover:bg-pink-200 text-pink-700' },
             'mod_relay':      { fn: () => addRelayBlock(),           label: 'Protection Relay',    cls: 'bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-700' },
             'mod_cap':        { fn: () => addCapBlock(),             label: 'Capacitor Bank',      cls: 'bg-blue-100 hover:bg-blue-200 text-blue-700' },
+            'mod_hipot':      { fn: () => addHipotBlock(),           label: 'AC Hi-Pot',           cls: 'bg-red-100 hover:bg-red-200 text-red-700' },
+            'mod_dchipot':    { fn: () => addDcHipotBlock(),         label: 'DC Hi-Pot',           cls: 'bg-rose-100 hover:bg-rose-200 text-rose-700' },
             'mod_blank':      { fn: () => addBlankGroup('blk'),      label: 'Blank Page',          cls: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700' }
         };
 
@@ -4076,6 +4161,8 @@
                 { modId: 'mod_trip',      containerId: 'trip_container' },
                 { modId: 'mod_relay',     containerId: 'relay_container' },
                 { modId: 'mod_cap',       containerId: 'cap_container' },
+                { modId: 'mod_hipot',     containerId: 'hipot_container' },
+                { modId: 'mod_dchipot',   containerId: 'dchipot_container' },
                 { modId: 'mod_insulation',containerId: 'ins_container' },
                 { modId: 'mod_dielectric',containerId: 'die_container' },
                 { modId: 'mod_general',   containerId: 'gen_container' },
@@ -4211,7 +4298,7 @@
             //   เกิดเมื่อมี contact block ซ้ำ id และทั้งสองมี photo boxes ที่ใช้ photoCounters เดียวกัน
             //   เช่น Block A มี prev_ct_1-4 และ Block B (orphan) มี prev_ct_1-6 (ซ้ำ 1-4)
             //   วิธีแก้: ใน block ที่ "ใส่หลัง" rename photo IDs ให้เป็นช่วงใหม่ที่ไม่ซ้ำ
-            const photoPrefixes = ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'bf', 'cl', 'af', 'blk'];
+            const photoPrefixes = ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'hip', 'dch', 'bf', 'cl', 'af', 'blk'];
             photoPrefixes.forEach(pp => {
                 const photos = document.querySelectorAll(`[id^="prev_${pp}_"]`);
                 const seenPhotoIds = new Set();
@@ -4273,7 +4360,9 @@
                 'block_ct_block_': { obj: () => ({ ctCount }),   key: 'ctCount',   set: v => { ctCount = v; } },
                 'block_trip_': { obj: () => ({ tripCount }), key: 'tripCount', set: v => { tripCount = v; } },
                 'block_relay_': { obj: () => ({ relayCount }), key: 'relayCount', set: v => { relayCount = v; } },
-                'block_cap_': { obj: () => ({ capCount }), key: 'capCount', set: v => { capCount = v; } }
+                'block_cap_': { obj: () => ({ capCount }), key: 'capCount', set: v => { capCount = v; } },
+                'block_hip_': { obj: () => ({ hipotCount }), key: 'hipotCount', set: v => { hipotCount = v; } },
+                'block_dch_': { obj: () => ({ dchipotCount }), key: 'dchipotCount', set: v => { dchipotCount = v; } }
             };
 
             const allBlocksAfterDedup = container.querySelectorAll(SUB_BLOCK_SELECTOR);
@@ -4305,7 +4394,7 @@
             // 🌟 Sync photoCounters ตามเลข prev_xxx_N / img_xxx_N ที่มีอยู่จริงใน DOM
             //   จำเป็นเพราะ rename duplicate photos อาจสร้างเลขใหม่ที่เกิน photoCounters เดิม
             //   ถ้าไม่ sync → user กด "+ เพิ่มรูป" ครั้งถัดไปจะใช้เลขที่ชน id เก่า
-            ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'bf', 'cl', 'af', 'blk'].forEach(pp => {
+            ['ct', 'ins', 'die', 'gro', 'gc', 'trip', 'relay', 'cap', 'hip', 'dch', 'bf', 'cl', 'af', 'blk'].forEach(pp => {
                 let maxN = 0;
                 document.querySelectorAll(`[id^="prev_${pp}_"], [id^="img_${pp}_"]`).forEach(el => {
                     const m = el.id.match(new RegExp(`^(?:prev|img)_${pp}_(\\d+)$`));
@@ -4669,7 +4758,7 @@
                                     </button>
                                     <div class="ref-menu absolute z-50 left-1/2 -translate-x-1/2 top-full mt-1 bg-white shadow-xl rounded-lg border border-slate-200 hidden no-print min-w-[140px] overflow-hidden">
                                         <button type="button" onclick="selectRefOption(this, 'IEC61439-1', '≥ 1 MΩ', '1000 Vdc 1 min')" class="px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50 leading-tight block w-full text-center font-medium border-b border-slate-100 bg-transparent border-x-0 border-t-0">IEC61439-1<br>≥ 1 MΩ</button>
-                                        <button type="button" onclick="selectRefOption(this, 'IEC62271-200', '≥ 1 GΩ', '5000 Vdc 1 min')" class="px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50 leading-tight block w-full text-center font-medium bg-transparent border-0">IEC62271-200<br>≥ 1 GΩ</button>
+                                        <button type="button" onclick="selectRefOption(this, 'TS 105', '≥ 1 GΩ', '5000 Vdc 1 min')" class="px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50 leading-tight block w-full text-center font-medium bg-transparent border-0">TS 105<br>≥ 1 GΩ</button>
                                     </div>
                                 </div>
                             </td>
@@ -4771,6 +4860,145 @@
         }
 
         async function removeDielectricBlock(prefix) { await confirmRemoveBlock(prefix); }
+
+        // 🌟 AC Hi-Pot Test — ก๊อปโครงสร้างจาก Dielectric Strength Test
+        //    ต่าง: default Voltage = 48 kV 1 min ; Reference = IEC62271-200 No Puncture/No Flash Over
+        function addHipotBlock() {
+            hipotCount++;
+            const id = hipotCount;
+            const container = getOrFallbackContainer('hipot_container');
+            const prefix = `hip_${id}`;
+
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="hipot-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-700"><i class="fa-solid fa-bolt-lightning text-white"></i></div>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">AC Hi-Pot Test</h3>
+                        </div>
+                        <button onclick="removeHipotBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
+                    </div>
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
+                            <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
+                        </span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
+                    </div>
+                    <table class="w-full text-sm text-center mb-6">
+                        <tr>
+                            <th class="w-[25%] text-left pl-4">Test connection</th>
+                            <th class="w-[20%]">Test Voltage</th>
+                            <th class="w-[25%]">Leakage Current <span class="normal-case">(mA)</span></th>
+                            <th class="w-[15%]">Reference</th>
+                            <th class="w-[15%]">Result</th>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L1 to L2+L3+GND</td>
+                            <td class="p-1"><input type="text" value="48 kV 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
+                            <td class="text-slate-500 font-medium leading-tight align-middle" rowspan="3">IEC62271-200<br><span class="text-[11px] text-slate-400 font-normal mt-1 block">No Puncture<br>No Flash Over</span></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L2 to L1+L3+GND</td>
+                            <td class="p-1"><input type="text" value="48 kV 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-slate-700 text-left pl-4 tc-edit" contenteditable="true" spellcheck="false">L3 to L1+L2+GND</td>
+                            <td class="p-1"><input type="text" value="48 kV 1 min" class="paper-input text-center text-slate-600"></td>
+                            <td class="p-1"><input type="text" placeholder="..." class="paper-input text-center font-bold text-orange-600"></td>
+                            <td class="p-1"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                        </tr>
+                    </table>
+                    <div class="flex items-center justify-between mb-2 ml-1">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-image text-slate-400"></i>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
+                        </div>
+                        <button onclick="addPhotoBox('grid_${prefix}', 'hip')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
+                    </div>
+                    <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
+                </div>
+            `;
+            insertBlockAfterLastInGroup(container, blockHtml, 'hipot-block', 'block_hip_');
+            for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'hip'); }
+        }
+
+        async function removeHipotBlock(prefix) { await confirmRemoveBlock(prefix); }
+
+        // 🌟 DC Hi-Pot Test — โครงเหมือน AC Hi-Pot แต่ตาราง Observation เป็นกริดหลายช่อง (บันทึกค่าเป็นช่วง)
+        //    + คอลัมน์ Reference ; Voltage default = 48000 Vac / 15 min / IEC 60502-4
+        //    ปรับจำนวนช่อง Observation ได้ที่ DC_HIPOT_OBS_CELLS
+        const DC_HIPOT_OBS_CELLS = 15;
+        function addDcHipotBlock() {
+            dchipotCount++;
+            const id = dchipotCount;
+            const container = getOrFallbackContainer('dchipot_container');
+            const prefix = `dch_${id}`;
+
+            const pageBreakClass = id > 1 ? 'pdf-page-break pt-3' : '';
+
+            // ช่อง Observation (mA) — กริด N ช่องต่อแถว (กรอกค่าเป็นช่วงระหว่างเทส)
+            const obsCells = Array.from({ length: DC_HIPOT_OBS_CELLS }).map(() =>
+                `<td class="border border-slate-300 p-0"><input type="text" class="paper-input text-center text-[9px] font-bold text-orange-600 w-full px-0 py-1.5"></td>`
+            ).join('');
+
+            const rowConn = (txt) => `<td class="border border-slate-300 font-bold text-slate-700 text-center align-middle text-[12px] tc-edit whitespace-nowrap" contenteditable="true" spellcheck="false">${txt}</td>`;
+
+            const blockHtml = `
+                <div id="block_${prefix}" class="dchipot-block relative mb-8 pb-8 border-b-[3px] border-dashed border-slate-200 last:border-0 last:mb-0 last:pb-0 ${pageBreakClass}">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="section-title mb-0">
+                            <div class="section-icon bg-slate-700"><i class="fa-solid fa-bolt-lightning text-white"></i></div>
+                            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 block-base-title" contenteditable="true" spellcheck="false">DC Hi-Pot Test</h3>
+                        </div>
+                        <button onclick="removeDcHipotBlock('${prefix}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-sm font-bold no-print shrink-0"><i class="fa-solid fa-trash-can mr-1"></i> ลบชุดนี้</button>
+                    </div>
+                    <div class="flex items-center gap-3 w-[70%] mb-4">
+                        <span class="font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px] flex items-center shadow-sm whitespace-nowrap">
+                            <i class="fa-solid fa-server mr-2 text-slate-500"></i> Equipment / Panel
+                        </span>
+                        <input type="text" placeholder="ระบุชื่อตู้ เช่น MDB, DB-1..." class="paper-input font-bold text-orange-600 text-[16px] w-full border-b border-slate-300 pb-1 eq-panel-input" oninput="this.setAttribute('value', this.value); showSaveStatus('<i class=\\'fa-solid fa-pen\\'></i> กำลังแก้ไข...', false)">
+                    </div>
+                    <table class="w-full text-sm text-center mb-6" style="table-layout: fixed;">
+                        <tr>
+                            <th class="w-[24%] text-center whitespace-nowrap">Test connection</th>
+                            <th class="w-[15%] whitespace-nowrap">Voltage test</th>
+                            <th colspan="${DC_HIPOT_OBS_CELLS}" class="whitespace-nowrap">Observation <span class="normal-case tc-edit" contenteditable="true" spellcheck="false">(µA)</span></th>
+                        </tr>
+                        <tr>
+                            ${rowConn('L1 to L2+L3+GND')}
+                            <td class="border border-slate-300 font-medium text-slate-600 text-[12px] leading-tight align-middle tc-edit" rowspan="3" contenteditable="true" spellcheck="false">48000 Vdc<br>15 min<br>IEC 60502-4</td>
+                            ${obsCells}
+                        </tr>
+                        <tr>
+                            ${rowConn('L2 to L1+L3+GND')}
+                            ${obsCells}
+                        </tr>
+                        <tr>
+                            ${rowConn('L3 to L1+L2+GND')}
+                            ${obsCells}
+                        </tr>
+                    </table>
+                    <div class="flex items-center justify-between mb-2 ml-1">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-image text-slate-400"></i>
+                            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Photograph</h4>
+                        </div>
+                        <button onclick="addPhotoBox('grid_${prefix}', 'dch')" class="text-xs bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg font-bold no-print transition-colors shadow-sm"><i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปหน้าจอ</button>
+                    </div>
+                    <div id="grid_${prefix}" class="grid grid-cols-2 gap-4"></div>
+                </div>
+            `;
+            insertBlockAfterLastInGroup(container, blockHtml, 'dchipot-block', 'block_dch_');
+            for(let i=0; i<6; i++) { addPhotoBox(`grid_${prefix}`, 'dch'); }
+        }
+
+        async function removeDcHipotBlock(prefix) { await confirmRemoveBlock(prefix); }
 
         function addGroundingBlock() {
             groCount++;
@@ -5865,7 +6093,7 @@
                 Array.from(container.children).forEach(child => {
                     if (child.classList.contains('hidden') || window.getComputedStyle(child).display === 'none') return;
 
-                    if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block')) {
+                    if (child.matches('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block')) {
                         const modId = getModIdFromSubBlock(child) || 'mod_general';
                         const tb = extractBlockTitle(child, modId);
                         items.push({ title: tb.title, eqName: tb.eqName, id: child.id });
@@ -5877,7 +6105,7 @@
                             items.push({ title: 'Certificate of Calibration', eqName: '', id: child.id });
                             return;
                         }
-                        const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block'));
+                        const blocks = Array.from(child.querySelectorAll('.photo-group-block, .general-block, .insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block'));
                         if (blocks.length > 0) {
                             blocks.forEach(block => {
                                 const tb = extractBlockTitle(block, child.id);
@@ -6611,7 +6839,7 @@
             //    วิธีแก้: ใส่ pdf-page-break ชั่วคราวให้ทุก direct-child block ของ moduleContainer
             //    (เพราะหลัง reorder blocks เหล่านี้คือ "หัวข้อใหม่" ทุกตัว)
             //    เก็บ marker ไว้ restore ทีหลัง
-            document.querySelectorAll('#moduleContainer > .photo-group-block, #moduleContainer > .general-block, #moduleContainer > .insulation-block, #moduleContainer > .dielectric-block, #moduleContainer > .grounding-block, #moduleContainer > .gc-block, #moduleContainer > .contact-block, #moduleContainer > .trip-block, #moduleContainer > .relay-block, #moduleContainer > .cap-block').forEach(b => {
+            document.querySelectorAll('#moduleContainer > .photo-group-block, #moduleContainer > .general-block, #moduleContainer > .insulation-block, #moduleContainer > .dielectric-block, #moduleContainer > .grounding-block, #moduleContainer > .gc-block, #moduleContainer > .contact-block, #moduleContainer > .trip-block, #moduleContainer > .relay-block, #moduleContainer > .cap-block, #moduleContainer > .hipot-block, #moduleContainer > .dchipot-block').forEach(b => {
                 if (b.classList.contains('hidden') || b.classList.contains('reorder-hidden')) return;
                 if (!b.classList.contains('pdf-page-break')) {
                     b.classList.add('pdf-page-break');
@@ -6676,7 +6904,7 @@
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = 'none';
 
-            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.gc-block', '.contact-block', '.trip-block', '.relay-block', '.cap-block'];
+            const blocks = ['.photo-group-block', '.general-block', '.insulation-block', '.dielectric-block', '.grounding-block', '.gc-block', '.contact-block', '.trip-block', '.relay-block', '.cap-block', '.hipot-block', '.dchipot-block'];
             blocks.forEach(selector => {
                 document.querySelectorAll(selector).forEach(block => {
                     const grid = block.querySelector('.grid');
@@ -6909,6 +7137,8 @@
                 { cls: 'trip-block',        removeFn: 'removeTripBlock' },
                 { cls: 'relay-block',       removeFn: 'removeRelayBlock' },
                 { cls: 'cap-block',         removeFn: 'removeCapBlock' },
+                { cls: 'hipot-block',       removeFn: 'removeHipotBlock' },
+                { cls: 'dchipot-block',     removeFn: 'removeDcHipotBlock' },
                 { cls: 'general-block',     removeFn: 'removeGeneralCheckBlock' },
                 { cls: 'photo-group-block', removeFn: 'removePhotoGroup' },
                 { cls: 'blank-group-block', removeFn: 'removePhotoGroup' }
@@ -8757,7 +8987,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         function aiLastBlockIsEmpty(modId) {
             const modNode = document.getElementById(modId);
             if (!modNode) return false;
-            const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block';
+            const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block,.hipot-block,.dchipot-block';
             const blocks = modNode.querySelectorAll(AI_BLOCK_SEL);
             if (!blocks.length) return false;
             const last = blocks[blocks.length - 1];
@@ -9294,7 +9524,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const modId = t.meta.mod_id, prefixShort = t.meta.counter_key;
 
                 // นับ block ของ module ก่อนเปิด (ใช้รู้ว่า toggle auto-create ให้หรือไม่ — ใช้ได้ทุก type รวม trip ที่ไม่มี grid)
-                const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block';
+                const AI_BLOCK_SEL = '.insulation-block,.contact-block,.trip-block,.cap-block,.grounding-block,.gc-block,.general-block,.photo-group-block,.relay-block,.dielectric-block,.hipot-block,.dchipot-block';
                 const modNode0 = document.getElementById(modId);
                 const blocksBefore = modNode0 ? modNode0.querySelectorAll(AI_BLOCK_SEL).length : 0;
 
