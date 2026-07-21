@@ -75,6 +75,41 @@
               border-radius:50%; background:rgba(15,23,42,.55); color:#fff; font-size:10px;
               cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .pcell .repl:hover{ background:#2563eb; }
+  .pcell .edit-btn{ position:absolute; top:3px; left:3px; width:22px; height:22px; border:none;
+              border-radius:6px; background:rgba(15,23,42,.6); color:#fff; font-size:10px;
+              cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .pcell .edit-btn:hover{ background:#f97316; }
+
+  /* ---------- Photo editor modal ---------- */
+  .pe-box{ background:#fff; border-radius:16px; width:min(96vw,560px); max-height:94vh;
+           display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px -12px rgba(0,0,0,.45); }
+  .pe-head{ padding:14px 18px; background:linear-gradient(135deg,#0f2744,#1f3a5f); color:#fff;
+            font-weight:700; font-size:15px; display:flex; justify-content:space-between; align-items:center; }
+  .pe-close{ cursor:pointer; font-size:20px; width:30px; height:30px; display:flex; align-items:center;
+             justify-content:center; border-radius:7px; background:rgba(255,255,255,.12); }
+  .pe-close:hover{ background:rgba(255,255,255,.24); }
+  .pe-modes{ display:flex; gap:8px; padding:12px 16px 0 16px; }
+  .pe-mode{ flex:1; padding:9px; border-radius:9px; border:1px solid #e2e8f0; background:#fff;
+            font-weight:700; font-size:13px; cursor:pointer; color:#64748b; }
+  .pe-mode.active{ background:#0f2744; color:#fff; border-color:transparent; }
+  .pe-stage{ display:flex; justify-content:center; align-items:center; background:#0b1220;
+             margin:12px 16px; border-radius:10px; padding:10px; }
+  #peCanvas{ max-width:100%; height:auto; touch-action:none; background:#fff; border-radius:6px; }
+  .pe-tools{ display:flex; align-items:center; gap:8px; padding:0 16px 12px 16px; flex-wrap:wrap; }
+  .pe-tlabel{ font-size:12px; font-weight:700; color:#475569; }
+  .pe-slider{ flex:1; min-width:120px; accent-color:#f97316; }
+  .pe-hint{ font-size:11px; color:#94a3b8; width:100%; }
+  .pe-tool{ width:40px; height:40px; border-radius:9px; border:1px solid #e2e8f0; background:#fff;
+            cursor:pointer; display:flex; align-items:center; justify-content:center; color:#475569; }
+  .pe-tool:hover{ background:#f8fafc; }
+  .pe-tool.active{ background:#f97316; color:#fff; border-color:transparent; }
+  .pe-sep{ width:1px; height:26px; background:#e2e8f0; margin:0 2px; }
+  .pe-colors{ display:flex; gap:7px; align-items:center; }
+  .pe-sw{ width:28px; height:28px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px #e2e8f0;
+          cursor:pointer; padding:0; }
+  .pe-sw.active{ box-shadow:0 0 0 2px #0f2744; transform:scale(1.12); }
+  .pe-foot{ padding:12px 16px; border-top:1px solid #e2e8f0; display:flex; gap:10px;
+            justify-content:flex-end; background:#fafbfc; }
 
   .mini-btn{ font-size:10.5px; font-weight:600; color:#f97316; background:#fff7ed;
              border:1px solid #fed7aa; border-radius:6px; padding:2px 8px; cursor:pointer;
@@ -121,6 +156,9 @@
   .hist-del{ border:none; background:#fef2f2; color:#ef4444; width:36px; height:36px; border-radius:8px;
              cursor:pointer; font-size:15px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .hist-del:hover{ background:#fee2e2; }
+  .hist-edit{ border:none; background:#eff6ff; color:#2563eb; width:36px; height:36px; border-radius:8px;
+              cursor:pointer; font-size:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .hist-edit:hover{ background:#dbeafe; }
   .hist-continue{ width:100%; text-align:left; border:none; border-radius:11px; padding:13px 16px; cursor:pointer;
                   color:#fff; background:linear-gradient(135deg,#f5a623,#ff8a00); box-shadow:0 4px 12px -2px rgba(245,166,35,.4); }
 
@@ -198,6 +236,60 @@
   </div>
 </div>
 
+<!-- ========== PHOTO EDITOR MODAL ========== -->
+<div class="modal-bg no-print" id="photoEditorModal" style="z-index:460;">
+  <div class="pe-box">
+    <div class="pe-head">
+      <span>แก้ไขรูปภาพ</span>
+      <span class="pe-close" id="peClose">&times;</span>
+    </div>
+    <div class="pe-modes">
+      <button class="pe-mode active" id="peModeCrop">Crop / ซูม</button>
+      <button class="pe-mode" id="peModeDraw">วาด</button>
+    </div>
+    <div class="pe-stage">
+      <canvas id="peCanvas" width="480" height="340"></canvas>
+    </div>
+    <!-- Crop tools -->
+    <div class="pe-tools" id="peCropTools">
+      <span class="pe-tlabel">ซูม</span>
+      <input type="range" id="peZoom" class="pe-slider" min="1" max="3" step="0.01" value="1">
+      <span class="pe-hint">ลากรูปเพื่อเลื่อนตำแหน่ง • เลื่อนแถบเพื่อซูมเข้า/ออก</span>
+    </div>
+    <!-- Draw tools -->
+    <div class="pe-tools" id="peDrawTools" style="display:none;">
+      <button class="pe-tool active" data-tool="select" title="เลือก / ย้าย / ยืดหด">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2l7 18 2.5-7L20 11 4 2z"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="arrow" title="ลูกศร">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="9 5 19 5 19 15"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="rect" title="สี่เหลี่ยม">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>
+      </button>
+      <button class="pe-tool" data-tool="circle" title="วงกลม">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <span class="pe-sep"></span>
+      <span class="pe-colors">
+        <button class="pe-sw active" data-color="#ef4444" style="background:#ef4444"></button>
+        <button class="pe-sw" data-color="#facc15" style="background:#facc15"></button>
+        <button class="pe-sw" data-color="#22c55e" style="background:#22c55e"></button>
+        <button class="pe-sw" data-color="#2563eb" style="background:#2563eb"></button>
+        <button class="pe-sw" data-color="#0b1220" style="background:#0b1220"></button>
+      </span>
+      <span class="pe-sep"></span>
+      <button class="pe-tool" id="peDelete" title="ลบรูปทรงที่เลือก">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+    </div>
+    <div class="pe-foot">
+      <button class="top-btn" id="peCancel">ยกเลิก</button>
+      <button class="top-btn primary" id="peSave">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================================================================
    Section template — ยึดการจัดเรียงหน้าจากตัวอย่าง SMDB (10 หน้า)
@@ -212,11 +304,11 @@ const SECTION_DEFS = [
   { key:'frame',        group:1, icon:'fa-ruler-combined',   title:'Frame size',                                   type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:6 },
   { key:'busbar',       group:2, icon:'fa-grip-lines',       title:'Busbar Cross-section',                         type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:4 },
   { key:'nut',          group:2, icon:'fa-screwdriver-wrench',title:'Nut and bolt tightening torque',              type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:4 },
-  { key:'ins_before',   group:3, icon:'fa-omega',            title:'Insulation Resistance Test before Dielectric', type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+  { key:'ins_before',   group:3, icon:'fa-omega', glyph:'Ω',  title:'Insulation Resistance Test before Dielectric', type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
         subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
   { key:'dielectric',   group:4, icon:'fa-bolt',             title:'Dielectric Strength',                          type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
         subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
-  { key:'ins_after',    group:5, icon:'fa-omega',            title:'Insulation Resistance Test after Dielectric',  type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
+  { key:'ins_after',    group:5, icon:'fa-omega', glyph:'Ω',  title:'Insulation Resistance Test after Dielectric',  type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
         subs:['L1 to L2+L3+N+G','L2 to L1+L3+N+G','L3 to L1+L2+N+G'] },
   { key:'ground_cont',  group:6, icon:'fa-wave-square',      title:'Ground Continuity',                            type:'grid',    cols:2, boxW:STD_W, photoH:STD_H, slots:2 },
   { key:'metering',     group:7, icon:'fa-gauge-high',       title:'Measurement of Metering',                      type:'subrows', cols:2, boxW:STD_W, photoH:STD_H,
@@ -406,24 +498,28 @@ function dottedSVG(w){
       stroke-dasharray="1.4 2.6" stroke-linecap="round"/></svg>`;
 }
 
+// รูปเก็บเป็น string (เก่า) หรือ object {dataUrl,original,edit} (หลังแก้ไข) — คืน URL ที่ใช้แสดง
+function photoSrc(p){ return typeof p==='string' ? p : (p && p.dataUrl) || ''; }
+
 // ความสูงรูปคำนวณต่อหน้า (photoH) — ทุกแถวเท่ากัน แถวชิดกันเสมอ
 function cellEdit(src, key, si, idx, h){
   const st=`height:${h}px`;
   if(src){
     return `<div class="pcell" style="${st}">
-      <img src="${src}">
+      <img src="${photoSrc(src)}">
+      <button class="edit-btn" title="แก้ไขรูป (crop / วาด)" onclick="PhotoEditor.open('${key}',${si},${idx})"><i class="fa-solid fa-pen"></i></button>
       <button class="repl" title="เปลี่ยนรูป" onclick="replacePhoto('${key}',${si},${idx})"><i class="fa-solid fa-arrows-rotate"></i></button>
       <button class="rm" title="ลบรูป" onclick="removePhoto('${key}',${si},${idx})"><i class="fa-solid fa-xmark"></i></button>
     </div>`;
   }
   return `<label class="pcell empty" style="${st}">
-    <input type="file" accept="image/*" hidden onchange="onPick(event,'${key}',${si},${idx})">
+    <input type="file" accept="image/*" multiple hidden onchange="onPick(event,'${key}',${si},${idx})">
     <span style="text-align:center;font-size:11px;"><i class="fa-solid fa-camera" style="font-size:16px;display:block;margin-bottom:3px;"></i>เพิ่มรูป</span>
   </label>`;
 }
 function cellPdf(src, h){
   const st=`height:${h}px;border:1px solid #e2e8f0;`;
-  if(src) return `<div class="pdf-photo-box pcell" data-src="${src}" style="${st}background:#fff;"></div>`;
+  if(src) return `<div class="pdf-photo-box pcell" data-src="${photoSrc(src)}" style="${st}background:#fff;"></div>`;
   return `<div class="pcell" style="${st}background:#fafafa;"></div>`;
 }
 function gridStyle(def){
@@ -519,7 +615,7 @@ function renderSidebar(){
     const on=state.data[def.key].enabled;
     return `<label class="flex items-center justify-between bg-white p-2.5 rounded-xl border ${on?'border-orange-200':'border-slate-200'} cursor-pointer hover:border-orange-400 hover:shadow-md transition-all shadow-sm group">
       <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-8 h-8 rounded-lg ${on?'bg-orange-500 text-white':'bg-slate-100 text-slate-500'} flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid ${def.icon} text-[13px]"></i></div>
+        <div class="w-8 h-8 rounded-lg ${on?'bg-orange-500 text-white':'bg-slate-100 text-slate-500'} flex items-center justify-center shrink-0 transition-colors">${def.glyph?`<span class="font-serif font-bold text-[17px] leading-none">${def.glyph}</span>`:`<i class="fa-solid ${def.icon} text-[13px]"></i>`}</div>
         <span class="font-bold text-slate-700 text-[12.5px] leading-tight">${i+1}. ${escapeHtml(def.title)}</span>
       </div>
       <input type="checkbox" class="custom-checkbox shrink-0 ml-1" ${on?'checked':''} onchange="toggleTopic('${def.key}',this.checked)">
@@ -552,15 +648,90 @@ function toggleSidebar(){
 function arrFor(key,si){
   return si<0 ? state.data[key].photos : state.data[key].subs[si].photos;
 }
+function readFileDataUrl(f){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+}
+// เลือกได้ทีละหลายรูป: รูปแรกลงช่องที่คลิก, ที่เหลือเติมเฉพาะช่องว่างที่มีอยู่ (ไม่เพิ่มช่องใหม่)
 async function onPick(e,key,si,idx){
-  const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const reader=new FileReader();
-  reader.onload=async()=>{
-    const small=await downscaleDataUrl(reader.result,2000);
-    arrFor(key,si)[idx]=small;
-    markDirty(); render();
+  const files=[...(e.target.files||[])].filter(Boolean);
+  if(!files.length) return;
+  const inp=e.target;
+  const arr=arrFor(key,si);
+  let pos=idx;
+  for(let i=0;i<files.length;i++){
+    let src;
+    try{ src=await downscaleDataUrl(await readFileDataUrl(files[i]),2000); }catch(_){ continue; }
+    if(i===0){ arr[idx]=src; pos=idx+1; continue; }
+    while(pos<arr.length && arr[pos]!=null) pos++;   // หาช่องว่างถัดไป
+    if(pos>=arr.length) break;                        // ไม่มีช่องว่างเหลือ -> ข้ามรูปที่เกิน
+    arr[pos]=src; pos++;
+  }
+  try{ inp.value=''; }catch(_){}   // เคลียร์เพื่อเลือกไฟล์ชุดเดิมซ้ำได้
+  markDirty(); render();
+  // ถ่ายจากกล้อง (ไฟล์เดียว, เพิ่งถ่าย) -> เสนอบันทึกภาพต้นฉบับลงเครื่อง (หลังแทรกรูปเสร็จแล้วเท่านั้น)
+  if(files.length===1 && isFreshCapture(files[0])) offerSaveOriginal(files[0]);
+}
+
+/* ---- บันทึกภาพต้นฉบับลงเครื่อง (แพทเทิร์นจาก skill avatar-photo-save-original) ---- */
+function isFreshCapture(file){
+  return file && typeof file.lastModified==='number' && (Date.now()-file.lastModified)<2*60*1000;
+}
+function suggestPhotoFilename(file){
+  const proj=((state.projectName)||'photo').trim().replace(/[\\/:*?"<>|]+/g,'_').slice(0,40)||'photo';
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  let ext='jpg';
+  if(file&&file.name&&file.name.includes('.')) ext=file.name.split('.').pop().toLowerCase();
+  else if(file&&file.type&&file.type.includes('/')) ext=file.type.split('/')[1];
+  return `Photograph_${proj}_${stamp}.${ext}`;
+}
+function makeNamedFile(file){
+  try{ return new File([file], suggestPhotoFilename(file), {type:file.type||'image/jpeg'}); }catch(e){ return file; }
+}
+function downloadFile(file){
+  try{
+    const url=URL.createObjectURL(file);
+    const a=document.createElement('a'); a.href=url; a.download=file.name||'photo.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    showToast('ดาวน์โหลดภาพต้นฉบับแล้ว');
+  }catch(e){ console.error(e); }
+}
+function offerSaveOriginal(file){
+  const named=makeNamedFile(file);
+  let canWebShare=false;
+  try{ canWebShare=!!(navigator.share && navigator.canShare && navigator.canShare({files:[named]})); }catch(e){}
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.maxTouchPoints>1 && /Mac/.test(navigator.userAgent));
+  const url=URL.createObjectURL(file);
+  const hint=canWebShare
+    ? 'กด “บันทึกลงเครื่อง” แล้วเลือก “บันทึกรูปภาพ / Save Image” เพื่อเก็บลงคลังรูป'
+    : (isIOS
+        ? '<b style="color:#c2410c;">แตะค้างที่รูปด้านบน</b> แล้วเลือก <b>“บันทึกลงในรูปภาพ”</b><br>เพื่อเก็บต้นฉบับลงคลังรูป<br><span style="font-size:11.5px;color:#94a3b8;">(เปิดผ่าน http — Safari ไม่ให้ปุ่มเว็บเซฟลงคลังรูปโดยตรง)</span>'
+        : 'ต้องการดาวน์โหลดไฟล์ภาพต้นฉบับเก็บไว้ไหม?');
+  const actionBtn=canWebShare
+    ? '<button class="top-btn primary" id="osShare">บันทึกลงเครื่อง</button>'
+    : (isIOS ? '' : '<button class="top-btn primary" id="osDl">ดาวน์โหลด</button>');
+  const bg=buildModalOverlay(`
+    <div class="modal-head"><span>บันทึกภาพต้นฉบับ</span></div>
+    <div class="modal-body" style="padding:14px 18px 6px;text-align:center;">
+      <img src="${url}" alt="ภาพต้นฉบับ" style="max-width:100%;max-height:320px;border-radius:10px;border:1px solid #e2e8f0;">
+      <p style="font-size:13.5px;color:#475569;line-height:1.65;margin:10px 4px 4px;">${hint}</p>
+    </div>
+    <div class="modal-foot">
+      <button class="top-btn" id="osClose">${isIOS && !canWebShare ? 'ปิด' : 'ไม่บันทึก'}</button>
+      ${actionBtn}
+    </div>`);
+  bg.style.zIndex=430;
+  const close=()=>{ bg.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); };
+  bg.querySelector('#osClose').onclick=close;   // ไม่ปิดเมื่อแตะฉากหลัง — กันเผลอปิดตอนแตะค้างที่รูป
+  const shareBtn=bg.querySelector('#osShare');
+  if(shareBtn) shareBtn.onclick=async()=>{
+    try{ await navigator.share({files:[named]}); }
+    catch(e){ if(e && e.name!=='AbortError') downloadFile(named); }
+    close();
   };
-  reader.readAsDataURL(f);
+  const dlBtn=bg.querySelector('#osDl');
+  if(dlBtn) dlBtn.onclick=()=>{ downloadFile(named); close(); };
 }
 function removePhoto(key,si,idx){
   const arr=arrFor(key,si);
@@ -572,7 +743,7 @@ function removePhoto(key,si,idx){
 }
 function replacePhoto(key,si,idx){
   const inp=document.createElement('input');
-  inp.type='file'; inp.accept='image/*';
+  inp.type='file'; inp.accept='image/*'; inp.multiple=true;
   inp.onchange=(e)=>onPick(e,key,si,idx);
   inp.click();
 }
@@ -773,6 +944,31 @@ function confirmDialog({title='ยืนยัน', message='', confirmText='ต
     bg.addEventListener('click',e=>{ if(e.target===bg) done(false); });
   });
 }
+// กล่องกรอกข้อความ (ตั้ง/แก้ชื่องาน) — คืนค่าข้อความ (string) หรือ null ถ้ายกเลิก
+function promptDialog({title='ตั้งชื่อ', message='', placeholder='', initial='', confirmText='ตกลง', cancelText='ยกเลิก'}={}){
+  return new Promise(resolve=>{
+    const bg=buildModalOverlay(`
+      <div class="modal-head"><span>${escapeHtml(title)}</span></div>
+      <div class="modal-body">
+        ${message?`<p style="font-size:13.5px;color:#475569;line-height:1.6;margin-bottom:10px;">${message}</p>`:''}
+        <input id="pdInput" type="text" placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(initial)}"
+          style="width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:14px;outline:none;">
+      </div>
+      <div class="modal-foot" style="gap:10px;">
+        <button class="top-btn" id="pdCancel" style="flex:1;justify-content:center;">${escapeHtml(cancelText)}</button>
+        <button class="top-btn primary" id="pdOk" style="flex:1;justify-content:center;">${escapeHtml(confirmText)}</button>
+      </div>`);
+    bg.style.zIndex=450;
+    const inp=bg.querySelector('#pdInput');
+    inp.addEventListener('focus', ()=>{ inp.style.borderColor='#f97316'; });
+    setTimeout(()=>{ inp.focus(); inp.select(); },40);
+    const done=v=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#pdOk').onclick=()=>done(inp.value.trim());
+    bg.querySelector('#pdCancel').onclick=()=>done(null);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); done(inp.value.trim()); } });
+    bg.addEventListener('click',e=>{ if(e.target===bg) done(null); });
+  });
+}
 
 /* ----- history store ----- */
 async function getHistory(){ try{ return (await localforage.getItem(HISTORY_KEY))||[]; }catch(e){ return []; } }
@@ -809,6 +1005,14 @@ async function saveCurrentToHistory(){
   return saved;
 }
 async function doSave(){
+  // ยังไม่ได้ตั้งชื่องาน -> ถามชื่อก่อนบันทึก
+  if(!(state.projectName||'').trim()){
+    const name=await promptDialog({ title:'ตั้งชื่องาน',
+      message:'ตั้งชื่อให้งานนี้ก่อนบันทึก เพื่อให้หาเจอง่ายในประวัติ',
+      placeholder:'เช่น SMDB ทรัพย์ทองหอม', confirmText:'บันทึก' });
+    if(name===null) return;                         // ยกเลิก
+    state.projectName=name; renderProjectName(); markDirty();
+  }
   const ok=await saveCurrentToHistory();
   if(ok) showToast('บันทึกงานแล้ว');
 }
@@ -894,6 +1098,7 @@ async function showStartupModal(force){
           <div class="hist-name">${escapeHtml(h.name)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
           <div class="hist-date">${escapeHtml(h.date)}</div>
         </div>
+        <button class="hist-edit" data-edit="${h.id}" title="แก้ไขชื่องาน"><i class="fa-solid fa-pen"></i></button>
         <button class="hist-del" data-del="${h.id}" title="ลบ"><i class="fa-regular fa-trash-can"></i></button>
       </div>`).join('')
     : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานที่บันทึกไว้</div>`;
@@ -917,6 +1122,19 @@ async function showStartupModal(force){
     if(h && h.state){ loadStateIntoApp(JSON.parse(JSON.stringify(h.state))); showToast('เปิดงานแล้ว'); }
     close();
   });
+  bg.querySelectorAll('[data-edit]').forEach(el=> el.onclick=async(e)=>{
+    e.stopPropagation();
+    const h=list.find(x=>x.id===el.dataset.edit);
+    const name=await promptDialog({ title:'แก้ไขชื่องาน', initial:h?h.name:'',
+      placeholder:'ชื่องาน', confirmText:'บันทึก' });
+    if(name===null) return;
+    const newName=name || 'ไม่ระบุชื่องาน';
+    const l=await getHistory();
+    const item=l.find(x=>x.id===el.dataset.edit);
+    if(item){ item.name=newName; if(item.state) item.state.projectName=newName; await setHistory(l); }
+    if(state._histId===el.dataset.edit){ state.projectName=newName; renderProjectName(); saveDraft(); }
+    close(); showStartupModal(true);
+  });
   bg.querySelectorAll('[data-del]').forEach(el=> el.onclick=async(e)=>{
     e.stopPropagation();
     const h=list.find(x=>x.id===el.dataset.del);
@@ -930,8 +1148,191 @@ async function showStartupModal(force){
   });
 }
 
+/* =========================================================================
+   PHOTO EDITOR — crop/zoom (slider + ลากเลื่อน) + วาด (ลูกศร/สี่เหลี่ยม/วงกลม)
+   ย้าย/ยืดหด/ลบได้  (แพทเทิร์นจาก minute-of-meeting.html)
+   รูปเก็บเป็น object {dataUrl, original, edit} หลังแก้ไข -> เปิดแก้ซ้ำได้
+   ========================================================================= */
+const PhotoEditor = (function(){
+  const FRAME_W=480, FRAME_H=340;      // canvas แก้ไข (สัดส่วน ~ กล่องรูป 300×212)
+  const OUT_W=1200, OUT_H=850;         // ความละเอียดรูปที่บันทึก
+  const HANDLE=11;
+  const COLORS=['#ef4444','#facc15','#22c55e','#2563eb','#0b1220'];
+
+  let modal, canvas, ctx, zoomSlider, cropTools, drawTools;
+  let target=null, img=null;
+  let mode='crop', tool='select', color=COLORS[0];
+  let crop={zoom:1, ox:0, oy:0}, baseScale=1;
+  let anns=[], selected=-1, drag=null;
+
+  function arrOf(t){ return t.si<0 ? state.data[t.key].photos : state.data[t.key].subs[t.si].photos; }
+
+  function init(){
+    modal=document.getElementById('photoEditorModal'); if(!modal) return;
+    canvas=document.getElementById('peCanvas'); ctx=canvas.getContext('2d');
+    zoomSlider=document.getElementById('peZoom');
+    cropTools=document.getElementById('peCropTools');
+    drawTools=document.getElementById('peDrawTools');
+    document.getElementById('peModeCrop').onclick=()=>setMode('crop');
+    document.getElementById('peModeDraw').onclick=()=>setMode('draw');
+    document.getElementById('peClose').onclick=close;
+    document.getElementById('peCancel').onclick=close;
+    document.getElementById('peSave').onclick=save;
+    document.getElementById('peDelete').onclick=deleteSelected;
+    zoomSlider.addEventListener('input', ()=>{ zoomAround(FRAME_W/2,FRAME_H/2,parseFloat(zoomSlider.value)); draw(); });
+    drawTools.querySelectorAll('.pe-tool[data-tool]').forEach(b=> b.onclick=()=>setTool(b.dataset.tool));
+    modal.querySelectorAll('.pe-sw').forEach(s=>{ s.onclick=()=>{
+      color=s.dataset.color;
+      modal.querySelectorAll('.pe-sw').forEach(x=>x.classList.toggle('active',x===s));
+      if(selected>=0){ anns[selected].color=color; draw(); }
+    };});
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
+  }
+
+  function open(key, si, idx){
+    if(!modal) return;
+    const arr=(si<0? state.data[key].photos : state.data[key].subs[si].photos);
+    const photo=arr[idx]; if(!photo) return;
+    const isObj=typeof photo==='object';
+    const dataUrl=isObj?photo.dataUrl:photo; if(!dataUrl) return;
+    target={key,si,idx};
+    const src=(isObj && photo.original)?photo.original:dataUrl;
+    anns=(isObj && photo.edit && Array.isArray(photo.edit.annotations))?JSON.parse(JSON.stringify(photo.edit.annotations)):[];
+    const savedCrop=isObj && photo.edit && photo.edit.crop;
+    color=COLORS[0]; tool='select'; selected=-1; drag=null;
+    modal.querySelectorAll('.pe-sw').forEach(x=>x.classList.toggle('active',x.dataset.color===color));
+    img=new Image();
+    img.onload=()=>{
+      baseScale=Math.min(FRAME_W/img.naturalWidth, FRAME_H/img.naturalHeight);
+      if(savedCrop){ crop={zoom:savedCrop.zoom||1, ox:savedCrop.ox||0, oy:savedCrop.oy||0}; }
+      else { crop={zoom:1, ox:0, oy:0}; centerImage(); }
+      zoomSlider.value=crop.zoom; setMode('crop'); draw();
+    };
+    img.onerror=()=>showToast('โหลดรูปไม่สำเร็จ');
+    img.src=src;
+    modal.classList.add('open');
+  }
+  function close(){ modal.classList.remove('open'); target=null; img=null; anns=[]; selected=-1; drag=null; }
+
+  function setMode(m){
+    mode=m;
+    document.getElementById('peModeCrop').classList.toggle('active', m==='crop');
+    document.getElementById('peModeDraw').classList.toggle('active', m==='draw');
+    cropTools.style.display=m==='crop'?'flex':'none';
+    drawTools.style.display=m==='draw'?'flex':'none';
+    if(m==='crop'){ selected=-1; canvas.style.cursor='grab'; } else { setTool(tool); }
+    draw();
+  }
+  function setTool(t){
+    tool=t;
+    drawTools.querySelectorAll('.pe-tool[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+    canvas.style.cursor=t==='select'?'default':'crosshair';
+  }
+  function centerImage(){ const s=baseScale*crop.zoom; crop.ox=(FRAME_W-img.naturalWidth*s)/2; crop.oy=(FRAME_H-img.naturalHeight*s)/2; }
+  function zoomAround(cx,cy,nz){ const os=baseScale*crop.zoom, ns=baseScale*nz; const ix=(cx-crop.ox)/os, iy=(cy-crop.oy)/os; crop.ox=cx-ix*ns; crop.oy=cy-iy*ns; crop.zoom=nz; }
+  function toCanvas(e){ const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height)}; }
+  function clamp01(v){ return Math.max(0,Math.min(1,v)); }
+  function distToSeg(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy; if(l2===0) return Math.hypot(px-x1,py-y1); let t=((px-x1)*dx+(py-y1)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(x1+t*dx),py-(y1+t*dy)); }
+
+  function draw(){
+    ctx.clearRect(0,0,FRAME_W,FRAME_H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,FRAME_W,FRAME_H);
+    if(img){ const s=baseScale*crop.zoom; ctx.drawImage(img, crop.ox, crop.oy, img.naturalWidth*s, img.naturalHeight*s); }
+    anns.forEach(a=>drawShape(ctx,a,FRAME_W,FRAME_H,3));
+    if(mode==='draw' && selected>=0){
+      const pts=handlePoints(anns[selected]);
+      ctx.save(); ctx.fillStyle='#fff'; ctx.strokeStyle='#0f2744'; ctx.lineWidth=2;
+      pts.forEach(p=>{ ctx.beginPath(); ctx.rect(p.x-5,p.y-5,10,10); ctx.fill(); ctx.stroke(); }); ctx.restore();
+    }
+  }
+  function drawShape(c,a,W,H,lw){
+    const x1=a.x1*W,y1=a.y1*H,x2=a.x2*W,y2=a.y2*H;
+    c.save(); c.strokeStyle=a.color; c.fillStyle=a.color; c.lineWidth=lw; c.lineJoin='round'; c.lineCap='round';
+    if(a.type==='rect'){ c.strokeRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1)); }
+    else if(a.type==='circle'){ const cx=(x1+x2)/2,cy=(y1+y2)/2; c.beginPath(); c.ellipse(cx,cy,Math.max(1,Math.abs(x2-x1)/2),Math.max(1,Math.abs(y2-y1)/2),0,0,Math.PI*2); c.stroke(); }
+    else { c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+      const ang=Math.atan2(y2-y1,x2-x1), len=Math.max(lw*3.2,0.03*W);
+      c.beginPath(); c.moveTo(x2,y2); c.lineTo(x2-len*Math.cos(ang-0.42),y2-len*Math.sin(ang-0.42)); c.lineTo(x2-len*Math.cos(ang+0.42),y2-len*Math.sin(ang+0.42)); c.closePath(); c.fill(); }
+    c.restore();
+  }
+  function handlePoints(a){
+    const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
+    if(a.type==='arrow') return [{x:x1,y:y1,h:'p1'},{x:x2,y:y2,h:'p2'}];
+    return [{x:x1,y:y1,h:'p1'},{x:x2,y:y1,h:'x2y1'},{x:x2,y:y2,h:'p2'},{x:x1,y:y2,h:'x1y2'}];
+  }
+  function hitTest(cx,cy){
+    if(selected>=0){ for(const p of handlePoints(anns[selected])) if(Math.hypot(p.x-cx,p.y-cy)<=HANDLE) return {idx:selected,kind:'resize',handle:p.h}; }
+    for(let i=anns.length-1;i>=0;i--) if(bodyHit(anns[i],cx,cy)) return {idx:i,kind:'move'};
+    return null;
+  }
+  function bodyHit(a,cx,cy){
+    const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
+    if(a.type==='arrow') return distToSeg(cx,cy,x1,y1,x2,y2)<=8;
+    if(a.type==='rect') return cx>=Math.min(x1,x2)-6&&cx<=Math.max(x1,x2)+6&&cy>=Math.min(y1,y2)-6&&cy<=Math.max(y1,y2)+6;
+    const cxx=(x1+x2)/2,cyy=(y1+y2)/2,rx=Math.abs(x2-x1)/2+5,ry=Math.abs(y2-y1)/2+5;
+    if(rx<2||ry<2) return false; const dx=(cx-cxx)/rx,dy=(cy-cyy)/ry; return dx*dx+dy*dy<=1.2;
+  }
+  function onDown(e){
+    if(!img) return; e.preventDefault();
+    if(canvas.setPointerCapture) try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+    const {x,y}=toCanvas(e);
+    if(mode==='crop'){ drag={kind:'pan',sx:x,sy:y,ox:crop.ox,oy:crop.oy}; canvas.style.cursor='grabbing'; return; }
+    if(tool==='select'){
+      const hit=hitTest(x,y);
+      if(hit){ selected=hit.idx;
+        if(hit.kind==='resize') drag={kind:'resize',handle:hit.handle};
+        else { const a=anns[selected]; drag={kind:'move',sx:x,sy:y,ox1:a.x1,oy1:a.y1,ox2:a.x2,oy2:a.y2}; }
+      } else selected=-1;
+      draw();
+    } else {
+      const nx=x/FRAME_W, ny=y/FRAME_H;
+      anns.push({type:tool, x1:nx, y1:ny, x2:nx, y2:ny, color});
+      selected=anns.length-1; drag={kind:'resize',handle:'p2'}; draw();
+    }
+  }
+  function onMove(e){
+    if(!drag) return; const {x,y}=toCanvas(e);
+    if(drag.kind==='pan'){ crop.ox=drag.ox+(x-drag.sx); crop.oy=drag.oy+(y-drag.sy); draw(); return; }
+    const a=anns[selected]; if(!a) return;
+    if(drag.kind==='move'){ const dx=(x-drag.sx)/FRAME_W, dy=(y-drag.sy)/FRAME_H; a.x1=drag.ox1+dx; a.y1=drag.oy1+dy; a.x2=drag.ox2+dx; a.y2=drag.oy2+dy; }
+    else { const nx=clamp01(x/FRAME_W), ny=clamp01(y/FRAME_H), h=drag.handle;
+      if(h==='p1'){ a.x1=nx; a.y1=ny; } else if(h==='p2'){ a.x2=nx; a.y2=ny; }
+      else if(h==='x2y1'){ a.x2=nx; a.y1=ny; } else if(h==='x1y2'){ a.x1=nx; a.y2=ny; } }
+    draw();
+  }
+  function onUp(){
+    if(!drag) return;
+    if(drag.kind!=='pan' && tool!=='select'){
+      const a=anns[selected];
+      if(a && Math.abs(a.x2-a.x1)<0.02 && Math.abs(a.y2-a.y1)<0.02){ a.x2=clamp01(a.x1+0.18); a.y2=clamp01(a.y1+0.14); }
+      setTool('select');
+    }
+    if(drag.kind==='pan') canvas.style.cursor=mode==='crop'?'grab':'default';
+    drag=null; draw();
+  }
+  function deleteSelected(){ if(selected>=0){ anns.splice(selected,1); selected=-1; draw(); } }
+
+  function save(){
+    if(!target || !img) return;
+    const out=document.createElement('canvas'); out.width=OUT_W; out.height=OUT_H;
+    const o=out.getContext('2d'); o.fillStyle='#fff'; o.fillRect(0,0,OUT_W,OUT_H);
+    const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
+    o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
+    anns.forEach(a=>drawShape(o,a,OUT_W,OUT_H,3*sx));
+    const arr=arrOf(target); const cur=arr[target.idx];
+    const original=(typeof cur==='object' && cur.original)?cur.original:img.src;
+    arr[target.idx]={ dataUrl:out.toDataURL('image/jpeg',0.95), original,
+                      edit:{ crop:{zoom:crop.zoom,ox:crop.ox,oy:crop.oy}, annotations:JSON.parse(JSON.stringify(anns)) } };
+    close(); markDirty(); render(); saveDraft(); showToast('บันทึกรูปแล้ว');
+  }
+
+  return { init, open };
+})();
+
 /* ---------- boot ---------- */
-(async function(){ await loadDraft(); renderProjectName(); render(); isDirty=false; await showStartupModal(false); })();
+(async function(){ await loadDraft(); renderProjectName(); render(); PhotoEditor.init(); isDirty=false; await showStartupModal(false); })();
 </script>
 </body>
 </html>
