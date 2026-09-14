@@ -1981,6 +1981,26 @@
             'mod_calibration': { bg: 'bg-rose-100',    text: 'text-rose-700',    border: 'border-rose-200' }
         };
 
+        // 🌟 อ่านชื่อ Feeder Name จากตาราง Details ของบล็อก Trip Unit
+        //    (รองรับทั้งโหมดแก้ไข [input] และโหมดพิมพ์ [print-text-span])
+        function getTripFeederName(block) {
+            const labelCell = Array.from(block.querySelectorAll('td')).find(td => td.textContent.trim() === 'Feeder Name');
+            if (!labelCell) return '';
+            const valueCell = labelCell.nextElementSibling;
+            if (!valueCell) return '';
+            let val = '';
+            const input = valueCell.querySelector('input');
+            if (input) {
+                const span = input.previousElementSibling;
+                if (span && span.classList.contains('print-text-span')) val = span.textContent.trim();
+                else val = (input.value || input.getAttribute('value') || '').trim();
+            } else {
+                val = valueCell.textContent.trim();
+            }
+            if (val === '...' || val === '-' || val === 'undefined') return '';
+            return val;
+        }
+
         function getReorderItemParts(modId, subBlock) {
             // 🌟 ใช้ logic เดียวกับ updateTOC เพื่อให้ชื่อใน "จัดเรียง" ตรงกับสารบัญ
             let blockTitle = '';
@@ -2028,6 +2048,11 @@
                 if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
                     eqName = val;
                 }
+            }
+            // 🌟 Trip Unit: ต่อท้ายชื่อ Feeder Name ในตัวหัวข้อ (เช่น "Trip Unit Test (MAIN)")
+            if (subBlock.classList.contains('trip-block')) {
+                const feeder = getTripFeederName(subBlock);
+                if (feeder) blockTitle += ` (${feeder})`;
             }
             // 🌟 คืนเป็น 2 ส่วนแยก — ให้ UI เลือกได้ว่าจะ truncate เฉพาะ title แล้วคงชื่อตู้ไว้
             return { title: blockTitle, eq: eqName };
@@ -6142,6 +6167,11 @@
                         if (val && val !== 'undefined' && val !== 'ระบุชื่อตู้ เช่น MDB, DB-1...') {
                             eqName = val;
                         }
+                    }
+                    // 🌟 Trip Unit: ต่อท้ายชื่อ Feeder Name ในตัวหัวข้อ (เช่น "Trip Unit Test (MAIN)")
+                    if (block.classList.contains('trip-block')) {
+                        const feeder = getTripFeederName(block);
+                        if (feeder) title += ` (${feeder})`;
                     }
                     return { title, eqName };
                 }
