@@ -2643,7 +2643,9 @@
         function syncDOMValues() {
             const doc = document.getElementById('exportWrapper');
             doc.querySelectorAll('input:not([type="file"]), select, textarea').forEach(el => {
-                if (el.type === 'checkbox') {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    // 🌟 radio/checkbox: ย้าย attribute checked ไปตัวที่ถูกติ๊กจริง เพื่อให้ innerHTML บันทึกสถานะ
+                    //    (เดิม radio ตกไปเข้า else → ไม่เคย sync checked → เปิดใหม่เด้งกลับค่า default)
                     if (el.checked) el.setAttribute('checked', 'checked');
                     else el.removeAttribute('checked');
                 } else if (el.tagName === 'TEXTAREA') {
