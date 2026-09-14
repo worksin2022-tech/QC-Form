@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">  
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -50,6 +50,9 @@
 
         /* ซ่อนปุ่มเวลา Print */
         .preparing-pdf .no-print, .preparing-pdf .tmp-no-print { display: none !important; }
+        /* 🌟 Contact Resistance Test: ถ้าไม่มีรูปแนบเลย ให้ซ่อนหัวข้อ "Photograph" + พื้นที่รูปที่ว่าง ตอนออก PDF
+           (photo-image ที่ยังไม่มีรูปจะมีคลาส .hidden ; ถ้าไม่มีกล่องไหนมีรูป → ซ่อนทั้งส่วน) */
+        .preparing-pdf .contact-block .contact-photo-section:not(:has(.photo-image:not(.hidden))) { display: none !important; }
         .print-text-span { display: inline-block; width: 100%; background: transparent !important; border: none !important; min-height: 1.5em; word-break: break-word; white-space: pre-wrap; }
 
         /* กฎการตัดหน้ากระดาษ (บังคับตัดก่อนโมดูล/บล็อกเสมอ) */
@@ -451,7 +454,11 @@
             .native-print-mode #printLayoutTable { margin-bottom: 0 !important; }
             .native-print-mode table.mb-6 { margin-bottom: 12px !important; }
             .native-print-mode table th, .native-print-mode table td { padding: 4px 6px !important; line-height: 1.2 !important; }
-            
+            /* 🌟 Trip Unit: บีบแถวให้แน่นขึ้นเล็กน้อยเฉพาะตอนพิมพ์ เพื่อให้ Inspection 6 หัวข้อ + ตาราง + Curve อยู่ครบใน 1 หน้า */
+            .native-print-mode .trip-block table td { padding: 3px 6px !important; line-height: 1.15 !important; }
+            /* แถว Inspection (2.1–2.6) ให้โปร่งกว่าแถวข้อมูลอื่น อ่านง่ายขึ้น */
+            .native-print-mode .trip-block tr:has(> td[colspan="2"][contenteditable="true"]) td { padding-top: 6px !important; padding-bottom: 6px !important; }
+
             #coverPage input { border-bottom-color: transparent !important; }
         }
 
@@ -1504,11 +1511,34 @@
         }
 
         function adjustCoverFontSize(el) {
-            const valLen = el.value.length;
-            if (valLen > 45) el.style.fontSize = '12px';
-            else if (valLen > 35) el.style.fontSize = '14px';
-            else if (valLen > 25) el.style.fontSize = '16px';
-            else el.style.fontSize = '18px'; 
+            // 🌟 ปรับขนาดฟอนต์ตาม "ความกว้างจริง" ของข้อความ (ไม่ใช่นับจำนวนตัวอักษร)
+            //    ใช้ฟอนต์ใหญ่สุด (MAX) ที่ยังพอดีความกว้างช่อง → ข้อความไปเต็มแถวก่อน
+            //    แล้วค่อย ๆ ย่อลงแบบต่อเนื่องเมื่อยาวจนจะล้นเท่านั้น (จนถึง MIN)
+            const MAX = 18, MIN = 9;
+            const val = el.value;
+            if (!val) { el.style.fontSize = MAX + 'px'; return; }
+            const cs = getComputedStyle(el);
+            const avail = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+            if (!(avail > 0)) { el.style.fontSize = MAX + 'px'; return; } // ยังไม่ถูก layout (เช่นถูกซ่อน)
+            // วัดความกว้างข้อความด้วย mirror span ที่ใช้ฟอนต์เดียวกัน
+            // (input.scrollWidth ของ <input> เชื่อถือไม่ได้ — มันถูกตรึงเท่ากับ clientWidth)
+            let m = adjustCoverFontSize._mirror;
+            if (!m) {
+                m = document.createElement('span');
+                m.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;top:-9999px;left:-9999px;pointer-events:none;';
+                document.body.appendChild(m);
+                adjustCoverFontSize._mirror = m;
+            }
+            m.style.fontFamily = cs.fontFamily;
+            m.style.fontWeight = cs.fontWeight;
+            m.style.fontStyle = cs.fontStyle;
+            m.style.letterSpacing = cs.letterSpacing;
+            m.style.fontSize = '100px';
+            m.textContent = val;
+            const widthAt100 = m.getBoundingClientRect().width;
+            let size = widthAt100 > 0 ? (avail / widthAt100) * 100 : MAX;
+            size = Math.max(MIN, Math.min(MAX, size));
+            el.style.fontSize = size.toFixed(1) + 'px';
         }
 
         // 🌟 หา sub-block (หรือ mod_calibration) ที่ user กำลังเห็นในมุมมองตอนนี้
@@ -5242,35 +5272,65 @@
 
                         <!-- Inspection -->
                         <tr class="bg-slate-100">
-                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800">Inspection</td>
+                            <td colspan="5" class="border border-slate-400 py-1.5 font-bold text-slate-800" contenteditable="true" spellcheck="false">Inspection</td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.1 Body and Frame</td>
-                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.1 Trip Indicator</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
                                 <div class="flex gap-8 justify-center">
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_body" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp1" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp1" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp1" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.2 Trip Indicator</td>
-                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.2 Manual Charge</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
                                 <div class="flex gap-8 justify-center">
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_ind" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp2" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp2" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp2" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="border border-slate-400 py-1 px-3 text-left font-semibold text-slate-700">2.3 Test trip mode</td>
-                            <td colspan="3" class="border border-slate-400 py-1 px-3 text-left">
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.3 Electrical Charge</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
                                 <div class="flex gap-8 justify-center">
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Good" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Good</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Fair" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fair</label>
-                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_mode" value="Poor" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Poor</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp3" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp3" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp3" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.4 Key Interlock</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp4" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp4" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp4" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.5 Rack In-Out</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp5" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp5" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp5" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border border-slate-400 py-2 px-3 text-left font-semibold text-slate-700" contenteditable="true" spellcheck="false">2.6 Shunt trip &amp; Undervoltage Release</td>
+                            <td colspan="3" class="border border-slate-400 py-2 px-3 text-left">
+                                <div class="flex gap-8 justify-center">
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp6" value="Pass" checked class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Pass</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp6" value="Fail" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> Fail</label>
+                                    <label class="flex items-center cursor-pointer"><input type="radio" name="${prefix}_insp6" value="N/A" class="mr-1.5 accent-slate-800 w-3.5 h-3.5"> N/A</label>
                                 </div>
                             </td>
                         </tr>
@@ -5408,7 +5468,7 @@
                                     </select>
                                 </div>
 
-                                <div class="w-full rounded-lg flex items-center justify-center p-1 relative group transition-colors h-[170px] cursor-pointer hover:bg-slate-50" onclick="document.getElementById('img_trip_curve_${prefix}').click()">
+                                <div class="w-full rounded-lg flex items-center justify-center p-1 relative group transition-colors h-[190px] cursor-pointer hover:bg-slate-50" onclick="document.getElementById('img_trip_curve_${prefix}').click()">
                                     <div class="text-slate-400 flex flex-col items-center justify-center w-full h-full no-print group-hover:text-orange-500 transition-transform">
                                         <span class="font-bold text-[13px] border border-slate-300 bg-slate-100 text-slate-500 px-4 py-2 rounded-lg shadow-sm text-center">คลิกเพื่ออัปโหลด<br>หรือเลือกจากเมนูด้านบน</span>
                                     </div>
@@ -10021,5 +10081,6 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             <div class="text-[11px] text-indigo-300/40">ยกเลิกได้ทุกเมื่อ — รูปและ key ยังอยู่ กดวิเคราะห์ใหม่ได้เลย</div>
         </div>
     </div>
+
 </body>
 </html>
