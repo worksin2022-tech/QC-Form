@@ -25,6 +25,8 @@
 <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --navy:#0f2744;
@@ -214,7 +216,45 @@
     background:var(--after);
   }
   .save-indicator.saving .dot{background:var(--orange);animation:pulse 1s infinite;}
+  .save-indicator.error .dot{background:#ef4444;}
   @keyframes pulse{50%{opacity:.3;}}
+
+  /* ---- ผู้ใช้ / ล็อกอิน / Google Drive ---- */
+  .user-chip{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;}
+  .user-chip img{width:24px;height:24px;border-radius:50%;background:#e2e8f0;}
+  .user-chip span{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;}
+  .login-overlay{
+    position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0f2744 0%,#1f3a5f 100%);
+  }
+  .login-card{
+    background:white;border-radius:18px;padding:34px 30px 26px;width:min(92vw,380px);text-align:center;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.6);
+  }
+  .login-card .brand-logo{margin:0 auto 14px;width:54px;height:54px;}
+  .login-card .brand-logo svg{width:30px;height:30px;}
+  .login-title{font-weight:800;font-size:20px;color:var(--ink);}
+  .login-sub{font-size:13px;color:var(--muted);margin:4px 0 22px;}
+  .login-card .top-btn{width:100%;justify-content:center;padding:12px;font-size:15px;}
+  .login-note{font-size:12px;color:#94a3b8;margin-top:14px;line-height:1.6;}
+  .login-note.warn{color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;}
+  .drive-banner{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:350;
+    display:flex;align-items:center;gap:12px;max-width:94vw;
+    background:#0f2744;color:white;border-radius:12px;padding:10px 12px 10px 16px;
+    box-shadow:0 12px 30px -8px rgba(0,0,0,.5);font-size:13px;
+  }
+  .drive-banner .top-btn{padding:7px 12px;font-size:12.5px;white-space:nowrap;}
+  .photo-slot.loading img{opacity:.35;}
+  .photo-slot.loading::after{
+    content:'';position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:3px solid rgba(15,39,68,.15);border-top-color:var(--orange);border-radius:50%;animation:spin 1s linear infinite;
+  }
+  .photo-slot.pending::before{
+    content:'รออัปโหลด';position:absolute;left:8px;top:8px;z-index:2;
+    font-size:10px;font-weight:800;color:#92400e;background:#fde68a;padding:2px 7px;border-radius:5px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
 
   .top-btn{
     display:inline-flex;align-items:center;gap:7px;
@@ -1228,13 +1268,13 @@
 
     <div class="sb-section">
       <div class="sb-title">เอกสาร</div>
-      <button class="sb-btn" onclick="showStartupModal(true)">
+      <button class="sb-btn" onclick="showMeetingListModal(true)">
         <span class="icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/><polyline points="12 7 12 12 15 14"/>
           </svg>
         </span>
-        งานที่บันทึกไว้
+        รายการงาน (ทีม)
       </button>
       <button class="sb-btn" onclick="exportPDF()">
         <span class="icon">
@@ -1275,7 +1315,7 @@
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
           </svg>
         </span>
-        ล้างทั้งหมด
+        ล้างเนื้อหางานนี้
       </button>
     </div>
 
@@ -1305,10 +1345,14 @@
         <span class="badge">FAT REPORT</span>
         <span class="save-indicator" id="saveIndicator">
           <span class="dot"></span>
-          <span class="text">บันทึกอัตโนมัติ</span>
+          <span class="text">ซิงค์แล้ว</span>
         </span>
       </div>
       <div class="topbar-actions">
+        <button class="top-btn user-chip" id="userChip" onclick="signOutPrompt()" style="display:none;" title="ออกจากระบบ">
+          <img id="userAvatar" alt="" referrerpolicy="no-referrer">
+          <span id="userName"></span>
+        </button>
         <button class="top-btn" onclick="openReorderModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
@@ -1576,19 +1620,66 @@
 
 <div id="toast"><span class="toast-icon">✓</span><span id="toastMsg"></span></div>
 
+<div class="login-overlay no-print" id="loginOverlay">
+  <div class="login-card">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/>
+        <circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/>
+      </svg>
+    </div>
+    <div class="login-title">Avatar Electric</div>
+    <div class="login-sub">Minute of Meeting · ระบบทีม</div>
+    <button class="top-btn primary" id="loginBtn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      เข้าสู่ระบบด้วย Google
+    </button>
+    <div class="login-note" id="loginNote">ใช้บัญชี Google ที่ได้รับสิทธิ์จากทีมเท่านั้น<br>ครั้งแรกอาจเจอหน้า “Google hasn't verified this app” → กด Advanced → Go to app</div>
+  </div>
+</div>
+
+<div class="drive-banner no-print" id="driveBanner" style="display:none;">
+  <span id="driveBannerText"></span>
+  <button class="top-btn primary" id="driveBannerBtn" onclick="connectDrive()">เชื่อมต่อ Drive</button>
+</div>
+
 <script>
 /* ========================================================================
    STATE
    ======================================================================== */
-const STORAGE_KEY = 'avatar_minute_of_meeting_v2';
+/* ---- CONFIG: Supabase + Google (แก้ค่าตรงนี้ที่เดียว) ---- */
+const SUPABASE_URL          = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
+const SUPABASE_ANON_KEY     = 'sb_publishable_3_9pZH5Geg767TI9a6AARA_j4_VYUe1';
+const GOOGLE_CLIENT_ID      = '817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com';
+const DRIVE_ROOT_FOLDER_ID  = '1NTny5sIco7pQLEKEjgAuTd5uNhVfTuG4';
+const DRIVE_SCOPE           = 'https://www.googleapis.com/auth/drive';
+const LAST_MEETING_KEY      = 'avatar_mom_last_meeting';
+const configMissing = [SUPABASE_ANON_KEY, GOOGLE_CLIENT_ID, DRIVE_ROOT_FOLDER_ID].some(v => v.startsWith('PASTE_'));
 
-let state = {
-  meeting: { name:'', customer:'', date:'', rev:'01', location:'' },
-  categories: []
-};
-let isDirty = false;   // มีการแก้ไขที่ยังไม่ได้บันทึกลงประวัติหรือไม่
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
+let currentUser = null;
+const photoCache = localforage.createInstance({ name: 'avatar_mom_photo_cache' });
 
-function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function emptyState(){
+  return {
+    meeting: { id:null, name:'', customer:'', date:'', rev:'01', location:'', docType:'Minute of Meeting', driveFolderId:null },
+    categories: []
+  };
+}
+let state = emptyState();
+
+function uuid(){
+  if(crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0; return (c==='x' ? r : (r&3|8)).toString(16);
+  });
+}
+
+function requireMeeting(){
+  if(state.meeting.id) return true;
+  showMeetingListModal(true);
+  return false;
+}
 
 /* ========================================================================
    RENDER
@@ -1642,7 +1733,7 @@ function render(){
     inp.addEventListener('input', e=>{
       const cid = e.target.dataset.catName;
       const cat = state.categories.find(c=>c.id===cid);
-      if(cat){ cat.name = e.target.value; updateTOC(); debouncedSave(); }
+      if(cat){ cat.name = e.target.value; updateTOC(); queueUpdate('categories', cat.id, { name: cat.name }); }
     });
   });
 
@@ -1698,12 +1789,12 @@ function buildCommentEl(cat, cmt, catNum, cmtNum){
   el.querySelector(`[data-cmt-text="${cmt.id}"]`).addEventListener('input', e=>{
     cmt.text = e.target.value;
     updateTOC();
-    debouncedSave();
+    queueUpdate('comments', cmt.id, { text: cmt.text });
   });
 
   el.querySelector(`[data-cmt-fixed="${cmt.id}"]`).addEventListener('input', e=>{
     cmt.fixedBy = e.target.value;
-    debouncedSave();
+    queueUpdate('comments', cmt.id, { fixed_by: cmt.fixedBy });
   });
 
   el.querySelectorAll('.photo-slot').forEach(slot=>{
@@ -1717,8 +1808,7 @@ function buildCommentEl(cat, cmt, catNum, cmtNum){
     if(removeBtn){
       removeBtn.addEventListener('click', e=>{
         e.stopPropagation();
-        if(cmt.photos[which]) cmt.photos[which][sidx] = null;
-        render(); saveDraft();
+        removePhoto(cmt, which, sidx);
       });
     }
     const editBtn = slot.querySelector('.edit-btn');
@@ -1753,24 +1843,6 @@ function downscaleDataUrl(src, maxDim){
   });
 }
 
-/* ย่อรูปเดิมที่เคยอัปไว้แบบเต็มความละเอียด (ทีละรูป กันหน่วยความจำพีค) */
-async function downscaleExistingPhotos(){
-  let changed = false;
-  for(const cat of state.categories)
-    for(const cmt of (cat.comments || []))
-      for(const which of ['before','after']){
-        const arr = cmt.photos && cmt.photos[which];
-        if(!Array.isArray(arr)) continue;
-        for(const p of arr){
-          if(p && p.dataUrl){
-            const small = await downscaleDataUrl(p.dataUrl, 2000);
-            if(small !== p.dataUrl){ p.dataUrl = small; changed = true; }
-          }
-        }
-      }
-  if(changed){ await saveDraft(); isDirty = false; render(); }
-}
-
 /* ========================================================================
    เพิ่มรูป: ใช้เมนู iOS เดิม (Photo Library / Take Photo / Choose File)
    → แทรกรูปลงฟอร์มให้เสร็จก่อนเสมอ แล้วถ้าดูเป็น "รูปเพิ่งถ่าย" ค่อยเสนอ
@@ -1786,11 +1858,12 @@ function addPhotoViaInput(cmt, which, sidx){
     if(!file) return;
     const reader = new FileReader();
     reader.onload = async e2=>{
-      // 1) แทรกรูปลงฟอร์มให้จบก่อน (สำคัญสุด)
+      // 1) แทรกรูปลงฟอร์มให้จบก่อน (สำคัญสุด) แล้วค่อยอัปโหลดขึ้น Drive เบื้องหลัง
       const small = await downscaleDataUrl(e2.target.result, 2000);
       if(!cmt.photos[which]) cmt.photos[which] = [];
-      cmt.photos[which][sidx] = { dataUrl: small };
-      render(); saveDraft();
+      cmt.photos[which][sidx] = { dataUrl: small, pending: true };
+      render();
+      uploadPhoto(cmt, which, sidx);
       // 2) ถ้าไฟล์เพิ่งถูกสร้างเมื่อครู่ (= เพิ่งถ่ายจากกล้อง) → เสนอเซฟต้นฉบับ
       if(isFreshCapture(file)) offerSaveOriginal(file);
     };
@@ -1885,9 +1958,10 @@ function downloadFile(file){
 function buildPhotoSlot(cmt, which, sidx){
   const photo = cmt.photos[which] && cmt.photos[which][sidx];
   const labelTxt = which === 'before' ? `BEFORE ${sidx+1}` : 'AFTER';
-  const inner = (photo && photo.dataUrl) ? `
-      <div class="photo-slot has-image" data-which="${which}" data-sidx="${sidx}">
-        <img src="${photo.dataUrl}" alt="${labelTxt}">
+  const stateCls = photo ? (photo.dataUrl ? (photo.pending ? ' pending' : '') : ' loading') : '';
+  const inner = (photo && (photo.dataUrl || photo.driveId)) ? `
+      <div class="photo-slot has-image${stateCls}" data-which="${which}" data-sidx="${sidx}" data-pid="${photo.id || ''}">
+        <img src="${photo.dataUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='}" alt="${labelTxt}">
         <span class="edit-btn no-print" title="แก้ไขรูป (crop / วาด)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
@@ -1915,25 +1989,26 @@ function buildPhotoSlot(cmt, which, sidx){
 /* ========================================================================
    ACTIONS
    ======================================================================== */
-function addCategory(name=''){
-  state.categories.push({
-    id: uid('cat'),
-    name: name || `PANEL ${state.categories.length + 1}`,
-    comments: []
-  });
-  addCommentToCategory(state.categories[state.categories.length-1].id, false);
-  render(); saveDraft();
+async function addCategory(name=''){
+  if(!requireMeeting()) return;
+  const cat = { id: uuid(), name: name || `PANEL ${state.categories.length + 1}`, comments: [] };
+  state.categories.push(cat);
+  inflight.add(cat.id);
+  await dbWrite(()=> sb.from('categories').insert({
+    id: cat.id, meeting_id: state.meeting.id, name: cat.name, sort_order: state.categories.length - 1
+  }), 'categories:' + cat.id);
+  addCommentToCategory(cat.id, false);
+  render();
   showToast('เพิ่มหมวดใหม่');
   scrollToBottom();
 }
 
-function addComment(){
-  if(state.categories.length===0){
-    state.categories.push({ id: uid('cat'), name: 'MDB PANEL', comments: [] });
-  }
+async function addComment(){
+  if(!requireMeeting()) return;
+  if(state.categories.length===0){ await addCategory('MDB PANEL'); return; }
   const lastCat = state.categories[state.categories.length-1];
   addCommentToCategory(lastCat.id, false);
-  render(); saveDraft();
+  render();
   showToast('เพิ่มคอมเม้นใหม่');
   scrollToBottom();
 }
@@ -1941,15 +2016,21 @@ function addComment(){
 function addCommentToCategory(catId, doRender=true){
   const cat = state.categories.find(c=>c.id===catId);
   if(!cat) return;
-  cat.comments.push({
-    id: uid('cmt'),
+  const cmt = {
+    id: uuid(),
     mode: 'before',
     text: '',
     fixedBy: '',
     photos: { before: [null, null], after: [null] }
-  });
+  };
+  cat.comments.push(cmt);
+  inflight.add(cmt.id);
+  dbWrite(()=> sb.from('comments').insert({
+    id: cmt.id, category_id: cat.id, mode: 'before', text: '', fixed_by: '',
+    sort_order: cat.comments.length - 1, updated_by: currentUser.id
+  }), 'comments:' + cmt.id);
   if(doRender){
-    render(); saveDraft();
+    render();
     showToast('เพิ่มคอมเม้นใหม่');
     // scroll to the newly added comment
     setTimeout(()=>{
@@ -1978,8 +2059,12 @@ async function removeCategory(catId){
     });
     if(!ok) return;
   }
+  const driveIds = cat ? driveIdsOf(cat.comments) : [];
   state.categories = state.categories.filter(c=>c.id!==catId);
-  render(); saveDraft();
+  inflight.delete(catId);
+  render();
+  await dbWrite(()=> sb.from('categories').delete().eq('id', catId), 'categories:' + catId);
+  driveIds.forEach(driveDelete);
   showToast('ลบหมวดแล้ว');
 }
 
@@ -1992,9 +2077,20 @@ async function removeComment(catId, cmtId){
   if(!ok) return;
   const cat = state.categories.find(c=>c.id===catId);
   if(!cat) return;
+  const cmt = cat.comments.find(c=>c.id===cmtId);
+  const driveIds = cmt ? driveIdsOf([cmt]) : [];
   cat.comments = cat.comments.filter(c=>c.id!==cmtId);
-  render(); saveDraft();
+  inflight.delete(cmtId);
+  render();
+  await dbWrite(()=> sb.from('comments').delete().eq('id', cmtId), 'comments:' + cmtId);
+  driveIds.forEach(driveDelete);
   showToast('ลบคอมเม้นแล้ว');
+}
+
+function driveIdsOf(comments){
+  const ids = [];
+  comments.forEach(cm => ['before','after'].forEach(k => (cm.photos[k]||[]).forEach(p => { if(p && p.driveId) ids.push(p.driveId); })));
+  return ids;
 }
 
 function setCommentMode(catId, cmtId, newMode){
@@ -2005,7 +2101,17 @@ function setCommentMode(catId, cmtId, newMode){
   cmt.mode = newMode;
   if(!cmt.photos.before) cmt.photos.before = [null,null];
   if(!cmt.photos.after) cmt.photos.after = [null];
-  render(); saveDraft();
+  render();
+  queueUpdate('comments', cmt.id, { mode: newMode });
+}
+
+async function removePhoto(cmt, which, sidx){
+  const p = cmt.photos[which] && cmt.photos[which][sidx];
+  if(cmt.photos[which]) cmt.photos[which][sidx] = null;
+  render();
+  updateDriveBanner();
+  if(p && p.id) await dbWrite(()=> sb.from('photos').delete().eq('id', p.id), 'photos:' + p.id);
+  if(p && p.driveId) driveDelete(p.driveId);
 }
 
 /* ========================================================================
@@ -2098,7 +2204,10 @@ function applyReorder(){
   });
 
   closeReorderModal();
-  render(); saveDraft();
+  render();
+  const rows = [];
+  state.categories.forEach(cat=> cat.comments.forEach((cmt, i)=> rows.push({ id: cmt.id, category_id: cat.id, sort_order: i })));
+  if(rows.length) dbWrite(()=> sb.from('comments').upsert(rows), 'reorder');
   showToast('จัดเรียงเรียบร้อย');
 }
 
@@ -2136,13 +2245,70 @@ function updateTOC(){
 }
 
 /* ========================================================================
-   PERSISTENCE
+   DB SYNC — เขียนลง Supabase (รวม patch ต่อแถวแล้วส่งทีเดียว + ลองใหม่เมื่อออฟไลน์)
    ======================================================================== */
-let saveTimer = null;
-function debouncedSave(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveDraft, 400);
+const pendingPatches = new Map();   // "table:id" → { table, id, patch }
+let patchTimer = null;
+const retryQueue = [];              // [{ key, op }] — op = () => supabase query
+const inflight = new Set();         // id ของหมวด/คอมเม้นที่สร้างในเครื่องแล้วแต่ server ยังไม่เคยส่งกลับมา
+const isDuplicate = err=> err && err.code === '23505';   // insert ซ้ำ = เคยสำเร็จไปแล้ว ถือว่าผ่าน
+
+function setSync(status){   // 'saving' | 'saved' | 'error'
+  const ind = document.getElementById('saveIndicator');
+  ind.classList.toggle('saving', status === 'saving');
+  ind.classList.toggle('error', status === 'error');
+  ind.querySelector('.text').textContent =
+    status === 'saving' ? 'กำลังซิงค์...' : status === 'error' ? 'รอซิงค์ (ออฟไลน์?)' : 'ซิงค์แล้ว';
 }
+
+async function dbWrite(op, key){
+  setSync('saving');
+  try{
+    const { error } = await op();
+    if(error && !isDuplicate(error)) throw error;
+    if(!retryQueue.length && !pendingPatches.size) setSync('saved');
+  }catch(err){
+    console.error('[db]', key, err);
+    const i = retryQueue.findIndex(r => r.key === key);
+    if(i >= 0) retryQueue.splice(i, 1);
+    retryQueue.push({ key, op });
+    setSync('error');
+  }
+}
+
+async function flushRetryQueue(){
+  if(!retryQueue.length || !navigator.onLine || !currentUser) return;
+  const items = retryQueue.splice(0);
+  for(const it of items){
+    try{ const { error } = await it.op(); if(error && !isDuplicate(error)) throw error; }
+    catch(e){ retryQueue.push(it); }
+  }
+  setSync(retryQueue.length ? 'error' : 'saved');
+  if(!retryQueue.length) flushPendingUploads();
+}
+window.addEventListener('online', flushRetryQueue);
+setInterval(flushRetryQueue, 15000);
+
+function queueUpdate(table, id, patch){
+  const key = table + ':' + id;
+  const cur = pendingPatches.get(key);
+  pendingPatches.set(key, { table, id, patch: Object.assign(cur ? cur.patch : {}, patch) });
+  clearTimeout(patchTimer);
+  patchTimer = setTimeout(flushPendingWrites, 500);
+  setSync('saving');
+}
+
+async function flushPendingWrites(){
+  clearTimeout(patchTimer);
+  const items = [...pendingPatches.values()];
+  pendingPatches.clear();
+  for(const { table, id, patch } of items){
+    if(table === 'meetings' || table === 'comments') patch.updated_by = currentUser && currentUser.id;
+    await dbWrite(()=> sb.from(table).update(patch).eq('id', id), table + ':' + id);
+  }
+}
+
+const META_FIELDS = { meeting_name: 'name', cover_customer: 'customer', meeting_date: 'meeting_date', cover_rev: 'rev', cover_location: 'location' };
 
 function captureMetaFromUI(){
   state.meeting.name = document.getElementById('meeting_name').value;
@@ -2207,141 +2373,442 @@ function setDocType(val){
   state.meeting.docType = val;
   const lbl = document.getElementById('docTypeLabel');
   if(lbl) lbl.textContent = val;
-  isDirty = true;
-  debouncedSave();
-}
-
-async function saveDraft(showMsg=false){
-  captureMetaFromUI();
-  isDirty = true;   // มีการเปลี่ยนแปลง (จะถูกรีเซ็ตเมื่อบันทึกลงประวัติ/โหลดงาน)
-  const indicator = document.getElementById('saveIndicator');
-  indicator.classList.add('saving');
-  indicator.querySelector('.text').textContent = 'กำลังบันทึก...';
-  try{
-    await localforage.setItem(STORAGE_KEY, state);
-    setTimeout(()=>{
-      indicator.classList.remove('saving');
-      indicator.querySelector('.text').textContent = 'บันทึกแล้ว';
-    }, 300);
-    if(showMsg) showToast('บันทึก draft แล้ว');
-  }catch(err){
-    console.error(err);
-    indicator.querySelector('.text').textContent = 'บันทึกไม่สำเร็จ';
-  }
-}
-
-async function loadDraft(){
-  try{
-    const data = await localforage.getItem(STORAGE_KEY);
-    if(data){
-      state = data;
-      applyMetaToUI();
-      render();
-      return true;
-    }
-  }catch(err){console.error(err);}
-  return false;
+  if(state.meeting.id) queueUpdate('meetings', state.meeting.id, { doc_type: val });
 }
 
 /* ========================================================================
-   HISTORY (เก็บได้ 5 งาน, บันทึกอัตโนมัติตอน export, เลือกตอนเปิดแอป)
+   AUTH — ล็อกอิน Google ผ่าน Supabase (ขอสิทธิ์ Drive ไปพร้อมกัน)
    ======================================================================== */
-const HISTORY_KEY = 'avatar_mom_history_v1';
-const MAX_HISTORY = 5;
-
-async function getHistory(){ try{ return (await localforage.getItem(HISTORY_KEY)) || []; }catch(e){ return []; } }
-async function setHistory(list){ try{ await localforage.setItem(HISTORY_KEY, list); }catch(e){ console.error(e); } }
-
-function photosExist(cm){
-  if(!cm || !cm.photos) return false;
-  return ['before','after'].some(w => Array.isArray(cm.photos[w]) && cm.photos[w].some(p=>p&&p.dataUrl));
-}
-function draftHasContent(){
-  if(state.meeting && (state.meeting.name||'').trim()) return true;
-  return (state.categories||[]).some(c => (c.comments||[]).some(cm => (cm.text&&cm.text.trim()) || (cm.fixedBy&&cm.fixedBy.trim()) || photosExist(cm)));
+function showLogin(show){
+  document.getElementById('loginOverlay').style.display = show ? 'flex' : 'none';
+  if(show && configMissing){
+    const note = document.getElementById('loginNote');
+    note.className = 'login-note warn';
+    note.textContent = 'ยังไม่ได้ตั้งค่า SUPABASE_ANON_KEY / GOOGLE_CLIENT_ID / DRIVE_ROOT_FOLDER_ID ในไฟล์ minute-of-meeting.html';
+    document.getElementById('loginBtn').disabled = true;
+  }
 }
 
-function startNewProject(){
-  state = {
-    meeting: { name:'', customer:'', date:new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}), rev:'01', location:'', docType:'Minute of Meeting' },
-    categories: [],
-    _histId: null
-  };
-  applyMetaToUI();
-  addCategory('MDB PANEL');   // render + saveDraft
-  isDirty = false;
-  showToast('เริ่มงานใหม่');
-}
-function loadStateIntoApp(s){
-  state = s;
-  if(typeof state._histId === 'undefined') state._histId = null;
-  applyMetaToUI();
-  render();
-  saveDraft();
-  isDirty = false;
-}
-
-/* บันทึกงานปัจจุบันลงประวัติ (อัปเดต slot เดิมถ้าเคยบันทึกแล้ว / เพิ่มใหม่ / ถ้าเต็มถามว่าจะลบอันไหน)
-   คืนค่า true ถ้าบันทึกสำเร็จ — ใช้ทั้งตอน export และตอนกด "บันทึก" ก่อนเปลี่ยนงาน */
-async function saveCurrentToHistory(){
-  captureMetaFromUI();
-  const id = state._histId || uid('hist');
-  state._histId = id;
-  await saveDraft();
-  const snap = {
-    id,
-    name: (state.meeting.name||'').trim() || 'ไม่ระบุชื่อโครงการ',
-    date: new Date().toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}),
-    ts: Date.now(),
-    state: JSON.parse(JSON.stringify(state))
-  };
-  let list = await getHistory();
-  const idx = list.findIndex(h=>h.id===id);
-  let saved = true;
-  if(idx >= 0){ list[idx] = snap; await setHistory(list); }
-  else if(list.length < MAX_HISTORY){ list.push(snap); await setHistory(list); }
-  else { saved = await showHistoryFullModal(list, snap); }   // รอผู้ใช้เลือกว่าจะลบอันไหน
-  if(saved) isDirty = false;
-  return saved;
-}
-
-/* ป๊อบอัพเตือน "ยังไม่ได้บันทึก" → คืน 'save' | 'discard' | 'cancel' */
-function confirmUnsavedChanges(){
-  return new Promise(resolve=>{
-    const bg = buildModalOverlay(`
-      <div class="modal-head"><span>ยังไม่ได้บันทึก</span></div>
-      <div class="modal-body">
-        <p style="font-size:14px;color:#475569;line-height:1.6;">งานปัจจุบันมีการแก้ไขที่ยังไม่ได้บันทึก<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p>
-      </div>
-      <div class="modal-foot" style="flex-wrap:wrap;">
-        <button class="top-btn" id="unsCancel">ยกเลิก</button>
-        <button class="top-btn" id="unsDiscard" style="color:#ef4444;border-color:#fecaca;">ไม่บันทึก</button>
-        <button class="top-btn primary" id="unsSave">บันทึก</button>
-      </div>
-    `);
-    bg.style.zIndex = 420;
-    const done = v=>{ bg.remove(); resolve(v); };
-    bg.querySelector('#unsCancel').onclick = ()=> done('cancel');
-    bg.querySelector('#unsDiscard').onclick = ()=> done('discard');
-    bg.querySelector('#unsSave').onclick = ()=> done('save');
-    bg.addEventListener('click', e=>{ if(e.target===bg) done('cancel'); });
+function signInWithGoogle(){
+  return sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      scopes: DRIVE_SCOPE,
+      redirectTo: location.origin + location.pathname,
+      queryParams: { prompt: 'select_account' }
+    }
   });
 }
 
-/* ตรวจก่อนเปลี่ยนงาน: ถ้ามีการแก้ไขค้างไว้ → ถามบันทึก/ไม่บันทึก/ยกเลิก
-   คืน true ถ้าให้ดำเนินการต่อได้ (false = ยกเลิก) */
-async function proceedSwitch(){
-  if(isDirty && draftHasContent()){
-    const c = await confirmUnsavedChanges();
-    if(c === 'cancel') return false;
-    if(c === 'save'){
-      const ok = await saveCurrentToHistory();
-      if(!ok) return false;   // ผู้ใช้ยกเลิกตอนเลือกลบ (ประวัติเต็ม) → ไม่เปลี่ยนงาน
-    }
-  }
-  return true;
+async function signOutPrompt(){
+  const ok = await confirmDialog({ title: 'ออกจากระบบ', message: `ออกจากระบบบัญชี <b>${escapeHtml(currentUser ? currentUser.email : '')}</b> ใช่ไหม?`, confirmText: 'ออกจากระบบ' });
+  if(!ok) return;
+  await flushPendingWrites();
+  await sb.auth.signOut();
 }
 
+function renderUserChip(){
+  const chip = document.getElementById('userChip');
+  if(!currentUser){ chip.style.display = 'none'; return; }
+  const meta = currentUser.user_metadata || {};
+  document.getElementById('userAvatar').src = meta.avatar_url || meta.picture || '';
+  document.getElementById('userName').textContent = meta.full_name || meta.name || currentUser.email;
+  chip.style.display = 'flex';
+}
+
+async function onSignedIn(session){
+  currentUser = session.user;
+  if(session.provider_token) setDriveToken(session.provider_token, 3500);
+  if(location.hash || /[?&]code=/.test(location.search)) history.replaceState(null, '', location.pathname);
+  showLogin(false);
+  renderUserChip();
+  const last = localStorage.getItem(LAST_MEETING_KEY);
+  if(last){ try{ await openMeeting(last); }catch(e){ localStorage.removeItem(LAST_MEETING_KEY); } }
+  await showMeetingListModal(true);
+}
+
+function onSignedOut(){
+  currentUser = null;
+  leaveMeeting();
+  renderUserChip();
+  showLogin(true);
+}
+
+async function initAuth(){
+  restoreDriveToken();
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(session && session.provider_token) setDriveToken(session.provider_token, 3500);
+    if(event === 'SIGNED_OUT') onSignedOut();
+  });
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) await onSignedIn(session);
+  else showLogin(true);
+}
+
+/* ========================================================================
+   GOOGLE DRIVE — เก็บไฟล์รูป (token แรกมาจากตอนล็อกอิน, หมดอายุแล้วขอใหม่ผ่าน GIS)
+   ======================================================================== */
+let driveToken = null;   // { token, exp }
+let gisClient = null;
+
+function setDriveToken(token, ttlSec){
+  driveToken = { token, exp: Date.now() + (ttlSec || 3500) * 1000 };
+  try{ sessionStorage.setItem('avatar_mom_drive_token', JSON.stringify(driveToken)); }catch(_){}
+}
+function restoreDriveToken(){
+  try{
+    const t = JSON.parse(sessionStorage.getItem('avatar_mom_drive_token'));
+    if(t && t.exp > Date.now()) driveToken = t;
+  }catch(_){}
+}
+function hasDriveToken(){ return !!(driveToken && driveToken.exp > Date.now() + 30000); }
+
+function getDriveToken(interactive){
+  if(hasDriveToken()) return Promise.resolve(driveToken.token);
+  if(!interactive || !window.google || !google.accounts) return Promise.resolve(null);
+  return new Promise(resolve=>{
+    if(!gisClient) gisClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPE, callback: ()=>{} });
+    gisClient.callback = resp=>{
+      if(resp && resp.access_token){ setDriveToken(resp.access_token, resp.expires_in); resolve(resp.access_token); }
+      else resolve(null);
+    };
+    gisClient.error_callback = ()=> resolve(null);
+    gisClient.requestAccessToken({ prompt: '', hint: currentUser && currentUser.email });
+  });
+}
+
+async function connectDrive(){
+  const tok = await getDriveToken(true);
+  if(!tok){ showToast('เชื่อมต่อ Google Drive ไม่สำเร็จ'); return; }
+  updateDriveBanner();
+  flushPendingUploads();
+  loadMeetingPhotos();
+}
+
+async function driveFetch(url, opts = {}){
+  const token = await getDriveToken(false);
+  if(!token){ const e = new Error('no drive token'); e.status = 401; throw e; }
+  const res = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: 'Bearer ' + token }, opts.headers || {}) }));
+  if(res.status === 401){ driveToken = null; try{ sessionStorage.removeItem('avatar_mom_drive_token'); }catch(_){} }
+  if(!res.ok){ const e = new Error('drive ' + res.status); e.status = res.status; throw e; }
+  return res;
+}
+async function driveCreateFolder(name, parentId){
+  const res = await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id&supportsAllDrives=true', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+  });
+  return (await res.json()).id;
+}
+async function driveUpload(blob, name, folderId, existingId){
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(existingId ? {} : { name, parents: [folderId] })], { type: 'application/json' }));
+  form.append('file', blob, name);
+  const url = existingId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart&fields=id&supportsAllDrives=true`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id&supportsAllDrives=true';
+  const res = await driveFetch(url, { method: existingId ? 'PATCH' : 'POST', body: form });
+  return (await res.json()).id;
+}
+async function driveDownloadDataUrl(fileId){
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`);
+  const blob = await res.blob();
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader(); r.onload = ()=> resolve(r.result); r.onerror = reject; r.readAsDataURL(blob);
+  });
+}
+function driveDelete(fileId){
+  return driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, { method: 'DELETE' })
+    .catch(e=> console.warn('[drive] delete', fileId, e.message));
+}
+
+async function ensureMeetingFolder(){
+  if(state.meeting.driveFolderId) return state.meeting.driveFolderId;
+  // เช็กอีกรอบจาก DB — เผื่อคนอื่นเพิ่งสร้างโฟลเดอร์ให้งานนี้ไปแล้ว
+  const { data } = await sb.from('meetings').select('drive_folder_id').eq('id', state.meeting.id).single();
+  if(data && data.drive_folder_id){ state.meeting.driveFolderId = data.drive_folder_id; return data.drive_folder_id; }
+  const folderName = `${(state.meeting.name || '').trim() || 'MoM'} [${state.meeting.id.slice(0, 8)}]`;
+  const fid = await driveCreateFolder(folderName, DRIVE_ROOT_FOLDER_ID);
+  state.meeting.driveFolderId = fid;
+  await sb.from('meetings').update({ drive_folder_id: fid }).eq('id', state.meeting.id);
+  return fid;
+}
+
+function photoFileName(cmt, which, sidx){
+  let ci = 0, idx = 0;
+  state.categories.forEach((c, i)=> c.comments.forEach((cm, j)=>{ if(cm.id === cmt.id){ ci = i + 1; idx = j + 1; } }));
+  const d = new Date(), p = n=> String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  return `${ci}.${idx}_${which}${sidx+1}_${stamp}.jpg`;
+}
+
+async function uploadPhoto(cmt, which, sidx){
+  const p = cmt.photos[which] && cmt.photos[which][sidx];
+  if(!p || !p.dataUrl || p.uploading) return;
+  p.pending = true;
+  if(!hasDriveToken()){ updateDriveBanner(); return; }   // รอผู้ใช้กด "เชื่อมต่อ Drive"
+  p.uploading = true;
+  updateDriveBanner();
+  try{
+    const folderId = await ensureMeetingFolder();
+    const blob = await (await fetch(p.dataUrl)).blob();
+    const driveId = await driveUpload(blob, photoFileName(cmt, which, sidx), folderId, p.driveId);
+    p.driveId = driveId;
+    const row = { comment_id: cmt.id, kind: which, slot: sidx, drive_file_id: driveId, uploaded_by: currentUser.id };
+    const { data, error } = await sb.from('photos').upsert(row, { onConflict: 'comment_id,kind,slot' }).select('id').single();
+    if(error) throw error;
+    p.id = data.id;
+    p.pending = false;
+    photoCache.setItem(driveId, p.dataUrl);
+    const slot = document.querySelector(`[data-comment-id="${cmt.id}"] .photo-slot[data-which="${which}"][data-sidx="${sidx}"]`);
+    if(slot){ slot.dataset.pid = p.id; slot.classList.remove('pending'); }
+  }catch(e){
+    console.error('[upload]', e);
+    if(e.status !== 401) showToast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่');
+  }
+  p.uploading = false;
+  updateDriveBanner();
+}
+
+let uploadsRunning = false;
+async function flushPendingUploads(){
+  if(uploadsRunning || !hasDriveToken()) return;
+  uploadsRunning = true;
+  try{
+    for(const cat of state.categories)
+      for(const cmt of cat.comments)
+        for(const w of ['before','after'])
+          for(let i = 0; i < (cmt.photos[w] || []).length; i++){
+            const p = cmt.photos[w][i];
+            if(p && p.pending && !p.uploading) await uploadPhoto(cmt, w, i);
+            if(!hasDriveToken()) return;
+          }
+  } finally { uploadsRunning = false; updateDriveBanner(); }
+}
+
+function forEachPhoto(fn){
+  state.categories.forEach(c=> c.comments.forEach(cm=> ['before','after'].forEach(k=> (cm.photos[k] || []).forEach((p, i)=>{ if(p) fn(p, cm, k, i); }))));
+}
+
+function updateDriveBanner(){
+  let pending = 0, needLoad = 0;
+  forEachPhoto(p=>{ if(p.pending && !p.uploading) pending++; if(p.driveId && !p.dataUrl && !p.pending) needLoad++; });
+  const b = document.getElementById('driveBanner');
+  if(!pending && !needLoad){ b.style.display = 'none'; return; }
+  const parts = [];
+  if(pending) parts.push(`รูป ${pending} รูปรออัปโหลด`);
+  if(needLoad) parts.push(`รูป ${needLoad} รูปยังไม่ได้โหลด`);
+  document.getElementById('driveBannerText').textContent = parts.join(' · ') + (hasDriveToken() ? '' : ' — ต้องเชื่อมต่อ Google Drive');
+  document.getElementById('driveBannerBtn').textContent = hasDriveToken() ? 'ลองอีกครั้ง' : 'เชื่อมต่อ Drive';
+  b.style.display = 'flex';
+}
+
+function patchPhotoDom(p){
+  if(!p.id) return;
+  document.querySelectorAll(`.photo-slot[data-pid="${p.id}"]`).forEach(slot=>{
+    const img = slot.querySelector('img');
+    if(img) img.src = p.dataUrl;
+    slot.classList.remove('loading');
+  });
+}
+
+let photoLoadBusy = false, photoLoadAgain = false;
+async function loadMeetingPhotos(){
+  if(photoLoadBusy){ photoLoadAgain = true; return; }
+  photoLoadBusy = true;
+  try{
+    const todo = [];
+    forEachPhoto(p=>{ if(p.driveId && !p.dataUrl && !p.pending) todo.push(p); });
+    for(const p of todo){
+      const cached = await photoCache.getItem(p.driveId).catch(()=> null);
+      if(cached){ p.dataUrl = cached; patchPhotoDom(p); }
+    }
+    const rest = todo.filter(p=> !p.dataUrl);
+    if(rest.length && hasDriveToken()){
+      let i = 0;
+      await Promise.all([0, 1, 2].map(async ()=>{
+        while(i < rest.length && hasDriveToken()){
+          const p = rest[i++];
+          try{
+            p.dataUrl = await driveDownloadDataUrl(p.driveId);
+            photoCache.setItem(p.driveId, p.dataUrl);
+            patchPhotoDom(p);
+          }catch(e){ console.error('[photo]', p.driveId, e.message); }
+        }
+      }));
+    }
+  } finally {
+    photoLoadBusy = false;
+    updateDriveBanner();
+    if(photoLoadAgain){ photoLoadAgain = false; loadMeetingPhotos(); }
+  }
+}
+
+/* ========================================================================
+   MEETINGS — โหลด/สร้าง/เปิดงานจาก Supabase + realtime ให้ทั้งทีมเห็นพร้อมกัน
+   ======================================================================== */
+async function fetchMeetingTree(id){
+  const { data, error } = await sb.from('meetings')
+    .select('*, categories(*, comments(*, photos(*)))').eq('id', id).single();
+  if(error) throw error;
+  return data;
+}
+
+function rowsToState(row){
+  const bySort = (a, b)=> (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at);
+  return {
+    meeting: {
+      id: row.id, name: row.name, customer: row.customer, date: row.meeting_date, rev: row.rev,
+      location: row.location, docType: row.doc_type, driveFolderId: row.drive_folder_id
+    },
+    categories: (row.categories || []).sort(bySort).map(c=>({
+      id: c.id, name: c.name,
+      comments: (c.comments || []).sort(bySort).map(cm=>{
+        const photos = { before: [null, null], after: [null] };
+        (cm.photos || []).forEach(p=>{
+          if(photos[p.kind] && p.slot < photos[p.kind].length)
+            photos[p.kind][p.slot] = { id: p.id, driveId: p.drive_file_id, dataUrl: null };
+        });
+        return { id: cm.id, mode: cm.mode, text: cm.text, fixedBy: cm.fixed_by, photos };
+      })
+    }))
+  };
+}
+
+/* รวม state ที่ดึงมาใหม่กับของเดิม: เก็บรูปที่ decode ไว้แล้ว, รูปที่ยังอัปโหลดไม่เสร็จ,
+   และหมวด/คอมเม้นที่เพิ่งสร้างซึ่ง server ยังไม่ทันมี */
+function mergeRemote(remote){
+  const local = new Map();
+  forEachPhoto((p, cm, k, i)=> local.set(cm.id + ':' + k + ':' + i, p));
+  remote.categories.forEach(c=> c.comments.forEach(cm=> ['before','after'].forEach(k=> cm.photos[k].forEach((p, i)=>{
+    const lp = local.get(cm.id + ':' + k + ':' + i);
+    if(!lp) return;
+    if(p){ if(lp.driveId === p.driveId){ p.dataUrl = lp.dataUrl; p.original = lp.original; p.edit = lp.edit; } }
+    else if(lp.pending) cm.photos[k][i] = lp;
+  }))));
+  state.categories.forEach((c, i)=>{
+    const rc = remote.categories.find(r=> r.id === c.id);
+    if(rc){
+      inflight.delete(c.id);
+      c.comments.forEach((cm, j)=>{
+        if(rc.comments.some(r=> r.id === cm.id)) inflight.delete(cm.id);
+        else if(inflight.has(cm.id)) rc.comments.splice(Math.min(j, rc.comments.length), 0, cm);
+      });
+    } else if(inflight.has(c.id)) remote.categories.splice(Math.min(i, remote.categories.length), 0, c);
+  });
+  state = remote;
+}
+
+function renderPreservingFocus(){
+  const a = document.activeElement;
+  let restore = null;
+  if(a && a.tagName === 'INPUT'){
+    const sel = a.id ? '#' + a.id
+      : a.dataset.cmtText ? `[data-cmt-text="${a.dataset.cmtText}"]`
+      : a.dataset.cmtFixed ? `[data-cmt-fixed="${a.dataset.cmtFixed}"]`
+      : a.dataset.catName ? `[data-cat-name="${a.dataset.catName}"]` : null;
+    if(sel) restore = { sel, value: a.value, s: a.selectionStart, e: a.selectionEnd };
+  }
+  applyMetaToUI();
+  render();
+  if(!restore) return;
+  const el = document.querySelector(restore.sel);
+  if(!el) return;
+  const changed = el.value !== restore.value;
+  el.value = restore.value;
+  el.focus();
+  try{ el.setSelectionRange(restore.s, restore.e); }catch(_){}
+  if(changed) el.dispatchEvent(new Event('input', { bubbles: true }));   // ค่าที่กำลังพิมพ์ชนะค่าจาก server
+}
+
+let rtChannel = null, rtTimer = null;
+function knownIds(){
+  const s = new Set();
+  state.categories.forEach(c=>{ s.add(c.id); c.comments.forEach(cm=> s.add(cm.id)); });
+  forEachPhoto(p=>{ if(p.id) s.add(p.id); });
+  return s;
+}
+function subscribeMeeting(id){
+  if(rtChannel){ sb.removeChannel(rtChannel); rtChannel = null; }
+  const relevant = ev=>{
+    if(ev.eventType === 'DELETE') return knownIds().has(ev.old && ev.old.id);
+    const r = ev.new || {};
+    return knownIds().has(r.category_id || r.comment_id);
+  };
+  rtChannel = sb.channel('mom-' + id)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings',   filter: 'id=eq.' + id },         scheduleRemoteRefresh)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'categories', filter: 'meeting_id=eq.' + id }, scheduleRemoteRefresh)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, ev=>{ if(relevant(ev)) scheduleRemoteRefresh(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' },   ev=>{ if(relevant(ev)) scheduleRemoteRefresh(); })
+    .subscribe();
+}
+function scheduleRemoteRefresh(){ clearTimeout(rtTimer); rtTimer = setTimeout(remoteRefresh, 600); }
+async function remoteRefresh(){
+  const id = state.meeting.id;
+  if(!id) return;
+  try{
+    const row = await fetchMeetingTree(id);
+    if(state.meeting.id !== id) return;
+    mergeRemote(rowsToState(row));
+    renderPreservingFocus();
+    updateDriveBanner();
+    loadMeetingPhotos();
+  }catch(e){
+    if(e.code === 'PGRST116'){ showToast('งานนี้ถูกลบออกจากระบบแล้ว'); leaveMeeting(); showMeetingListModal(true); }
+    else console.error('[realtime]', e);
+  }
+}
+
+async function openMeeting(id){
+  await flushPendingWrites();
+  const row = await fetchMeetingTree(id);
+  inflight.clear();
+  state = rowsToState(row);
+  applyMetaToUI();
+  render();
+  subscribeMeeting(id);
+  localStorage.setItem(LAST_MEETING_KEY, id);
+  updateDriveBanner();
+  loadMeetingPhotos();
+}
+
+function leaveMeeting(){
+  if(rtChannel){ sb.removeChannel(rtChannel); rtChannel = null; }
+  state = emptyState();
+  applyMetaToUI();
+  render();
+  updateDriveBanner();
+  localStorage.removeItem(LAST_MEETING_KEY);
+}
+
+function todayThai(){ return new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }); }
+
+async function createMeeting(meta){
+  const id = uuid();
+  const { error } = await sb.from('meetings').insert({
+    id,
+    name: meta.name || '', customer: meta.customer || '', location: meta.location || '',
+    meeting_date: meta.date || todayThai(), rev: meta.rev || '01',
+    doc_type: DOC_TYPES.includes(meta.docType) ? meta.docType : 'Minute of Meeting',
+    created_by: currentUser.id, updated_by: currentUser.id
+  });
+  if(error) throw error;
+  return id;
+}
+
+async function startNewProject(){
+  await flushPendingWrites();
+  let id;
+  try{ id = await createMeeting({}); }
+  catch(e){ console.error(e); showToast('สร้างงานไม่สำเร็จ'); return; }
+  await openMeeting(id);
+  await addCategory('MDB PANEL');
+  showToast('เริ่มงานใหม่');
+}
+
+/* ========================================================================
+   MODALS
+   ======================================================================== */
 function buildModalOverlay(innerHTML){
   const bg = document.createElement('div');
   bg.className = 'modal-bg open no-print';
@@ -2379,100 +2846,84 @@ function confirmDialog({title='ยืนยัน', message='', confirmText='ต
   });
 }
 
-/* ประวัติเต็ม 5 → เลือกลบ 1 อันแล้วบันทึกอันใหม่ */
-function showHistoryFullModal(list, snap){
-  return new Promise(resolve=>{
-    const sorted = list.slice().sort((a,b)=>b.ts-a.ts);
-    const itemsHtml = sorted.map(h=>`
-      <label class="hist-item" style="cursor:pointer;">
-        <input type="radio" name="histDel" value="${h.id}" style="width:18px;height:18px;flex-shrink:0;accent-color:#ef4444;">
-        <div class="hist-info" style="cursor:pointer;"><div class="hist-name">${escapeHtml(h.name)}</div><div class="hist-date">${escapeHtml(h.date)}</div></div>
-      </label>`).join('');
-    const bg = buildModalOverlay(`
-      <div class="modal-head"><span>ประวัติเต็ม (5/5)</span></div>
-      <div class="modal-body">
-        <p style="font-size:13px;color:#475569;margin-bottom:12px;">กำลังบันทึกงานใหม่ "<b>${escapeHtml(snap.name)}</b>" — เลือกงานเก่าที่จะลบออก 1 งาน</p>
-        <div class="hist-list">${itemsHtml}</div>
-      </div>
-      <div class="modal-foot">
-        <button class="top-btn" id="histFullCancel">ไม่บันทึกประวัติ</button>
-        <button class="top-btn primary" id="histFullConfirm">ลบแล้วบันทึก</button>
-      </div>
-    `);
-    const close = ()=> bg.remove();
-    bg.querySelector('#histFullCancel').onclick = ()=>{ close(); resolve(false); };
-    bg.querySelector('#histFullConfirm').onclick = async ()=>{
-      const sel = bg.querySelector('input[name="histDel"]:checked');
-      if(!sel){ showToast('เลือกงานที่จะลบก่อน'); return; }
-      let l = await getHistory();
-      l = l.filter(x=>x.id!==sel.value);
-      l.push(snap);
-      await setHistory(l);
-      close(); resolve(true);
-      showToast('บันทึกประวัติแล้ว');
-    };
-  });
-}
-
-/* ป๊อบอัพตอนเปิดแอป: เลือกทำงานต่อ / เปิดงานที่บันทึกไว้ / เริ่มงานใหม่ */
-async function showStartupModal(force){
-  const list = (await getHistory()).sort((a,b)=>b.ts-a.ts);
-  const hasDraft = draftHasContent();
-  if(!force && list.length === 0 && !hasDraft) return;   // ตอนเปิดแอปครั้งแรกจริงๆ ไม่ต้องถาม
-
-  const continueHtml = hasDraft ? `
-    <button class="hist-continue" id="histContinue">
-      <div style="font-weight:800;font-size:14px;">▶ ทำงานต่อ (ล่าสุด)</div>
-      <div style="font-size:12px;opacity:.9;margin-top:2px;">${escapeHtml((state.meeting.name||'').trim() || 'งานที่ค้างไว้')}</div>
+/* รายการงานของทีมจาก Supabase: ทำงานต่อ / เปิดงานอื่น / ลบ / เริ่มงานใหม่ */
+async function showMeetingListModal(force){
+  document.querySelectorAll('.modal-bg[data-meeting-list]').forEach(m=> m.remove());
+  let rows = [];
+  try{
+    const { data, error } = await sb.from('meetings')
+      .select('id, name, customer, doc_type, updated_at').order('updated_at', { ascending: false }).limit(300);
+    if(error) throw error;
+    rows = data;
+  }catch(e){
+    console.error(e);
+    showToast('โหลดรายการงานไม่สำเร็จ');
+    if(!force) return;
+  }
+  const cur = state.meeting.id;
+  const fmt = iso=> new Date(iso).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const itemHtml = m=> `
+      <div class="hist-item" data-mid="${m.id}">
+        <div class="hist-info" data-open="${m.id}">
+          <div class="hist-name">${escapeHtml(m.name || 'ไม่ระบุชื่อโครงการ')}${m.id === cur ? '<span class="hist-tag">กำลังเปิด</span>' : ''}</div>
+          <div class="hist-date">${escapeHtml([m.customer, m.doc_type, fmt(m.updated_at)].filter(Boolean).join(' · '))}</div>
+        </div>
+        <button class="hist-del" data-del="${m.id}" title="ลบ">🗑</button>
+      </div>`;
+  const continueHtml = cur ? `
+    <button class="hist-continue" id="mlContinue">
+      <div style="font-weight:800;font-size:14px;">▶ ทำงานต่อ</div>
+      <div style="font-size:12px;opacity:.9;margin-top:2px;">${escapeHtml((state.meeting.name || '').trim() || 'ไม่ระบุชื่อโครงการ')}</div>
     </button>
     <div style="height:1px;background:var(--line);margin:14px 0;"></div>` : '';
 
-  const itemsHtml = list.length ? list.map(h=>`
-      <div class="hist-item">
-        <div class="hist-info" data-open="${h.id}">
-          <div class="hist-name">${escapeHtml(h.name)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
-          <div class="hist-date">${escapeHtml(h.date)}</div>
-        </div>
-        <button class="hist-del" data-del="${h.id}" title="ลบ">🗑</button>
-      </div>`).join('')
-    : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานที่บันทึกไว้</div>`;
-
   const bg = buildModalOverlay(`
-    <div class="modal-head"><span>เลือกงานที่จะทำต่อ</span><span class="close-btn" id="histClose">×</span></div>
+    <div class="modal-head"><span>รายการงาน (ทีม)</span>${cur ? '<span class="close-btn" id="mlClose">×</span>' : ''}</div>
     <div class="modal-body">
       ${continueHtml}
-      <div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">งานที่บันทึกไว้ (${list.length}/${MAX_HISTORY})</div>
-      <div class="hist-list">${itemsHtml}</div>
+      <input id="mlSearch" placeholder="ค้นหาชื่อโครงการ / ลูกค้า..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13.5px;margin-bottom:10px;outline:none;">
+      <div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">งานทั้งหมด (${rows.length})</div>
+      <div class="hist-list" id="mlList">${rows.length ? rows.map(itemHtml).join('') : '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานในระบบ</div>'}</div>
     </div>
     <div class="modal-foot">
-      <button class="top-btn primary" id="histNew" style="width:100%;justify-content:center;">+ เริ่มงานใหม่</button>
+      <button class="top-btn primary" id="mlNew" style="width:100%;justify-content:center;">+ เริ่มงานใหม่</button>
     </div>
   `);
+  bg.dataset.meetingList = '1';
   const close = ()=> bg.remove();
-  bg.querySelector('#histClose').onclick = close;
-  bg.addEventListener('click', e=>{ if(e.target===bg) close(); });   // คลิกพื้นหลังเพื่อปิด
-  const cont = bg.querySelector('#histContinue');
-  if(cont) cont.onclick = close;   // ทำงานต่อจาก draft ที่โหลดมาแล้ว
-  bg.querySelector('#histNew').onclick = async ()=>{ if(!(await proceedSwitch())) return; close(); startNewProject(); };
-  bg.querySelectorAll('[data-open]').forEach(el=> el.onclick = async ()=>{
-    if(!(await proceedSwitch())) return;
-    const h = list.find(x=>x.id===el.dataset.open);
-    if(h && h.state){ loadStateIntoApp(JSON.parse(JSON.stringify(h.state))); showToast('เปิดงานแล้ว'); }
-    close();
+  const closeBtn = bg.querySelector('#mlClose');
+  if(closeBtn) closeBtn.onclick = close;
+  if(cur) bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
+  const cont = bg.querySelector('#mlContinue');
+  if(cont) cont.onclick = close;
+  bg.querySelector('#mlSearch').addEventListener('input', e=>{
+    const q = e.target.value.trim().toLowerCase();
+    bg.querySelectorAll('#mlList .hist-item').forEach(el=>{
+      const m = rows.find(r=> r.id === el.dataset.mid);
+      el.style.display = !q || ((m.name || '') + ' ' + (m.customer || '')).toLowerCase().includes(q) ? '' : 'none';
+    });
   });
-  bg.querySelectorAll('[data-del]').forEach(el=> el.onclick = async (e)=>{
+  bg.querySelector('#mlNew').onclick = async ()=>{ close(); await startNewProject(); };
+  bg.querySelectorAll('[data-open]').forEach(el=> el.onclick = async ()=>{
+    close();
+    if(el.dataset.open === cur) return;
+    try{ await openMeeting(el.dataset.open); showToast('เปิดงานแล้ว'); }
+    catch(e){ console.error(e); showToast('เปิดงานไม่สำเร็จ'); showMeetingListModal(true); }
+  });
+  bg.querySelectorAll('[data-del]').forEach(el=> el.onclick = async e=>{
     e.stopPropagation();
-    const h = list.find(x=>x.id===el.dataset.del);
+    const m = rows.find(x=> x.id === el.dataset.del);
     const ok = await confirmDialog({
-      title: 'ลบงานที่บันทึก',
-      message: `ต้องการลบงาน "<b>${escapeHtml(h ? h.name : '')}</b>" ออกจากประวัติใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
+      title: 'ลบงานออกจากระบบทีม',
+      message: `ต้องการลบงาน "<b>${escapeHtml(m ? (m.name || 'ไม่ระบุชื่อโครงการ') : '')}</b>" ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">ทุกคนในทีมจะไม่เห็นงานนี้อีก (ไฟล์รูปใน Google Drive ยังอยู่)</span>`,
       confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
     });
     if(!ok) return;
-    let l = await getHistory();
-    await setHistory(l.filter(x=>x.id!==el.dataset.del));
-    close();
-    showStartupModal(true);   // เปิดใหม่ให้เห็นรายการอัปเดต
+    const { error } = await sb.from('meetings').delete().eq('id', el.dataset.del);
+    if(error){ console.error(error); showToast('ลบไม่สำเร็จ'); return; }
+    if(el.dataset.del === cur) leaveMeeting();
+    showToast('ลบงานแล้ว');
+    showMeetingListModal(true);
   });
 }
 
@@ -2488,44 +2939,65 @@ function exportData(){
   showToast('ส่งออกข้อมูลแล้ว');
 }
 
-function importData(event){
+/* นำเข้าไฟล์ JSON (จากเวอร์ชันเก่าที่เก็บในเครื่อง) → สร้างเป็นงานใหม่ในระบบทีม + อัปรูปขึ้น Drive */
+async function importData(event){
   const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    try{
-      state = JSON.parse(e.target.result);
-      // backwards-compat: ignore old "cover" key if present
-      if(state.cover && !state.meeting){
-        state.meeting = state.cover;
-      }
-      applyMetaToUI();
-      render();
-      saveDraft();
-      showToast('นำเข้าข้อมูลแล้ว');
-    }catch(err){
-      showToast('ไฟล์ไม่ถูกต้อง');
-    }
-  };
-  reader.readAsText(file);
   event.target.value = '';
+  if(!file) return;
+  let parsed;
+  try{ parsed = JSON.parse(await file.text()); }
+  catch(_){ showToast('ไฟล์ไม่ถูกต้อง'); return; }
+  const meta = parsed.meeting || parsed.cover || {};
+  await flushPendingWrites();
+  try{
+    const id = await createMeeting(meta);
+    const cats = [], cmts = [], photosLocal = [];
+    (parsed.categories || []).forEach((c, ci)=>{
+      const cid = uuid();
+      cats.push({ id: cid, meeting_id: id, name: c.name || '', sort_order: ci });
+      (c.comments || []).forEach((cm, i)=>{
+        cmts.push({ id: uuid(), category_id: cid, mode: cm.mode === 'after' ? 'after' : 'before',
+                    text: cm.text || '', fixed_by: cm.fixedBy || '', sort_order: i, updated_by: currentUser.id });
+        photosLocal.push(cm.photos || null);
+      });
+    });
+    if(cats.length){ const { error } = await sb.from('categories').insert(cats); if(error) throw error; }
+    if(cmts.length){ const { error } = await sb.from('comments').insert(cmts); if(error) throw error; }
+    await openMeeting(id);
+    // รูปจากไฟล์ → ใส่เป็น pending แล้วทยอยอัปโหลดขึ้น Drive
+    let k = 0;
+    state.categories.forEach(c=> c.comments.forEach(cm=>{
+      const src = photosLocal[k++];
+      if(!src) return;
+      ['before','after'].forEach(w=> (src[w] || []).forEach((p, i)=>{
+        if(p && p.dataUrl && i < cm.photos[w].length) cm.photos[w][i] = { dataUrl: p.dataUrl, pending: true };
+      }));
+    }));
+    render();
+    updateDriveBanner();
+    flushPendingUploads();
+    showToast('นำเข้าข้อมูลแล้ว');
+  }catch(e){
+    console.error(e);
+    showToast('นำเข้าไม่สำเร็จ');
+  }
 }
 
 async function resetAll(){
+  if(!requireMeeting()) return;
   const ok = await confirmDialog({
-    title: 'ล้างข้อมูลทั้งหมด',
-    message: 'ต้องการล้างงานปัจจุบันทั้งหมดใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การกระทำนี้ย้อนกลับไม่ได้ (ไม่กระทบงานที่บันทึกไว้ในประวัติ)</span>',
+    title: 'ล้างเนื้อหางานนี้',
+    message: 'ต้องการลบหมวดและคอมเม้นทั้งหมดในงานนี้ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">ทุกคนในทีมจะเห็นผลทันที และย้อนกลับไม่ได้</span>',
     confirmText: 'ล้างทั้งหมด', cancelText: 'ยกเลิก', danger: true
   });
   if(!ok) return;
-  state = {
-    meeting:{ name:'', customer:'', date:'', rev:'01' },
-    categories:[],
-    _histId: null
-  };
-  applyMetaToUI();
-  addCategory('MDB PANEL');
-  isDirty = false;
+  const driveIds = [];
+  state.categories.forEach(c=> driveIds.push(...driveIdsOf(c.comments)));
+  state.categories = [];
+  render();
+  await dbWrite(()=> sb.from('categories').delete().eq('meeting_id', state.meeting.id), 'categories:clear:' + state.meeting.id);
+  driveIds.forEach(driveDelete);
+  await addCategory('MDB PANEL');
   showToast('ล้างข้อมูลแล้ว');
 }
 
@@ -2546,8 +3018,11 @@ function showToast(msg){
 }
 
 function setupMetaListeners(){
-  ['meeting_name','cover_customer','meeting_date','cover_rev','cover_location'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', debouncedSave);
+  Object.entries(META_FIELDS).forEach(([id, col])=>{
+    document.getElementById(id).addEventListener('input', e=>{
+      captureMetaFromUI();
+      if(state.meeting.id) queueUpdate('meetings', state.meeting.id, { [col]: e.target.value });
+    });
   });
 }
 
@@ -2585,6 +3060,23 @@ function hidePdfProgress(){
   if(el) el.style.display = 'none';
 }
 
+/* ก่อน export ต้องมีรูปครบทุกรูปในเครื่อง (html2canvas ใช้ dataUrl) */
+async function ensurePhotosForExport(){
+  const missingCount = ()=>{ let n = 0; forEachPhoto(p=>{ if(p.driveId && !p.dataUrl) n++; }); return n; };
+  if(!missingCount()) return true;
+  if(!hasDriveToken() && !(await getDriveToken(true))){
+    showToast('ต้องเชื่อมต่อ Google Drive เพื่อโหลดรูปก่อน Export');
+    return false;
+  }
+  showPdfProgress('กำลังโหลดรูปจาก Google Drive...');
+  while(photoLoadBusy) await new Promise(r=> setTimeout(r, 200));
+  await loadMeetingPhotos();
+  hidePdfProgress();
+  const n = missingCount();
+  if(n){ showToast(`โหลดรูปไม่ครบ (${n} รูป) — ลองใหม่อีกครั้ง`); return false; }
+  return true;
+}
+
 /* iPad/iOS: แสดงปุ่มให้กดเพื่อเปิด share sheet (จำเป็นต้องเป็น user gesture ใหม่)
    → "บันทึกลงไฟล์ (Save to Files)" จะได้ชื่อไฟล์ตรงกับบนคอม */
 function showPdfSaveButton(file, filename){
@@ -2615,9 +3107,9 @@ async function exportPDF() {
     return;
   }
 
-  // อัพเดทข้อมูลลง Storage ก่อน Export
   captureMetaFromUI();
-  await saveDraft();
+  await flushPendingWrites();
+  if(!(await ensurePhotosForExport())) return;
 
   showPdfProgress('กำลังเตรียม...');
 
@@ -2713,9 +3205,7 @@ async function exportPDF() {
     // Cleanup
     document.body.removeChild(renderContainer);
 
-    // บันทึกประวัติอัตโนมัติ (ถ้าเต็ม 5 จะถามว่าจะลบงานไหนก่อน)
     hidePdfProgress();
-    await saveCurrentToHistory();
 
     // Save — desktop ใช้ pdf.save() (ชื่อไฟล์ถูกต้องอยู่แล้ว);
     // iOS Safari ไม่เคารพชื่อไฟล์ใน save() → ใช้ Web Share ส่งเป็นไฟล์ที่มีชื่อ ("Save to Files" จะได้ชื่อตรงกัน)
@@ -3195,7 +3685,7 @@ const PhotoEditor = (function(){
   function open(cmt, which, sidx){
     const photo = cmt.photos && cmt.photos[which] && cmt.photos[which][sidx];
     if(!photo || !photo.dataUrl){ return; }
-    target = { photo };
+    target = { photo, cmt, which, sidx };
     const src = photo.original || photo.dataUrl;
     anns = (photo.edit && Array.isArray(photo.edit.annotations))
       ? JSON.parse(JSON.stringify(photo.edit.annotations)) : [];
@@ -3382,7 +3872,9 @@ const PhotoEditor = (function(){
     photo.original = img.src;
     photo.dataUrl = out.toDataURL('image/jpeg', 0.95);
     photo.edit = { crop:{zoom:crop.zoom, ox:crop.ox, oy:crop.oy}, annotations: JSON.parse(JSON.stringify(anns)) };
-    close(); render(); saveDraft(); showToast('บันทึกรูปแล้ว');
+    photo.pending = true;
+    close(); render(); showToast('บันทึกรูปแล้ว');
+    uploadPhoto(target.cmt, target.which, target.sidx);
   }
 
   return { init, open };
@@ -3410,19 +3902,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     if(e.key==='Escape') closeDrawerIfMobile();
   });
 
-  const loaded = await loadDraft();
-  if(!loaded){
-    state.meeting.date = new Date().toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
-    applyMetaToUI();
-    addCategory('MDB PANEL');
-  } else {
-    // ย่อรูปเดิมที่อัปไว้ความละเอียดสูง (one-time migration, ทำเบื้องหลัง)
-    downscaleExistingPhotos();
-  }
-
-  // ป๊อบอัพเลือกงานที่จะทำต่อ / เริ่มงานใหม่
-  isDirty = false;   // งานที่เพิ่งโหลดมายังไม่นับว่าแก้ไข
-  await showStartupModal();
+  render();
+  await initAuth();
 });
 </script>
 </body>
