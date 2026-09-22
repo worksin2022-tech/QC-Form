@@ -4151,13 +4151,13 @@ const PhotoEditor = (function(){
     const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
     o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
     anns.forEach(a=> drawShape(o, a, OUT_W, OUT_H, 3*sx));
-    const photo=target.photo;
+    const { photo, cmt, which, sidx } = target;   // เก็บไว้ก่อน close() จะล้าง target
     photo.original = img.src;
     photo.dataUrl = out.toDataURL('image/jpeg', 0.95);
     photo.edit = { crop:{zoom:crop.zoom, ox:crop.ox, oy:crop.oy}, annotations: JSON.parse(JSON.stringify(anns)) };
     photo.pending = isOnline();
     close(); render(); showToast('บันทึกรูปแล้ว');
-    if(isOnline()){ ensureDriveTokenFromGesture(); uploadPhoto(target.cmt, target.which, target.sidx); }
+    if(isOnline()){ ensureDriveTokenFromGesture(); uploadPhoto(cmt, which, sidx); }
     else localAutosave();
   }
 
