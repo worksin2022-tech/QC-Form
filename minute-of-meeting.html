@@ -2347,13 +2347,16 @@ function legacyHasContent(s){
     (cm.text || '').trim() || (cm.fixedBy || '').trim() ||
     ['before','after'].some(w=> Array.isArray(cm.photos && cm.photos[w]) && cm.photos[w].some(p=> p && p.dataUrl))));
 }
-async function migrateLegacyLocal(){
+async function migrateLegacyLocal(force){
+  const report = { hist: 0, draft: false, added: 0 };
   try{
-    if(await localforage.getItem(LEGACY_FLAG_KEY)) return;
+    if(!force && await localforage.getItem(LEGACY_FLAG_KEY)) return report;
     const hist = (await localforage.getItem(LEGACY_HISTORY_KEY)) || [];
     const draft = await localforage.getItem(LEGACY_DRAFT_KEY);
     const list = (await localforage.getItem(OFFLINE_KEY)) || [];
-    const toEntry = (src, ts)=>{
+    report.hist = hist.length; report.draft = legacyHasContent(draft);
+    const have = new Set(list.map(m=> m.legacyId).filter(Boolean));
+    const toEntry = (src, ts, legacyId)=>{
       const s = JSON.parse(JSON.stringify(src));
       s.meeting = Object.assign({ name: '', customer: '', date: '', rev: '01', location: '', docType: 'Minute of Meeting' }, s.meeting || s.cover || {});
       s.meeting.id = uuid(); s.meeting.driveFolderId = null;
@@ -2362,17 +2365,30 @@ async function migrateLegacyLocal(){
         id: cm.id || uuid(), mode: cm.mode === 'after' ? 'after' : 'before', text: cm.text || '', fixedBy: cm.fixedBy || '',
         photos: { before: (cm.photos && cm.photos.before) || [null, null], after: (cm.photos && cm.photos.after) || [null] }
       })) }));
-      return { id: s.meeting.id, name: s.meeting.name, customer: s.meeting.customer, docType: s.meeting.docType, updatedAt: ts || Date.now(), state: s };
+      return { id: s.meeting.id, legacyId, name: s.meeting.name, customer: s.meeting.customer, docType: s.meeting.docType, updatedAt: ts || Date.now(), state: s };
     };
+    const add = (src, ts, legacyId)=>{ if(have.has(legacyId)) return; list.push(toEntry(src, ts, legacyId)); have.add(legacyId); report.added++; };
     const draftId = draft && draft._histId;
     hist.forEach(h=>{
       if(!h || !h.state) return;
-      list.push(toEntry(draftId && h.id === draftId ? draft : h.state, h.ts));   // draft = เวอร์ชันล่าสุดของ slot นั้น
+      add(draftId && h.id === draftId ? draft : h.state, h.ts, 'hist:' + h.id);   // draft = เวอร์ชันล่าสุดของ slot นั้น
     });
-    if(draft && !(draftId && hist.some(h=> h.id === draftId)) && legacyHasContent(draft)) list.push(toEntry(draft, Date.now()));
-    if(list.length) await localforage.setItem(OFFLINE_KEY, list);
+    if(draft && !(draftId && hist.some(h=> h.id === draftId)) && legacyHasContent(draft)) add(draft, Date.now(), 'draft');
+    if(report.added) await localforage.setItem(OFFLINE_KEY, list);
     await localforage.setItem(LEGACY_FLAG_KEY, 1);
-  }catch(e){ console.error('[migrate]', e); }
+  }catch(e){ console.error('[migrate]', e); report.error = e.message; }
+  return report;
+}
+
+/* ปุ่มในหน้ารายการ: สแกนหางานจากเวอร์ชันก่อนซ้ำ แล้วบอกว่าเจออะไรในเครื่องนี้บ้าง */
+async function rescanLegacy(){
+  const r = await migrateLegacyLocal(true);
+  let msg;
+  if(r.error) msg = 'สแกนไม่สำเร็จ: ' + r.error;
+  else if(!r.hist && !r.draft) msg = 'ไม่พบข้อมูลเวอร์ชันก่อนในที่เก็บนี้ (ลองเปิดจาก Safari/ไอคอนหน้าจออีกทาง)';
+  else msg = `พบประวัติ ${r.hist} งาน${r.draft ? ' + งานที่ค้างไว้' : ''} → เพิ่มใหม่ ${r.added} งาน`;
+  showToast(msg, 5000);
+  showMeetingListModal(true);
 }
 
 let localSaveTimer = null;
@@ -3128,6 +3144,7 @@ async function showMeetingListModal(force){
         `<div class="hist-list">${local.map(localItem).join('')}</div>` : '')
     : sectionTitle(`งานในเครื่องนี้ (${local.length})`) +
       `<div class="hist-list" id="mlList">${local.length ? local.map(localItem).join('') : empty('ยังไม่มีงานในเครื่องนี้')}</div>`;
+  const rescanHtml = `<button class="top-btn" id="mlRescan" style="width:100%;justify-content:center;margin-top:12px;font-size:12.5px;color:var(--muted);">🔍 ค้นหางานเก่าจากเวอร์ชันก่อนในเครื่องนี้</button>`;
 
   const bg = buildModalOverlay(`
     <div class="modal-head"><span>${online ? 'รายการงาน (ทีม)' : 'งานในเครื่องนี้ (ออฟไลน์)'}</span>${cur ? '<span class="close-btn" id="mlClose">×</span>' : ''}</div>
@@ -3135,6 +3152,7 @@ async function showMeetingListModal(force){
       ${continueHtml}
       <input id="mlSearch" placeholder="ค้นหาชื่อโครงการ / ลูกค้า..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13.5px;margin-bottom:10px;outline:none;">
       ${listsHtml}
+      ${rescanHtml}
     </div>
     <div class="modal-foot" style="flex-wrap:wrap;gap:8px;">
       <button class="top-btn" id="mlSwitch" style="flex:1;justify-content:center;">${online ? 'ใช้งานออฟไลน์' : 'เข้าสู่ระบบทีม'}</button>
@@ -3157,6 +3175,7 @@ async function showMeetingListModal(force){
   });
   bg.querySelector('#mlNew').onclick = async ()=>{ ensureDriveTokenFromGesture(); close(); await startNewProject(); };
   bg.querySelector('#mlSwitch').onclick = async ()=>{ close(); if(online) await enterOfflineMode(); else await switchToOnline(); };
+  bg.querySelector('#mlRescan').onclick = async ()=>{ close(); await rescanLegacy(); };
   bg.querySelectorAll('[data-open]').forEach(el=> el.onclick = async ()=>{
     ensureDriveTokenFromGesture();
     close();
@@ -3292,12 +3311,12 @@ function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function showToast(msg){
+function showToast(msg, ms){
   document.getElementById('toastMsg').textContent = msg;
   const t = document.getElementById('toast');
   t.classList.add('show');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), ms || 1800);
 }
 
 function setupMetaListeners(){
