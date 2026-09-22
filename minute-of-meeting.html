@@ -2099,7 +2099,7 @@ async function removeCategory(catId){
   inflight.delete(catId);
   render();
   await dbWrite(()=> sb.from('categories').delete().eq('id', catId), 'categories:' + catId);
-  driveIds.forEach(driveDelete);
+  driveDeleteAll(driveIds);
   showToast('ลบหมวดแล้ว');
 }
 
@@ -2118,15 +2118,16 @@ async function removeComment(catId, cmtId){
   inflight.delete(cmtId);
   render();
   await dbWrite(()=> sb.from('comments').delete().eq('id', cmtId), 'comments:' + cmtId);
-  driveIds.forEach(driveDelete);
+  driveDeleteAll(driveIds);
   showToast('ลบคอมเม้นแล้ว');
 }
 
 function driveIdsOf(comments){
   const ids = [];
-  comments.forEach(cm => ['before','after'].forEach(k => (cm.photos[k]||[]).forEach(p => { if(p && p.driveId) ids.push(p.driveId); })));
+  comments.forEach(cm => ['before','after'].forEach(k => (cm.photos[k]||[]).forEach(p => { if(p && p.driveId) ids.push({ id: p.driveId, owner: p.uploadedBy }); })));
   return ids;
 }
+function driveDeleteAll(items){ items.forEach(it => driveDelete(it.id, it.owner, false)); }
 
 function setCommentMode(catId, cmtId, newMode){
   const cat = state.categories.find(c=>c.id===catId);
@@ -2147,7 +2148,7 @@ async function removePhoto(cmt, which, sidx){
   updateDriveBanner();
   if(!isOnline()){ localAutosave(); return; }
   if(p && p.id) await dbWrite(()=> sb.from('photos').delete().eq('id', p.id), 'photos:' + p.id);
-  if(p && p.driveId) driveDelete(p.driveId);
+  if(p && p.driveId) driveDelete(p.driveId, p.uploadedBy, false);
 }
 
 /* ========================================================================
@@ -2606,6 +2607,7 @@ async function onSignedIn(session){
   if(location.hash || /[?&]code=/.test(location.search)) history.replaceState(null, '', location.pathname);
   showLogin(false);
   renderUserChip();
+  processDriveCleanup();
   const last = lsGet(LAST_MEETING_KEY);
   if(last){ try{ await openMeeting(last); }catch(e){ lsSet(LAST_MEETING_KEY, null); } }
   await showMeetingListModal(true);
@@ -2647,6 +2649,7 @@ function setDriveToken(token, ttlSec){
   lsSet(DRIVE_TOKEN_KEY, JSON.stringify(driveToken));
   lsSet(DRIVE_TOKEN_KEY + '_seen', token);
   if(state.meeting.id){ flushPendingUploads(); loadMeetingPhotos(); }
+  if(currentUser) processDriveCleanup();
 }
 function restoreDriveToken(){
   lastSeenToken = lsGet(DRIVE_TOKEN_KEY + '_seen');
@@ -2717,20 +2720,70 @@ async function driveDownloadDataUrl(fileId){
     const r = new FileReader(); r.onload = ()=> resolve(r.result); r.onerror = reject; r.readAsDataURL(blob);
   });
 }
-function driveDelete(fileId){
-  return driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, { method: 'DELETE' })
-    .catch(e=> console.warn('[drive] delete', fileId, e.message));
+/* ย้ายไฟล์ไปถังขยะ (Google ล้างเองใน 30 วัน / กู้คืนได้) — คืน true เมื่อสำเร็จหรือไฟล์ไม่มีอยู่แล้ว */
+async function driveTrash(fileId){
+  try{
+    await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true })
+    });
+    return true;
+  }catch(e){
+    if(e.status === 404) return true;
+    console.warn('[drive] trash', fileId, e.message);
+    return false;
+  }
+}
+async function driveFolderIsEmpty(folderId){
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+  return ((await res.json()).files || []).length === 0;
+}
+
+/* ลบไฟล์/โฟลเดอร์ใน Drive: ใน My Drive ลบได้เฉพาะเจ้าของ → ถ้าไม่ใช่ของเรา (หรือลบไม่ผ่าน)
+   เข้าคิว drive_cleanup ให้เจ้าของลบอัตโนมัติตอนเปิดแอปครั้งถัดไป */
+async function driveDelete(fileId, ownerId, isFolder){
+  if(!fileId || !isOnline()) return;
+  const mine = !ownerId || ownerId === (currentUser && currentUser.id);
+  let done = false;
+  if(mine && hasDriveToken()){
+    try{ done = isFolder ? (await driveFolderIsEmpty(fileId) && await driveTrash(fileId)) : await driveTrash(fileId); }
+    catch(e){ done = false; }
+  }
+  if(!done){
+    const { error } = await sb.from('drive_cleanup').insert({ drive_file_id: fileId, owner: ownerId || null, is_folder: !!isFolder });
+    if(error) console.warn('[cleanup] queue', error.message);   // เช่น ยังไม่ได้รัน MIGRATION 3
+  }
+}
+
+let cleanupRunning = false;
+async function processDriveCleanup(){
+  if(cleanupRunning || !isOnline() || !currentUser || !hasDriveToken()) return;
+  cleanupRunning = true;
+  try{
+    const { data, error } = await sb.from('drive_cleanup').select('*')
+      .or(`owner.eq.${currentUser.id},owner.is.null`).order('is_folder').limit(50);   // ไฟล์ก่อน โฟลเดอร์ทีหลัง
+    if(error || !data) return;
+    for(const row of data){
+      if(!hasDriveToken()) break;
+      let ok = false;
+      try{ ok = row.is_folder ? (await driveFolderIsEmpty(row.drive_file_id) && await driveTrash(row.drive_file_id)) : await driveTrash(row.drive_file_id); }
+      catch(e){ ok = e.status === 404; }
+      if(ok) await sb.from('drive_cleanup').delete().eq('id', row.id);
+    }
+  }catch(e){ console.warn('[cleanup]', e); }
+  finally{ cleanupRunning = false; }
 }
 
 async function ensureMeetingFolder(){
   if(state.meeting.driveFolderId) return state.meeting.driveFolderId;
   // เช็กอีกรอบจาก DB — เผื่อคนอื่นเพิ่งสร้างโฟลเดอร์ให้งานนี้ไปแล้ว
-  const { data } = await sb.from('meetings').select('drive_folder_id').eq('id', state.meeting.id).single();
-  if(data && data.drive_folder_id){ state.meeting.driveFolderId = data.drive_folder_id; return data.drive_folder_id; }
+  const { data } = await sb.from('meetings').select('drive_folder_id, drive_folder_owner').eq('id', state.meeting.id).single();
+  if(data && data.drive_folder_id){ state.meeting.driveFolderId = data.drive_folder_id; state.meeting.driveFolderOwner = data.drive_folder_owner; return data.drive_folder_id; }
   const folderName = `${(state.meeting.name || '').trim() || 'MoM'} [${state.meeting.id.slice(0, 8)}]`;
   const fid = await driveCreateFolder(folderName, DRIVE_ROOT_FOLDER_ID);
   state.meeting.driveFolderId = fid;
-  await sb.from('meetings').update({ drive_folder_id: fid }).eq('id', state.meeting.id);
+  state.meeting.driveFolderOwner = currentUser.id;
+  await sb.from('meetings').update({ drive_folder_id: fid, drive_folder_owner: currentUser.id }).eq('id', state.meeting.id);
   return fid;
 }
 
@@ -2757,16 +2810,17 @@ async function uploadPhoto(cmt, which, sidx){
     const newId = await driveUpload(blob, photoFileName(cmt, which, sidx), folderId);
     const row = { comment_id: cmt.id, kind: which, slot: sidx, drive_file_id: newId, uploaded_by: currentUser.id };
     const { data, error } = await sb.from('photos').upsert(row, { onConflict: 'comment_id,kind,slot' }).select('id').single();
-    if(error){ driveDelete(newId); throw error; }
-    const oldId = p.driveId;
+    if(error){ driveDelete(newId, currentUser.id, false); throw error; }
+    const oldId = p.driveId, oldOwner = p.uploadedBy;
     p.driveId = newId;
     p.id = data.id;
     p.pending = false;
+    p.uploadedBy = currentUser.id;
     photoCache.setItem(newId, src);
-    if(oldId && oldId !== newId) driveDelete(oldId);
+    if(oldId && oldId !== newId) driveDelete(oldId, oldOwner, false);
     // ถ้า realtime เพิ่งสลับ object ใน state ระหว่างอัปโหลด ให้ตัวที่อยู่ใน state ได้ค่าใหม่ด้วย
     const cur = currentPhoto(cmt.id, which, sidx);
-    if(cur && cur !== p) Object.assign(cur, { id: p.id, driveId: newId, dataUrl: src, pending: false });
+    if(cur && cur !== p) Object.assign(cur, { id: p.id, driveId: newId, uploadedBy: currentUser.id, dataUrl: src, pending: false });
     const slot = document.querySelector(`[data-comment-id="${cmt.id}"] .photo-slot[data-which="${which}"][data-sidx="${sidx}"]`);
     if(slot){ slot.dataset.pid = p.id; slot.classList.remove('pending'); }
   }catch(e){
@@ -2879,7 +2933,7 @@ function rowsToState(row){
   return {
     meeting: {
       id: row.id, name: row.name, customer: row.customer, date: row.meeting_date, rev: row.rev,
-      location: row.location, docType: row.doc_type, driveFolderId: row.drive_folder_id
+      location: row.location, docType: row.doc_type, driveFolderId: row.drive_folder_id, driveFolderOwner: row.drive_folder_owner
     },
     categories: (row.categories || []).sort(bySort).map(c=>({
       id: c.id, name: c.name,
@@ -2887,7 +2941,7 @@ function rowsToState(row){
         const photos = { before: [null, null], after: [null] };
         (cm.photos || []).forEach(p=>{
           if(photos[p.kind] && p.slot < photos[p.kind].length)
-            photos[p.kind][p.slot] = { id: p.id, driveId: p.drive_file_id, dataUrl: null };
+            photos[p.kind][p.slot] = { id: p.id, driveId: p.drive_file_id, uploadedBy: p.uploaded_by, dataUrl: null };
         });
         return { id: cm.id, mode: cm.mode, text: cm.text, fixedBy: cm.fixed_by, photos };
       })
@@ -2913,7 +2967,7 @@ function mergeRemote(remote){
       ocm.mode = rcm.mode; ocm.text = rcm.text; ocm.fixedBy = rcm.fixedBy;
       ['before','after'].forEach(k=> rcm.photos[k].forEach((rp, i)=>{
         const op = ocm.photos[k][i];
-        if(rp){ if(op && op.driveId === rp.driveId) op.id = rp.id; else ocm.photos[k][i] = rp; }
+        if(rp){ if(op && op.driveId === rp.driveId){ op.id = rp.id; op.uploadedBy = rp.uploadedBy; } else ocm.photos[k][i] = rp; }
         else if(!(op && op.pending)) ocm.photos[k][i] = null;
       }));
       return ocm;
@@ -2980,7 +3034,9 @@ function subscribeMeeting(id){
 function scheduleRemoteRefresh(){ clearTimeout(rtTimer); rtTimer = setTimeout(remoteRefresh, 600); }
 /* iPad พักแอปเบื้องหลัง → websocket realtime หลุด/พลาด event → กลับมาหน้าจอให้ดึงข้อมูลล่าสุดเสมอ */
 function onAppResume(){
-  if(!isOnline() || !currentUser || !state.meeting.id) return;
+  if(!isOnline() || !currentUser) return;
+  processDriveCleanup();
+  if(!state.meeting.id) return;
   scheduleRemoteRefresh();
   flushRetryQueue();
   flushPendingUploads();
@@ -3039,6 +3095,20 @@ async function createMeeting(meta){
   });
   if(error) throw error;
   return id;
+}
+
+/* ลบงานทีม: เก็บรายการไฟล์ Drive ไว้ก่อน (cascade จะลบแถว photos ทิ้ง) → ลบ DB → ทิ้งไฟล์/โฟลเดอร์ใน Drive */
+async function deleteTeamMeeting(id){
+  const { data: m } = await sb.from('meetings')
+    .select('drive_folder_id, drive_folder_owner, categories(comments(photos(drive_file_id, uploaded_by)))').eq('id', id).single();
+  const { error } = await sb.from('meetings').delete().eq('id', id);
+  if(error) throw error;
+  if(!m) return;
+  const files = [];
+  (m.categories || []).forEach(c=> (c.comments || []).forEach(cm=> (cm.photos || []).forEach(p=> files.push(p))));
+  for(const p of files) await driveDelete(p.drive_file_id, p.uploaded_by, false);
+  if(m.drive_folder_id) await driveDelete(m.drive_folder_id, m.drive_folder_owner, true);
+  processDriveCleanup();
 }
 
 async function startNewProject(){
@@ -3228,14 +3298,14 @@ async function showMeetingListModal(force){
     const m = rows.find(x=> x.id === el.dataset.del);
     const ok = await confirmDialog({
       title: 'ลบงานออกจากระบบทีม',
-      message: `ต้องการลบงาน "<b>${escapeHtml(m ? (m.name || 'ไม่ระบุชื่อโครงการ') : '')}</b>" ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">ทุกคนในทีมจะไม่เห็นงานนี้อีก (ไฟล์รูปใน Google Drive ยังอยู่)</span>`,
+      message: `ต้องการลบงาน "<b>${escapeHtml(m ? (m.name || 'ไม่ระบุชื่อโครงการ') : '')}</b>" ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">ทุกคนในทีมจะไม่เห็นงานนี้อีก · รูปใน Google Drive จะถูกย้ายไปถังขยะ (กู้คืนได้ 30 วัน)</span>`,
       confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
     });
     if(!ok) return;
-    const { error } = await sb.from('meetings').delete().eq('id', el.dataset.del);
-    if(error){ console.error(error); showToast('ลบไม่สำเร็จ'); return; }
-    if(el.dataset.del === cur) leaveMeeting();
-    showToast('ลบงานแล้ว');
+    await deleteTeamMeeting(el.dataset.del).then(()=>{
+      if(el.dataset.del === cur) leaveMeeting();
+      showToast('ลบงานแล้ว');
+    }).catch(e=>{ console.error(e); showToast('ลบไม่สำเร็จ'); });
     showMeetingListModal(true);
   });
   bg.querySelectorAll('[data-ldel]').forEach(el=> el.onclick = async e=>{
@@ -3331,7 +3401,7 @@ async function resetAll(){
   state.categories = [];
   render();
   await dbWrite(()=> sb.from('categories').delete().eq('meeting_id', state.meeting.id), 'categories:clear:' + state.meeting.id);
-  driveIds.forEach(driveDelete);
+  driveDeleteAll(driveIds);
   await addCategory('MDB PANEL');
   showToast('ล้างข้อมูลแล้ว');
 }
