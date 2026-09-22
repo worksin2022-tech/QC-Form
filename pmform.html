@@ -48,6 +48,16 @@
             border-radius: 12px;
         }
 
+        /* 🌟 หน้าถัดจากหน้าปก (บนจอ): ให้เห็น "ขอบกระดาษ" ชัดเหมือนหน้าปก — เงารอบ + มุมโค้ง 12px
+           #reportDocument มี radius 12px และแถบหัว/ท้าย rounded อยู่แล้ว ขาดแค่เงา (inline box-shadow:none)
+           ส่วน #printLayoutTable ที่ครอบเป็นสี่เหลี่ยมขาว+เงาทอดลงล่างอย่างเดียว ทับมุมโค้งจนมองไม่เห็นขอบ
+           → ทำ table โปร่ง แล้วคืนเงาแบบ .a4-page ให้ reportDocument
+           ปิดตอน export (.preparing-pdf) + @media screen → ไม่มีเงา/ความโปร่งหลุดไปใน PDF ทั้ง 2 โหมด */
+        @media screen {
+            .a4-wrapper:not(.preparing-pdf) #printLayoutTable { background: transparent !important; box-shadow: none !important; }
+            .a4-wrapper:not(.preparing-pdf) #reportDocument { box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 10px rgba(0,0,0,0.02) !important; }
+        }
+
         /* ซ่อนปุ่มเวลา Print */
         .preparing-pdf .no-print, .preparing-pdf .tmp-no-print { display: none !important; }
         /* 🌟 Contact Resistance Test: ถ้าไม่มีรูปแนบเลย ให้ซ่อนหัวข้อ "Photograph" + พื้นที่รูปที่ว่าง ตอนออก PDF
@@ -201,6 +211,9 @@
 
         .html2pdf-mode-active .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
         .html2pdf-mode-active .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+        /* 🌟 Blank Page: กล่องรูปที่ผู้ใช้ขยาย (กว้าง/ใหญ่/เต็มหน้า) ต้องกว้างเต็มแถวจริงตอนออก PDF
+           ไม่งั้นจะถูกกฎด้านบนบีบเหลือ 50% → กรอบใหญ่แต่รูปเล็ก */
+        .html2pdf-mode-active .grid > .photo-box.blank-photo-enlarged { width: 100% !important; }
 
         .html2pdf-mode-active .general-block,
         .html2pdf-mode-active .insulation-block, 
@@ -359,6 +372,8 @@
             .native-print-mode #moduleContainer { display: block !important; }
             .native-print-mode .grid { display: flex !important; flex-wrap: wrap !important; gap: 0 !important; justify-content: space-between !important; }
             .native-print-mode .grid > div { width: calc(50% - 4px) !important; margin-bottom: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+            /* 🌟 Blank Page: กล่องรูปที่ผู้ใช้ขยาย ต้องกว้างเต็มแถวจริงตอนพิมพ์ (ไม่โดนบีบเหลือ 50%) */
+            .native-print-mode .grid > .photo-box.blank-photo-enlarged { width: 100% !important; }
 
             /* 🌟 Contact: ให้สูงเท่า insulation (แถวตารางเท่ากัน → ใส่ 6 รูปได้เท่ากัน)
                ตัวที่ทำให้ contact สูงกว่า: (1) wrapper mt-4 เกินมา (2) input ชื่อเบรกเกอร์ text-lg ใหญ่
@@ -486,6 +501,10 @@
         .crop-photo-btn { position: absolute; bottom: 8px; left: 8px; background: #0d9488; color: white; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .photo-box:hover .crop-photo-btn { opacity: 1; }
         .crop-photo-btn:hover { background: #0f766e; transform: scale(1.05); }
+        /* 🌟 Blank Page: ตัวเลือกปรับขนาดรูปแบบพรีเซ็ต (บนซ้ายของกล่อง, ไม่พิมพ์ลง PDF) */
+        .blank-size-select { position: absolute; top: 8px; left: 8px; z-index: 20; font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 8px; border: 1px solid #cbd5e1; background: rgba(255,255,255,0.92); color: #475569; cursor: pointer; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 60%; }
+        .photo-box:hover .blank-size-select { opacity: 1; }
+        .blank-size-select:focus { opacity: 1; outline: none; border-color: #f97316; }
 
         /* 🌟 Crop Modal — Stage และ Overlay 🌟 */
         #cropStage { position: relative; width: 100%; height: 100%; overflow: hidden; background: #1e293b; user-select: none; touch-action: none; cursor: grab; }
@@ -975,8 +994,8 @@
                     <button onclick="adjustTocRowsPerPage(1)" class="w-6 h-6 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold flex items-center justify-center transition-colors leading-none">+</button>
                 </div>
 
-                <button id="previewBtn" onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-800 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="พรีวิว / พิมพ์เอกสาร (Ctrl+P)">
-                    <i class="fa-solid fa-eye"></i> <span class="hidden lg:inline">พรีวิว</span>
+                <button id="wordExportBtn" onclick="exportToWord()" class="whitespace-nowrap justify-center bg-white border border-blue-300 hover:bg-blue-50 hover:text-blue-800 text-blue-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="ส่งออกเป็นไฟล์ Word (.doc) เปิดแก้ไขใน Microsoft Word ได้">
+                    <i class="fa-solid fa-file-word"></i> <span class="hidden lg:inline">Word</span>
                 </button>
                 <button onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2" title="พิมพ์ / บันทึกเป็น PDF">
                     <i class="fa-solid fa-print"></i> <span class="hidden md:inline">พิมพ์ / PDF</span>
@@ -1060,7 +1079,7 @@
                         <!-- โลโก้มาตรฐานมุมซ้ายล่าง -->
                         <div class="absolute bottom-[110px] left-[80px] z-20">
                             <div class="w-[280px] h-[80px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverIsoLogoUpload').click()">
-                                <img id="coverIsoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-left bg-no-repeat" style="border-radius: inherit;" />
+                                <img id="coverIsoLogoImg" class="absolute inset-0 z-20 hidden w-full h-full object-contain object-left" style="border-radius: inherit;" />
                                 <div id="coverIsoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-blue-500 no-print border-2 border-dashed border-slate-300 group-hover:border-blue-400 px-3 py-2 rounded-lg bg-slate-50/80 w-full h-full flex justify-center items-center"><i class="fa-solid fa-plus mr-1"></i>อัปโหลดโลโก้ ISO / มาตรฐาน</div>
                                 <input type="file" id="coverIsoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverIsoLogoImg', 'coverIsoLogoPlaceholder')">
                             </div>
@@ -1069,7 +1088,7 @@
                         <!-- โลโก้ EcoXpert มุมขวาล่าง -->
                         <div class="absolute bottom-[90px] right-[80px] z-20">
                             <div class="w-[160px] h-[100px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverEcoLogoUpload').click()">
-                                <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden bg-white bg-contain bg-right bg-no-repeat" style="border-radius: inherit;" />
+                                <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden w-full h-full object-contain object-right" style="border-radius: inherit;" />
                                 <div id="coverEcoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-green-500 no-print text-center px-2 py-2 border-2 border-dashed border-slate-300 group-hover:border-green-500 bg-slate-50/80 rounded-lg w-full h-full flex flex-col justify-center items-center"><i class="fa-solid fa-plus mb-1"></i>อัปโหลดโลโก้<br>EcoXpert</div>
                                 <input type="file" id="coverEcoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverEcoLogoImg', 'coverEcoLogoPlaceholder')">
                             </div>
@@ -1149,7 +1168,7 @@
                                                 <div id="tocList" class="flex flex-col rounded-lg overflow-hidden border border-slate-300 shadow-sm">
                                                     <div class="text-center text-slate-400 italic py-8 font-medium bg-slate-50">
                                                         <i class="fa-solid fa-list-ul text-3xl mb-2 text-slate-300 block"></i>
-                                                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                                                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "Word" หรือ "พิมพ์ / PDF"
                                                     </div>
                                                 </div>
                                             </div>
@@ -3524,6 +3543,46 @@
                 }
             });
 
+            // 🌟 retrofit: โลโก้หน้าปกจาก draft เก่า → ตัด bg-white + ใส่ object-contain ให้พอดีบล็อก/คงพื้นใส
+            [['coverIsoLogoImg','object-left'],['coverEcoLogoImg','object-right']].forEach(([id, pos]) => {
+                const im = document.getElementById(id);
+                if (!im) return;
+                im.classList.remove('bg-white', 'bg-contain', 'bg-left', 'bg-right', 'bg-no-repeat');
+                im.classList.add('w-full', 'h-full', 'object-contain', pos);
+            });
+
+            // 🌟 retrofit: กล่องรูป Blank Page จาก draft เก่า → เพิ่มตัวเลือกปรับขนาด (idempotent, เฉพาะกล่อง 'blk')
+            document.querySelectorAll('.photo-box').forEach(box => {
+                const isBlank = box.querySelector('[id^="prev_blk_"], [id^="img_blk_"]');
+                if (!isBlank) return;
+                // ตรวจขนาดปัจจุบันจากความสูงที่ถูกบันทึกไว้
+                const h = box.style.height;
+                let cur = 'normal';
+                if (h === '780px') cur = 'full';
+                else if (h === '450px') cur = 'large';
+                else if (h === '330px') cur = 'wide';
+                // self-heal (ทำกับทุกกล่อง แม้มี dropdown แล้ว) — ซ่อมกล่องที่บันทึกไว้ตอนยังมีบั๊ก:
+                //   1) aspect-ratio ยังเป็น 3/2 → ความกว้างถูกคำนวณจากความสูงจนล้นหน้า
+                //   2) ยังไม่มีคลาส blank-photo-enlarged → ตอนพิมพ์โดนบีบเหลือ 50% (กรอบใหญ่แต่รูปเล็ก)
+                if (cur !== 'normal') {
+                    box.style.aspectRatio = 'auto';
+                    box.style.gridColumn = 'span 2';
+                    box.classList.add('blank-photo-enlarged');
+                } else {
+                    box.classList.remove('blank-photo-enlarged');
+                }
+                if (box.querySelector('.blank-size-select')) return;   // มี dropdown แล้ว ไม่ต้องเพิ่มซ้ำ
+                const sel = document.createElement('select');
+                sel.className = 'blank-size-select no-print';
+                sel.title = 'ปรับขนาดรูป';
+                sel.setAttribute('onclick', 'event.stopPropagation()');
+                sel.setAttribute('onmousedown', 'event.stopPropagation()');
+                sel.setAttribute('onchange', 'event.stopPropagation(); setBlankPhotoSize(this)');
+                sel.innerHTML = '<option value="normal">▭ ปกติ</option><option value="wide">▬ กว้าง</option><option value="large">◼ ใหญ่</option><option value="full">⬛ เต็มหน้า</option>';
+                sel.value = cur;
+                box.insertBefore(sel, box.firstChild);
+            });
+
             // 🌟 ล้างไฮไลท์ที่ถูกเซฟค้างใน draft (บั๊กเก่า: autosave ยิงตอนกรอบเขียว/ส้มยังโชว์
             //    → inline outline ฝังลง innerHTML ถาวร + ติดตอนพิมพ์)
             document.querySelectorAll('#exportWrapper .block-flash-new, #exportWrapper .block-flash-goto').forEach(el => {
@@ -5846,7 +5905,7 @@
                 draggable: '.photo-box',
                 ghostClass: 'sortable-ghost',
                 // กันการเริ่ม drag จากปุ่มภายในกล่อง (ลบ/วาด/ครอบตัด/file input)
-                filter: '.delete-photo-btn, .edit-photo-btn, .crop-photo-btn, input',
+                filter: '.delete-photo-btn, .edit-photo-btn, .crop-photo-btn, .blank-size-select, input, select',
                 preventOnFilter: false,
                 // 🌟 จอสัมผัส (iPad): ต้องกดค้าง 150ms ก่อนถึงเริ่มลาก — ไม่งั้นนิ้วปัด scroll จะกลายเป็นลากรูป
                 //    delayOnTouchOnly = เมาส์ desktop ลากได้ทันทีเหมือนเดิม
@@ -5872,8 +5931,18 @@
             box.style.aspectRatio = '3/2';
             box.style.borderRadius = '8px';
             box.setAttribute('onclick', `document.getElementById('img_${prefix}_${i}').click()`);
-            
+
+            // 🌟 Blank Page: ตัวเลือกปรับขนาดรูปแบบพรีเซ็ต (เฉพาะกล่องของ Blank Page — prefix 'blk')
+            const sizeSelector = (prefix === 'blk') ? `
+                <select class="blank-size-select no-print" title="ปรับขนาดรูป" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" onchange="event.stopPropagation(); setBlankPhotoSize(this)">
+                    <option value="normal">▭ ปกติ</option>
+                    <option value="wide">▬ กว้าง</option>
+                    <option value="large">◼ ใหญ่</option>
+                    <option value="full">⬛ เต็มหน้า</option>
+                </select>` : '';
+
             box.innerHTML = `
+                ${sizeSelector}
                 <div class="text-slate-400 flex flex-col items-center justify-center w-full h-full no-print transition-transform group-hover:scale-110 group-hover:${colorClass}">
                     <i class="fa-solid fa-plus text-3xl mb-2 opacity-50"></i>
                     <span class="text-sm font-semibold">อัปโหลดรูปภาพ</span>
@@ -5898,6 +5967,33 @@
             `;
             grid.appendChild(box);
             ensurePhotoGridSortable(grid);
+        }
+
+        // 🌟 ปรับขนาดกล่องรูปของ Blank Page แบบพรีเซ็ต — ค่าถูกฝังเป็น inline style จึงถูกบันทึก/กู้คืนอัตโนมัติ
+        //    ใช้ความสูง px ตายตัว (aspect-ratio ถูก grid stretch บังคับ ใช้ไม่ได้)
+        //    ทุกขนาดออกแบบให้ "ไม่ล้น 1 หน้า": เต็มหน้า 780px + header ~143px + ระยะขอบ ≈ 963px < งบหน้า ~988–1080px
+        function setBlankPhotoSize(sel) {
+            const box = sel.closest('.photo-box');
+            if (!box) return;
+            const v = sel.value;
+            if (v === 'normal') {
+                // ปกติ: 1 คอลัมน์ คืนค่า aspect 3/2 เดิม
+                box.classList.remove('blank-photo-enlarged');
+                box.style.gridColumn = '';
+                box.style.height = '';
+                box.style.aspectRatio = '3/2';
+            } else {
+                // 🌟 ติดคลาสไว้ให้ CSS โหมดพิมพ์รู้ว่ากล่องนี้ต้องกว้างเต็มแถว
+                //    (ตอนพิมพ์ .grid กลายเป็น flex → grid-column ใช้ไม่ได้ และมีกฎบังคับทุกกล่องเหลือ 50%)
+                box.classList.add('blank-photo-enlarged');
+                // 🌟 สำคัญ: ต้องปิด aspect-ratio ก่อนตั้งความสูง
+                //    ไม่งั้นเบราว์เซอร์จะคำนวณ "ความกว้าง" จากความสูง (780 × 3/2 = 1170px) → กล่องล้นออกนอกหน้า
+                //    พอปิดแล้ว ความกว้างจะมาจาก grid (เต็มแถว) ส่วนความสูงคุมด้วย px → ขนาดรายงานคงเดิม
+                box.style.gridColumn = 'span 2';
+                box.style.aspectRatio = 'auto';
+                box.style.height = (v === 'wide') ? '330px' : (v === 'large') ? '450px' : '780px';
+            }
+            if (typeof markUnsaved === 'function') markUnsaved();
         }
 
         function compressImage(file, callback) {
@@ -6029,10 +6125,33 @@
             }
         }
 
+        // 🌟 ย่อโลโก้แบบ "คงพื้นใส" — ต่างจาก compressImage (ของรูปถ่าย) ที่เติมพื้นขาวแล้วแปลงเป็น JPEG
+        //    ไม่เติมพื้น + ส่งออก PNG → โลโก้พื้นใสยังใสอยู่ (ไม่กลายเป็นขาว/ดำ)
+        function compressLogo(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let width = img.width, height = img.height;
+                    const maxSize = 800;   // โลโก้ไม่ต้องใหญ่มาก (ประหยัดขนาด draft)
+                    if (width > height && width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
+                    else if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; }
+                    canvas.width = width; canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);          // ไม่ fillRect → พื้นหลังยังโปร่งใส
+                    callback(canvas.toDataURL('image/png'));         // PNG รองรับ alpha
+                };
+                img.onerror = function() { callback(e.target.result); };   // fallback: ใช้ไฟล์เดิมตรง ๆ
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         function previewCoverLogo(event, imgId, placeholderId) {
             const file = event.target.files[0];
             if (file) {
-                compressImage(file, (compressedBase64) => {
+                compressLogo(file, (compressedBase64) => {
                     const imgElement = document.getElementById(imgId);
                     imgElement.src = compressedBase64;
                     imgElement.classList.remove('hidden');
@@ -6261,6 +6380,7 @@
                     // table-style: zebra-striping + compact py + border-b แต่ละแถว
                     const zebra = index % 2 === 1 ? 'bg-slate-50' : '';
                     row.className = `flex w-full items-center py-[5px] px-3 border-b border-slate-200 ${zebra} group hover:bg-orange-50/40 transition-colors`;
+                    row.setAttribute('data-toc-id', item.id);   // ใช้ตอน export Word (สร้าง bookmark + PAGEREF)
                     row.innerHTML = `
                         <div class="font-bold text-orange-500 text-[13px] w-[36px] shrink-0 tabular-nums">${indexStr}</div>
                         <div class="w-[160px] shrink-0 px-2 text-center break-words leading-tight">${eqHtml}</div>
@@ -7106,7 +7226,7 @@
                 tocList.innerHTML = `
                     <div class="text-center text-slate-400 italic py-8 font-medium bg-slate-50">
                         <i class="fa-solid fa-list-ul text-3xl mb-2 text-slate-300 block"></i>
-                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "พรีวิว" หรือ "พิมพ์ / PDF"
+                        รายการสารบัญจะแสดงผลที่นี่อัตโนมัติเมื่อกด "Word" หรือ "พิมพ์ / PDF"
                     </div>
                 `;
             }
@@ -7385,6 +7505,950 @@
         window.addEventListener('afterprint', () => {
             restoreDocumentAfterPrint();
         });
+
+        // ════════════════════════════════════════════════════════════════════
+        // 🌟 EXPORT WORD (.doc) — แปลงรายงานเป็นไฟล์ที่เปิดแก้ไขใน Microsoft Word ได้
+        //    หลักการ: ใช้ prepareDocumentForPrint(true) เตรียม DOM เหมือนตอนพิมพ์ PDF
+        //    แล้วเดิน DOM จริง อ่าน computed style → สร้าง "Word HTML" (รูปแบบที่ Word เข้าใจ)
+        //    ⚠️ Word ไม่รู้จัก Tailwind / flex / grid / svg / background-image
+        //       → grid + flex-row แปลงเป็น <table>, รูป background-image แปลงเป็น <img>
+        //       → รูปทั้งหมดแนบเป็น MIME part แบบ .mht (Word ไม่รองรับ data: URI ในไฟล์ .doc)
+        //    เลขหน้าสารบัญใช้ฟิลด์ PAGEREF ของ Word → ถ้าหน้าเลื่อน กด Ctrl+A แล้ว F9 ใน Word เพื่ออัปเดต
+        // ════════════════════════════════════════════════════════════════════
+        const WORD_CONTENT_WIDTH_PX = 680;   // A4 210mm − ขอบ 15mm×2 = 180mm ≈ 680px (96dpi) เท่ากับ .a4-page บนจอ
+        const WORD_FILE_BASE = 'file:///C:/PMReport';
+        // 🌟 ฟอนต์ Sarabun (Google Fonts) มักไม่ได้ติดตั้งในเครื่อง → Word จะสุ่มฟอนต์แทน (มักได้ serif)
+        //    จึง map เป็นฟอนต์ไทยที่มีใน Windows ทุกเครื่องและหน้าตาใกล้เคียง (แก้ค่านี้ได้ถ้าติดตั้ง Sarabun แล้ว)
+        const WORD_FONT_MAP = { 'Sarabun': 'TH Sarabun New' };
+        const WORD_DEFAULT_FONT = WORD_FONT_MAP['Sarabun'];
+        // TH Sarabun New ตัวอักษรเล็กกว่าฟอนต์ทั่วไปที่ pt เท่ากัน (ปกติใช้ 16pt ≈ 12pt ของฟอนต์อื่น) → ขยายขนาดชดเชย
+        const WORD_FONT_SCALE = { 'TH Sarabun New': 1.35, 'TH SarabunPSK': 1.35 };
+        function wordScaleOf(font) { return WORD_FONT_SCALE[font] || 1; }
+        // ขนาดตัวอักษรจาก computed style (px) → pt ตามสเกลของฟอนต์ที่ใช้จริงใน Word
+        function wordFontSize(cs) { return wordPt(parseFloat(cs.fontSize) * wordScaleOf(wordFontFamily(cs))); }
+        // ขนาด pt ที่กำหนดตายตัวในเทมเพลต (สารบัญ/หน้าปก/หัวท้ายกระดาษ) ซึ่งใช้ WORD_DEFAULT_FONT
+        function wordSz(pt) { return (pt * wordScaleOf(WORD_DEFAULT_FONT)).toFixed(1) + 'pt'; }
+        const WORD_PAGE_BREAK = "<p style='page-break-before:always;margin:0;font-size:1pt;line-height:1pt'>&nbsp;</p>";
+        const WORD_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'INPUT', 'SELECT', 'TEXTAREA', 'OPTION', 'I', 'svg', 'SVG', 'TEMPLATE', 'CANVAS', 'NOSCRIPT']);
+        const WORD_INLINE_DISPLAYS = new Set(['inline', 'inline-block', 'inline-flex', 'inline-grid', 'inline-table']);
+        const WORD_INLINE_TAGS = new Set(['SPAN', 'A', 'B', 'STRONG', 'I', 'EM', 'U', 'SMALL', 'SUB', 'SUP', 'LABEL', 'ABBR', 'CODE', 'FONT']);
+
+        // element นี้ควรถือเป็น inline ไหม — ลูกของ flex/grid ถูก "blockify" (span กลายเป็น display:block)
+        // แต่บนจอมันยังเรียงในบรรทัดเดียวกับข้อความ (เช่น "Ir = <span>17</span> x In") จึงต้องนับเป็น inline
+        function wordIsInlineEl(el, parentCs) {
+            const d = getComputedStyle(el).display;
+            if (WORD_INLINE_DISPLAYS.has(d)) return true;
+            if (!WORD_INLINE_TAGS.has(el.tagName)) return false;
+            if (el.classList.contains('flex') || el.classList.contains('block')) return false;
+            const pd = parentCs ? parentCs.display : '';
+            if (pd !== 'flex' && pd !== 'inline-flex' && pd !== 'grid' && pd !== 'inline-grid') return false;
+            if (parentCs && wordIsFlexColumn(parentCs)) return false;   // flex-col: แต่ละลูกคือบรรทัดของตัวเอง
+            return !el.querySelector('div, p, table, ul, ol, h1, h2, h3, h4, h5, h6');
+        }
+        const WORD_PRINT_DISPLAYS = new Set(['block', 'flex', 'inline', 'inline-block', 'inline-flex', 'grid', 'table', 'table-row', 'table-cell', 'table-header-group', 'table-footer-group', 'contents', 'list-item']);
+
+        async function exportToWord() {
+            if (selectedModules.length === 0) {
+                showAlert({
+                    title: 'ยังไม่ได้เลือกหัวข้อ',
+                    message: 'กรุณาติ๊กเลือกหัวข้ออย่างน้อย 1 รายการก่อนครับ',
+                    variant: 'info'
+                });
+                return;
+            }
+
+            // 🌟 เก็บ snapshot เข้าประวัติอัตโนมัติเหมือนตอนพิมพ์ PDF
+            autoSnapshotOnExport();
+
+            const btn = document.getElementById('wordExportBtn');
+            const originalBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span class="hidden lg:inline">กำลังสร้าง Word...</span>';
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            }
+
+            let undoPrintVariants = () => {};
+            try {
+                prepareDocumentForPrint(true);
+                undoPrintVariants = wordApplyPrintVariants();
+                await new Promise(r => setTimeout(r, 50));   // ให้ layout นิ่งก่อนวัดขนาด
+
+                const doc = await wordBuildDocument();
+                const mhtml = wordBuildMhtml(doc.html, doc.headerHtml, doc.images);
+
+                const projectNameRaw = document.getElementById('coverInputProject')?.value?.trim() || '';
+                const safeProjectName = projectNameRaw.replace(/[\\/:*?"<>|]/g, '').trim();
+                const fileName = (safeProjectName ? `Report - ${safeProjectName}` : 'Report') + '.doc';
+
+                const blob = new Blob([mhtml], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                showToast(`ส่งออก Word สำเร็จ: "${fileName}" (${doc.images.length} รูป)`);
+            } catch (e) {
+                console.error('[Word Export]', e);
+                showAlert({ title: 'ส่งออก Word ไม่สำเร็จ', message: String(e && e.message || e), variant: 'danger' });
+            } finally {
+                undoPrintVariants();
+                restoreDocumentAfterPrint();
+                if (btn) {
+                    btn.innerHTML = originalBtnHtml;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        // 🌟 Tailwind `print:` variants ทำงานเฉพาะตอน window.print() — ตอน export Word เราอยู่บนจอ
+        //    จึงบังคับ display ตาม print:xxx ชั่วคราว (เช่น "hidden print:flex" ของหัวข้อ Scope of work)
+        function wordApplyPrintVariants() {
+            const changed = [];
+            document.querySelectorAll('#reportDocument [class*="print:"]').forEach(el => {
+                let display = null;
+                el.classList.forEach(c => {
+                    if (!c.startsWith('print:')) return;
+                    const v = c.slice(6);
+                    if (v === 'hidden') display = 'none';
+                    else if (WORD_PRINT_DISPLAYS.has(v)) display = v;
+                });
+                if (display === null) return;
+                changed.push([el, el.style.getPropertyValue('display'), el.style.getPropertyPriority('display')]);
+                el.style.setProperty('display', display, 'important');
+            });
+            return () => changed.forEach(([el, d, p]) => {
+                if (d) el.style.setProperty('display', d, p);
+                else el.style.removeProperty('display');
+            });
+        }
+
+        // ───────────────────────── helpers ─────────────────────────
+        function wordEsc(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function wordPt(px) {
+            const v = parseFloat(px);
+            return (isNaN(v) ? 0 : v * 0.75).toFixed(1) + 'pt';
+        }
+        function wordRgbToHex(c) {
+            const m = c && c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/);
+            if (!m) return null;
+            if (m[4] !== undefined && parseFloat(m[4]) < 0.15) return null;   // โปร่งใส → ไม่ใส่สี
+            return '#' + [m[1], m[2], m[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
+        }
+        function wordFontFamily(cs) {
+            const f = (cs.fontFamily || '').split(',')[0].replace(/["']/g, '').trim();
+            return WORD_FONT_MAP[f] || f || WORD_DEFAULT_FONT;
+        }
+        function wordAlign(cs) {
+            // flex-row ที่จัดกลาง/ชิดขวาด้วย justify-content → ย่อหน้าใน Word จัดตามนั้น (เช่น ปุ่มติ๊ก Pass/Fail/N/A)
+            if ((cs.display === 'flex' || cs.display === 'inline-flex') && !(cs.flexDirection || '').startsWith('column')) {
+                if (cs.justifyContent === 'center' || cs.justifyContent === 'space-around' || cs.justifyContent === 'space-evenly') return 'center';
+                if (cs.justifyContent === 'flex-end' || cs.justifyContent === 'end') return 'right';
+            }
+            const a = cs.textAlign;
+            if (a === 'center' || a === 'right' || a === 'justify') return a;
+            if (a === 'end') return 'right';
+            return 'left';
+        }
+        function wordBorders(cs) {
+            const parts = [];
+            ['Top', 'Right', 'Bottom', 'Left'].forEach(side => {
+                const w = parseFloat(cs[`border${side}Width`]);
+                const st = cs[`border${side}Style`];
+                if (!w || st === 'none' || st === 'hidden') return;
+                const color = wordRgbToHex(cs[`border${side}Color`]) || '#cbd5e1';
+                const style = (st === 'dashed' || st === 'dotted' || st === 'double') ? st : 'solid';
+                parts.push(`border-${side.toLowerCase()}:${wordPt(Math.max(w, 1))} ${style} ${color}`);
+            });
+            return parts;
+        }
+
+        function wordIsHidden(el) {
+            if (WORD_SKIP_TAGS.has(el.tagName)) return true;
+            if (el.classList.contains('no-print') || el.classList.contains('section-icon')) return true;
+            const cs = getComputedStyle(el);
+            if (cs.display === 'none' || cs.visibility === 'hidden') return true;
+            // element ลอย (absolute) ที่ไม่ใช่รูป = ของตกแต่ง (เส้นใต้หัวข้อ, แถบหัว/ท้ายบนจอ) → ข้าม
+            if (cs.position === 'absolute' && !el.matches('img, .photo-image') && !el.querySelector('img, .photo-image')) return true;
+            return false;
+        }
+
+        // font style ของข้อความ — อ่านจาก computed style ของ element ที่ครอบข้อความ
+        function wordInlineStyle(el) {
+            const cs = getComputedStyle(el);
+            const parts = [`font-family:"${wordFontFamily(cs)}"`, `font-size:${wordFontSize(cs)}`];
+            if (parseInt(cs.fontWeight, 10) >= 600) parts.push('font-weight:bold');
+            if (cs.fontStyle === 'italic') parts.push('font-style:italic');
+            const color = wordRgbToHex(cs.color);
+            if (color && color !== '#000000') parts.push(`color:${color}`);
+            if ((cs.textDecorationLine || '').includes('underline')) parts.push('text-decoration:underline');
+            if ((cs.textDecorationLine || '').includes('line-through')) parts.push('text-decoration:line-through');
+            const ls = parseFloat(cs.letterSpacing);
+            if (ls) parts.push(`letter-spacing:${wordPt(ls)}`);
+            return parts.join(';');
+        }
+
+        // style ของย่อหน้า / กล่อง
+        function wordBlockStyle(el, cs, opts = {}) {
+            const parts = ['margin:0'];
+            const mt = parseFloat(cs.marginTop), mb = parseFloat(cs.marginBottom);
+            if (mt > 0) parts.push(`margin-top:${wordPt(Math.min(mt, 40))}`);
+            if (mb > 0) parts.push(`margin-bottom:${wordPt(Math.min(mb, 40))}`);
+            parts.push(`text-align:${wordAlign(cs)}`);
+            if (opts.lineFactor) {
+                const scaled = wordScaleOf(wordFontFamily(cs)) > 1;
+                if (scaled) parts.push(`line-height:${(parseFloat(cs.fontSize) * 0.75 * wordScaleOf(wordFontFamily(cs)) * opts.lineFactor).toFixed(1)}pt`, 'mso-line-height-rule:exactly');
+                else parts.push(`line-height:${Math.round(opts.lineFactor * 100)}%`);
+            } else {
+                parts.push(`line-height:${opts.lineHeight || 'normal'}`);
+            }
+            if (!opts.noBox) {
+                const bg = wordRgbToHex(cs.backgroundColor);
+                if (bg && bg !== '#ffffff') parts.push(`background:${bg}`);
+                parts.push(...wordBorders(cs));
+                // Word ไม่รู้จัก padding ของย่อหน้า → แปลงเป็นระยะห่างบน/ล่างแทน (เฉพาะกล่องที่มีสี/เส้นขอบ)
+            }
+            parts.push(`font-family:"${wordFontFamily(cs)}"`, `font-size:${wordFontSize(cs)}`);
+            return parts.join(';');
+        }
+
+        function wordText(node) {
+            const parent = node.parentElement;
+            const cs = getComputedStyle(parent);
+            let text = node.nodeValue || '';
+            const pre = /pre/.test(cs.whiteSpace);
+            if (!pre) text = text.replace(/\s+/g, ' ');
+            if (!text.trim()) return '';
+            if (cs.textTransform === 'uppercase') text = text.toUpperCase();
+            let html = wordEsc(text);
+            if (pre) html = html.replace(/\r?\n/g, '<br>');
+            // whitespace-nowrap (เช่น "Ir = 17 x In" ในตาราง Trip) → Word ไม่รู้จัก nowrap ใช้ช่องว่างไม่ตัดบรรทัดแทน
+            if (cs.whiteSpace === 'nowrap' && !pre) html = html.replace(/ /g, '\u00a0');
+            return `<span style='${wordInlineStyle(parent)}'>${html}</span>`;
+        }
+
+        function wordJoinInline(items) {
+            let s = 0, e = items.length;
+            while (s < e && (items[s].ws || items[s].gap)) s++;
+            while (e > s && (items[e - 1].ws || items[e - 1].gap)) e--;
+            let out = '', lastWs = false;
+            for (const it of items.slice(s, e)) {
+                if (it.gap) { out += it.html; lastWs = true; }
+                else if (it.ws) { if (!lastWs) out += ' '; lastWs = true; }
+                else { out += it.html; lastWs = false; }
+            }
+            return out;
+        }
+        // ช่องว่างแทน gap ของ flex-row (เช่น gap-8 ระหว่าง Pass / Fail / N/A) — Word ไม่มี gap
+        function wordGapItem(cs) {
+            const gap = parseFloat(cs.columnGap) || 0;
+            if (!(cs.display === 'flex' || cs.display === 'inline-flex') || wordIsFlexColumn(cs) || gap < 8) return null;
+            return { inline: true, gap: true, html: '&nbsp;'.repeat(Math.min(10, Math.round(gap / 5))) };
+        }
+
+        // เนื้อหาแบบ inline ทั้งหมดใต้ el (block ลูกจะถูก flatten คั่นด้วยช่องว่าง) — ใช้กับหัวข้อ/inline element
+        function wordInlineContent(el, ctx) {
+            const items = [];
+            const parentCs = getComputedStyle(el);
+            const isCol = wordIsFlexColumn(parentCs);
+            const gapItem = wordGapItem(parentCs);
+            for (const node of el.childNodes) {
+                if (node.nodeType === 3) {
+                    const h = wordText(node);
+                    items.push(h ? { html: h } : { ws: true });
+                    continue;
+                }
+                if (node.nodeType !== 1) continue;
+                if (wordIsCheckInput(node)) { items.push({ html: wordCheckSymbol(node) }); continue; }
+                if (wordIsHidden(node)) continue;
+                if (node.tagName === 'BR') { items.push({ html: '<br>' }); continue; }
+                if (node.tagName === 'IMG' || node.classList.contains('photo-image')) { items.push({ html: wordImage(node, ctx) }); continue; }
+                const inner = wordInlineContent(node, ctx);
+                if (!inner.trim()) continue;
+                const ncs = getComputedStyle(node);
+                const bg = wordRgbToHex(ncs.backgroundColor);
+                items.push({ html: (bg && bg !== '#ffffff') ? `<span style='background:${bg}'>${inner}</span>` : inner });
+                if (isCol) items.push({ br: true, html: '<br>' });
+                else if (gapItem) items.push(gapItem);
+                else if (!wordIsInlineEl(node, parentCs)) items.push({ ws: true });
+            }
+            // flex-col: ตัด <br> ตัวท้ายสุดออก
+            while (items.length && items[items.length - 1].br) items.pop();
+            return wordJoinInline(items);
+        }
+
+        // ลูกของ block: คืน { allInline, html } — ถ้ามี block ปน จะห่อ run ของ inline ด้วย <p>
+        function wordChildren(el, ctx) {
+            const items = [];
+            const parentCs = getComputedStyle(el);
+            const gapItem = wordGapItem(parentCs);
+            for (const node of el.childNodes) {
+                if (node.nodeType === 3) {
+                    const h = wordText(node);
+                    items.push(h ? { inline: true, html: h } : { inline: true, ws: true });
+                    continue;
+                }
+                if (node.nodeType !== 1) continue;
+                if (wordIsCheckInput(node)) { items.push({ inline: true, html: wordCheckSymbol(node) }); continue; }
+                if (wordIsHidden(node)) continue;
+                const d = getComputedStyle(node).display;
+                const isImg = node.tagName === 'IMG' || node.classList.contains('photo-image');
+                if (node.tagName === 'BR') items.push({ inline: true, html: '<br>' });
+                else if (isImg && d !== 'block') items.push({ inline: true, html: wordImage(node, ctx) });
+                else if (wordIsInlineEl(node, parentCs)) { items.push({ inline: true, html: wordInlineContent(node, ctx) }); if (gapItem) items.push(gapItem); }
+                else items.push({ inline: false, html: wordSerializeBlock(node, ctx) });
+            }
+            if (items.every(i => i.inline)) return { allInline: true, html: wordJoinInline(items) };
+            let html = '', run = [];
+            const flush = () => {
+                const h = wordJoinInline(run);
+                if (h.trim()) html += wordPara(h, el, ctx, 'p', { noBox: true });
+                run = [];
+            };
+            for (const it of items) {
+                if (it.inline) run.push(it);
+                else { flush(); html += it.html; }
+            }
+            flush();
+            return { allInline: false, html };
+        }
+
+        // radio/checkbox ที่พิมพ์ลง PDF (เช่น Pass/Fail/N/A ใน Trip Unit) → สัญลักษณ์ ◉/○ และ ☑/☐
+        function wordCheckSymbol(input) {
+            const radio = input.type === 'radio';
+            const sym = input.checked ? (radio ? '\u25C9' : '\u2611') : (radio ? '\u25CB' : '\u2610');
+            return `<span style='font-family:"Segoe UI Symbol";font-size:${wordFontSize(getComputedStyle(input.parentElement))};color:#1e293b'>${sym}</span>`;
+        }
+        function wordIsCheckInput(node) {
+            return node.tagName === 'INPUT' && (node.type === 'radio' || node.type === 'checkbox') && getComputedStyle(node).display !== 'none' && !node.closest('.no-print');
+        }
+        function wordIsFlexColumn(cs) {
+            return (cs.display === 'flex' || cs.display === 'inline-flex') && (cs.flexDirection || '').startsWith('column');
+        }
+
+        function wordTakeBreakStyle(ctx) {
+            if (!ctx.breakPending) return '';
+            ctx.breakPending = false;
+            return ';page-break-before:always';
+        }
+        function wordTakeBreakTag(ctx) {
+            if (!ctx.breakPending) return '';
+            ctx.breakPending = false;
+            return WORD_PAGE_BREAK;
+        }
+
+        function wordTakeAnchor(ctx) {
+            if (!ctx.anchorPending) return '';
+            const a = `<a name="${ctx.anchorPending}"></a>`;
+            ctx.anchorPending = null;
+            return a;
+        }
+
+        function wordPara(inner, el, ctx, tagName = 'p', opts = {}) {
+            const cs = getComputedStyle(el);
+            ctx.emitted = true;
+            if (ctx.cellLineFactor && !opts.lineHeight) opts = Object.assign({ lineFactor: ctx.cellLineFactor }, opts);
+            return `<${tagName} style='${wordBlockStyle(el, cs, opts)}${wordTakeBreakStyle(ctx)}'>${wordTakeAnchor(ctx)}${inner}</${tagName}>`;
+        }
+
+        // หัวข้อ: .section-title (ไอคอน + ชื่อ) หรือ h1–h6 ตรงๆ → h1/h2 ของ Word (โผล่ใน Navigation Pane)
+        function wordHeading(el, ctx) {
+            const inner = wordInlineContent(el, ctx);
+            if (!inner.trim()) return '';
+            const src = el.matches('h1,h2,h3,h4,h5,h6') ? el : (el.querySelector('h1,h2,h3,h4,h5,h6') || el);
+            const cs = getComputedStyle(src);
+            let tag = 'h1';
+            if (!el.classList.contains('section-title')) {
+                if (src.tagName === 'H3') tag = 'h2';
+                else if (src.tagName === 'H4' || src.tagName === 'H5' || src.tagName === 'H6') tag = 'p';
+            }
+            ctx.emitted = true;
+            const mb = parseFloat(getComputedStyle(el).marginBottom) || 0;
+            const style = `margin:0 0 ${wordPt(Math.max(mb, 6))} 0;text-align:${wordAlign(cs)};line-height:normal;font-family:"${wordFontFamily(cs)}";font-size:${wordFontSize(cs)};font-weight:${parseInt(cs.fontWeight, 10) >= 600 ? 'bold' : 'normal'};color:${wordRgbToHex(cs.color) || '#1e293b'};page-break-after:avoid`;
+            return `<${tag} style='${style}${wordTakeBreakStyle(ctx)}'>${wordTakeAnchor(ctx)}${inner}</${tag}>`;
+        }
+
+        // ───────────────────────── block ─────────────────────────
+        function wordSerializeBlock(el, ctx) {
+            if (wordIsHidden(el)) return '';
+            const cs = getComputedStyle(el);
+            let out = '';
+
+            // ขึ้นหน้าใหม่: ย่อหน้า/หัวข้อถัดไปรับไปเป็น page-break-before (ไม่เกิดบรรทัดว่าง), ตารางใช้ <br> คั่น
+            const wantsBreak = cs.breakBefore === 'page' || el.classList.contains('pdf-page-break');
+            if (wantsBreak && ctx.emitted) ctx.breakPending = true;
+            // div คั่นหน้าเปล่าๆ (จาก splitGridForPrint) → มีหน้าที่แค่ขึ้นหน้าใหม่
+            if (el.classList.contains('pdf-page-break') && !el.textContent.trim() && !el.querySelector('img, .photo-image, table')) return out;
+
+            if (el.id && ctx.tocIds.has(el.id)) ctx.anchorPending = 'toc_' + el.id;
+
+            const tag = el.tagName;
+            if (el.classList.contains('section-title') || /^H[1-6]$/.test(tag)) return out + wordHeading(el, ctx);
+            if (tag === 'TABLE') return out + wordTable(el, ctx);
+            if (el.id === 'dynamicScopeList') return out + wordScopeList(el, ctx);
+            if (el.classList.contains('photo-box')) return out + wordPhotoBox(el, ctx);
+            if (tag === 'IMG' || el.classList.contains('photo-image')) return out + wordPara(wordImage(el, ctx), el, ctx, 'p', { noBox: true, lineHeight: 'normal' });
+            if (cs.display === 'grid' || cs.display === 'inline-grid') return out + wordGrid(el, cs, ctx);
+            if ((cs.display === 'flex' || cs.display === 'inline-flex') && !cs.flexDirection.startsWith('column') && wordFlexAsTable(el)) return out + wordFlexTable(el, cs, ctx);
+
+            const kids = wordChildren(el, ctx);
+            if (kids.allInline) {
+                if (!kids.html.trim()) return out;
+                let inner = kids.html;
+                if (tag === 'LI') inner = wordListPrefix(el) + inner;
+                return out + wordPara(inner, el, ctx);
+            }
+            return out + `<div>${kids.html}</div>`;
+        }
+
+        function wordListPrefix(li) {
+            const cs = getComputedStyle(li);
+            const t = cs.listStyleType;
+            if (t === 'none') return '';
+            if (t === 'decimal') {
+                const idx = Array.from(li.parentElement.children).filter(c => c.tagName === 'LI' && !wordIsHidden(c)).indexOf(li) + 1;
+                return `<span style='${wordInlineStyle(li)}'>${idx}. </span>`;
+            }
+            return `<span style='${wordInlineStyle(li)}'>• </span>`;
+        }
+
+        // flex แถวเดียวที่ลูกเป็นกล่อง (ไม่มีข้อความปน) → ตาราง 1 แถว เพื่อให้ Word วางเรียงซ้าย→ขวาเหมือนบนจอ
+        // ลูกที่ "มีเนื้อหาจริง" — ไม่นับกล่องที่เหลือแต่ปุ่ม/ไอคอนที่ถูกซ่อน
+        function wordHasContent(el) {
+            if (wordIsHidden(el)) return false;
+            if (el.tagName === 'IMG' || el.classList.contains('photo-image')) return true;
+            if ((el.innerText || '').trim()) return true;
+            return !!el.querySelector('img, .photo-image:not(.hidden)');
+        }
+        function wordFlexAsTable(el) {
+            let hasText = false;
+            for (const n of el.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) hasText = true;
+            if (hasText) return false;
+            const kids = Array.from(el.children).filter(wordHasContent);
+            if (kids.length < 2) return false;
+            const cs = getComputedStyle(el);
+            return kids.some(c => !wordIsInlineEl(c, cs));
+        }
+
+        function wordFlexTable(el, cs, ctx) {
+            const kids = Array.from(el.children).filter(wordHasContent);
+            const rect = el.getBoundingClientRect();
+            const totalW = rect.width || WORD_CONTENT_WIDTH_PX;
+            const gap = parseFloat(cs.columnGap) || 0;
+            const mt = parseFloat(cs.marginTop) || 0, mb = parseFloat(cs.marginBottom) || 0;
+            const valign = cs.alignItems === 'center' ? 'middle' : (cs.alignItems === 'flex-end' ? 'bottom' : 'top');
+            const tw = Math.round(Math.min(totalW, WORD_CONTENT_WIDTH_PX));
+            let html = wordTakeBreakTag(ctx) + `<table cellpadding=0 cellspacing=0 width=${tw} style='border-collapse:collapse;width:${tw}px;margin-top:${wordPt(mt)};margin-bottom:${wordPt(mb)}'><tr>`;
+            kids.forEach((kid, i) => {
+                const kr = kid.getBoundingClientRect();
+                const w = Math.round(kr.width ? Math.max(kr.width, 20) : (tw / kids.length));
+                const padR = (i < kids.length - 1 && gap) ? `padding-right:${wordPt(gap)};` : '';
+                html += `<td width=${w} valign=${valign} style='width:${w}px;${padR}border:none;vertical-align:${valign}'>${wordCellContent(kid, ctx)}</td>`;
+            });
+            html += '</tr></table>';
+            ctx.emitted = true;
+            return html;
+        }
+
+        // เนื้อหาในเซลล์: block → serialize ตามปกติ, inline → ห่อ <p>
+        function wordCellContent(el, ctx) {
+            const d = getComputedStyle(el).display;
+            if (el.tagName === 'IMG' || el.classList.contains('photo-image')) return wordPara(wordImage(el, ctx), el, ctx, 'p', { noBox: true, lineHeight: 'normal' });
+            if (WORD_INLINE_DISPLAYS.has(d)) {
+                const inner = wordInlineContent(el, ctx);
+                return inner.trim() ? wordPara(inner, el, ctx) : '';
+            }
+            return wordSerializeBlock(el, ctx);
+        }
+
+        // CSS grid (ตารางรูป) → <table> จำนวนคอลัมน์ตาม grid-template-columns
+        function wordGrid(el, cs, ctx) {
+            const cols = Math.max(1, (cs.gridTemplateColumns || '').split(' ').filter(Boolean).length);
+            const gap = parseFloat(cs.columnGap) || 0;
+            const rowGap = parseFloat(cs.rowGap) || gap;
+            const kids = Array.from(el.children).filter(c => !wordIsHidden(c));
+            if (!kids.length) return '';
+            const rect = el.getBoundingClientRect();
+            const gridW = rect.width || WORD_CONTENT_WIDTH_PX;
+            const colW = (gridW - gap * (cols - 1)) / cols;
+            const mt = parseFloat(cs.marginTop) || 0, mb = parseFloat(cs.marginBottom) || 0;
+            const pt = parseFloat(cs.paddingTop) || 0;
+
+            const rows = [];
+            let cur = [], fill = 0;
+            kids.forEach(kid => {
+                let span = 1;
+                const gc = (kid.style.gridColumn || getComputedStyle(kid).gridColumnStart || '');
+                const m = gc.match(/span\s+(\d+)/);
+                if (m) span = Math.min(cols, parseInt(m[1], 10));
+                if (fill + span > cols) { rows.push(cur); cur = []; fill = 0; }
+                cur.push({ kid, span });
+                fill += span;
+            });
+            if (cur.length) rows.push(cur);
+
+            const tw = Math.round(Math.min(gridW, WORD_CONTENT_WIDTH_PX));
+            let html = wordTakeBreakTag(ctx) + `<table cellpadding=0 cellspacing=0 width=${tw} style='border-collapse:collapse;width:${tw}px;margin-top:${wordPt(mt + pt)};margin-bottom:${wordPt(mb)}'>`;
+            rows.forEach((row, ri) => {
+                html += `<tr style='page-break-inside:avoid'>`;
+                let used = 0;
+                row.forEach(({ kid, span }) => {
+                    const w = colW * span + gap * (span - 1);
+                    const padTop = ri > 0 ? rowGap / 2 : 0;
+                    const padBottom = ri < rows.length - 1 ? rowGap / 2 : 0;
+                    html += `<td colspan=${span} width=${Math.round(w)} valign=top style='width:${Math.round(w)}px;padding:${wordPt(padTop)} ${wordPt(gap / 2)} ${wordPt(padBottom)} ${wordPt(gap / 2)};border:none;vertical-align:top'>${wordCellContent(kid, ctx)}</td>`;
+                    used += span;
+                });
+                for (let i = used; i < cols; i++) html += `<td width=${Math.round(colW)} style='border:none'></td>`;
+                html += '</tr>';
+            });
+            html += '</table>';
+            ctx.emitted = true;
+            return html;
+        }
+
+        // ───────────────────────── table ─────────────────────────
+        function wordTable(tbl, ctx) {
+            const cs = getComputedStyle(tbl);
+            const rect = tbl.getBoundingClientRect();
+            const tableW = rect.width || WORD_CONTENT_WIDTH_PX;
+            const mt = parseFloat(cs.marginTop) || 0, mb = parseFloat(cs.marginBottom) || 0;
+            const full = tableW >= WORD_CONTENT_WIDTH_PX - 4;
+            const wAttr = full ? 'width="100%"' : `width=${Math.round(tableW)}`;
+            const wCss = full ? '100%' : `${Math.round(tableW)}px`;
+            let html = wordTakeBreakTag(ctx) + `<table cellpadding=0 cellspacing=0 ${wAttr} style='border-collapse:collapse;width:${wCss};margin-top:${wordPt(mt)};margin-bottom:${wordPt(mb)}'>`;
+
+            const rows = [];
+            Array.from(tbl.children).forEach(sec => {
+                if (sec.tagName === 'TR') rows.push({ tr: sec, head: false });
+                else if (sec.tagName === 'THEAD' || sec.tagName === 'TBODY' || sec.tagName === 'TFOOT') {
+                    if (getComputedStyle(sec).display === 'none') return;
+                    Array.from(sec.children).forEach(tr => { if (tr.tagName === 'TR') rows.push({ tr, head: sec.tagName === 'THEAD' }); });
+                }
+            });
+
+            let headOpen = false, bodyOpen = false;
+            rows.forEach(({ tr, head }) => {
+                if (getComputedStyle(tr).display === 'none') return;
+                const cells = Array.from(tr.children).filter(c => (c.tagName === 'TD' || c.tagName === 'TH') && !wordIsHidden(c));
+                if (!cells.length) return;
+                if (head && !headOpen) { html += '<thead>'; headOpen = true; }
+                if (!head && headOpen) { html += '</thead>'; headOpen = false; }
+                if (!head && !bodyOpen) { html += '<tbody>'; bodyOpen = true; }
+                html += `<tr style='page-break-inside:avoid'>`;
+                cells.forEach(cell => { html += wordCell(cell, tableW, ctx); });
+                html += '</tr>';
+            });
+            if (headOpen) html += '</thead>';
+            if (bodyOpen) html += '</tbody>';
+            html += '</table>';
+            ctx.emitted = true;
+            return html;
+        }
+
+        function wordCell(cell, tableW, ctx) {
+            const cs = getComputedStyle(cell);
+            const rect = cell.getBoundingClientRect();
+            const parts = [];
+            const attrs = [];
+            if (rect.width && tableW) {
+                const w = (rect.width / tableW * 100).toFixed(2);
+                parts.push(`width:${w}%`);
+                attrs.push(`width="${w}%"`);
+            }
+            if (cell.hasAttribute('colspan')) attrs.push(`colspan=${cell.getAttribute('colspan')}`);
+            if (cell.hasAttribute('rowspan')) attrs.push(`rowspan=${cell.getAttribute('rowspan')}`);
+            parts.push(...wordBorders(cs));
+            // ระยะขอบเซลล์ให้เท่าตอนพิมพ์ PDF (.native-print-mode: 4px 6px, Trip Unit 3px 6px) — บนจอกว้างกว่านี้
+            const padV = cell.closest('.trip-block') ? 3 : 4;
+            parts.push(`padding:${wordPt(padV)} ${wordPt(6)} ${wordPt(padV)} ${wordPt(6)}`);
+            const bg = wordRgbToHex(cs.backgroundColor);
+            if (bg && bg !== '#ffffff') parts.push(`background:${bg}`);
+            const va = cs.verticalAlign === 'top' ? 'top' : (cs.verticalAlign === 'bottom' ? 'bottom' : 'middle');
+            parts.push(`vertical-align:${va}`);
+            attrs.push(`valign=${va}`);
+            parts.push(`text-align:${wordAlign(cs)}`);
+
+            const prevLH = ctx.cellLineFactor;
+            ctx.cellLineFactor = padV === 3 ? 1.15 : 1.2;   // เท่า print CSS (.native-print-mode: 1.2, trip 1.15)
+            const kids = wordChildren(cell, ctx);
+            let inner;
+            if (kids.allInline) inner = wordPara(kids.html || '&nbsp;', cell, ctx, 'p', { noBox: true });
+            else inner = kids.html;
+            ctx.cellLineFactor = prevLH;
+            return `<td ${attrs.join(' ')} style='${parts.join(';')}'>${inner}</td>`;
+        }
+
+        // ───────────────────────── รูปภาพ ─────────────────────────
+        // คืน token ชั่วคราว → แทนที่ด้วย <img> จริงหลังโหลด/วัดขนาดรูปเสร็จ (async)
+        function wordImage(el, ctx, boxW, boxH) {
+            let src = '';
+            if (el.tagName === 'IMG') src = el.currentSrc || el.getAttribute('src') || '';
+            else {
+                const m = (getComputedStyle(el).backgroundImage || '').match(/url\(["']?(.*?)["']?\)/s);
+                if (m) src = m[1];
+            }
+            if (!src || src === 'none') return '';
+            const rect = el.getBoundingClientRect();
+            const w = boxW || rect.width || (el.naturalWidth || 320);
+            const h = boxH || rect.height || (el.naturalHeight || 240);
+            const token = `%%WORD_IMG_${ctx.imgJobs.length}%%`;
+            ctx.imgJobs.push({ token, src, boxW: Math.min(w, WORD_CONTENT_WIDTH_PX), boxH: h });
+            return token;
+        }
+
+        function wordPhotoBox(box, ctx) {
+            const img = box.querySelector('.photo-image, img.photo-image');
+            if (!img || img.classList.contains('hidden')) return '';
+            const rect = box.getBoundingClientRect();
+            const bw = rect.width || 332, bh = rect.height || Math.round(bw * 2 / 3);
+            const token = wordImage(img, ctx, bw, bh);
+            if (!token) return '';
+            ctx.emitted = true;
+            return `<p style='margin:0;text-align:center;line-height:normal${wordTakeBreakStyle(ctx)}'>${wordTakeAnchor(ctx)}${token}</p>`;
+        }
+
+        function wordLoadImage(src) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const m = src.match(/^data:([^;,]+)(;base64)?,(.*)$/s);
+                    const isRaster = m && m[2] && /^image\/(jpeg|png|gif|bmp)$/.test(m[1]);
+                    if (isRaster) {
+                        resolve({ mime: m[1], base64: m[3], w: img.naturalWidth, h: img.naturalHeight });
+                        return;
+                    }
+                    // ไฟล์ภายนอก / svg / webp → วาดลง canvas แล้วเก็บเป็น PNG
+                    try {
+                        const c = document.createElement('canvas');
+                        c.width = img.naturalWidth || 320;
+                        c.height = img.naturalHeight || 240;
+                        c.getContext('2d').drawImage(img, 0, 0);
+                        const d = c.toDataURL('image/png');
+                        resolve({ mime: 'image/png', base64: d.split(',')[1], w: c.width, h: c.height });
+                    } catch (e) {
+                        // เปิดไฟล์ HTML แบบดับเบิลคลิก (file://) → เบราว์เซอร์ห้ามอ่าน pixel ของไฟล์ข้างเคียง
+                        // (เช่น Trip curve preset, โลโก้) → ใส่เป็น "รูปลิงก์" ตาม path เต็มให้ Word โหลดเองแทน
+                        console.warn('[Word Export] อ่าน pixel ไม่ได้ (canvas tainted) → ใช้ลิงก์ไฟล์แทน', src.slice(0, 120));
+                        resolve({ linked: src, w: img.naturalWidth || 320, h: img.naturalHeight || 240 });
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
+
+        async function wordResolveImages(html, ctx) {
+            const cache = new Map();   // src → {name, w, h}
+            for (const job of ctx.imgJobs) {
+                let tag = '';
+                try {
+                    let info = cache.get(job.src);
+                    if (info === undefined) {
+                        const loaded = await wordLoadImage(job.src);
+                        if (loaded && loaded.linked) {
+                            info = { linked: loaded.linked, w: loaded.w, h: loaded.h };
+                        } else if (loaded) {
+                            const idx = ctx.images.length + 1;
+                            const ext = loaded.mime === 'image/png' ? 'png' : (loaded.mime === 'image/gif' ? 'gif' : (loaded.mime === 'image/bmp' ? 'bmp' : 'jpg'));
+                            const name = `image${String(idx).padStart(3, '0')}.${ext}`;
+                            ctx.images.push({ name, mime: loaded.mime, base64: loaded.base64 });
+                            info = { name, w: loaded.w, h: loaded.h };
+                        } else info = null;
+                        cache.set(job.src, info);
+                    }
+                    if (info) {
+                        const scale = Math.min(job.boxW / info.w, job.boxH / info.h);
+                        const w = Math.max(1, Math.round(info.w * scale));
+                        const h = Math.max(1, Math.round(info.h * scale));
+                        const src = info.linked ? info.linked.replace(/"/g, '&quot;') : `${WORD_FILE_BASE}_files/${info.name}`;
+                        tag = `<img width=${w} height=${h} src="${src}" style='width:${w}px;height:${h}px'>`;
+                    }
+                } catch (e) {
+                    console.warn('[Word Export] ข้ามรูป', e);
+                }
+                html = html.replace(job.token, tag);
+            }
+            return html;
+        }
+
+        // ───────────────────────── Scope of work ─────────────────────────
+        function wordInputText(input) {
+            if (!input) return '';
+            const span = input.previousElementSibling;
+            if (span && span.classList.contains('print-text-span')) return span.textContent.trim();
+            return (input.value || '').trim();
+        }
+
+        function wordScopeList(ul, ctx) {
+            let html = '';
+            const items = Array.from(ul.querySelectorAll(':scope > li.scope-item-row'));
+            items.forEach((li, i) => {
+                const text = wordInputText(li.querySelector('input.scope-main-input'));
+                html += `<p style='margin:0 0 5pt 36pt;text-indent:-18pt;line-height:normal;font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(11)}'>${wordTakeAnchor(ctx)}<span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(11)};font-weight:bold;color:#ea580c'>${i + 1}.</span><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(11)};color:#1e293b;font-weight:500'>&nbsp;&nbsp;${wordEsc(text)}</span></p>`;
+                const subs = Array.from(li.querySelectorAll(':scope > ul.sub-scope-list > li'));
+                subs.forEach((sub, j) => {
+                    const st = wordInputText(sub.querySelector('input.scope-sub-input'));
+                    if (!st) return;
+                    html += `<p style='margin:0 0 3pt 66pt;text-indent:-24pt;line-height:normal;font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(10.5)}'><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(10.5)};font-weight:bold;color:#ea580c'>${i + 1}.${j + 1}</span><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(10.5)};color:#334155'>&nbsp;&nbsp;${wordEsc(st)}</span></p>`;
+                });
+            });
+            if (html) ctx.emitted = true;
+            return html;
+        }
+
+        // ───────────────────────── สารบัญ (Word) ─────────────────────────
+        // ใช้ฟิลด์ PAGEREF → เลขหน้าอัปเดตได้ใน Word (Ctrl+A → F9) ; ค่าเริ่มต้นใช้เลขที่แอปคำนวณไว้
+        function wordField(code, cached) {
+            return `<!--[if supportFields]><span style='mso-element:field-begin'></span> ${code} <span style='mso-element:field-separator'></span><![endif]--><span style='mso-no-proof:yes'>${cached}</span><!--[if supportFields]><span style='mso-element:field-end'></span><![endif]-->`;
+        }
+
+        function wordBuildToc(ctx) {
+            const rows = Array.from(document.querySelectorAll('#tocList [data-toc-id]'));
+            if (!rows.length) return '';
+            const F = `font-family:"${WORD_DEFAULT_FONT}"`;
+            let html = `<p style='margin:0 0 3pt 0;text-align:center;line-height:normal;${F};font-size:${wordSz(18)};font-weight:bold;color:#1e293b;letter-spacing:1pt'>TABLE OF CONTENTS</p>`;
+            html += `<table align=center cellpadding=0 cellspacing=0 style='border-collapse:collapse;margin-bottom:14pt'><tr><td width=96 style='width:72pt;height:3pt;background:#f97316;padding:0;font-size:1pt;line-height:1pt'>&nbsp;</td></tr></table>`;
+            const th = (txt, w, align) => `<td width="${w}%" style='width:${w}%;background:#1e293b;padding:5pt 6pt;border:1pt solid #1e293b;text-align:${align};vertical-align:middle'><p style='margin:0;text-align:${align};line-height:normal'><span style='${F};font-size:${wordSz(9)};font-weight:bold;color:#f1f5f9;letter-spacing:0.5pt'>${txt}</span></p></td>`;
+            html += `<table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%;border:1pt solid #cbd5e1'>`;
+            html += `<thead><tr style='page-break-inside:avoid'>${th('NO.', 7, 'left')}${th('EQUIPMENT', 24, 'center')}${th('SECTION', 57, 'left')}${th('PAGE', 12, 'right')}</tr></thead><tbody>`;
+            rows.forEach((row, i) => {
+                const c = row.children;
+                const idx = (c[0]?.textContent || '').trim();
+                const eq = (c[1]?.textContent || '').trim();
+                const title = (c[2]?.textContent || '').trim();
+                const pageRaw = (c[3]?.textContent || '').trim();
+                const page = /^\d+$/.test(pageRaw) ? String(parseInt(pageRaw, 10)) : pageRaw;
+                const id = row.getAttribute('data-toc-id');
+                const bg = i % 2 === 1 ? 'background:#f8fafc;' : '';
+                const cell = (inner, align) => `<td style='${bg}padding:3pt 6pt;border-bottom:1pt solid #e2e8f0;vertical-align:middle;text-align:${align}'><p style='margin:0;text-align:${align};line-height:normal'>${inner}</p></td>`;
+                html += `<tr style='page-break-inside:avoid'>`;
+                html += cell(`<span style='${F};font-size:${wordSz(10)};font-weight:bold;color:#f97316'>${wordEsc(idx)}</span>`, 'left');
+                html += cell(eq === '—' || !eq ? `<span style='${F};font-size:${wordSz(9)};font-style:italic;color:#cbd5e1'>—</span>` : `<span style='${F};font-size:${wordSz(10)};font-weight:bold;color:#1e293b'>${wordEsc(eq)}</span>`, 'center');
+                html += cell(`<span style='${F};font-size:${wordSz(10.5)};font-weight:bold;color:#334155'>${wordEsc(title)}</span>`, 'left');
+                const pageHtml = (page && page !== '-' && id) ? wordField(`PAGEREF toc_${id} \\h`, wordEsc(page)) : wordEsc(page || '-');
+                html += cell(`<span style='${F};font-size:${wordSz(10.5)};font-weight:bold;color:#ea580c'>${pageHtml}</span>`, 'right');
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            ctx.emitted = true;
+            return html;
+        }
+
+        // ───────────────────────── หน้าปก ─────────────────────────
+        // หน้าปกบนจอใช้ svg + absolute position ซึ่ง Word ไม่รองรับ → สร้างใหม่ด้วยตาราง/ย่อหน้าให้ใกล้เคียง
+        function wordBuildCover(ctx) {
+            const A = 'font-family:Arial,Helvetica,sans-serif';
+            const F = `font-family:"${WORD_DEFAULT_FONT}"`;
+            const reportType = (document.getElementById('coverInputReportType')?.value || 'Preventive Maintenance Report').trim();
+            const project = (document.getElementById('coverInputProject')?.value || '').trim();
+            const date = (document.getElementById('coverInputDate')?.value || '').trim();
+
+            let html = '';
+            html += `<p style='margin:50pt 0 0 60pt;line-height:normal'><span style='${A};font-size:39pt;color:#1e293b;letter-spacing:-0.5pt'>Avatar Electric</span></p>`;
+            html += `<p style='margin:0 0 0 214pt;line-height:normal'><span style='${A};font-size:15pt;font-weight:bold;color:#f97316;letter-spacing:0.5pt'>Company Limited</span></p>`;
+
+            const mainLogo = document.querySelector('#coverPage img[alt="Avatar Electric"]');
+            if (mainLogo && mainLogo.naturalWidth > 0 && mainLogo.getAttribute('src')) {
+                html += `<p style='margin:30pt 0 0 0;text-align:center;line-height:normal'>${wordImage(mainLogo, ctx, 280, 280)}</p>`;
+            } else {
+                html += `<p style='margin:100pt 0 0 0'>&nbsp;</p>`;
+            }
+
+            const label = (txt) => `<td width=130 style='width:130px;background:#334155;border-right:3pt solid #f97316;padding:8pt 4pt;text-align:center;vertical-align:middle'><p style='margin:0;text-align:center;line-height:normal'><span style='${F};font-size:${wordSz(10.5)};font-weight:bold;color:#ffffff;letter-spacing:0.8pt'>${txt}</span></p></td>`;
+            const value = (txt) => `<td style='background:#f8fafc;padding:8pt 10pt;vertical-align:middle'><p style='margin:0;line-height:normal'><span style='${F};font-size:${wordSz(13.5)};font-weight:bold;color:#ea580c'>${wordEsc(txt) || '&nbsp;'}</span></p></td>`;
+            const fieldRow = (lbl, val) => `<tr><td colspan=2 style='padding:0'><table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%;border:1pt solid #e2e8f0'><tr>${label(lbl)}${value(val)}</tr></table></td></tr>`;
+
+            html += `<table align=center cellpadding=0 cellspacing=0 width=650 style='width:650px;border-collapse:collapse;margin-top:24pt;border:1pt solid #e2e8f0'>`;
+            html += `<tr><td colspan=2 style='padding:22pt 24pt 8pt 24pt;text-align:center'><p style='margin:0 0 14pt 0;text-align:center;line-height:normal'><span style='${F};font-size:${wordSz(19.5)};font-weight:bold;color:#1e293b;letter-spacing:2pt'>${wordEsc(reportType.toUpperCase())}</span></p></td></tr>`;
+            html += `<tr><td colspan=2 style='padding:0 24pt 0 24pt'><table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%'>${fieldRow('PROJECT', project)}<tr><td colspan=2 style='padding:0;height:10pt;font-size:1pt'>&nbsp;</td></tr>${fieldRow('DATE', date)}</table></td></tr>`;
+            html += `<tr><td colspan=2 style='padding:0 0 22pt 0;font-size:1pt'>&nbsp;</td></tr>`;
+            html += `</table>`;
+
+            // โลโก้มาตรฐาน (ซ้ายล่าง) / EcoXpert (ขวาล่าง)
+            const iso = document.getElementById('coverIsoLogoImg');
+            const eco = document.getElementById('coverEcoLogoImg');
+            const isoOk = iso && !iso.classList.contains('hidden') && iso.getAttribute('src');
+            const ecoOk = eco && !eco.classList.contains('hidden') && eco.getAttribute('src');
+            if (isoOk || ecoOk) {
+                html += `<table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%;margin-top:30pt'><tr>`;
+                html += `<td width="50%" valign=bottom style='padding:0 0 0 60pt;vertical-align:bottom;text-align:left'><p style='margin:0;line-height:normal'>${isoOk ? wordImage(iso, ctx, 280, 80) : '&nbsp;'}</p></td>`;
+                html += `<td width="50%" valign=bottom style='padding:0 60pt 0 0;vertical-align:bottom;text-align:right'><p style='margin:0;text-align:right;line-height:normal'>${ecoOk ? wordImage(eco, ctx, 160, 100) : '&nbsp;'}</p></td>`;
+                html += `</tr></table>`;
+            }
+            return html;
+        }
+
+        // แถบสีหัว/ท้ายหน้าปก (อยู่ใน header/footer ของ section 1 → ชิดขอบกระดาษเสมอ)
+        function wordCoverHeaderHtml() {
+            const band = (h, color) => `<tr><td style='height:${h};background:${color};padding:0;font-size:1pt;line-height:1pt'>&nbsp;</td></tr>`;
+            return `<table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%'>${band('33pt', '#1e293b')}${band('3pt', '#f59e0b')}${band('10pt', '#f97316')}${band('14pt', '#ffedd5')}</table>`;
+        }
+        function wordCoverFooterHtml() {
+            return `<table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%'>` +
+                `<tr><td style='height:6pt;background:#ea580c;padding:0;font-size:1pt;line-height:1pt'>&nbsp;</td></tr>` +
+                `<tr><td style='height:80pt;background:#1e293b;padding:0 0 18pt 60pt;vertical-align:bottom'><p class=MsoFooter style='margin:0;line-height:normal'><span style='font-family:Arial,Helvetica,sans-serif;font-size:15pt;color:#ffffff;letter-spacing:0.8pt'>www.avatar-electric.com</span></p></td></tr>` +
+                `</table>`;
+        }
+
+        // แถบหัว/ท้ายหน้าเนื้อหา — ดีไซน์เดียวกับตอนพิมพ์ (เทา 30% + น้ำเงิน 70% + เส้นส้ม)
+        function wordPageHeaderHtml(title) {
+            return `<table cellpadding=0 cellspacing=0 width=794 style='width:210mm;margin-left:-15mm;border-collapse:collapse;border-bottom:2.5pt solid #f97316'><tr>` +
+                `<td width="30%" style='background:#334155;padding:9pt 0;font-size:1pt'>&nbsp;</td>` +
+                `<td width="70%" style='background:#0f172a;padding:9pt 15mm 9pt 0;text-align:right;vertical-align:middle'><p class=MsoHeader style='margin:0;text-align:right;line-height:normal'><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(11)};font-weight:bold;color:#f1f5f9;letter-spacing:1.3pt'>${wordEsc(title)}</span></p></td>` +
+                `</tr></table>`;
+        }
+        function wordPageFooterHtml() {
+            return `<table cellpadding=0 cellspacing=0 width=794 style='width:210mm;margin-left:-15mm;border-collapse:collapse;border-top:2.5pt solid #f97316'><tr>` +
+                `<td width="30%" style='background:#334155;padding:9pt 0;text-align:center;vertical-align:middle'><p class=MsoFooter style='margin:0;text-align:center;line-height:normal'><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(8)};font-weight:bold;color:#f8fafc;letter-spacing:0.6pt'>AVATAR ELECTRIC CO., LTD.</span></p></td>` +
+                `<td width="70%" style='background:#0f172a;padding:9pt 15mm 9pt 0;text-align:right;vertical-align:middle'><p class=MsoFooter style='margin:0;text-align:right;line-height:normal'><span style='font-family:"${WORD_DEFAULT_FONT}";font-size:${wordSz(9)};font-weight:bold;color:#f8fafc'>Page ${wordField('PAGE', '2')} of ${wordField('NUMPAGES', '2')}</span></p></td>` +
+                `</tr></table>`;
+        }
+
+        // ───────────────────────── ประกอบเอกสาร ─────────────────────────
+        async function wordBuildDocument() {
+            const ctx = { images: [], imgJobs: [], anchorPending: null, breakPending: false, tocIds: new Set(), emitted: false };
+            document.querySelectorAll('#tocList [data-toc-id]').forEach(r => ctx.tocIds.add(r.getAttribute('data-toc-id')));
+
+            const cover = wordBuildCover(ctx);
+            const toc = wordBuildToc(ctx);
+            let body = '';
+            const reportDoc = document.getElementById('reportDocument');
+            Array.from(reportDoc.children).forEach(child => {
+                if (child.id === 'tocSection') return;
+                if (wordIsHidden(child)) return;
+                body += wordSerializeBlock(child, ctx);
+            });
+
+            const headerTitle = (document.getElementById('nativePrintHeaderTitle')?.textContent || 'PREVENTIVE MAINTENANCE REPORT').trim();
+            const projectName = (document.getElementById('coverInputProject')?.value || '').trim();
+
+            let html = `<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 15">
+<meta name=Originator content="Microsoft Word 15">
+<title>${wordEsc(projectName ? `Report - ${projectName}` : 'Report')}</title>
+<!--[if gte mso 9]><xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+<w:Compatibility><w:BreakWrappedTables/><w:DontGrowAutofit/></w:Compatibility>
+</w:WordDocument>
+</xml><![endif]-->
+<style>
+<!--
+@page WordSection1 { size:595.3pt 841.9pt; margin:0 0 0 0; mso-header-margin:0; mso-footer-margin:0; mso-header:url("${WORD_FILE_BASE}_files/header.htm") hc; mso-footer:url("${WORD_FILE_BASE}_files/header.htm") fc; mso-paper-source:0; }
+div.WordSection1 { page:WordSection1; }
+@page WordSection2 { size:595.3pt 841.9pt; margin:20mm 15mm 18mm 15mm; mso-header-margin:0; mso-footer-margin:0; mso-header:url("${WORD_FILE_BASE}_files/header.htm") h2; mso-footer:url("${WORD_FILE_BASE}_files/header.htm") f2; mso-paper-source:0; }
+div.WordSection2 { page:WordSection2; }
+body { font-family:"${WORD_DEFAULT_FONT}",sans-serif; font-size:${wordSz(11)}; color:#1e293b; }
+p, h1, h2, h3, h4, td, li { font-family:"${WORD_DEFAULT_FONT}",sans-serif; }
+p.MsoNormal, p.MsoHeader, p.MsoFooter { margin:0; }
+table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+h1, h2 { mso-style-priority:9; }
+-->
+</style>
+</head>
+<body lang=TH style='tab-interval:36.0pt'>
+<div class=WordSection1>
+${cover}
+</div>
+<span style='font-size:1pt'><br clear=all style='page-break-before:always;mso-break-type:section-break'></span>
+<div class=WordSection2>
+${toc}
+${body}
+</div>
+</body>
+</html>`;
+
+            // หัว/ท้ายกระดาษแยกเป็นไฟล์ header.htm (รูปแบบเดียวกับที่ Word บันทึก .mht)
+            //    ถ้าฝัง div mso-element:header ไว้ใน body โดยตรง Word จะแสดงซ้ำเป็นเนื้อหาท้ายเอกสารด้วย
+            const headerHtml = `<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=ProgId content=Word.Document>
+<link id=Main-File rel=Main-File href="${WORD_FILE_BASE}.htm">
+<style>
+<!--
+p.MsoHeader, p.MsoFooter { margin:0; font-family:"${WORD_DEFAULT_FONT}",sans-serif; }
+table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+-->
+</style>
+</head>
+<body lang=TH>
+<div style='mso-element:header' id=hc>${wordCoverHeaderHtml()}</div>
+<div style='mso-element:footer' id=fc>${wordCoverFooterHtml()}</div>
+<div style='mso-element:header' id=h2>${wordPageHeaderHtml(headerTitle)}</div>
+<div style='mso-element:footer' id=f2>${wordPageFooterHtml()}</div>
+</body>
+</html>`;
+
+            html = await wordResolveImages(html, ctx);
+            return { html, headerHtml, images: ctx.images };
+        }
+
+        // ───────────────────────── MHTML ─────────────────────────
+        // quoted-printable ของ UTF-8 (แบบเดียวกับที่ Word บันทึก .mht) — ปลอดภัยกับภาษาไทย
+        function wordQuotedPrintable(str) {
+            const bytes = new TextEncoder().encode(str);
+            let out = '', line = '';
+            const flushHard = () => {
+                // ช่องว่างท้ายบรรทัดต้อง encode ตามสเปก QP
+                if (line.endsWith(' ')) line = line.slice(0, -1) + '=20';
+                else if (line.endsWith('\t')) line = line.slice(0, -1) + '=09';
+                out += line + '\r\n';
+                line = '';
+            };
+            const push = (s) => {
+                if (line.length + s.length > 74) { out += line + '=\r\n'; line = ''; }
+                line += s;
+            };
+            for (let i = 0; i < bytes.length; i++) {
+                const b = bytes[i];
+                if (b === 13 && bytes[i + 1] === 10) { flushHard(); i++; continue; }
+                if (b === 10) { flushHard(); continue; }
+                if ((b >= 33 && b <= 126 && b !== 61) || b === 32 || b === 9) push(String.fromCharCode(b));
+                else push('=' + b.toString(16).toUpperCase().padStart(2, '0'));
+            }
+            out += line;
+            return out;
+        }
+
+        function wordBuildMhtml(html, headerHtml, images) {
+            const boundary = '----=_NextPart_PMReport_' + Date.now().toString(36);
+            let out = 'MIME-Version: 1.0\r\n';
+            out += `Content-Type: multipart/related; boundary="${boundary}"; type="text/html"\r\n\r\n`;
+            out += `--${boundary}\r\n`;
+            out += 'Content-Type: text/html; charset="utf-8"\r\n';
+            out += 'Content-Transfer-Encoding: quoted-printable\r\n';
+            out += `Content-Location: ${WORD_FILE_BASE}.htm\r\n\r\n`;
+            out += wordQuotedPrintable(html) + '\r\n\r\n';
+            out += `--${boundary}\r\n`;
+            out += 'Content-Type: text/html; charset="utf-8"\r\n';
+            out += 'Content-Transfer-Encoding: quoted-printable\r\n';
+            out += `Content-Location: ${WORD_FILE_BASE}_files/header.htm\r\n\r\n`;
+            out += wordQuotedPrintable(headerHtml) + '\r\n\r\n';
+            images.forEach(img => {
+                out += `--${boundary}\r\n`;
+                out += `Content-Type: ${img.mime}\r\n`;
+                out += 'Content-Transfer-Encoding: base64\r\n';
+                out += `Content-Location: ${WORD_FILE_BASE}_files/${img.name}\r\n\r\n`;
+                out += (img.base64.match(/.{1,76}/g) || []).join('\r\n') + '\r\n\r\n';
+            });
+            out += `--${boundary}--\r\n`;
+            return out;
+        }
+
 
         // ════════════════════════════════════════════════════════════════════
         // 🌟 AI IMPORT — Import รูปและ classification จาก classify_photos.py
@@ -10116,5 +11180,3 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
 </body>
 </html>
-
-
