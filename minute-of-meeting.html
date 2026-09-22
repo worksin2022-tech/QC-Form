@@ -1872,6 +1872,7 @@ function addPhotoViaInput(cmt, which, sidx){
   finput.onchange = ev=>{
     const file = ev.target.files && ev.target.files[0];
     if(!file) return;
+    ensureDriveTokenFromGesture();
     const reader = new FileReader();
     reader.onload = async e2=>{
       // 1) แทรกรูปลงฟอร์มให้จบก่อน (สำคัญสุด) แล้วค่อยอัปโหลดขึ้น Drive เบื้องหลัง
@@ -2332,8 +2333,47 @@ async function flushPendingWrites(){
 /* ========================================================================
    OFFLINE — งานเก็บในเครื่องนี้ (localforage) ไม่ต้องล็อกอิน ไม่ใช้ Drive
    ======================================================================== */
-async function getLocalMeetings(){ try{ return (await localforage.getItem(OFFLINE_KEY)) || []; }catch(e){ return []; } }
+async function getLocalMeetings(){ await migrateLegacyLocal(); try{ return (await localforage.getItem(OFFLINE_KEY)) || []; }catch(e){ return []; } }
 async function setLocalMeetings(list){ try{ await localforage.setItem(OFFLINE_KEY, list); }catch(e){ console.error(e); } }
+
+/* ย้ายงานจากเวอร์ชันเก่า (draft ล่าสุด + ประวัติ 5 ช่อง) เข้ารายการออฟไลน์ครั้งเดียว — ไม่ลบของเดิม */
+const LEGACY_DRAFT_KEY = 'avatar_minute_of_meeting_v2';
+const LEGACY_HISTORY_KEY = 'avatar_mom_history_v1';
+const LEGACY_FLAG_KEY = 'avatar_mom_legacy_migrated';
+function legacyHasContent(s){
+  if(!s) return false;
+  if(((s.meeting || s.cover || {}).name || '').trim()) return true;
+  return (s.categories || []).some(c=> (c.comments || []).some(cm=>
+    (cm.text || '').trim() || (cm.fixedBy || '').trim() ||
+    ['before','after'].some(w=> Array.isArray(cm.photos && cm.photos[w]) && cm.photos[w].some(p=> p && p.dataUrl))));
+}
+async function migrateLegacyLocal(){
+  try{
+    if(await localforage.getItem(LEGACY_FLAG_KEY)) return;
+    const hist = (await localforage.getItem(LEGACY_HISTORY_KEY)) || [];
+    const draft = await localforage.getItem(LEGACY_DRAFT_KEY);
+    const list = (await localforage.getItem(OFFLINE_KEY)) || [];
+    const toEntry = (src, ts)=>{
+      const s = JSON.parse(JSON.stringify(src));
+      s.meeting = Object.assign({ name: '', customer: '', date: '', rev: '01', location: '', docType: 'Minute of Meeting' }, s.meeting || s.cover || {});
+      s.meeting.id = uuid(); s.meeting.driveFolderId = null;
+      delete s._histId; delete s.cover;
+      s.categories = (s.categories || []).map(c=>({ id: c.id || uuid(), name: c.name || '', comments: (c.comments || []).map(cm=>({
+        id: cm.id || uuid(), mode: cm.mode === 'after' ? 'after' : 'before', text: cm.text || '', fixedBy: cm.fixedBy || '',
+        photos: { before: (cm.photos && cm.photos.before) || [null, null], after: (cm.photos && cm.photos.after) || [null] }
+      })) }));
+      return { id: s.meeting.id, name: s.meeting.name, customer: s.meeting.customer, docType: s.meeting.docType, updatedAt: ts || Date.now(), state: s };
+    };
+    const draftId = draft && draft._histId;
+    hist.forEach(h=>{
+      if(!h || !h.state) return;
+      list.push(toEntry(draftId && h.id === draftId ? draft : h.state, h.ts));   // draft = เวอร์ชันล่าสุดของ slot นั้น
+    });
+    if(draft && !(draftId && hist.some(h=> h.id === draftId)) && legacyHasContent(draft)) list.push(toEntry(draft, Date.now()));
+    if(list.length) await localforage.setItem(OFFLINE_KEY, list);
+    await localforage.setItem(LEGACY_FLAG_KEY, 1);
+  }catch(e){ console.error('[migrate]', e); }
+}
 
 let localSaveTimer = null;
 function localAutosave(immediate){
@@ -2564,16 +2604,24 @@ async function initAuth(){
 let driveToken = null;   // { token, exp }
 let gisClient = null;
 
+const DRIVE_TOKEN_KEY = 'avatar_mom_drive_token';
+let lastSeenToken = null;   // token ตัวเดิมที่เคยตั้งแล้ว — ห้ามต่ออายุซ้ำตอนรีโหลด (Supabase ส่ง provider_token ตัวเดิมกลับมาทุกครั้ง)
 function setDriveToken(token, ttlSec){
+  if(!token || token === lastSeenToken) return;
+  lastSeenToken = token;
   driveToken = { token, exp: Date.now() + (ttlSec || 3500) * 1000 };
-  try{ sessionStorage.setItem('avatar_mom_drive_token', JSON.stringify(driveToken)); }catch(_){}
+  lsSet(DRIVE_TOKEN_KEY, JSON.stringify(driveToken));
+  lsSet(DRIVE_TOKEN_KEY + '_seen', token);
+  if(state.meeting.id){ flushPendingUploads(); loadMeetingPhotos(); }
 }
 function restoreDriveToken(){
+  lastSeenToken = lsGet(DRIVE_TOKEN_KEY + '_seen');
   try{
-    const t = JSON.parse(sessionStorage.getItem('avatar_mom_drive_token'));
+    const t = JSON.parse(lsGet(DRIVE_TOKEN_KEY));
     if(t && t.exp > Date.now()) driveToken = t;
   }catch(_){}
 }
+function clearDriveToken(){ driveToken = null; lsSet(DRIVE_TOKEN_KEY, null); }
 function hasDriveToken(){ return !!(driveToken && driveToken.exp > Date.now() + 30000); }
 
 function getDriveToken(interactive){
@@ -2585,9 +2633,13 @@ function getDriveToken(interactive){
       if(resp && resp.access_token){ setDriveToken(resp.access_token, resp.expires_in); resolve(resp.access_token); }
       else resolve(null);
     };
-    gisClient.error_callback = ()=> resolve(null);
+    gisClient.error_callback = err=>{ console.warn('[gis]', err && err.type); resolve(null); };
     gisClient.requestAccessToken({ prompt: '', hint: currentUser && currentUser.email });
   });
+}
+/* เรียกจาก event ที่ผู้ใช้แตะเอง (popup ของ Google เปิดได้) — ถ้า token หมดอายุจะขอใหม่เงียบๆ */
+function ensureDriveTokenFromGesture(){
+  if(isOnline() && currentUser && !hasDriveToken()) getDriveToken(true);
 }
 
 async function connectDrive(){
@@ -2602,7 +2654,7 @@ async function driveFetch(url, opts = {}){
   const token = await getDriveToken(false);
   if(!token){ const e = new Error('no drive token'); e.status = 401; throw e; }
   const res = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: 'Bearer ' + token }, opts.headers || {}) }));
-  if(res.status === 401){ driveToken = null; try{ sessionStorage.removeItem('avatar_mom_drive_token'); }catch(_){} }
+  if(res.status === 401) clearDriveToken();
   if(!res.ok){
     let msg = 'Drive ' + res.status;
     try{ const j = await res.json(); if(j.error && j.error.message) msg += ': ' + j.error.message; }catch(_){}
@@ -2877,6 +2929,16 @@ function subscribeMeeting(id){
     .subscribe();
 }
 function scheduleRemoteRefresh(){ clearTimeout(rtTimer); rtTimer = setTimeout(remoteRefresh, 600); }
+/* iPad พักแอปเบื้องหลัง → websocket realtime หลุด/พลาด event → กลับมาหน้าจอให้ดึงข้อมูลล่าสุดเสมอ */
+function onAppResume(){
+  if(!isOnline() || !currentUser || !state.meeting.id) return;
+  scheduleRemoteRefresh();
+  flushRetryQueue();
+  flushPendingUploads();
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') onAppResume(); });
+window.addEventListener('online', onAppResume);
+window.addEventListener('focus', onAppResume);
 async function remoteRefresh(){
   const id = state.meeting.id;
   if(!id) return;
@@ -3085,7 +3147,7 @@ async function showMeetingListModal(force){
   if(closeBtn) closeBtn.onclick = close;
   if(cur) bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
   const cont = bg.querySelector('#mlContinue');
-  if(cont) cont.onclick = close;
+  if(cont) cont.onclick = ()=>{ ensureDriveTokenFromGesture(); close(); };
   bg.querySelector('#mlSearch').addEventListener('input', e=>{
     const q = e.target.value.trim().toLowerCase();
     bg.querySelectorAll('.hist-item').forEach(el=>{
@@ -3093,9 +3155,10 @@ async function showMeetingListModal(force){
       el.style.display = !q || (((m && m.name) || '') + ' ' + ((m && m.customer) || '')).toLowerCase().includes(q) ? '' : 'none';
     });
   });
-  bg.querySelector('#mlNew').onclick = async ()=>{ close(); await startNewProject(); };
+  bg.querySelector('#mlNew').onclick = async ()=>{ ensureDriveTokenFromGesture(); close(); await startNewProject(); };
   bg.querySelector('#mlSwitch').onclick = async ()=>{ close(); if(online) await enterOfflineMode(); else await switchToOnline(); };
   bg.querySelectorAll('[data-open]').forEach(el=> el.onclick = async ()=>{
+    ensureDriveTokenFromGesture();
     close();
     if(el.dataset.open === cur) return;
     try{ await openMeeting(el.dataset.open); showToast('เปิดงานแล้ว'); }
@@ -4094,7 +4157,8 @@ const PhotoEditor = (function(){
     photo.edit = { crop:{zoom:crop.zoom, ox:crop.ox, oy:crop.oy}, annotations: JSON.parse(JSON.stringify(anns)) };
     photo.pending = isOnline();
     close(); render(); showToast('บันทึกรูปแล้ว');
-    if(isOnline()) uploadPhoto(target.cmt, target.which, target.sidx); else localAutosave();
+    if(isOnline()){ ensureDriveTokenFromGesture(); uploadPhoto(target.cmt, target.which, target.sidx); }
+    else localAutosave();
   }
 
   return { init, open };
@@ -4128,4 +4192,3 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
-
