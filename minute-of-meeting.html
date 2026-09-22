@@ -1867,26 +1867,44 @@ function downscaleDataUrl(src, maxDim){
    เฉพาะ HTTPS — บน HTTP (เปิดผ่าน IP วง LAN) ใช้วิธีแตะค้างที่รูป → บันทึกลงในรูปภาพ
    ======================================================================== */
 function addPhotoViaInput(cmt, which, sidx){
+  // input ต้องอยู่ใน DOM — Safari บน iOS อาจเก็บกวาด input ลอยๆ ทิ้งระหว่างที่ตัวเลือกรูปเปิดอยู่ → change ไม่ยิง
+  document.querySelectorAll('input[data-photo-picker]').forEach(el=> el.remove());
   const finput = document.createElement('input');
   finput.type = 'file'; finput.accept = 'image/*';   // ไม่ใส่ capture → iOS เด้งเมนูเลือกเองตามเดิม
+  finput.dataset.photoPicker = '1';
+  finput.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
+  document.body.appendChild(finput);
+  const cmtId = cmt.id;
   finput.onchange = ev=>{
     const file = ev.target.files && ev.target.files[0];
+    finput.remove();
     if(!file) return;
     ensureDriveTokenFromGesture();
     const reader = new FileReader();
     reader.onload = async e2=>{
       // 1) แทรกรูปลงฟอร์มให้จบก่อน (สำคัญสุด) แล้วค่อยอัปโหลดขึ้น Drive เบื้องหลัง
       const small = await downscaleDataUrl(e2.target.result, 2000);
-      if(!cmt.photos[which]) cmt.photos[which] = [];
-      cmt.photos[which][sidx] = { dataUrl: small, pending: isOnline() };
+      const live = findComment(cmtId);   // หา object ปัจจุบันด้วย id — ระหว่างเลือกรูป state อาจถูกรีเฟรชไปแล้ว
+      if(!live){ showToast('คอมเม้นนี้ถูกลบไปแล้ว'); return; }
+      if(!live.photos[which]) live.photos[which] = [];
+      live.photos[which][sidx] = { dataUrl: small, pending: isOnline() };
       render();
-      if(isOnline()) uploadPhoto(cmt, which, sidx); else localAutosave();
+      if(isOnline()) uploadPhoto(live, which, sidx); else localAutosave();
       // 2) ถ้าไฟล์เพิ่งถูกสร้างเมื่อครู่ (= เพิ่งถ่ายจากกล้อง) → เสนอเซฟต้นฉบับ
       if(isFreshCapture(file)) offerSaveOriginal(file);
     };
+    reader.onerror = ()=> showToast('อ่านไฟล์รูปไม่สำเร็จ ลองใหม่อีกครั้ง');
     reader.readAsDataURL(file);
   };
   finput.click();
+}
+
+function findComment(cmtId){
+  for(const c of state.categories){
+    const cm = c.comments.find(x=> x.id === cmtId);
+    if(cm) return cm;
+  }
+  return null;
 }
 
 /* เดาว่ารูปมาจากกล้อง: ไฟล์ที่เพิ่งถ่ายจะมี lastModified ≈ ตอนนี้
@@ -2725,7 +2743,7 @@ function photoFileName(cmt, which, sidx){
 }
 
 async function uploadPhoto(cmt, which, sidx){
-  const p = cmt.photos[which] && cmt.photos[which][sidx];
+  const p = currentPhoto(cmt.id, which, sidx) || (cmt.photos[which] && cmt.photos[which][sidx]);
   if(!isOnline() || !p || !p.dataUrl || p.uploading) return;
   p.pending = true;
   if(!hasDriveToken()){ updateDriveBanner(); return; }   // รอผู้ใช้กด "เชื่อมต่อ Drive"
@@ -2880,25 +2898,40 @@ function rowsToState(row){
 /* รวม state ที่ดึงมาใหม่กับของเดิม: เก็บรูปที่ decode ไว้แล้ว, รูปที่ยังอัปโหลดไม่เสร็จ,
    และหมวด/คอมเม้นที่เพิ่งสร้างซึ่ง server ยังไม่ทันมี */
 function mergeRemote(remote){
-  const local = new Map();
-  forEachPhoto((p, cm, k, i)=> local.set(cm.id + ':' + k + ':' + i, p));
-  remote.categories.forEach(c=> c.comments.forEach(cm=> ['before','after'].forEach(k=> cm.photos[k].forEach((p, i)=>{
-    const lp = local.get(cm.id + ':' + k + ':' + i);
-    if(!lp) return;
-    if(p){ if(lp.driveId === p.driveId){ p.dataUrl = lp.dataUrl; p.original = lp.original; p.edit = lp.edit; } }
-    else if(lp.pending) cm.photos[k][i] = lp;
-  }))));
-  state.categories.forEach((c, i)=>{
-    const rc = remote.categories.find(r=> r.id === c.id);
-    if(rc){
-      inflight.delete(c.id);
-      c.comments.forEach((cm, j)=>{
-        if(rc.comments.some(r=> r.id === cm.id)) inflight.delete(cm.id);
-        else if(inflight.has(cm.id)) rc.comments.splice(Math.min(j, rc.comments.length), 0, cm);
-      });
-    } else if(inflight.has(c.id)) remote.categories.splice(Math.min(i, remote.categories.length), 0, c);
+  // อัปเดต object เดิม "ในที่" (ไม่สร้างใหม่) — closure ที่ค้างอยู่ระหว่างเลือกรูป/แก้รูป/อัปโหลด จะยังชี้ตัวที่อยู่บนหน้าจอ
+  const oldCats = new Map(state.categories.map(c=> [c.id, c]));
+  const cats = remote.categories.map(rc=>{
+    const oc = oldCats.get(rc.id);
+    if(!oc) return rc;
+    inflight.delete(oc.id);
+    oc.name = rc.name;
+    const prev = oc.comments;
+    const oldCmts = new Map(prev.map(cm=> [cm.id, cm]));
+    const merged = rc.comments.map(rcm=>{
+      const ocm = oldCmts.get(rcm.id);
+      if(!ocm) return rcm;
+      ocm.mode = rcm.mode; ocm.text = rcm.text; ocm.fixedBy = rcm.fixedBy;
+      ['before','after'].forEach(k=> rcm.photos[k].forEach((rp, i)=>{
+        const op = ocm.photos[k][i];
+        if(rp){ if(op && op.driveId === rp.driveId) op.id = rp.id; else ocm.photos[k][i] = rp; }
+        else if(!(op && op.pending)) ocm.photos[k][i] = null;
+      }));
+      return ocm;
+    });
+    // คอมเม้นที่เพิ่งสร้างและ server ยังไม่ทันมี → คงไว้ที่ตำแหน่งเดิม
+    prev.forEach((cm, j)=>{
+      if(merged.some(r=> r.id === cm.id)) inflight.delete(cm.id);
+      else if(inflight.has(cm.id)) merged.splice(Math.min(j, merged.length), 0, cm);
+    });
+    oc.comments = merged;
+    return oc;
   });
-  state = remote;
+  // หมวดที่เพิ่งสร้างและ server ยังไม่ทันมี → คงไว้ที่ตำแหน่งเดิม
+  state.categories.forEach((c, i)=>{
+    if(!cats.some(r=> r.id === c.id) && inflight.has(c.id)) cats.splice(Math.min(i, cats.length), 0, c);
+  });
+  state.meeting = remote.meeting;
+  state.categories = cats;
 }
 
 function renderPreservingFocus(){
@@ -4170,7 +4203,8 @@ const PhotoEditor = (function(){
     const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
     o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
     anns.forEach(a=> drawShape(o, a, OUT_W, OUT_H, 3*sx));
-    const { photo, cmt, which, sidx } = target;   // เก็บไว้ก่อน close() จะล้าง target
+    const { cmt, which, sidx } = target;   // เก็บไว้ก่อน close() จะล้าง target
+    const photo = currentPhoto(cmt.id, which, sidx) || target.photo;   // ตัวที่อยู่ใน state ตอนนี้ (อาจถูกรีเฟรชระหว่างแก้)
     photo.original = img.src;
     photo.dataUrl = out.toDataURL('image/jpeg', 0.95);
     photo.edit = { crop:{zoom:crop.zoom, ox:crop.ox, oy:crop.oy}, annotations: JSON.parse(JSON.stringify(anns)) };
