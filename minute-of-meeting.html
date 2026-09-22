@@ -3250,7 +3250,7 @@ async function showMeetingListModal(force){
   const rescanHtml = `<button class="top-btn" id="mlRescan" style="width:100%;justify-content:center;margin-top:12px;font-size:12.5px;color:var(--muted);">🔍 ค้นหางานเก่าจากเวอร์ชันก่อนในเครื่องนี้</button>`;
 
   const bg = buildModalOverlay(`
-    <div class="modal-head"><span>${online ? 'รายการงาน (ทีม)' : 'งานในเครื่องนี้ (ออฟไลน์)'}</span>${cur ? '<span class="close-btn" id="mlClose">×</span>' : ''}</div>
+    <div class="modal-head"><span>${online ? 'รายการงาน (ทีม)' : 'งานในเครื่องนี้ (ออฟไลน์)'}</span><span class="close-btn" id="mlClose">×</span></div>
     <div class="modal-body">
       ${continueHtml}
       <input id="mlSearch" placeholder="ค้นหาชื่อโครงการ / ลูกค้า..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13.5px;margin-bottom:10px;outline:none;">
@@ -3264,9 +3264,8 @@ async function showMeetingListModal(force){
   `);
   bg.dataset.meetingList = '1';
   const close = ()=> bg.remove();
-  const closeBtn = bg.querySelector('#mlClose');
-  if(closeBtn) closeBtn.onclick = close;
-  if(cur) bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
+  bg.querySelector('#mlClose').onclick = close;
+  bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
   const cont = bg.querySelector('#mlContinue');
   if(cont) cont.onclick = ()=>{ ensureDriveTokenFromGesture(); close(); };
   bg.querySelector('#mlSearch').addEventListener('input', e=>{
