@@ -10,6 +10,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- LocalForage (IndexedDB Wrapper) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <!-- ระบบทีมออนไลน์ (Supabase + Google Drive) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="avatar-cloud.js"></script>
     <!-- SortableJS (สำหรับการลากวางสลับตำแหน่ง) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Fabric.js (ระบบวาดและจัดการรูปทรงอัจฉริยะ) -->
@@ -973,6 +977,9 @@
                     <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline">Import AI</span>
                 </button>
 
+                <!-- บัญชีผู้ใช้ / โหมดออฟไลน์ (ระบบทีม) -->
+                <span id="acChipHost" class="no-print flex items-center"></span>
+
                 <!-- 🌟 ปุ่มบันทึกและประวัติรายงาน -->
                 <button onclick="openSaveToHistoryModal()" class="whitespace-nowrap no-print justify-center bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="บันทึกรายงานนี้ไว้ดูและแก้ไขภายหลัง">
                     <i class="fa-solid fa-bookmark"></i> <span class="hidden lg:inline">บันทึก</span>
@@ -1842,8 +1849,63 @@
             //    ข้าม popup ถ้าเพิ่งกด "เริ่มงานใหม่" / "ล้างข้อมูล" (reload มาเอง)
             let skipStartup = false;
             try { skipStartup = sessionStorage.getItem('pm_skip_startup') === '1'; sessionStorage.removeItem('pm_skip_startup'); } catch {}
-            if (!skipStartup) await showStartupModal(false);
+
+            await initTeamCloud(skipStartup);
         });
+
+        // ============================================================
+        // 🌟 ระบบทีมออนไลน์ (avatar-cloud.js) — เก็บงานลง Supabase, รูปขึ้น Google Drive
+        //    โหมดออฟไลน์ = ใช้ draft + ประวัติในเครื่องแบบเดิมทุกอย่าง
+        // ============================================================
+        async function initTeamCloud(skipStartup) {
+            if (!window.AvatarCloud) { if (!skipStartup) await showStartupModal(false); return; }
+            const wrapper = () => document.getElementById('exportWrapper');
+            await AvatarCloud.init({
+                app: 'pmform',
+                appTitle: 'Smart PM Report',
+                chipContainer: 'acChipHost',
+                root: wrapper,
+                docName: () => deriveAutoName(),
+                docCustomer: () => (document.getElementById('coverInputProject')?.value || '').trim(),
+                onToast: (m) => showToast(m),
+                onStatus: (text, ok) => showSaveStatus(text, ok),
+
+                // เก็บของขึ้นระบบ: ใช้ snapshot เดิม แต่ถอด dataUrl ออก (รูปอยู่บน Drive แล้ว)
+                getState: async () => {
+                    const base = buildDraftObject();
+                    base.html = AvatarCloud.cleanHtml(wrapper());
+                    return base;
+                },
+
+                // เอาของลงมาแสดง — null = เริ่มงานใหม่ (ล้าง draft แล้วโหลดเทมเพลตเปล่า)
+                applyState: async (s) => {
+                    if (!s) {
+                        await localforage.removeItem('smart_pm_draft');
+                        try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
+                        location.reload();
+                        return new Promise(() => {});   // ค้างไว้จนกว่าจะ reload เสร็จ
+                    }
+                    applyDataToDOM(s);
+                    await AvatarCloud.restorePhotos(wrapper(), (n, t) => showSaveStatus(`กำลังโหลดรูป ${n}/${t}...`, true));
+                    await saveDraft();
+                    markHistorySynced();
+                    updateCurrentHistoryIndicator();
+                },
+
+                // ออฟไลน์ = ใช้ draft + ประวัติ 5 ช่องของแอพเองแบบเดิม (ไม่เก็บซ้ำอีกชุด)
+                offlineManagedByApp: true,
+                localList: async () => (await getHistory()).map(h => ({
+                    id: h.id, name: h.name, updatedAt: h.savedAt,
+                    state: { globals: h.globals, html: h.html }
+                })),
+
+                beforeSwitch: async () => { if (draftDirty) await flushDraftSave(); },
+                onReady: async (mode) => {
+                    updateCurrentHistoryIndicator();
+                    if (mode === 'offline' && !skipStartup) await showStartupModal(false);
+                }
+            });
+        }
 
         // 🌟 ซิงค์ข้อมูลหน้าปกให้บันทึกลง Draft ได้
         function syncCoverInputs() {
@@ -2841,6 +2903,13 @@
             const indicator = document.getElementById('currentHistoryIndicator');
             const nameEl = document.getElementById('currentHistoryName');
             if (!indicator || !nameEl) return;
+            // โหมดทีม: แถบนี้บอกว่ากำลังแก้งานไหนในระบบกลาง (ไม่ใช่ประวัติในเครื่อง)
+            if (window.AvatarCloud && AvatarCloud.isOnline()) {
+                const d = AvatarCloud.doc;
+                indicator.style.display = d ? 'flex' : 'none';
+                if (d) { nameEl.textContent = d.name || 'ไม่ระบุชื่องาน'; nameEl.title = nameEl.textContent; }
+                return;
+            }
             if (currentHistoryId === null) {
                 indicator.style.display = 'none';
                 nameEl.textContent = '';
@@ -2872,6 +2941,20 @@
 
         // เปิด modal ตั้งชื่อก่อนบันทึก
         async function openSaveToHistoryModal() {
+            // โหมดทีม: บันทึกขึ้นระบบกลางเลย (รูปขึ้น Google Drive) ใช้ชื่อโครงการบนปก
+            if (window.AvatarCloud && AvatarCloud.isOnline() && AvatarCloud.hasDoc()) {
+                try {
+                    if (await AvatarCloud.save()) {
+                        markHistorySynced();
+                        updateCurrentHistoryIndicator();
+                        showToast('บันทึกขึ้นระบบทีมแล้ว');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    showToast(e.message || 'บันทึกไม่สำเร็จ');
+                }
+                return;
+            }
             const input = document.getElementById('historyNameInput');
             // ดึงชื่อโครงการจากหน้าปกเป็น default
             const projectInput = document.querySelector('input[placeholder*="โครงการ"], input[placeholder*="Project"]');
@@ -2935,6 +3018,8 @@
 
         // เปิด modal ประวัติรายงาน
         async function openHistoryModal() {
+            // โหมดทีม: ใช้รายการงานของทีม (Supabase) แทนประวัติ 5 ช่องในเครื่อง
+            if (window.AvatarCloud && AvatarCloud.isOnline()) { AvatarCloud.openList(); return; }
             await renderHistoryList();
             document.getElementById('historyModal').classList.remove('hidden');
             document.getElementById('historyModal').classList.add('flex');
