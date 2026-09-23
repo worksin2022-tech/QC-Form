@@ -22,6 +22,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- ระบบทีมออนไลน์ (Supabase + Google Drive) -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="avatar-cloud.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -128,7 +133,9 @@
                         <button onclick="window.location.href='photograph-inspection.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-indigo-300">Photograph</button>
                     </div>
                 </div>
+                <span id="acChipHost" class="hidden md:flex items-center ml-2 no-print"></span>
                 <div class="md:hidden flex items-center">
+                    <span id="acChipHostMobile" class="flex items-center mr-1 no-print"></span>
                     <button id="mobileMenuBtn" class="outline-none mobile-menu-button p-2 rounded-md hover:bg-gray-700 focus:outline-none" onclick="toggleMobileMenu()">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
@@ -267,9 +274,18 @@
 
         <div id="app-missing-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
-                <div class="border-b pb-4 mb-6">
-                    <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
-                    <p class="text-gray-500 mt-1">Missing Item Form</p>
+                <div class="border-b pb-4 mb-6 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
+                        <p class="text-gray-500 mt-1">Missing Item Form</p>
+                    </div>
+                    <div class="flex items-center gap-2 no-print">
+                        <button type="button" onclick="cloudSaveCurrent()" class="bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">💾 บันทึก</button>
+                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 ประวัติ</button>
+                    </div>
+                </div>
+                <div id="missingDocBar" class="hidden mb-5 text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
+                    <span>กำลังแก้งาน:</span><span id="missingDocName" class="font-bold text-blue-700 truncate"></span>
                 </div>
 
                 <form id="missingInspectionForm" onsubmit="generateMissingReport(event)">
@@ -420,7 +436,13 @@
                         <h1 class="text-2xl sm:text-3xl font-bold text-red-700">ตรวจสอบอุปกรณ์ก่อนเคลม</h1>
                         <p class="text-gray-500 mt-1">Equipment Inspection Form</p>
                     </div>
-                    <div class="flex-shrink-0 ml-4 hidden sm:block"><img src="Logo Avatar เล็ก.png" class="h-12 sm:h-14 object-contain"></div>
+                    <div class="flex items-center gap-2 no-print">
+                        <button type="button" onclick="cloudSaveCurrent()" class="bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">💾 บันทึก</button>
+                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 ประวัติ</button>
+                    </div>
+                </div>
+                <div id="claimDocBar" class="hidden mb-5 text-xs bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
+                    <span>กำลังแก้งาน:</span><span id="claimDocName" class="font-bold text-red-700 truncate"></span>
                 </div>
 
                 <form id="claimInspectionForm" onsubmit="generateClaimReport(event)">
@@ -1182,10 +1204,15 @@
         // ==========================================
         // 1. SYSTEM NAVIGATION & GLOBAL HELPERS
         // ==========================================
+        let currentAppId = 'home';
+
         function switchApp(appId) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById('app-' + appId).classList.remove('hidden');
             window.scrollTo(0, 0);
+            currentAppId = appId;
+            // ผูกกับชุดเอกสารของฟอร์มที่เพิ่งเปิด (Missing Item / Equipment Claim มีประวัติแยกกัน)
+            if (window.AvatarCloud && CLOUD_FORMS[appId]) AvatarCloud.useApp().then(updateCloudDocBars);
 
             // Menu state updating
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400', 'text-red-400', 'text-orange-400', 'text-green-400'));
@@ -2023,7 +2050,144 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         window.addEventListener('DOMContentLoaded', () => {
             loadDraft();
             setInterval(saveDraft, 3000);
+            initTeamCloud();
         });
+
+        // ==========================================
+        // 🌟 ระบบทีมออนไลน์ — Missing Item / Equipment Claim
+        //    เก็บงานลง Supabase (ตาราง documents) รูปขึ้น Google Drive
+        //    แต่ละฟอร์มมีประวัติของตัวเองแยกกัน
+        // ==========================================
+        const CLOUD_FORMS = {
+            'missing-item': { title: 'Missing Item', scope: 'app-missing-item', signPrefix: 'missing_',
+                              nameFrom: () => [val('projectName'), val('cabinetId')].filter(Boolean).join(' — ') },
+            'claim-item':   { title: 'Equipment Claim', scope: 'app-claim-item', signPrefix: 'claim_',
+                              nameFrom: () => [val('claimEqBrand'), val('claimDocNo')].filter(Boolean).join(' — ') }
+        };
+        const val = id => (document.getElementById(id)?.value || '').trim();
+        const activeForm = () => CLOUD_FORMS[currentAppId] || CLOUD_FORMS['missing-item'];
+        const activeFormKey = () => (CLOUD_FORMS[currentAppId] ? currentAppId : 'missing-item');
+
+        function collectFormFields(scopeId) {
+            const out = {};
+            document.querySelectorAll(`#${scopeId} input, #${scopeId} textarea, #${scopeId} select`).forEach(el => {
+                if (!el.id || el.type === 'file' || el.type === 'button' || el.type === 'submit') return;
+                out[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+            });
+            return out;
+        }
+        function applyFormFields(fields) {
+            Object.entries(fields || {}).forEach(([id, v]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = v; else el.value = v;
+            });
+        }
+        function pickSignatures(prefix) {
+            const out = {};
+            Object.entries(signaturesData || {}).forEach(([k, v]) => { if (k.startsWith(prefix)) out[k] = v; });
+            return out;
+        }
+        function applySignatures(sigs) {
+            Object.entries(sigs || {}).forEach(([k, v]) => {
+                signaturesData[k] = v;
+                const img = document.getElementById(k + '_preview');
+                if (img && v) { img.src = v; img.classList.remove('hidden'); }
+            });
+        }
+
+        async function initTeamCloud() {
+            if (!window.AvatarCloud) return;
+            await AvatarCloud.init({
+                app: activeFormKey,
+                appTitle: () => activeForm().title,
+                chipContainer: window.matchMedia('(min-width: 768px)').matches ? 'acChipHost' : 'acChipHostMobile',
+                silentStart: true,   // หน้ารวมแอพ — ไม่บังคับล็อกอิน ค่อยขอตอนกดบันทึก/ประวัติ
+                root: () => document.getElementById(activeForm().scope),
+                docName: () => activeForm().nameFrom() || 'งานที่ยังไม่ได้ตั้งชื่อ',
+                docCustomer: () => (currentAppId === 'missing-item' ? val('projectName') : val('claimEqBrand')),
+                onToast: m => alert(m),
+
+                getState: async () => {
+                    const f = activeForm();
+                    const state = { fields: collectFormFields(f.scope), signatures: pickSignatures(f.signPrefix) };
+                    if (activeFormKey() === 'missing-item') {
+                        state.items = Array.from(document.querySelectorAll('#missingItemsContainer .item-row')).map(row => ({
+                            name: row.querySelector('.item-name').value,
+                            qty: row.querySelector('.item-qty').value,
+                            remark: row.querySelector('.item-remark').value
+                        }));
+                        state.images = await AvatarCloud.uploadDataUrls(missingUploadedImages.map(i => i.data));
+                    } else {
+                        state.images = await AvatarCloud.uploadDataUrls(claimUploadedImages.map(i => i.data));
+                    }
+                    return state;
+                },
+
+                applyState: async (s) => {
+                    const key = activeFormKey();
+                    if (!s) {   // เริ่มงานใหม่ — ล้างเฉพาะฟอร์มที่เปิดอยู่
+                        document.getElementById(key === 'missing-item' ? 'missingInspectionForm' : 'claimInspectionForm')?.reset();
+                        if (key === 'missing-item') { missingUploadedImages = []; renderMissingImagePreviews(); }
+                        else { claimUploadedImages = []; renderClaimImagePreviews(); }
+                        return;
+                    }
+                    applyFormFields(s.fields);
+                    applySignatures(s.signatures);
+                    const urls = await AvatarCloud.restoreDataUrls(s.images || []);
+                    if (key === 'missing-item') {
+                        if (Array.isArray(s.items) && s.items.length) {
+                            const c = document.getElementById('missingItemsContainer');
+                            c.innerHTML = ''; missingItemCount = 0;
+                            s.items.forEach(item => {
+                                addMissingItem();
+                                const rows = document.querySelectorAll('#missingItemsContainer .item-row');
+                                const last = rows[rows.length - 1];
+                                last.querySelector('.item-name').value = item.name;
+                                last.querySelector('.item-qty').value = item.qty;
+                                last.querySelector('.item-remark').value = item.remark;
+                            });
+                        }
+                        missingUploadedImages = urls.map((d, i) => ({ id: Date.now() + i, data: d }));
+                        renderMissingImagePreviews();
+                    } else {
+                        claimUploadedImages = urls.map((d, i) => ({ id: Date.now() + i, data: d }));
+                        renderClaimImagePreviews();
+                    }
+                    saveDraft();
+                },
+
+                onReady: () => updateCloudDocBars()
+            });
+            updateCloudDocBars();
+        }
+
+        function updateCloudDocBars() {
+            const d = window.AvatarCloud && AvatarCloud.isOnline() ? AvatarCloud.doc : null;
+            [['missing-item', 'missingDocBar', 'missingDocName'], ['claim-item', 'claimDocBar', 'claimDocName']].forEach(([key, barId, nameId]) => {
+                const bar = document.getElementById(barId);
+                if (!bar) return;
+                const show = !!d && currentAppId === key;
+                bar.classList.toggle('hidden', !show);
+                if (show) document.getElementById(nameId).textContent = d.name || 'ไม่ระบุชื่องาน';
+            });
+        }
+
+        async function cloudSaveCurrent() {
+            if (!window.AvatarCloud) return;
+            if (!AvatarCloud.signedIn()) { AvatarCloud.signOutOrLogin(); return; }
+            try {
+                // ยังไม่เคยบันทึก → สร้างที่เก็บใหม่ (ไม่ล้างสิ่งที่กรอกไว้)
+                if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
+                if (await AvatarCloud.save()) { updateCloudDocBars(); alert('บันทึกขึ้นระบบทีมแล้ว'); }
+            } catch (e) { console.error(e); alert(e.message || 'บันทึกไม่สำเร็จ'); }
+        }
+
+        function cloudOpenList() {
+            if (!window.AvatarCloud) return;
+            if (!AvatarCloud.signedIn()) { AvatarCloud.signOutOrLogin(); return; }
+            AvatarCloud.openList();
+        }
      // ==========================================
         // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================
@@ -2334,4 +2498,3 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
 
 </body>
 </html>
-
