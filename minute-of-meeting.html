@@ -1691,10 +1691,18 @@ function uuid(){
   });
 }
 
-function requireMeeting(){
+/* ยังไม่ได้เปิดงาน (เช่นปิดป๊อบอัพรายการไป) → สร้างงานใหม่ให้เลย จะได้ทำงานต่อได้ทันที */
+async function ensureMeeting(){
   if(state.meeting.id) return true;
-  showMeetingListModal(true);
-  return false;
+  try{
+    const id = isOnline() ? await createMeeting({}) : await createLocalMeeting({});
+    if(isOnline()) await openMeeting(id); else await openLocalMeeting(id);
+    return true;
+  }catch(e){
+    console.error(e);
+    showToast('สร้างงานใหม่ไม่สำเร็จ');
+    return false;
+  }
 }
 
 /* ========================================================================
@@ -2025,7 +2033,7 @@ function buildPhotoSlot(cmt, which, sidx){
    ACTIONS
    ======================================================================== */
 async function addCategory(name=''){
-  if(!requireMeeting()) return;
+  if(!(await ensureMeeting())) return;
   const cat = { id: uuid(), name: name || `PANEL ${state.categories.length + 1}`, comments: [] };
   state.categories.push(cat);
   inflight.add(cat.id);
@@ -2039,7 +2047,7 @@ async function addCategory(name=''){
 }
 
 async function addComment(){
-  if(!requireMeeting()) return;
+  if(!(await ensureMeeting())) return;
   if(state.categories.length===0){ await addCategory('MDB PANEL'); return; }
   const lastCat = state.categories[state.categories.length-1];
   addCommentToCategory(lastCat.id, false);
@@ -3388,7 +3396,7 @@ async function importStateLocally(src){
 }
 
 async function resetAll(){
-  if(!requireMeeting()) return;
+  if(!state.meeting.id){ showToast('ยังไม่ได้เปิดงาน'); return; }
   const ok = await confirmDialog({
     title: 'ล้างเนื้อหางานนี้',
     message: 'ต้องการลบหมวดและคอมเม้นทั้งหมดในงานนี้ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">ทุกคนในทีมจะเห็นผลทันที และย้อนกลับไม่ได้</span>',
