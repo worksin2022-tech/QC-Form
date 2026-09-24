@@ -17,6 +17,15 @@
      <script src="avatar-cloud.js"></script>
      AvatarCloud.init({ app:'pmform', appTitle:'Smart PM Report', ... })
 
+   ตัวเลือกที่ควรรู้
+     applyState(state, meta)  meta = { id, updatedAt } เฉพาะตอนเปิดงาน (ไม่มี = เริ่มงานใหม่/ส่งขึ้นทีม)
+     applyEmptyState:true     เปิดงานที่ยังไม่เคยบันทึกแล้วเรียก applyState(null, meta) ด้วย (ไม่งั้นข้าม)
+     beforeSwitch()           ก่อนเปลี่ยนงาน/เริ่มใหม่/ออกจากระบบ/สลับโหมด — คืน false = ยกเลิก
+     chipCompact:true         ชิปบัญชีเหลือแค่รูปโปรไฟล์วงกลม
+     save({ auto:true })      บันทึกอัตโนมัติ: ไม่ถาม/ไม่เด้งหน้าต่าง — throw code 'conflict' | 'drive' แทน
+     doc.everSaved            งานนี้เคยบันทึกเนื้อหาแล้วหรือยัง · connectDrive() ขอสิทธิ์ Drive (ต้องมาจากการกด)
+     checkRemote() / reload() เช็ค/โหลดเวอร์ชันล่าสุดของงานที่เปิดอยู่ · meta.quietPhotos = ห้ามเด้งขอสิทธิ์ Drive
+
    หมายเหตุ: ต้องรัน MIGRATION 4 ใน minute-of-meeting-supabase-schema.sql ก่อน
    ============================================================================ */
 (function (global) {
@@ -42,7 +51,7 @@ const sb = global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:
 let cfg = null;
 let currentUser = null;
 let appMode = lsGet(MODE_KEY) === 'offline' ? 'offline' : 'online';
-let doc = null;          // { id, name, updatedAt, driveFolderId, driveFolderOwner } ของงานที่เปิดอยู่
+let doc = null;          // { id, name, updatedAt, driveFolderId, driveFolderOwner, everSaved } ของงานที่เปิดอยู่
 let photoCache = null;
 const offlineStores = {};
 
@@ -64,6 +73,8 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
 
 const esc = s => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const codedError = (code, msg) => Object.assign(new Error(msg), { code });
 
 function toast(msg, ms) { if (cfg && cfg.onToast) cfg.onToast(msg, ms); }
 function status(text, ok) { if (cfg && cfg.onStatus) cfg.onStatus(text, ok !== false); }
@@ -217,19 +228,36 @@ async function ensureDocFolder() {
    ======================================================================== */
 const PHOTO_SEL = '[style*="background-image"], img';
 
+/* อ่านรูปจาก attribute ตรง ๆ — getAttribute แทบไม่เสียเวลา ส่วน el.style.backgroundImage
+   serialize ค่าใหม่ทุกครั้ง (รายงาน 200 รูป ≈ 60ms ต่อรอบ → บันทึกอัตโนมัติแล้วหน่วง) */
+const photoAttrOf = el => (el.tagName === 'IMG' ? el.getAttribute('src') : el.getAttribute('style')) || '';
+
 function photoElements(root) {
   return Array.from(root.querySelectorAll(PHOTO_SEL)).filter(el => {
-    if (el.tagName === 'IMG') return (el.getAttribute('src') || '').startsWith('data:') || el.dataset.drive;
-    return (el.style.backgroundImage || '').includes('data:') || el.dataset.drive;
+    if (el.tagName === 'IMG') return photoAttrOf(el).startsWith('data:') || el.dataset.drive;
+    return photoAttrOf(el).includes('data:') || el.dataset.drive;
   });
 }
 function readPhotoData(el) {
-  if (el.tagName === 'IMG') {
-    const s = el.getAttribute('src') || '';
-    return s.startsWith('data:') ? s : '';
-  }
-  const m = (el.style.backgroundImage || '').match(/url\(["']?(data:[^"')]+)["']?\)/);
-  return m ? m[1] : '';
+  const a = photoAttrOf(el);
+  if (el.tagName === 'IMG') return a.startsWith('data:') ? a : '';
+  const i = a.indexOf('url(');
+  if (i < 0) return '';
+  let j = i + 4;
+  const q = (a[j] === '"' || a[j] === "'") ? a[j++] : '';
+  if (!a.startsWith('data:', j)) return '';
+  const end = a.indexOf(q || ')', j);
+  return end > j ? a.slice(j, end) : '';
+}
+/* แฮชของรูปต่อ element — จำไว้จนกว่ารูปจะเปลี่ยน (ไม่ต้องแฮชรูปเดิมทุกครั้งที่บันทึกอัตโนมัติ) */
+const photoHashCache = new WeakMap();   // el → { attr, hash }
+function photoHash(el, data) {
+  const attr = photoAttrOf(el);
+  const c = photoHashCache.get(el);
+  if (c && c.attr === attr) return c.hash;
+  const hash = hashString(data);
+  photoHashCache.set(el, { attr, hash });
+  return hash;
 }
 function writePhotoData(el, dataUrl) {
   if (el.tagName === 'IMG') el.setAttribute('src', dataUrl);
@@ -241,16 +269,17 @@ function hashString(s) {
   return (h >>> 0).toString(36) + '-' + s.length.toString(36);
 }
 
-/* อัปโหลดรูปที่ยังไม่ได้ขึ้น Drive (หรือถูกแก้หลังอัปโหลด) — ตั้ง data-drive ไว้บน element จริง */
-async function uploadPhotos(root, onProgress) {
+/* อัปโหลดรูปที่ยังไม่ได้ขึ้น Drive (หรือถูกแก้หลังอัปโหลด) — ตั้ง data-drive ไว้บน element จริง
+   interactive:false = ห้ามเด้งหน้าขอสิทธิ์ Drive (บันทึกอัตโนมัติ) → ไม่มี token ก็ throw code 'drive' */
+async function uploadPhotos(root, onProgress, interactive = true) {
   if (!isOnline() || !root) return;
   const els = photoElements(root).filter(el => {
     const d = readPhotoData(el);
     if (!d) return false;
-    return !(el.dataset.drive && el.dataset.driveHash === hashString(d));
+    return !(el.dataset.drive && el.dataset.driveHash === photoHash(el, d));
   });
   if (!els.length) return;
-  if (!hasDriveToken() && !(await getDriveToken(true))) throw new Error('ต้องเชื่อมต่อ Google Drive ก่อนบันทึก');
+  if (!hasDriveToken() && !(await getDriveToken(interactive))) throw codedError('drive', 'ต้องเชื่อมต่อ Google Drive ก่อนบันทึก');
   const folderId = await ensureDocFolder();
   let n = 0;
   for (const el of els) {
@@ -277,8 +306,9 @@ function cleanHtml(root) {
   return clone.innerHTML;
 }
 
-/* ดึงรูปกลับมาแปะหลังโหลดเอกสาร (ใช้ cache ในเครื่องก่อน ไม่มีค่อยโหลดจาก Drive) */
-async function restorePhotos(root, onProgress) {
+/* ดึงรูปกลับมาแปะหลังโหลดเอกสาร (ใช้ cache ในเครื่องก่อน ไม่มีค่อยโหลดจาก Drive)
+   interactive:false = ไม่มีสิทธิ์ Drive ก็ข้ามไป (ตอนเปิดแอพ/กลับมาที่แอพ ไม่มีการกด → เบราว์เซอร์บล็อกหน้าต่าง Google อยู่ดี) */
+async function restorePhotos(root, onProgress, interactive = true) {
   if (!root) return;
   const els = Array.from(root.querySelectorAll('[data-drive]')).filter(el => !readPhotoData(el));
   if (!els.length) return;
@@ -290,7 +320,7 @@ async function restorePhotos(root, onProgress) {
     else pending.push(el);
   }
   if (!pending.length) return;
-  if (!hasDriveToken() && !(await getDriveToken(true))) { toast('ยังโหลดรูปไม่ได้ — ต้องเชื่อมต่อ Google Drive'); return; }
+  if (!hasDriveToken() && !(await getDriveToken(interactive))) { toast('ยังโหลดรูปไม่ได้ — ต้องเชื่อมต่อ Google Drive'); return; }
   let i = 0;
   await Promise.all([0, 1, 2].map(async () => {
     while (i < pending.length) {
@@ -405,25 +435,35 @@ async function createDocument(name) {
   return id;
 }
 
-async function openDocument(id) {
+async function openDocument(id, opts = {}) {
   const { data, error } = await sb.from('documents').select('*').eq('id', id).single();
   if (error) throw error;
-  doc = { id: data.id, name: data.name, updatedAt: data.updated_at, driveFolderId: data.drive_folder_id, driveFolderOwner: data.drive_folder_owner };
+  const hasState = !!(data.state && Object.keys(data.state).length);
+  // everSaved = งานนี้เคยถูกบันทึกเนื้อหาแล้ว (งานที่กด "เริ่มงานใหม่" แต่ยังไม่เคยบันทึก = false)
+  doc = { id: data.id, name: data.name, updatedAt: data.updated_at, driveFolderId: data.drive_folder_id, driveFolderOwner: data.drive_folder_owner, everSaved: hasState };
   lsSet(lastDocKey(), id);
-  if (data.state && Object.keys(data.state).length) {
-    await cfg.applyState(data.state);
-    await restorePhotos(cfg.root(), (n, total) => status(`กำลังโหลดรูป ${n}/${total}...`, true));
+  // meta = งานที่กำลังเปิด (แอพใช้เทียบกับของที่แก้ค้างไว้ในเครื่อง) — ไม่มี meta = เริ่มงานใหม่
+  const meta = { id: data.id, updatedAt: data.updated_at, quietPhotos: !!opts.quietPhotos };
+  if (hasState) {
+    await cfg.applyState(data.state, meta);
+    await restorePhotos(cfg.root(), (n, total) => status(`กำลังโหลดรูป ${n}/${total}...`, true), !opts.quietPhotos);
+  } else if (cfg.applyEmptyState) {
+    // งานที่สร้างแล้วแต่ยังไม่เคยบันทึก — แอพต้องล้างหน้าจอเอง ไม่งั้นเนื้อหางานก่อนหน้าจะค้างอยู่
+    await cfg.applyState(null, meta);
   }
   status('เปิดงานจากระบบทีมแล้ว');
   return doc;
 }
 
 /* บันทึกงานปัจจุบัน — อัปรูปขึ้น Drive ก่อน แล้วเขียน state ลง database
-   กันเขียนทับ: ถ้า updated_at บนเซิร์ฟเวอร์ใหม่กว่าตอนที่เราโหลดมา = มีคนอื่นบันทึกไปแล้ว */
+   กันเขียนทับ: ถ้า updated_at บนเซิร์ฟเวอร์ใหม่กว่าตอนที่เราโหลดมา = มีคนอื่นบันทึกไปแล้ว
+   opts.auto = บันทึกอัตโนมัติ (ไม่มีผู้ใช้เฝ้า) → ห้ามถาม/เด้งหน้าต่าง
+     มีคนบันทึกหลังเราเปิด → throw code 'conflict' (ไม่ทับ) · ยังไม่เชื่อม Drive → throw code 'drive' */
 async function saveDocument(opts = {}) {
   if (!isOnline()) {
     const state = await cfg.getState();
     await localSaveDoc(doc.id, doc.name, state);
+    doc.everSaved = true;
     status('บันทึกในเครื่องแล้ว');
     return true;
   }
@@ -432,13 +472,14 @@ async function saveDocument(opts = {}) {
   if (!opts.force) {
     const { data } = await sb.from('documents').select('updated_at, updated_by').eq('id', doc.id).single();
     if (data && doc.updatedAt && new Date(data.updated_at) > new Date(doc.updatedAt)) {
+      if (opts.auto) throw codedError('conflict', 'มีคนบันทึกงานนี้หลังจากคุณเปิด');
       const ok = await confirmOverwrite(data.updated_at);
       if (!ok) return false;
     }
   }
 
   status('กำลังอัปโหลดรูป...', true);
-  await uploadPhotos(cfg.root(), (n, total) => status(`กำลังอัปโหลดรูป ${n}/${total}...`, true));
+  await uploadPhotos(cfg.root(), (n, total) => status(`กำลังอัปโหลดรูป ${n}/${total}...`, true), !opts.auto);
 
   const state = await cfg.getState();
   status('กำลังบันทึกขึ้นระบบทีม...', true);
@@ -450,6 +491,7 @@ async function saveDocument(opts = {}) {
   if (error) { status('บันทึกไม่สำเร็จ', false); throw error; }
   doc.name = name;
   doc.updatedAt = data.updated_at;
+  doc.everSaved = true;
   status('บันทึกขึ้นระบบทีมแล้ว');
   return true;
 }
@@ -464,6 +506,18 @@ async function deleteDocument(id) {
     processDriveCleanup();
   }
   if (doc && doc.id === id) { doc = null; lsSet(lastDocKey(), null); }
+}
+
+/* งานที่เปิดอยู่ถูกบันทึกบนระบบหลังจากที่เราโหลด/บันทึกล่าสุดไหม
+   คืน null = ไม่มีงานเปิดอยู่ · { deleted } = ถูกลบ · { newer, updatedAt, mine } */
+async function checkRemote() {
+  if (!isOnline() || !currentUser || !doc) return null;
+  const { data, error } = await sb.from('documents').select('updated_at, updated_by').eq('id', doc.id).maybeSingle();
+  if (error) throw error;
+  if (!data) return { deleted: true };
+  // งานที่เราสร้างแต่ยังไม่เคยบันทึก (updatedAt = null) → ใหม่กว่าถ้าคนอื่นเป็นคนบันทึกล่าสุด
+  const newer = doc.updatedAt ? new Date(data.updated_at) > new Date(doc.updatedAt) : data.updated_by !== currentUser.id;
+  return { newer, updatedAt: data.updated_at, mine: data.updated_by === currentUser.id };
 }
 
 const lastDocKey = () => 'avatar_cloud_last_' + (cfg ? appKey() : '');
@@ -506,6 +560,11 @@ function injectStyles() {
   .ac-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:#0f2744;font-family:'Sarabun',sans-serif;}
   .ac-chip img{width:24px;height:24px;border-radius:50%;background:#e2e8f0;}
   .ac-chip span{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ac-chip.compact{width:38px;height:38px;padding:0;gap:0;border-radius:50%;justify-content:center;overflow:hidden;flex-shrink:0;border-width:2px;color:#64748b;}
+  .ac-chip.compact:hover{border-color:#a5b4fc;}
+  .ac-chip.compact img{width:100%;height:100%;object-fit:cover;}
+  .ac-chip.compact span{display:none;}
+  .ac-chip.compact b{font-size:15px;font-weight:800;color:#0f2744;}
   `;
   document.head.appendChild(s);
 }
@@ -548,6 +607,8 @@ function renderChip() {
     chip.onclick = accountAction;
     host.appendChild(chip);
   }
+  // chipCompact = แสดงแค่รูปโปรไฟล์วงกลม (แถบเมนูที่ปุ่มแน่น เช่น pmform) ชื่อย้ายไปอยู่ใน tooltip
+  chip.classList.toggle('compact', !!cfg.chipCompact);
   if (!isOnline()) {
     chip.innerHTML = `${OFFLINE_SVG}<span>ออฟไลน์ · เข้าสู่ระบบ</span>`;
     chip.title = 'อยู่ในโหมดออฟไลน์ — แตะเพื่อเข้าสู่ระบบทีม';
@@ -558,9 +619,14 @@ function renderChip() {
     chip.title = 'เข้าสู่ระบบเพื่อใช้งานแบบทีม';
     return;
   }
-  const meta = (currentUser && currentUser.user_metadata) || {};
-  chip.innerHTML = `<img src="${esc(meta.avatar_url || meta.picture || '')}" referrerpolicy="no-referrer" alt=""><span>${esc(meta.full_name || meta.name || (currentUser && currentUser.email) || '')}</span>`;
-  chip.title = 'ออกจากระบบ';
+  const meta = currentUser.user_metadata || {};
+  const name = meta.full_name || meta.name || currentUser.email || '';
+  const pic = meta.avatar_url || meta.picture || '';
+  const initial = `<b>${esc((name.trim()[0] || '?').toUpperCase())}</b>`;
+  chip.innerHTML = (pic ? `<img src="${esc(pic)}" referrerpolicy="no-referrer" alt="">` : initial) + `<span>${esc(name)}</span>`;
+  const img = chip.querySelector('img');
+  if (img) img.onerror = () => { img.outerHTML = initial; };   // รูป Google โหลดไม่ได้ → ใช้ตัวอักษรแรกแทน
+  chip.title = cfg.chipCompact ? `${name}${currentUser.email && currentUser.email !== name ? ' (' + currentUser.email + ')' : ''}\nแตะเพื่อออกจากระบบ` : 'ออกจากระบบ';
 }
 
 function modal(title, bodyHtml, footHtml, opts = {}) {
@@ -645,18 +711,25 @@ async function showDocList(opts = {}) {
     { sticky: !!opts.sticky });
 
   bg.querySelector('[data-new]').onclick = async () => { close(); await startNew(); };
-  bg.querySelector('[data-switch]').onclick = async () => { close(); online ? await enterOffline() : await switchToOnline(); };
+  bg.querySelector('[data-switch]').onclick = async () => {
+    close();
+    if (!(await canSwitch())) return;
+    online ? await enterOffline() : await switchToOnline();
+  };
   bg.querySelectorAll('[data-open]').forEach(el => el.onclick = async () => {
     close();
     if (el.dataset.open === cur) return;
-    try { await cfg.beforeSwitch?.(); await openDocument(el.dataset.open); toast('เปิดงานแล้ว'); }
+    try {
+      if (!(await canSwitch())) return;
+      await openDocument(el.dataset.open); toast('เปิดงานแล้ว');
+    }
     catch (e) { console.error(e); toast('เปิดงานไม่สำเร็จ'); }
   });
   bg.querySelectorAll('[data-lopen]').forEach(el => el.onclick = async () => {
     close();
     const m = local.find(x => x.id === el.dataset.lopen);
     if (!m) return;
-    await cfg.beforeSwitch?.();
+    if (!(await canSwitch())) return;
     doc = { id: m.id, name: m.name, updatedAt: m.updatedAt };
     lsSet(lastDocKey(), m.id);
     await cfg.applyState(m.state);
@@ -696,9 +769,9 @@ async function showDocList(opts = {}) {
     })) return;
     close();
     try {
-      await cfg.beforeSwitch?.();
+      if (!(await canSwitch())) return;
       const id = await createDocument(m.name);
-      doc = { id, name: m.name, updatedAt: null };
+      doc = { id, name: m.name, updatedAt: null, everSaved: false };
       lsSet(lastDocKey(), id);
       await cfg.applyState(m.state);
       await saveDocument({ force: true });
@@ -717,7 +790,7 @@ async function bindNewDoc(name) {
   const docName = name || (cfg.docName && cfg.docName()) || 'งานใหม่';
   if (isOnline()) {
     const id = await createDocument(docName);
-    doc = { id, name: docName, updatedAt: null };
+    doc = { id, name: docName, updatedAt: null, everSaved: false };
   } else {
     doc = { id: uuid(), name: docName, updatedAt: Date.now() };
   }
@@ -725,11 +798,20 @@ async function bindNewDoc(name) {
   return doc;
 }
 
+/* ถามแอพก่อนเปลี่ยนงาน/โหมด — beforeSwitch คืน false = ผู้ใช้ยกเลิก (เช่น เลือก "ยกเลิก" ในกล่องงานยังไม่บันทึก) */
+async function canSwitch() {
+  try { return (await cfg.beforeSwitch?.()) !== false; }
+  catch (e) { console.error(e); return false; }
+}
+
 async function startNew(name) {
-  await cfg.beforeSwitch?.();
-  await bindNewDoc(name);
+  if (!(await canSwitch())) return false;
+  // ห้ามเอาชื่อจาก cfg.docName() ตรงนี้ — ฟอร์มบนจอยังเป็นของงานเก่า งานใหม่จะได้ชื่องานเก่าติดไป
+  // ชื่อจริงจะถูกตั้งตอนกดบันทึก (saveDocument อ่าน cfg.docName() จากฟอร์มของงานใหม่)
+  await bindNewDoc(name || 'งานใหม่');
   await cfg.applyState(null);
   toast('เริ่มงานใหม่');
+  return true;
 }
 
 function signIn() {
@@ -746,14 +828,14 @@ async function accountAction() {
       title: 'เข้าสู่ระบบทีม',
       message: 'ตอนนี้อยู่ในโหมดออฟไลน์ (งานเก็บในเครื่องนี้)<br>ต้องการเข้าสู่ระบบเพื่อใช้งานแบบทีมไหม?<br><span style="color:#94a3b8;font-size:12px;">งานออฟไลน์ยังอยู่ในเครื่อง และส่งขึ้นทีมทีหลังได้จากหน้า "รายการงาน"</span>',
       confirmText: 'เข้าสู่ระบบ'
-    })) await switchToOnline();
+    }) && await canSwitch()) await switchToOnline();
     return;
   }
   if (await confirmDialog({
     title: 'ออกจากระบบ',
     message: `ออกจากระบบบัญชี <b>${esc(currentUser ? currentUser.email : '')}</b> ใช่ไหม?`,
     confirmText: 'ออกจากระบบ'
-  })) { await cfg.beforeSwitch?.(); await sb.auth.signOut(); }
+  }) && await canSwitch()) await sb.auth.signOut();
 }
 
 async function enterOffline() {
@@ -792,7 +874,7 @@ async function onSignedIn(session) {
   renderChip();
   processDriveCleanup();
   const last = lsGet(lastDocKey());
-  if (last) { try { await openDocument(last); } catch (_) { doc = null; lsSet(lastDocKey(), null); } }
+  if (last) { try { await openDocument(last, { quietPhotos: true }); } catch (_) { doc = null; lsSet(lastDocKey(), null); } }
   if (!doc && !cfg.silentStart) await showDocList();
   cfg.onReady?.('online');
 }
@@ -830,6 +912,10 @@ const AvatarCloud = {
 
   // สถานะ
   isOnline, get user() { return currentUser; }, get doc() { return doc; },
+  hasDriveToken,
+  checkRemote,                // งานที่เปิดอยู่มีเวอร์ชันใหม่กว่าบนระบบไหม (ใช้ตอนกลับมาที่แอพ)
+  reload: () => (doc ? openDocument(doc.id, { quietPhotos: true }) : Promise.resolve(null)),   // โหลดงานที่เปิดอยู่ใหม่จากระบบ
+  connectDrive: () => getDriveToken(true),   // ต้องเรียกจากการกดของผู้ใช้ (เด้งหน้าต่าง Google)
   hasDoc: () => !!doc,
   signedIn: () => isOnline() && !!currentUser,   // พร้อมใช้งานระบบทีมจริงหรือยัง
 
