@@ -727,6 +727,12 @@
             white-space: nowrap;
             pointer-events: none;
         }
+
+        /* แถบเมนูบนจอแคบ: ถ้าปุ่มล้นจอ ซ่อนข้อความของปุ่มเป็นขั้น ๆ เหลือแค่ไอคอน (fitTopNavbar)
+           ขั้น 1 = ปุ่มที่ใช้ไม่บ่อย, ขั้น 2 = ทุกปุ่ม — ชื่อปุ่มยังดูได้จาก tooltip */
+        #topNavbar.nav-tight-1 .nav-lbl-1,
+        #topNavbar.nav-tight-2 .nav-lbl-1,
+        #topNavbar.nav-tight-2 .nav-lbl-2 { display: none !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden bg-slate-100">
@@ -949,7 +955,7 @@
     <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-200/40" id="mainContent">
         
         <!-- 🎯 TOP NAVBAR -->
-        <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center z-40 no-print shadow-sm shrink-0">
+        <header id="topNavbar" class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center z-40 no-print shadow-sm shrink-0">
             <div class="flex items-center gap-3">
                 <button onclick="document.getElementById('sidebar').classList.toggle('hidden'); document.getElementById('sidebar').classList.toggle('absolute'); document.getElementById('sidebar').classList.toggle('h-full');" class="lg:hidden text-slate-500 hover:text-orange-600 bg-white border border-slate-200 w-10 h-10 rounded-lg flex items-center justify-center transition-colors shadow-sm">
                     <i class="fa-solid fa-bars"></i>
@@ -964,17 +970,17 @@
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
                 <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-1.5 shadow-inner">
                     <button onclick="rebuildLayout()" class="whitespace-nowrap bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
-                        <i class="fa-solid fa-arrows-rotate"></i> Rebuild
+                        <i class="fa-solid fa-arrows-rotate"></i> <span class="nav-lbl-1">Rebuild</span>
                     </button>
                     <div class="w-px bg-slate-300 mx-1 my-1"></div>
-                    <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100">
-                        <i class="fa-solid fa-trash-can"></i> ล้าง
+                    <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100" title="ล้างข้อมูลทั้งหมด เริ่มจากกระดาษเปล่า">
+                        <i class="fa-solid fa-trash-can"></i> <span class="nav-lbl-1">ล้าง</span>
                     </button>
                 </div>
 
                 <!-- 🌟 ปุ่ม Import จาก AI classification -->
                 <button onclick="openAiImportModal()" class="whitespace-nowrap no-print justify-center bg-purple-50 border border-purple-200 hover:bg-purple-100 hover:text-purple-700 text-purple-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="Import รูปและ caption อัตโนมัติจาก AI classification.json">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline">Import AI</span>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline nav-lbl-1">Import AI</span>
                 </button>
 
                 <!-- บัญชีผู้ใช้ / โหมดออฟไลน์ (ระบบทีม) -->
@@ -982,14 +988,14 @@
 
                 <!-- 🌟 ปุ่มบันทึกและประวัติรายงาน -->
                 <button onclick="openSaveToHistoryModal()" class="whitespace-nowrap no-print justify-center bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="บันทึกรายงานนี้ไว้ดูและแก้ไขภายหลัง">
-                    <i class="fa-solid fa-bookmark"></i> <span class="hidden lg:inline">บันทึก</span>
+                    <i class="fa-solid fa-bookmark"></i> <span class="hidden lg:inline nav-lbl-2">บันทึก</span>
                 </button>
                 <button onclick="openHistoryModal()" class="whitespace-nowrap no-print justify-center bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-slate-700 text-slate-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="ดูรายงานที่บันทึกไว้">
-                    <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline">ประวัติ</span>
+                    <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline nav-lbl-2">ประวัติ</span>
                 </button>
 
                 <button onclick="openReorderModal()" class="whitespace-nowrap justify-center bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:text-orange-700 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="จัดเรียงลำดับหัวข้อ">
-                    <i class="fa-solid fa-sort"></i> <span class="hidden lg:inline">จัดเรียง</span>
+                    <i class="fa-solid fa-sort"></i> <span class="hidden lg:inline nav-lbl-1">จัดเรียง</span>
                 </button>
 
                 <!-- 🌟 ปรับจำนวนแถว TOC ต่อหน้า (สารบัญ) — กด +/− หรือพิมพ์เลข แล้ว TOC จัดหน้าใหม่ทันที -->
@@ -1002,10 +1008,10 @@
                 </div>
 
                 <button id="wordExportBtn" onclick="exportToWord()" class="whitespace-nowrap justify-center bg-white border border-blue-300 hover:bg-blue-50 hover:text-blue-800 text-blue-700 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="ส่งออกเป็นไฟล์ Word (.doc) เปิดแก้ไขใน Microsoft Word ได้">
-                    <i class="fa-solid fa-file-word"></i> <span class="hidden lg:inline">Word</span>
+                    <i class="fa-solid fa-file-word"></i> <span class="hidden lg:inline nav-lbl-2">Word</span>
                 </button>
                 <button onclick="generateNativePDF()" class="whitespace-nowrap justify-center bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2" title="พิมพ์ / บันทึกเป็น PDF">
-                    <i class="fa-solid fa-print"></i> <span class="hidden md:inline">พิมพ์ / PDF</span>
+                    <i class="fa-solid fa-print"></i> <span class="hidden md:inline nav-lbl-2">พิมพ์ / PDF</span>
                 </button>
             </div>
         </header>
@@ -1017,6 +1023,8 @@
                 <span class="shrink-0">กำลังแก้รายงาน:</span>
                 <span id="currentHistoryName" class="font-bold text-indigo-700 truncate"></span>
             </div>
+            <!-- โหมดทีม: สถานะบันทึกอัตโนมัติ (updateTeamSaveBadge) -->
+            <span id="teamSaveBadge" class="ml-auto shrink-0"></span>
         </div>
 
         <!-- 📜 A4 SCROLL AREA (พื้นที่แสดงกระดาษรายงาน) -->
@@ -1776,8 +1784,14 @@
                 if (savedId) currentHistoryId = savedId;
             } catch {}
 
-            const isLoaded = await loadDraft(); 
-            
+            const isLoaded = await loadDraft();
+            pagePristine = !isLoaded;
+            // เพิ่ง reload มาเป็นกระดาษเปล่าให้งานทีม (เริ่มงานใหม่ / ล้าง / เปิดงานที่ยังว่าง)
+            try {
+                blankDocAfterReload = isLoaded ? null : JSON.parse(sessionStorage.getItem(BLANK_DOC_KEY) || 'null');
+                sessionStorage.removeItem(BLANK_DOC_KEY);
+            } catch {}
+
             if (!isLoaded) {
                 addCustomScope("");
                 addGeneralCheckBlock(); 
@@ -1836,14 +1850,19 @@
             startDomDirtyObserver();
 
             // 🌟 A: ตัวกันพลาด — เซฟทุก ๆ 8 วิ เฉพาะตอนยังมีของค้าง (ไม่เขียนตอน idle)
-            setInterval(() => { if (draftDirty) flushDraftSave(); }, DRAFT_BACKSTOP_MS);
+            setInterval(() => { if (draftDirty && !teamCoversDraft()) flushDraftSave(); }, DRAFT_BACKSTOP_MS);
 
             // 🌟 A: ก่อนปิด/สลับแท็บ — รีบเซฟของที่ค้างทันที
-            const flushOnLeave = () => { if (draftDirty) { try { flushDraftSave(); } catch (e) {} } };
+            // โหมดทีม: ลองส่งขึ้นระบบด้วย (เผื่อแอพถูกปิดทิ้ง — ไม่ทันก็ยังมี draft ในเครื่อง)
+            const flushOnLeave = () => {
+                if (draftDirty) { try { flushDraftSave(); } catch (e) {} }
+                if (historyDirty && teamAutosaveEnabled() && !teamAutosavePaused) runTeamAutosave({ silent: true });
+            };
             window.addEventListener('pagehide', flushOnLeave);
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushOnLeave(); });
 
             initDrawingCanvas();
+            initTopNavbarFit();
 
             // 🌟 popup ตอนเปิดแอป — เลือกทำงานต่อ / เปิดงานเก่า / เริ่มงานใหม่
             //    ข้าม popup ถ้าเพิ่งกด "เริ่มงานใหม่" / "ล้างข้อมูล" (reload มาเอง)
@@ -1853,6 +1872,27 @@
             await initTeamCloud(skipStartup);
         });
 
+        // 🌟 แถบเมนูไม่ให้ล้นจอ: แสดงข้อความปุ่มเต็มก่อน → ล้นก็ซ่อนขั้น 1 (ปุ่มใช้ไม่บ่อย) → ยังล้นซ่อนขั้น 2 (ทุกปุ่ม)
+        function fitTopNavbar() {
+            const nav = document.getElementById('topNavbar');
+            if (!nav) return;
+            const fits = () => nav.scrollWidth <= nav.clientWidth + 1;
+            nav.classList.remove('nav-tight-1', 'nav-tight-2');
+            if (fits()) return;
+            nav.classList.add('nav-tight-1');
+            if (fits()) return;
+            nav.classList.replace('nav-tight-1', 'nav-tight-2');
+        }
+        function initTopNavbarFit() {
+            const nav = document.getElementById('topNavbar');
+            if (!nav) return;
+            fitTopNavbar();
+            if (!window.ResizeObserver) { window.addEventListener('resize', fitTopNavbar); return; }
+            const ro = new ResizeObserver(() => fitTopNavbar());
+            ro.observe(nav);
+            ro.observe(nav.lastElementChild);   // กลุ่มปุ่มเปลี่ยนขนาด เช่น ชิปบัญชีโผล่หลังล็อกอิน
+        }
+
         // ============================================================
         // 🌟 ระบบทีมออนไลน์ (avatar-cloud.js) — เก็บงานลง Supabase, รูปขึ้น Google Drive
         //    โหมดออฟไลน์ = ใช้ draft + ประวัติในเครื่องแบบเดิมทุกอย่าง
@@ -1860,35 +1900,74 @@
         async function initTeamCloud(skipStartup) {
             if (!window.AvatarCloud) { if (!skipStartup) await showStartupModal(false); return; }
             const wrapper = () => document.getElementById('exportWrapper');
+
+            // กลับมาที่แอพ → เช็คว่ามีคนบันทึกงานนี้ใหม่กว่าไหม (checkTeamDocUpdate กรองโหมด/เวลาเอง)
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkTeamDocUpdate(); });
+            window.addEventListener('focus', () => checkTeamDocUpdate());
+            window.addEventListener('online', () => checkTeamDocUpdate());
+            window.addEventListener('pageshow', e => { if (e.persisted) checkTeamDocUpdate(); });
             await AvatarCloud.init({
                 app: 'pmform',
                 appTitle: 'Smart PM Report',
                 chipContainer: 'acChipHost',
+                chipCompact: true,          // แถบเมนูแน่น — โชว์แค่รูปโปรไฟล์วงกลม
+                applyEmptyState: true,      // เปิดงานที่ยังไม่เคยบันทึก → ต้องล้างหน้าจอ (ดู applyState)
                 root: wrapper,
-                docName: () => deriveAutoName(),
+                // ไม่มีชื่อโครงการบนปก → คงชื่อเดิมไว้ (กันชื่อ "ยังไม่ได้ตั้งชื่อ <เวลา>" เปลี่ยนทุกครั้งที่บันทึกอัตโนมัติ)
+                docName: () => {
+                    const proj = (document.getElementById('coverInputProject')?.value || '').trim();
+                    const d = AvatarCloud.doc;
+                    return proj || (d && d.name && d.name !== 'งานใหม่' ? d.name : deriveAutoName());
+                },
                 docCustomer: () => (document.getElementById('coverInputProject')?.value || '').trim(),
                 onToast: (m) => showToast(m),
-                onStatus: (text, ok) => showSaveStatus(text, ok),
-
-                // เก็บของขึ้นระบบ: ใช้ snapshot เดิม แต่ถอด dataUrl ออก (รูปอยู่บน Drive แล้ว)
-                getState: async () => {
-                    const base = buildDraftObject();
-                    base.html = AvatarCloud.cleanHtml(wrapper());
-                    return base;
+                onStatus: (text, ok) => {
+                    showSaveStatus(text, ok);
+                    if (teamSaveInFlight && text.startsWith('กำลัง')) updateTeamSaveBadge('saving', text);   // เช่น กำลังอัปโหลดรูป 3/10
                 },
 
-                // เอาของลงมาแสดง — null = เริ่มงานใหม่ (ล้าง draft แล้วโหลดเทมเพลตเปล่า)
-                applyState: async (s) => {
+                // เก็บของขึ้นระบบ: ใช้ snapshot เดิม แต่ถอด dataUrl ออก (รูปอยู่บน Drive แล้ว)
+                // snapshot เดียวกับร่างในเครื่อง (ถอดรูปออกแล้ว) — saveToTeamNow เขียนเป็นร่างต่อหลังบันทึกเสร็จ
+                getState: async () => {
+                    await ensureDraftPhotoKeys();
+                    const snap = snapshotDraft();
+                    draftDirty = false;
+                    teamSnap = snap;
+                    // รูปทุกรูปอยู่บน Drive แล้ว (ปกติ — อัปโหลดก่อนเรียก getState) → ลบ marker ของร่างทิ้งก็ได้ html ของระบบทีม
+                    const html = (snap.allOnDrive
+                            ? snap.draft.html.replace(/ data-draft-photo="[^"]*"/g, '')
+                            : AvatarCloud.cleanHtml(wrapper()).replace(/\bblock-flash-(?:new|goto)\b/g, ''))
+                        .replace(/<div[^>]*id="ghostSpacerHacker"[^>]*><\/div>/g, '');   // spacer ชั่วคราวของโหมดพิมพ์
+                    return { globals: snap.draft.globals, html };
+                },
+
+                // เอาของลงมาแสดง
+                //   s = null → งานว่าง (เริ่มงานใหม่ / งานที่ยังไม่เคยบันทึก) → กระดาษเปล่า
+                //   meta = { id, updatedAt } มีเฉพาะตอน "เปิดงาน" — ไม่มี meta = เริ่มงานใหม่ / ส่งงานออฟไลน์ขึ้นทีม
+                applyState: async (s, meta) => {
+                    resetTeamAutosave();   // สถานะบันทึกอัตโนมัติเป็นของงานก่อนหน้า
+                    // 1) เพิ่ง reload มาเป็นกระดาษเปล่าเพื่องานนี้ (เริ่มงานใหม่ / ล้าง) → ใช้หน้านี้เลย ไม่ reload ซ้ำ
+                    const blank = blankDocAfterReload;
+                    blankDocAfterReload = null;
+                    if (meta && blank && blank.id === meta.id) {
+                        if (blank.dirty) markUnsaved();   // "ล้าง" = การแก้ที่ยังไม่ได้บันทึกขึ้นระบบ
+                        updateCurrentHistoryIndicator();
+                        return;
+                    }
+                    // 2) งานนี้มีการแก้ค้างในเครื่อง (ยังไม่กดบันทึก) → ใช้ของในเครื่อง ไม่ให้ของบนระบบทับจนหาย
+                    if (meta && await keepLocalUnsaved(s, meta)) { updateCurrentHistoryIndicator(); return; }
+                    // 3) งานว่าง → กระดาษเปล่า (ลบ draft แล้ว reload) ยกเว้นหน้าจอเป็นกระดาษเปล่าอยู่แล้ว
                     if (!s) {
-                        await localforage.removeItem('smart_pm_draft');
-                        try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
-                        location.reload();
+                        if (meta && pagePristine) { updateCurrentHistoryIndicator(); return; }
+                        await reloadBlank(AvatarCloud.doc && AvatarCloud.doc.id);
                         return new Promise(() => {});   // ค้างไว้จนกว่าจะ reload เสร็จ
                     }
                     applyDataToDOM(s);
-                    await AvatarCloud.restorePhotos(wrapper(), (n, t) => showSaveStatus(`กำลังโหลดรูป ${n}/${t}...`, true));
+                    await AvatarCloud.restorePhotos(wrapper(), (n, t) => showSaveStatus(`กำลังโหลดรูป ${n}/${t}...`, true), !(meta && meta.quietPhotos));
+                    teamPhotosMissing = countMissingPhotos();   // ยังไม่มีสิทธิ์ Drive → แถบสถานะขึ้นปุ่ม "เชื่อมต่อ"
+                    teamLastSavedAt = meta && meta.updatedAt ? Date.parse(meta.updatedAt) : 0;   // เวลาของเวอร์ชันที่เพิ่งโหลดมา
+                    markHistorySynced();   // ก่อน saveDraft — ป้ายใน draft ต้องเป็น "ไม่ค้าง"
                     await saveDraft();
-                    markHistorySynced();
                     updateCurrentHistoryIndicator();
                 },
 
@@ -1899,9 +1978,14 @@
                     state: { globals: h.globals, html: h.html }
                 })),
 
-                beforeSwitch: async () => { if (draftDirty) await flushDraftSave(); },
+                // ก่อนเปลี่ยนงาน / เริ่มงานใหม่ / ออกจากระบบ / สลับโหมด — เตือนถ้ายังไม่บันทึก (false = ยกเลิก)
+                beforeSwitch: () => proceedSwitch(),
                 onReady: async (mode) => {
+                    if (mode === 'online') teamPhotosMissing = countMissingPhotos();
+                    teamResumeCheckAt = Date.now();   // เพิ่งโหลดงานมาสด ๆ — ไม่ต้องเช็คซ้ำทันที
                     updateCurrentHistoryIndicator();
+                    // เปิดงานพร้อมการแก้ที่ค้างในเครื่อง — สถานะ "เปิดงานแล้ว" ของระบบทับไป ต้องบอกซ้ำ
+                    if (mode === 'online' && historyDirty) showSaveStatus('<i class="fa-solid fa-floppy-disk"></i> มีการแก้ที่ยังไม่ขึ้นระบบ', false);
                     if (mode === 'offline' && !skipStartup) await showStartupModal(false);
                 }
             });
@@ -2755,20 +2839,44 @@
         let suppressDirty = false;   // true ระหว่างที่โค้ดแก้ DOM เอง (โหลด/พิมพ์/sync) — อย่านับเป็นการแก้ของผู้ใช้
         let draftSaveTimer = null;
         let domDirtyObserver = null;
-        const DRAFT_DEBOUNCE_MS = 1500;   // หยุดพิมพ์กี่มิลลิวินาทีถึงเซฟ
-        const DRAFT_BACKSTOP_MS = 8000;   // ตัวกันพลาด: ถ้ายังมีของค้าง เซฟทุก ๆ เท่านี้
+        const DRAFT_DEBOUNCE_MS = 3000;   // หยุดพิมพ์กี่มิลลิวินาทีถึงเซฟ (กรอกตารางมักหยุดสั้น ๆ ระหว่างช่อง — ไม่ต้องเซฟทุกช่อง)
+        const DRAFT_BACKSTOP_MS = 20000;  // ตัวกันพลาด: พิมพ์ต่อเนื่องไม่หยุด ก็ยังเซฟทุก ๆ เท่านี้ (ถี่ไปจะสะดุดกลางการพิมพ์)
 
-        // สร้าง object สำหรับเก็บลง draft/history (sync ค่าจาก DOM ก่อนอ่าน innerHTML)
+        // 🌟 โหมดทีม: draft ในเครื่องติด "ป้าย" ว่าเป็นของงานทีมไหน + แก้ค้างอยู่ไหม
+        //    { docId, base: updated_at ของเวอร์ชันบนระบบที่ใช้แก้ต่อ, dirty: ยังไม่ได้กดบันทึกขึ้นระบบ }
+        //    → เปิดงานนั้นอีกครั้ง (reload / ปิดแอพแล้วเข้าใหม่) จะใช้ของที่ค้างในเครื่อง ไม่ให้ของบนระบบทับจนหาย
+        let draftCloudTag = null;
+        let editSeq = 0;                 // นับการแก้ของผู้ใช้ — ใช้เช็คว่ามีการแก้ระหว่างกำลังอัปโหลดขึ้นระบบไหม
+        let pagePristine = false;        // หน้ากระดาษเปล่าจากเทมเพลต ยังไม่มีการแก้/โหลดงานใดๆ
+        let draftSaveBlocked = false;    // กำลัง reload เพื่อล้างหน้า — ห้าม autosave เขียน draft เก่ากลับมา
+        let blankDocAfterReload = null;  // { id, dirty } งานทีมที่เพิ่ง reload มาเป็นกระดาษเปล่า (เริ่มงานใหม่ / ล้าง)
+        const BLANK_DOC_KEY = 'pm_blank_team_doc';
+
+        const isTeamMode = () => !!(window.AvatarCloud && AvatarCloud.isOnline());
+
+        function cloudDraftTag() {
+            if (!isTeamMode()) return null;
+            const d = AvatarCloud.doc;
+            if (d) return { docId: d.id, base: d.updatedAt || null, dirty: historyDirty };
+            // ยังไม่ผูกงาน (กำลังเปิดงานตอนเข้าแอพ / หลังออกจากระบบ) → คงป้ายเดิมไว้ อย่าให้สถานะ "แก้ค้าง" หลุด
+            return draftCloudTag ? { ...draftCloudTag, dirty: draftCloudTag.dirty || historyDirty } : null;
+        }
+
+        // globals ของรายงาน (จำนวนบล็อก / ตัวนับ / หัวข้อ) — sync ค่าจาก input ลง attribute ก่อน
+        function buildDraftGlobals() {
+            syncDOMValues();
+            return {
+                selectedModules, breakerCount, groupCounts, insCount, dieCount,
+                groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, hipotCount, dchipotCount, photoCounters, moduleTitles,
+                customScopes: getScopeData()
+            };
+        }
+
+        // object แบบเต็ม "รูปฝังใน html" — ใช้กับประวัติในเครื่อง (ช้า: serialize รูปทั้งหมด → ใช้เฉพาะตอนกดบันทึก ไม่ใช่ autosave)
         function buildDraftObject() {
             suppressDirty = true; // กัน observer นับการ sync ค่าเป็นการแก้
-            syncDOMValues();
-            const scopeItemsData = getScopeData();
             const obj = {
-                globals: {
-                    selectedModules, breakerCount, groupCounts, insCount, dieCount,
-                    groCount, gcCount, genCount, ctCount, tripCount, relayCount, capCount, hipotCount, dchipotCount, photoCounters, moduleTitles,
-                    customScopes: scopeItemsData
-                },
+                globals: buildDraftGlobals(),
                 // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
                 html: document.getElementById('exportWrapper').innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '')
             };
@@ -2776,17 +2884,129 @@
             return obj;
         }
 
-        // 🌟 เรียกเมื่อมี "การแก้ไขจริงจากผู้ใช้" — ตั้ง dirty + ตั้งเวลาเซฟแบบ debounce
-        function markUnsaved() {
-            if (suppressDirty) return;
-            draftDirty = true;
-            historyDirty = true;
-            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
-            scheduleDraftSave();
+        // ============================================================
+        // 🌟 draft แบบแยกรูป (v2) — กันแอพค้างตอนบันทึกร่างอัตโนมัติ
+        //   เดิม: หยุดพิมพ์ทุกครั้ง serialize ทั้งหน้า "รวมรูป" (รายงาน 200 รูป ≈ 23MB → ค้าง ~160ms) แล้วเขียนทั้งก้อน
+        //   ตอนนี้: html ไม่มีรูป (≈1MB) + รูปเก็บแยกทีละรูปใน smart_pm_draft_photos (เขียนเฉพาะรูปใหม่/ที่เปลี่ยน)
+        //   ใน html รูปถูกแทนด้วย data-draft-photo="<key>" → ตอนโหลดเติมกลับ (restoreDraftPhotos)
+        //   ป้ายงานทีม (draftCloudTag) เก็บแยกใน localStorage → อัปเดตป้ายได้โดยไม่ต้องเขียนร่างทั้งก้อน
+        // ============================================================
+        const draftPhotoStore = localforage.createInstance({ name: 'smart_pm_draft_photos' });
+        const DRAFT_PHOTO_SEL = '[style*="background-image"], img';
+        const DRAFT_TAG_KEY = 'smart_pm_draft_cloud';
+        const draftPhotoInfo = new WeakMap();   // element → { attr, key } — รูปเดิมไม่ต้องอ่าน/แฮชซ้ำทุกรอบ
+        let draftPhotoKeys = null;              // Set ของ key ที่อยู่ใน store แล้ว (โหลดครั้งแรกที่ใช้)
+        let draftSaveChain = Promise.resolve(); // บันทึกร่างทีละรอบ (กันรอบหนึ่งลบรูปที่อีกรอบกำลังจะใช้)
+        let draftSnapSeq = 0, draftWrittenSeq = 0;   // กัน snapshot ที่เก่ากว่าเขียนทับร่างที่ใหม่กว่า
+
+        // อ่านรูปจาก attribute ตรง ๆ — getAttribute แทบไม่เสียเวลา ส่วน el.style.backgroundImage
+        // serialize ค่าใหม่ทุกครั้ง (200 รูป ≈ 60ms)
+        function photoAttr(el) { return el.tagName === 'IMG' ? el.getAttribute('src') : el.getAttribute('style'); }
+        function dataUrlFromAttr(el, attr) {
+            if (!attr) return '';
+            if (el.tagName === 'IMG') return attr.startsWith('data:') ? attr : '';
+            const i = attr.indexOf('url(');
+            if (i < 0) return '';
+            let j = i + 4;
+            const q = (attr[j] === '"' || attr[j] === "'") ? attr[j++] : '';
+            if (!attr.startsWith('data:', j)) return '';
+            const end = attr.indexOf(q || ')', j);
+            return end > j ? attr.slice(j, end) : '';
+        }
+        // key ของรูป = ความยาว + แฮช 2 แบบจากทุกตัวอักษร (ถ้าชนกันรูปจะสลับ → ใช้แฮชเต็ม ไม่สุ่มบางตัว)
+        function photoKey(s) {
+            let h1 = 5381, h2 = 2166136261;
+            for (let i = 0; i < s.length; i++) {
+                const c = s.charCodeAt(i);
+                h1 = ((h1 << 5) + h1 + c) | 0;
+                h2 = Math.imul(h2 ^ c, 16777619);
+            }
+            return s.length.toString(36) + '-' + (h1 >>> 0).toString(36) + '-' + (h2 >>> 0).toString(36);
+        }
+        function photoInfo(el) {
+            const attr = photoAttr(el);
+            if (!attr || attr.indexOf('data:') < 0) return null;
+            const c = draftPhotoInfo.get(el);
+            if (c && c.attr === attr) return c;
+            const data = dataUrlFromAttr(el, attr);
+            if (!data) return null;
+            const info = { attr, key: photoKey(data) };
+            draftPhotoInfo.set(el, info);
+            return info;
         }
 
+        // ภาพรวมร่าง ณ ตอนนี้ (ทำรวดเดียวแบบ sync): html ไม่มีรูป + รายการรูปที่ใช้ + รูปใหม่ที่ต้องเขียน
+        function snapshotDraft() {
+            suppressDirty = true;
+            const globals = buildDraftGlobals();
+            const W = document.getElementById('exportWrapper');
+            const live = W.querySelectorAll(DRAFT_PHOTO_SEL);
+            const clone = W.cloneNode(true);
+            const cl = clone.querySelectorAll(DRAFT_PHOTO_SEL);   // สำเนาตรงกันทุกตำแหน่ง → index ตรงกับ live
+            const keys = new Set(), fresh = new Map();
+            let allOnDrive = true;   // ทุกรูปมี data-drive แล้ว → html นี้ใช้เป็นของระบบทีมได้เลย (ไม่ต้อง clone ซ้ำ)
+            live.forEach((el, i) => {
+                const info = photoInfo(el);
+                const c = cl[i];
+                if (!info || !c) return;
+                if (c.tagName === 'IMG') c.removeAttribute('src'); else c.style.backgroundImage = '';
+                c.setAttribute('data-draft-photo', info.key);
+                keys.add(info.key);
+                if (!el.dataset.drive) allOnDrive = false;
+                if (!draftPhotoKeys.has(info.key) && !fresh.has(info.key)) fresh.set(info.key, dataUrlFromAttr(el, info.attr));
+            });
+            const html = clone.innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '');
+            setTimeout(() => { suppressDirty = false; }, 0);
+            return { seq: ++draftSnapSeq, draft: { v: 2, globals, html }, keys, fresh, allOnDrive };
+        }
+
+        async function ensureDraftPhotoKeys() {
+            if (!draftPhotoKeys) draftPhotoKeys = new Set(await draftPhotoStore.keys());
+        }
+
+        // เติมรูปกลับหลังโหลดร่างแบบแยกรูป
+        async function restoreDraftPhotos() {
+            const els = document.querySelectorAll('#exportWrapper [data-draft-photo]');
+            if (!els.length) return;
+            for (const el of els) {
+                const key = el.getAttribute('data-draft-photo');
+                el.removeAttribute('data-draft-photo');
+                const data = await draftPhotoStore.getItem(key).catch(() => null);
+                if (!data) continue;
+                if (el.tagName === 'IMG') el.setAttribute('src', data);
+                else el.style.backgroundImage = `url("${data}")`;
+                draftPhotoInfo.set(el, { attr: photoAttr(el), key });   // รู้ key แล้ว ไม่ต้องแฮชใหม่
+            }
+        }
+
+        function writeDraftTag(tag) {
+            draftCloudTag = tag;
+            try { tag ? localStorage.setItem(DRAFT_TAG_KEY, JSON.stringify(tag)) : localStorage.removeItem(DRAFT_TAG_KEY); } catch {}
+        }
+
+        // 🌟 เรียกเมื่อมี "การแก้ไขจริงจากผู้ใช้" — ตั้ง dirty + ตั้งเวลาเซฟแบบ debounce
+        // หน้าจออยู่ในโหมดพิมพ์ (prepareDocumentForPrint) — DOM ที่เปลี่ยนตอนนี้ไม่ใช่การแก้ของผู้ใช้
+        const inPrintMode = () => !!document.querySelector('.a4-wrapper.preparing-pdf');
+
+        function markUnsaved() {
+            if (suppressDirty || inPrintMode()) return;
+            draftDirty = true;
+            historyDirty = true;
+            editSeq++;
+            pagePristine = false;
+            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            scheduleDraftSave();
+            scheduleTeamAutosave();
+        }
+
+        // โหมดทีมที่บันทึกอัตโนมัติอยู่: ร่างในเครื่องถูกเขียนพร้อมรอบบันทึกขึ้นระบบ (snapshot เดียวกัน)
+        //   → ไม่ตั้งรอบร่างแยก = หน้าจอหน่วงครั้งเดียวต่อการหยุดพิมพ์ แทนที่จะสองครั้ง
+        //   (ออกจากแอพ / เปลี่ยนงาน ยังเขียนร่างทันทีผ่าน flushDraftSave เหมือนเดิม)
+        const teamCoversDraft = () => teamAutosaveEnabled() && !teamAutosavePaused;
         function scheduleDraftSave() {
             if (draftSaveTimer) clearTimeout(draftSaveTimer);
+            draftSaveTimer = null;
+            if (teamCoversDraft()) return;
             draftSaveTimer = setTimeout(() => { flushDraftSave(); }, DRAFT_DEBOUNCE_MS);
         }
 
@@ -2799,6 +3019,7 @@
         // เคลียร์สถานะ "ยังไม่บันทึกเข้าประวัติ" (เรียกหลังบันทึกเข้า history / หลังโหลดงาน)
         function markHistorySynced() {
             historyDirty = false;
+            updateTeamSaveBadge();
         }
 
         // เริ่มเฝ้าดูการเปลี่ยนโครงสร้าง DOM (เพิ่ม/ลบ block, รูป, ฯลฯ) เป็น dirty อัตโนมัติ
@@ -2808,32 +3029,62 @@
             const target = document.getElementById('exportWrapper');
             if (!target || domDirtyObserver) return;
             domDirtyObserver = new MutationObserver(() => {
-                if (suppressDirty) return;
+                if (suppressDirty || inPrintMode()) return;
                 draftDirty = true;
                 historyDirty = true;
+                editSeq++;
+                pagePristine = false;
                 scheduleDraftSave();
+                scheduleTeamAutosave();
             });
             domDirtyObserver.observe(target, { childList: true, subtree: true });
         }
 
-        async function saveDraft() {
-            // 🌟 กันบั๊ก: ถ้า DOM กำลังถูก mutate เพื่อพิมพ์ (print mode) — อย่าบันทึก
-            //    ไม่งั้น autosave จะเก็บสถานะที่มี .hidden, display:none, print-text-span, tmp-split-wrapper
-            //    ค้างไว้ → reload เปิดมา input/photo/curve UI จะหายเพราะถูกซ่อน
-            const wrapper = document.querySelector('.a4-wrapper');
-            if (wrapper && wrapper.classList.contains('preparing-pdf')) {
-                return;
-            }
+        // 🌟 กันบั๊ก: ถ้า DOM กำลังถูก mutate เพื่อพิมพ์ (print mode) — อย่าบันทึก
+        //    ไม่งั้น autosave จะเก็บสถานะที่มี .hidden, display:none, print-text-span, tmp-split-wrapper
+        //    ค้างไว้ → reload เปิดมา input/photo/curve UI จะหายเพราะถูกซ่อน
+        function saveDraft() {
+            const run = draftSaveChain.then(saveDraftNow, saveDraftNow);
+            draftSaveChain = run.catch(() => {});
+            return run;
+        }
 
-            const draft = buildDraftObject();
+        async function saveDraftNow() {
+            if (inPrintMode() || draftSaveBlocked) return;
+            try { await ensureDraftPhotoKeys(); } catch (e) { console.error(e); draftDirty = true; return; }
+            if (inPrintMode() || draftSaveBlocked) return;
+            const snap = snapshotDraft();
+            draftDirty = false;   // แก้ระหว่างกำลังเขียน → markUnsaved ตั้งกลับเองแล้วเข้าคิวรอบใหม่
+            await writeDraftSnapshot(snap, cloudDraftTag());
+        }
 
+        // เขียน snapshot ที่จับไว้แล้ว (เช่น จากรอบบันทึกขึ้นระบบทีม) ลงร่างในเครื่อง — เข้าคิวเดียวกับ saveDraft
+        function queueDraftWrite(snap, tag) {
+            const run = draftSaveChain.then(() => writeDraftSnapshot(snap, tag));
+            draftSaveChain = run.catch(() => {});
+            return run;
+        }
+
+        async function writeDraftSnapshot(snap, tag) {
+            if (draftSaveBlocked || snap.seq < draftWrittenSeq) return;   // มีร่างที่ใหม่กว่าเขียนไปแล้ว
             try {
-                await localforage.setItem('smart_pm_draft', draft);
-                draftDirty = false; // 🌟 B: ไม่ sync เข้า history ที่นี่แล้ว — history เขียนเฉพาะตอนกด "บันทึก"
+                // รูปใหม่ก่อน — ร่างต้องไม่อ้างถึงรูปที่ยังไม่ได้เขียน
+                for (const [k, d] of snap.fresh) { await draftPhotoStore.setItem(k, d); draftPhotoKeys.add(k); }
+                await localforage.setItem('smart_pm_draft', snap.draft);
+                draftWrittenSeq = snap.seq;
+                writeDraftTag(tag);
+                // รูปที่ไม่อยู่ในร่างแล้ว (ลบ / เปลี่ยนรูป) → ลบทิ้ง ไม่ให้ที่เก็บโตไปเรื่อย ๆ
+                //   ทำเฉพาะ snapshot ล่าสุด — snapshot ที่ใหม่กว่า (ยังรอเขียน) อาจยังใช้รูปนั้นอยู่
+                if (snap.seq === draftSnapSeq) {
+                    for (const k of draftPhotoKeys) if (!snap.keys.has(k)) { draftPhotoKeys.delete(k); draftPhotoStore.removeItem(k).catch(() => {}); }
+                }
                 const time = new Date().toLocaleTimeString('th-TH');
-                showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกร่างล่าสุด ${time}`);
+                // โหมดทีม: ร่างอยู่แค่ในเครื่อง — บอกให้ชัดว่ายังไม่ขึ้นระบบ
+                if (tag && tag.dirty) showSaveStatus(`<i class="fa-solid fa-floppy-disk"></i> ร่างในเครื่อง ${time} · ยังไม่ขึ้นระบบ`, false);
+                else showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกร่างล่าสุด ${time}`);
             } catch (e) {
                 console.error("Save error:", e);
+                draftDirty = true;   // ให้รอบถัดไปลองใหม่
                 showSaveStatus(`<i class="fa-solid fa-circle-exclamation"></i> บันทึกไม่สำเร็จ`, false);
             }
         }
@@ -2841,12 +3092,9 @@
         // 🌟 B: เขียนสถานะปัจจุบันเข้า history item ที่ผูกอยู่ (เรียกตอนกด "บันทึก" / ก่อน export)
         async function commitCurrentToHistory() {
             if (currentHistoryId === null) return false;
-            const draft = buildDraftObject();
-            try {
-                await localforage.setItem('smart_pm_draft', draft); // อัปเดต draft ให้ตรงกันด้วย
-                draftDirty = false;
-            } catch (e) { console.warn('save draft during commit failed', e); }
-            await syncCurrentToHistory(draft);
+            const full = buildDraftObject();   // ประวัติเก็บแบบรูปฝังในตัว (จับภาพทันที ก่อนหน้าจอเปลี่ยน เช่น เข้าโหมดพิมพ์)
+            await saveDraft();
+            await syncCurrentToHistory(full);
             markHistorySynced();
             return true;
         }
@@ -2906,10 +3154,13 @@
             // โหมดทีม: แถบนี้บอกว่ากำลังแก้งานไหนในระบบกลาง (ไม่ใช่ประวัติในเครื่อง)
             if (window.AvatarCloud && AvatarCloud.isOnline()) {
                 const d = AvatarCloud.doc;
-                indicator.style.display = d ? 'flex' : 'none';
-                if (d) { nameEl.textContent = d.name || 'ไม่ระบุชื่องาน'; nameEl.title = nameEl.textContent; }
+                const show = AvatarCloud.signedIn();   // แสดงเสมอเมื่อล็อกอิน — มีแถบสถานะบันทึกอยู่ด้วย
+                indicator.style.display = show ? 'flex' : 'none';
+                if (show) { nameEl.textContent = d ? (d.name || 'ไม่ระบุชื่องาน') : 'งานใหม่ (ยังไม่ได้เลือกงาน)'; nameEl.title = nameEl.textContent; }
+                updateTeamSaveBadge();
                 return;
             }
+            updateTeamSaveBadge();
             if (currentHistoryId === null) {
                 indicator.style.display = 'none';
                 nameEl.textContent = '';
@@ -2942,19 +3193,7 @@
         // เปิด modal ตั้งชื่อก่อนบันทึก
         async function openSaveToHistoryModal() {
             // โหมดทีม: บันทึกขึ้นระบบกลางเลย (รูปขึ้น Google Drive) ใช้ชื่อโครงการบนปก
-            if (window.AvatarCloud && AvatarCloud.isOnline() && AvatarCloud.hasDoc()) {
-                try {
-                    if (await AvatarCloud.save()) {
-                        markHistorySynced();
-                        updateCurrentHistoryIndicator();
-                        showToast('บันทึกขึ้นระบบทีมแล้ว');
-                    }
-                } catch (e) {
-                    console.error(e);
-                    showToast(e.message || 'บันทึกไม่สำเร็จ');
-                }
-                return;
-            }
+            if (isTeamMode()) { await saveToTeam(); return; }
             const input = document.getElementById('historyNameInput');
             // ดึงชื่อโครงการจากหน้าปกเป็น default
             const projectInput = document.querySelector('input[placeholder*="โครงการ"], input[placeholder*="Project"]');
@@ -3190,10 +3429,269 @@
 
         // เริ่มงานใหม่ (ล้าง draft + reload) — ตั้ง flag ไม่ให้ popup เด้งซ้ำหลัง reload
         async function startNewReport() {
-            await localforage.removeItem('smart_pm_draft');
             await localforage.removeItem(CURRENT_ID_KEY);
-            try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
+            await reloadBlank();
+        }
+
+        // ล้างหน้าเป็นกระดาษเปล่า (ลบ draft แล้ว reload)
+        //   teamDocId = งานทีมที่หน้าเปล่านี้เป็นของ → หลัง reload ตอนเปิดงานนั้นจะไม่ reload ซ้ำ / ไม่ดึงของบนระบบมาทับ
+        //   dirty     = นับการล้างเป็น "การแก้ที่ยังไม่บันทึก" (ปุ่ม ล้าง ในโหมดทีม)
+        async function reloadBlank(teamDocId, dirty) {
+            draftSaveBlocked = true;   // กัน autosave (debounce / pagehide) เขียน draft เก่ากลับมาหลังลบ
+            if (draftSaveTimer) { clearTimeout(draftSaveTimer); draftSaveTimer = null; }
+            draftDirty = false;
+            await localforage.removeItem('smart_pm_draft');
+            await draftPhotoStore.clear().catch(() => {});
+            writeDraftTag(null);
+            try {
+                sessionStorage.setItem('pm_skip_startup', '1');
+                if (teamDocId) sessionStorage.setItem(BLANK_DOC_KEY, JSON.stringify({ id: teamDocId, dirty: !!dirty }));
+            } catch {}
             location.reload();
+        }
+
+        // ============================================================
+        // 🌟 โหมดทีม: บันทึกขึ้นระบบ + บันทึกอัตโนมัติ
+        //   - งานที่ "เคยบันทึกแล้ว" (doc.everSaved) → ทุกการแก้บันทึกขึ้นระบบเอง
+        //     (หยุดแก้ TEAM_AUTOSAVE_IDLE_MS แล้วบันทึก / พิมพ์ต่อเนื่องก็บันทึกอย่างน้อยทุก TEAM_AUTOSAVE_MAX_MS)
+        //   - งานที่ยังไม่เคยบันทึก → ไม่บันทึกเอง ต้องกด "บันทึก" ครั้งแรก (หรือพิมพ์ PDF/Word) · เปลี่ยนงานจะเตือน
+        //   - บันทึกอัตโนมัติไม่ได้ → หยุดไว้ + แจ้งที่แถบใต้เมนู (teamSaveBadge):
+        //       'conflict' มีคนบันทึกงานนี้หลังเราเปิด (ไม่ทับให้เอง) · 'drive' ต้องเชื่อม Google Drive เพื่ออัปรูป
+        //       'error' เน็ต/เซิร์ฟเวอร์ → ลองใหม่เองทุก TEAM_AUTOSAVE_RETRY_MS
+        // ============================================================
+        const TEAM_AUTOSAVE_IDLE_MS = 5000;
+        const TEAM_AUTOSAVE_MAX_MS = 30000;
+        const TEAM_AUTOSAVE_RETRY_MS = 30000;
+        let teamAutoTimer = null;
+        let teamAutoFirstDirtyAt = 0;     // เวลาที่เริ่มมีการแก้ที่ยังไม่ขึ้นระบบ (ใช้กำหนด MAX)
+        let teamAutosavePaused = null;    // null | 'conflict' | 'drive' | 'error'
+        let teamSaveInFlight = null;      // Promise ของรอบที่กำลังบันทึก — กันบันทึกซ้อนกัน
+        let teamLastSavedAt = 0;
+
+        const teamAutosaveEnabled = () => isTeamMode() && AvatarCloud.signedIn() && AvatarCloud.hasDoc() && !!AvatarCloud.doc.everSaved;
+
+        // เรียกทุกครั้งที่ผู้ใช้แก้ (markUnsaved / observer)
+        function scheduleTeamAutosave() {
+            if (!teamAutosaveEnabled() || teamAutosavePaused) { updateTeamSaveBadge(); return; }
+            const now = Date.now();
+            if (!teamAutoFirstDirtyAt) teamAutoFirstDirtyAt = now;
+            const wait = Math.max(0, Math.min(TEAM_AUTOSAVE_IDLE_MS, teamAutoFirstDirtyAt + TEAM_AUTOSAVE_MAX_MS - now));
+            clearTimeout(teamAutoTimer);
+            teamAutoTimer = setTimeout(runTeamAutosave, wait);
+            updateTeamSaveBadge();
+        }
+
+        async function runTeamAutosave(opts = {}) {
+            clearTimeout(teamAutoTimer); teamAutoTimer = null;
+            if (!historyDirty) return true;
+            if (!teamAutosaveEnabled() || teamAutosavePaused) return false;
+            if (inPrintMode()) { teamAutoTimer = setTimeout(runTeamAutosave, 2000); return false; }   // รอคืนหน้าจอจากโหมดพิมพ์
+            return saveToTeam({ auto: true, quiet: true, silent: opts.silent });
+        }
+
+        // เปลี่ยนงาน / โหลดงานใหม่ → ล้างสถานะบันทึกอัตโนมัติของงานเก่า
+        function resetTeamAutosave() {
+            clearTimeout(teamAutoTimer); teamAutoTimer = null;
+            teamAutoFirstDirtyAt = 0;
+            teamAutosavePaused = null;
+        }
+
+        // บันทึกงานปัจจุบันขึ้นระบบทีม — คืน true ถ้าสำเร็จ
+        //   (ไม่มี opts) ปุ่ม "บันทึก" / "บันทึกก่อน" — ถามได้ (บันทึกทับ? / ขอสิทธิ์ Drive)
+        //   opts.auto   บันทึกอัตโนมัติ — ห้ามถาม: ติดปัญหาก็หยุดไว้ + แจ้งเตือน ไม่บันทึกทับ
+        //   opts.quiet  ไม่ขึ้น toast ตอนสำเร็จ (บันทึกอัตโนมัติทุกการแก้) · opts.silent ไม่แจ้งเตือนตอนล้มเหลว
+        async function saveToTeam(opts = {}) {
+            if (!AvatarCloud.signedIn()) { if (!opts.auto) AvatarCloud.signOutOrLogin(); return false; }
+            while (teamSaveInFlight) await teamSaveInFlight.catch(() => {});   // รอรอบที่กำลังบันทึกให้เสร็จก่อน
+            if (opts.auto && !historyDirty && AvatarCloud.hasDoc() && AvatarCloud.doc.everSaved) return true;   // รอบก่อนบันทึกครบแล้ว
+            const run = saveToTeamNow(opts);
+            teamSaveInFlight = run;
+            try { return await run; } finally { if (teamSaveInFlight === run) teamSaveInFlight = null; }
+        }
+
+        // snapshot ที่ getState ใช้ส่งขึ้นระบบรอบนี้ → เขียนเป็นร่างในเครื่องต่อ (ไม่ต้อง snapshot ซ้ำ)
+        let teamSnap = null;
+        async function persistTeamSnap() {
+            const snap = teamSnap;
+            teamSnap = null;
+            if (snap) await queueDraftWrite(snap, cloudDraftTag());
+            else if (draftDirty) await saveDraft();
+            else writeDraftTag(cloudDraftTag());
+        }
+
+        async function saveToTeamNow(opts) {
+            clearTimeout(teamAutoTimer); teamAutoTimer = null;
+            teamAutoFirstDirtyAt = 0;
+            teamSnap = null;
+            updateTeamSaveBadge('saving');
+            try {
+                // ยังไม่ผูกงาน (เช่น ปิดหน้ารายการงานไปโดยไม่เลือก) → สร้างงานใหม่จากที่กรอกไว้ ไม่ล้างฟอร์ม
+                if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
+                const seq = editSeq;
+                if (!(await AvatarCloud.save({ auto: !!opts.auto }))) { await persistTeamSnap(); updateTeamSaveBadge(); return false; }   // ผู้ใช้ยกเลิกการบันทึกทับ
+                teamAutosavePaused = null;      // บันทึกผ่าน (รวมถึงผู้ใช้เลือกบันทึกทับเอง) → บันทึกอัตโนมัติต่อได้
+                teamLastSavedAt = Date.now();
+                if (seq === editSeq) markHistorySynced();
+                else scheduleTeamAutosave();    // มีการแก้ระหว่างอัปโหลด → รอบหน้าค่อยเก็บ
+                // ร่างในเครื่อง = snapshot เดียวกับที่ส่งขึ้นระบบ + ป้าย "ตรงกับระบบแล้ว"
+                await persistTeamSnap();
+                if (!historyDirty) showSaveStatus(`<i class="fa-solid fa-cloud-check"></i> บันทึกขึ้นระบบทีมแล้ว ${new Date().toLocaleTimeString('th-TH')}`);
+                updateCurrentHistoryIndicator();
+                if (!opts.quiet) showToast(opts.auto ? 'บันทึกขึ้นระบบทีมให้อัตโนมัติแล้ว' : 'บันทึกขึ้นระบบทีมแล้ว');
+                return true;
+            } catch (e) {
+                console.error(e);
+                await persistTeamSnap().catch(() => {});   // บันทึกขึ้นระบบไม่ได้ → อย่างน้อยร่างในเครื่องต้องมีของล่าสุด (ป้าย "ค้าง")
+                if (!opts.auto) { updateTeamSaveBadge(); showToast(e.message || 'บันทึกไม่สำเร็จ'); return false; }
+                const code = e.code || (e.status === 401 ? 'drive' : 'error');
+                const firstTime = teamAutosavePaused !== code;
+                teamAutosavePaused = code;
+                if (code === 'error') {
+                    setTimeout(() => { if (teamAutosavePaused === 'error') { teamAutosavePaused = null; scheduleTeamAutosave(); } }, TEAM_AUTOSAVE_RETRY_MS);
+                }
+                showSaveStatus('<i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ขึ้นระบบ', false);
+                updateTeamSaveBadge();
+                if (opts.silent || !firstTime) return false;
+                if (code === 'conflict') {
+                    await showAlert({
+                        title: 'หยุดบันทึกอัตโนมัติ',
+                        message: 'มีคนบันทึกงานนี้ขึ้นระบบหลังจากคุณเปิดงาน — ระบบจึงไม่บันทึกทับให้อัตโนมัติ\n\nกดปุ่ม "บันทึก" แล้วเลือกเองว่าจะบันทึกทับหรือไม่\n(หรือรีโหลดหน้าเพื่อเลือกใช้ของล่าสุดบนระบบ)',
+                        variant: 'warning'
+                    });
+                } else if (code === 'drive') {
+                    if (opts.quiet) showToast('ต้องเชื่อมต่อ Google Drive เพื่ออัปโหลดรูป — กด "เชื่อมต่อ" ที่แถบใต้เมนู', 'info');
+                    else await showAlert({ title: 'ยังไม่ได้บันทึกขึ้นระบบทีม', message: 'ยังไม่ได้เชื่อมต่อ Google Drive (ต้องใช้ตอนอัปโหลดรูป)\n\nกด "เชื่อมต่อ" ที่แถบใต้เมนู หรือกดปุ่ม "บันทึก"', variant: 'warning' });
+                } else if (!opts.quiet) {
+                    await showAlert({ title: 'ยังไม่ได้บันทึกขึ้นระบบทีม', message: 'บันทึกไม่สำเร็จ (' + (e.message || 'ไม่ทราบสาเหตุ') + ')\n\nระบบจะลองใหม่เอง หรือกดปุ่ม "บันทึก"', variant: 'warning' });
+                }
+                return false;
+            }
+        }
+
+        // รูปที่มีบน Drive (data-drive) แต่ยังไม่ได้โหลดมาแสดง — เปิดงาน/โหลดใหม่ตอนยังไม่มีสิทธิ์ Drive
+        let teamPhotosMissing = 0;
+        function countMissingPhotos() {
+            const root = document.getElementById('exportWrapper');
+            if (!root) return 0;
+            return Array.from(root.querySelectorAll('[data-drive]')).filter(el => !(photoAttr(el) || '').includes('data:')).length;
+        }
+
+        // ปุ่ม "เชื่อมต่อ" บนแถบสถานะ — ขอสิทธิ์ Drive (ต้องมาจากการกดโดยตรง ไม่งั้นเบราว์เซอร์บล็อกหน้าต่าง Google)
+        //   แล้วโหลดรูปที่ยังขาด + บันทึกที่ค้างต่อ
+        async function connectDriveAndResume() {
+            const token = await AvatarCloud.connectDrive();
+            if (!token) { showToast('ยังเชื่อมต่อ Google Drive ไม่สำเร็จ', 'info'); return; }
+            if (teamPhotosMissing) {
+                await AvatarCloud.restorePhotos(document.getElementById('exportWrapper'), (n, t) => updateTeamSaveBadge('saving', `กำลังโหลดรูป ${n}/${t}...`));
+                teamPhotosMissing = countMissingPhotos();
+            }
+            if (teamAutosavePaused === 'drive') teamAutosavePaused = null;
+            if (historyDirty) await saveToTeam({ auto: true, quiet: true });
+            updateTeamSaveBadge();
+        }
+
+        // ============================================================
+        // 🌟 โหมดทีม: กลับมาที่แอพ (สลับแท็บ/หน้าต่าง, กลับจากแอพอื่นบน iPad, เน็ตกลับมา)
+        //    → เช็คว่างานที่เปิดอยู่มีคนบันทึกเวอร์ชันใหม่กว่าไหม
+        //      ไม่มีการแก้ค้างในเครื่อง → โหลดของล่าสุดให้เลย
+        //      มีการแก้ค้าง → ให้เลือก: โหลดของล่าสุด (ทิ้งของในเครื่อง) / เก็บของฉันไว้ (หยุดบันทึกอัตโนมัติ ไม่ทับให้เอง)
+        // ============================================================
+        const TEAM_RESUME_CHECK_GAP_MS = 10000;   // focus + visibilitychange มักยิงพร้อมกัน → เช็คห่างกันอย่างน้อยเท่านี้
+        let teamResumeCheckAt = 0;
+        let teamResumeChecking = false;
+
+        async function checkTeamDocUpdate() {
+            if (!isTeamMode() || !AvatarCloud.signedIn() || !AvatarCloud.hasDoc()) return;
+            if (document.visibilityState !== 'visible' || inPrintMode()) return;
+            if (teamAutosavePaused === 'conflict') return;   // รู้อยู่แล้ว (เลือก "เก็บของฉันไว้" / แถบสถานะเตือนอยู่) — ไม่ถามซ้ำทุกครั้งที่กลับมา
+            if (teamResumeChecking || Date.now() - teamResumeCheckAt < TEAM_RESUME_CHECK_GAP_MS) return;
+            teamResumeChecking = true;
+            teamResumeCheckAt = Date.now();
+            try {
+                while (teamSaveInFlight) await teamSaveInFlight.catch(() => {});   // รอบันทึกของเราให้เสร็จก่อน
+                const r = await AvatarCloud.checkRemote();
+                if (!r) return;
+                if (r.deleted) { showToast('งานนี้ถูกลบออกจากระบบทีมแล้ว', 'info'); return; }
+                if (!r.newer) return;
+                const when = new Date(r.updatedAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                if (historyDirty) {
+                    clearTimeout(teamAutoTimer); teamAutoTimer = null;   // ระหว่างถาม ห้ามบันทึกอัตโนมัติทับ
+                    const useRemote = await AvatarCloud.confirmDialog({
+                        title: 'มีการแก้งานนี้จากเครื่องอื่น',
+                        message: `งานนี้ถูกบันทึกขึ้นระบบเมื่อ <b>${escapeHtml(when)}</b>${r.mine ? ' (จากบัญชีของคุณในเครื่องอื่น)' : ''} แต่ในเครื่องนี้ยังมีการแก้ที่ยังไม่ได้บันทึก<br><br>• <b>โหลดของล่าสุด</b> — การแก้ที่ค้างในเครื่องนี้จะหายไป<br>• <b>เก็บของฉันไว้</b> — หยุดบันทึกอัตโนมัติไว้ก่อน ถ้ากด "บันทึก" จะทับของล่าสุดบนระบบ`,
+                        confirmText: 'โหลดของล่าสุด', cancelText: 'เก็บของฉันไว้'
+                    });
+                    if (!useRemote) { teamAutosavePaused = 'conflict'; updateTeamSaveBadge(); return; }
+                }
+                // โหลดของล่าสุด — ล้างป้าย "แก้ค้าง" ใน draft ก่อน ไม่งั้น applyState จะถามซ้ำว่าจะใช้ของในเครื่องไหม
+                draftCloudTag = null;
+                historyDirty = false;
+                resetTeamAutosave();
+                await AvatarCloud.reload();
+                showToast(`โหลดงานล่าสุดจากระบบแล้ว (บันทึกเมื่อ ${when})`);
+            } catch (e) {
+                console.warn('[team] resume check', e);
+            } finally {
+                teamResumeChecking = false;
+            }
+        }
+
+        // แถบสถานะการบันทึกโหมดทีม (ขวาของแถบ "กำลังแก้รายงาน" — เห็นทุกขนาดจอ)
+        function updateTeamSaveBadge(state, detail) {
+            const el = document.getElementById('teamSaveBadge');
+            if (!el) return;
+            let cls = 'text-slate-500', html = '';
+            if (isTeamMode() && AvatarCloud.signedIn()) {
+                const d = AvatarCloud.doc;
+                const warn = 'text-amber-700 font-bold';
+                if (state === 'saving') html = '<i class="fa-solid fa-circle-notch fa-spin"></i> ' + escapeHtml(detail || 'กำลังบันทึกขึ้นระบบ...');
+                else if (teamAutosavePaused === 'conflict') { cls = warn; html = '<i class="fa-solid fa-triangle-exclamation"></i> หยุดบันทึกอัตโนมัติ: มีคนอื่นบันทึกงานนี้ — กด "บันทึก" เพื่อเลือก'; }
+                else if (teamAutosavePaused === 'drive') { cls = warn; html = '<i class="fa-solid fa-triangle-exclamation"></i> ต้องเชื่อมต่อ Google Drive เพื่ออัปรูป <button onclick="connectDriveAndResume()" class="ml-1 bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded-md">เชื่อมต่อ</button>'; }
+                else if (teamPhotosMissing && !AvatarCloud.hasDriveToken()) { cls = warn; html = `<i class="fa-solid fa-image"></i> รูป ${teamPhotosMissing} รูปยังโหลดไม่ได้ — ต้องเชื่อมต่อ Google Drive <button onclick="connectDriveAndResume()" class="ml-1 bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded-md">เชื่อมต่อ</button>`; }
+                else if (teamAutosavePaused === 'error') { cls = warn; html = '<i class="fa-solid fa-triangle-exclamation"></i> บันทึกไม่สำเร็จ — จะลองใหม่อัตโนมัติ'; }
+                else if (!d || !d.everSaved) {
+                    if (historyDirty) { cls = warn; html = '<i class="fa-solid fa-circle-exclamation"></i> ยังไม่เคยบันทึก — กด "บันทึก" ครั้งแรก แล้วจะบันทึกอัตโนมัติ'; }
+                    else html = '<i class="fa-regular fa-circle"></i> ยังไม่เคยบันทึก';
+                }
+                else if (historyDirty) html = '<i class="fa-solid fa-pen"></i> มีการแก้ไข — กำลังจะบันทึกอัตโนมัติ';
+                else { cls = 'text-emerald-700'; html = '<i class="fa-solid fa-cloud-check"></i> บันทึกขึ้นระบบแล้ว' + (teamLastSavedAt ? ' ' + new Date(teamLastSavedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : ''); }
+            }
+            const key = cls + html;
+            if (el.dataset.key === key) return;   // เรียกทุกการพิมพ์ — เขียน DOM เฉพาะตอนเปลี่ยน
+            el.dataset.key = key;
+            el.className = 'ml-auto shrink-0 flex items-center gap-1.5 whitespace-nowrap ' + cls;
+            el.innerHTML = html;
+        }
+
+        // 🌟 โหมดทีม: หลังพิมพ์ PDF / ส่งออก Word เสร็จ (คืนหน้าจอจากโหมดพิมพ์แล้ว) → บันทึกขึ้นระบบทีมให้ทันที
+        //    (งานที่ยังไม่เคยบันทึกก็นับเป็นการบันทึกครั้งแรก) · ทำหลังหน้าพิมพ์ขึ้น ไม่ให้ต้องรออัปรูปก่อนได้ไฟล์
+        async function saveTeamAfterExport() {
+            if (!isTeamMode() || !historyDirty) return;   // ไม่มีการแก้ใหม่ → ไม่ต้องบันทึก
+            // กันพลาด: ถ้าหน้าจอยังอยู่ในโหมดพิมพ์ รอให้คืนก่อน (ห้ามเก็บ DOM โหมดพิมพ์ขึ้นระบบ)
+            for (let i = 0; i < 50 && inPrintMode(); i++) await new Promise(r => setTimeout(r, 200));
+            if (inPrintMode()) return;
+            if (teamAutosavePaused && teamAutosavePaused !== 'error') { updateTeamSaveBadge(); return; }   // แจ้งไปแล้วที่แถบสถานะ
+            await saveToTeam({ auto: true, quiet: teamAutosaveEnabled() });
+        }
+
+        // โหมดทีม: เปิดงานที่มีการแก้ค้างในเครื่อง (ยังไม่ได้กดบันทึก) → ใช้ของในเครื่องแทนของบนระบบ
+        //   ถ้าระหว่างนั้นมีคนบันทึกงานนี้ขึ้นระบบ → ให้ผู้ใช้เลือกเอง
+        async function keepLocalUnsaved(s, meta) {
+            const tag = draftCloudTag;
+            if (!tag || !tag.dirty || tag.docId !== meta.id) return false;
+            const remoteNewer = !!s && !!meta.updatedAt && (!tag.base || new Date(meta.updatedAt) > new Date(tag.base));
+            if (remoteNewer && await AvatarCloud.confirmDialog({
+                title: 'มีเวอร์ชันใหม่กว่าบนระบบทีม',
+                message: `งานนี้มีการแก้ไขในเครื่องนี้ที่ยังไม่ได้บันทึก แต่มีคนบันทึกงานนี้ขึ้นระบบเมื่อ <b>${escapeHtml(new Date(meta.updatedAt).toLocaleString('th-TH'))}</b> หลังจากนั้น<br><br>• <b>ใช้ของในเครื่อง</b> — ทำต่อจากที่ค้างไว้ (ถ้ากดบันทึก จะทับของที่คนนั้นบันทึกไว้)<br>• <b>ใช้ของบนระบบ</b> — การแก้ที่ค้างในเครื่องนี้จะหายไป`,
+                confirmText: 'ใช้ของบนระบบ', cancelText: 'ใช้ของในเครื่อง'
+            })) return false;
+            // หน้าจอตอนนี้คือ draft ของงานนี้อยู่แล้ว (โหลดตอนเปิดหน้า) → แค่คงสถานะ "ยังไม่บันทึก" ไว้
+            await new Promise(r => setTimeout(r, 0));   // ให้ตัวเคลียร์ flag ของ applyDataToDOM (setTimeout 0) ทำงานก่อน
+            historyDirty = true;
+            showSaveStatus('<i class="fa-solid fa-floppy-disk"></i> มีการแก้ที่ยังไม่ขึ้นระบบ', false);
+            showToast('เปิดงานพร้อมการแก้ที่ค้างไว้ (ยังไม่ได้บันทึกขึ้นระบบทีม)');
+            scheduleTeamAutosave();   // งานที่เคยบันทึกแล้ว → ส่งของที่ค้างขึ้นระบบต่อเลย
+            return true;
         }
 
         // เริ่มงานใหม่จากเมนูประวัติ — กันงานที่ยังไม่บันทึกหายก่อน
@@ -3204,7 +3702,10 @@
         }
 
         // กล่องเตือน 3 ปุ่ม: บันทึกก่อน / ไม่บันทึก / ยกเลิก → คืน 'save' | 'discard' | 'cancel'
-        function confirmUnsavedChanges() {
+        function confirmUnsavedChanges(team, customMsg) {
+            const msg = customMsg || (team
+                ? 'งานนี้มีการแก้ไขที่ยังไม่ได้บันทึกขึ้น "ระบบทีม"<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?'
+                : 'งานปัจจุบันยังไม่ได้บันทึกลง "ประวัติ"<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?');
             return new Promise(resolve => {
                 const overlay = document.createElement('div');
                 overlay.className = 'fixed inset-0 z-[100001] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print';
@@ -3213,7 +3714,7 @@
                         <div class="p-5 text-center">
                             <div class="mx-auto w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xl mb-3"><i class="fa-solid fa-triangle-exclamation"></i></div>
                             <h3 class="text-lg font-bold text-slate-800 mb-1">งานยังไม่ได้บันทึก</h3>
-                            <p class="text-sm text-slate-500 leading-relaxed">งานปัจจุบันยังไม่ได้บันทึกลง "ประวัติ"<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p>
+                            <p class="text-sm text-slate-500 leading-relaxed">${msg}</p>
                         </div>
                         <div class="p-4 pt-0 flex flex-col gap-2">
                             <button data-act="save" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-bookmark"></i> บันทึกก่อน</button>
@@ -3235,6 +3736,8 @@
         //     1) งานใหม่ที่ยังไม่ผูก history แต่มีเนื้อหา
         //     2) งานที่ผูก history แล้ว แต่มีการแก้ที่ยังไม่ได้บันทึกเข้า history (historyDirty)
         async function proceedSwitch() {
+            if (draftDirty) await flushDraftSave();   // เก็บของที่ค้างใน debounce ลง draft ก่อนเสมอ
+            if (isTeamMode()) return proceedSwitchTeam();
             const newUnsaved = (currentHistoryId === null && reportHasContent());
             const linkedUnsaved = (currentHistoryId !== null && historyDirty);
             if (newUnsaved || linkedUnsaved) {
@@ -3256,8 +3759,35 @@
             return true;
         }
 
+        // โหมดทีม: ก่อนเปลี่ยนงาน / เริ่มงานใหม่ / ออกจากระบบ / สลับโหมด
+        //   งานที่เคยบันทึกแล้ว → บันทึกที่ค้างขึ้นระบบให้เลย ไม่ถาม
+        //   ถามเฉพาะงานที่ยังไม่เคยบันทึก หรือบันทึกอัตโนมัติไม่สำเร็จ (กันข้อมูลหาย)
+        async function proceedSwitchTeam() {
+            if (!historyDirty) return true;
+            if (teamAutosaveEnabled() && !teamAutosavePaused) {
+                showToast('กำลังบันทึกงานนี้ขึ้นระบบก่อนเปลี่ยนงาน...', 'info');
+                if (await runTeamAutosave({ silent: true })) return true;
+            }
+            const reason = {
+                conflict: 'บันทึกอัตโนมัติไม่ได้ เพราะมีคนอื่นบันทึกงานนี้หลังจากคุณเปิด<br>ต้องการบันทึก (ทับ) ก่อนเปลี่ยนงานไหม?',
+                drive: 'บันทึกอัตโนมัติไม่ได้ เพราะยังไม่ได้เชื่อมต่อ Google Drive (ต้องใช้อัปโหลดรูป)<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?',
+                error: 'บันทึกขึ้นระบบไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ต)<br>ต้องการลองบันทึกอีกครั้งก่อนเปลี่ยนงานไหม?'
+            }[teamAutosavePaused] || 'งานนี้ยังไม่เคยบันทึกขึ้น "ระบบทีม"<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?';
+            const choice = await confirmUnsavedChanges(true, reason);
+            if (choice === 'cancel') return false;
+            if (choice === 'save') return saveToTeam();   // บันทึกไม่สำเร็จ / ยกเลิกเขียนทับ → ไม่เปลี่ยนงาน กันข้อมูลหาย
+            // ไม่บันทึก → ทิ้งการแก้: ป้ายใน draft ต้องไม่ค้าง ไม่งั้นเปิดงานนี้ครั้งหน้าจะดึงของที่ทิ้งไปกลับมา
+            resetTeamAutosave();
+            markHistorySynced();
+            writeDraftTag(cloudDraftTag());
+            return true;
+        }
+
         // บันทึกเข้า history อัตโนมัติเมื่อ export/พิมพ์ (เก็บ snapshot ของงานที่กำลังทำ)
         async function autoSnapshotOnExport() {
+            // โหมดทีม: ไม่เก็บสำเนาลงประวัติในเครื่อง — บันทึกขึ้นระบบทีมแทนหลัง export เสร็จ (saveTeamAfterExport)
+            //   (เดิมทำให้สถานะ "ยังไม่บันทึก" ถูกล้าง → เปลี่ยนงานแล้วไม่เตือน การแก้หาย)
+            if (isTeamMode()) return;
             try {
                 if (currentHistoryId !== null) {
                     // ผูกกับ history อยู่แล้ว → เขียนเข้า history ให้เป็นล่าสุด (B: autosave ไม่ sync แล้ว)
@@ -3449,6 +3979,10 @@
                     // 🌟 โหลดงานเดิมอัตโนมัติ — ไม่ถามผู้ใช้เพื่อกันการกดพลาดเสียงาน
                     // ถ้าต้องการเริ่มใหม่ ให้ใช้ปุ่ม "ล้างข้อมูล" ที่มีอยู่แล้ว
                     applyDataToDOM(draft);
+                    await restoreDraftPhotos();   // ร่าง v2 เก็บรูปแยก → เติมกลับ
+                    let tag = draft.cloud || null;   // ร่างแบบเก่าเก็บป้ายไว้ในตัว
+                    if (draft.v === 2) { try { tag = JSON.parse(localStorage.getItem(DRAFT_TAG_KEY) || 'null'); } catch { tag = null; } }
+                    draftCloudTag = tag;
                     return true;
                 }
             } catch (e) {
@@ -3459,6 +3993,7 @@
 
         function applyDataToDOM(draft) {
             suppressDirty = true; // 🌟 โค้ดกำลังเขียน DOM เอง — อย่านับเป็นการแก้ของผู้ใช้
+            pagePristine = false;
             selectedModules = draft.globals.selectedModules || [];
             breakerCount = draft.globals.breakerCount || 0;
             groupCounts = draft.globals.groupCounts || { bf: 0, cl: 0, af: 0, blk: 0 };
@@ -4143,18 +4678,20 @@
         }
 
         async function clearDraft() {
+            const team = isTeamMode();
             const ok = await showConfirm({
                 title: 'ล้างข้อมูลทั้งหมด?',
-                message: 'ข้อความและรูปภาพทั้งหมดบนรายงานนี้จะถูกลบและเริ่มจากกระดาษเปล่าใหม่\n\n* รายงานที่บันทึกไว้ใน "ประวัติ" จะไม่ถูกลบ',
+                message: 'ข้อความและรูปภาพทั้งหมดบนรายงานนี้จะถูกลบและเริ่มจากกระดาษเปล่าใหม่\n\n' + (team
+                    ? '* งานในระบบทีมจะยังไม่เปลี่ยน จนกว่าจะกด "บันทึก"'
+                    : '* รายงานที่บันทึกไว้ใน "ประวัติ" จะไม่ถูกลบ'),
                 confirmText: 'ล้างทั้งหมด',
                 cancelText: 'ยกเลิก',
                 variant: 'danger'
             });
             if (ok) {
-                await localforage.removeItem('smart_pm_draft');
                 await localforage.removeItem(CURRENT_ID_KEY);
-                try { sessionStorage.setItem('pm_skip_startup', '1'); } catch {}
-                location.reload();
+                // โหมดทีม: ผูกหน้าเปล่ากับงานที่เปิดอยู่ ไม่งั้นหลัง reload ของบนระบบจะถูกโหลดกลับมาทับ
+                await reloadBlank(team && AvatarCloud.doc ? AvatarCloud.doc.id : null, true);
             }
         }
 
@@ -5912,12 +6449,12 @@
                 imgElement.style.backgroundImage = `url('${value}')`;
                 imgElement.classList.remove('hidden');
                 inputElement.value = ''; 
-                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
             } else {
                 imgElement.style.backgroundImage = "";
                 imgElement.classList.add('hidden');
                 inputElement.value = ''; 
-                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
             }
         }
 
@@ -6157,7 +6694,7 @@
                         const cropBtn = box.querySelector('.crop-photo-btn');
                         if(cropBtn) cropBtn.classList.remove('hidden');
                         
-                        showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                        markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
                         
                         startIdx++;
                         processNextFile(); // ประมวลผลรูปถัดไปเมื่อรูปปัจจุบันเสร็จแล้ว
@@ -6188,7 +6725,7 @@
                         if(cropBtn) cropBtn.classList.remove('hidden');
                     }
                     
-                    showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                    markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
                 });
             }
             event.target.value = '';
@@ -6208,6 +6745,7 @@
                 const cropBtn = box.querySelector('.crop-photo-btn');
                 if(cropBtn) cropBtn.classList.add('hidden');
             }
+            markUnsaved();   // ลบรูป = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น)
         }
 
         // 🌟 ย่อโลโก้แบบ "คงพื้นใส" — ต่างจาก compressImage (ของรูปถ่าย) ที่เติมพื้นขาวแล้วแปลงเป็น JPEG
@@ -6241,7 +6779,7 @@
                     imgElement.src = compressedBase64;
                     imgElement.classList.remove('hidden');
                     document.getElementById(placeholderId).classList.add('hidden');
-                    showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                    markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
                 });
             }
             event.target.value = '';
@@ -6833,7 +7371,7 @@
                     imgElement.style.backgroundImage = `url('${dataUrl}')`;
                     imgElement.classList.remove('hidden');
                 }
-                showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+                markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
                 closeCropModal();
             };
             src.onerror = () => {
@@ -6958,7 +7496,7 @@
             const imgElement = document.getElementById(currentPreviewIdToEdit);
             imgElement.style.backgroundImage = `url('${dataUrl}')`;
             
-            showSaveStatus('<i class="fa-solid fa-pen"></i> กำลังแก้ไข...', false);
+            markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
             closeDrawingModal();
         }
 
@@ -7322,6 +7860,10 @@
                 printBtn.disabled = false;
                 printBtn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
+
+            // 🌟 ปลดล็อก suppressDirty ที่ prepareDocumentForPrint ตั้งไว้ (หลัง mutation ของการ restore ถูกประมวลผลแล้ว)
+            //    เดิมไม่มีบรรทัดนี้ → พิมพ์ PDF / ส่งออก Word แล้ว การแก้หลังจากนั้นไม่ถูกนับ: ไม่ autosave ไม่เตือน
+            setTimeout(() => { suppressDirty = false; }, 0);
         }
 
         // 🌟 ล้างทุก artifact จาก print mode (สำหรับใช้ตอนโหลด draft/JSON เก่าที่ contain broken state)
@@ -7579,9 +8121,10 @@
                 }, { once: true });
 
                 window.print();
-                
+
                 setTimeout(() => {
                     restoreDocumentAfterPrint();
+                    saveTeamAfterExport();   // โหมดทีม: บันทึกขึ้นระบบให้อัตโนมัติหลังหน้าพิมพ์ขึ้นแล้ว
                 }, 1500);
 
             }, 800);
@@ -7654,6 +8197,7 @@
             }
 
             let undoPrintVariants = () => {};
+            let exported = false;
             try {
                 prepareDocumentForPrint(true);
                 undoPrintVariants = wordApplyPrintVariants();
@@ -7677,6 +8221,7 @@
                 setTimeout(() => URL.revokeObjectURL(url), 1000);
 
                 showToast(`ส่งออก Word สำเร็จ: "${fileName}" (${doc.images.length} รูป)`);
+                exported = true;
             } catch (e) {
                 console.error('[Word Export]', e);
                 showAlert({ title: 'ส่งออก Word ไม่สำเร็จ', message: String(e && e.message || e), variant: 'danger' });
@@ -7689,6 +8234,8 @@
                     btn.classList.remove('opacity-75', 'cursor-not-allowed');
                 }
             }
+            // โหมดทีม: บันทึกขึ้นระบบให้อัตโนมัติ (หลังคืนหน้าจอจากโหมดพิมพ์แล้ว — ห้ามเก็บ DOM โหมดพิมพ์)
+            if (exported) saveTeamAfterExport();
         }
 
         // 🌟 Tailwind `print:` variants ทำงานเฉพาะตอน window.print() — ตอน export Word เราอยู่บนจอ
