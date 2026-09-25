@@ -1893,12 +1893,40 @@
             ro.observe(nav.lastElementChild);   // กลุ่มปุ่มเปลี่ยนขนาด เช่น ชิปบัญชีโผล่หลังล็อกอิน
         }
 
+        // 🌟 avatar-cloud.js ต้องใหม่พอสำหรับหน้านี้ (อัปโหลดขึ้นเว็บแยกไฟล์กัน — เคยอัปแค่ pmform แล้ว "ส่งขึ้นทีม" เงียบ)
+        //    เก่ากว่า → ลองโหลดใหม่แบบไม่ใช้ cache 1 ครั้ง (GitHub Pages ให้เบราว์เซอร์จำไฟล์ 10 นาที)
+        //    ยังเก่าอยู่ = ไฟล์บนเว็บเก่าจริง → เตือนให้อัปโหลด avatar-cloud.js
+        const NEED_AVATAR_CLOUD_API = 2;   // ตรงกับ API_VERSION ใน avatar-cloud.js
+        async function checkAvatarCloudVersion() {
+            const KEY = 'pm_cloud_refetch';
+            if ((AvatarCloud.version || 0) >= NEED_AVATAR_CLOUD_API) { try { sessionStorage.removeItem(KEY); } catch {} return true; }
+            let tried = false;
+            try { tried = sessionStorage.getItem(KEY) === '1'; } catch {}
+            if (!tried) {
+                try {
+                    sessionStorage.setItem(KEY, '1');
+                    await fetch('avatar-cloud.js', { cache: 'reload' });   // อัปเดต cache ของเบราว์เซอร์ให้เป็นไฟล์ล่าสุด
+                    location.reload();
+                    return false;
+                } catch {}
+            }
+            const dlg = document.getElementById('dialogModal');
+            dlg.style.zIndex = '100070';   // อยู่เหนือหน้าเข้าสู่ระบบของ avatar-cloud (100050)
+            showAlert({
+                title: 'ไฟล์ระบบทีมบนเว็บยังเป็นเวอร์ชันเก่า',
+                message: 'avatar-cloud.js บนเว็บเก่ากว่า pmform.html — บางปุ่มในระบบทีม (เช่น "ส่งขึ้นทีม") จะใช้งานไม่ได้\n\nให้อัปโหลดไฟล์ avatar-cloud.js ล่าสุดขึ้นเว็บ รอสักครู่ แล้วรีโหลดหน้านี้',
+                variant: 'warning'
+            }).then(() => { dlg.style.zIndex = ''; });
+            return true;   // ใช้งานต่อได้ (ส่วนที่เหลือยังทำงาน) แต่เตือนไว้แล้ว
+        }
+
         // ============================================================
         // 🌟 ระบบทีมออนไลน์ (avatar-cloud.js) — เก็บงานลง Supabase, รูปขึ้น Google Drive
         //    โหมดออฟไลน์ = ใช้ draft + ประวัติในเครื่องแบบเดิมทุกอย่าง
         // ============================================================
         async function initTeamCloud(skipStartup) {
             if (!window.AvatarCloud) { if (!skipStartup) await showStartupModal(false); return; }
+            if (!(await checkAvatarCloudVersion())) return;   // กำลังโหลดไฟล์ใหม่ (reload)
             const wrapper = () => document.getElementById('exportWrapper');
 
             // กลับมาที่แอพ → เช็คว่ามีคนบันทึกงานนี้ใหม่กว่าไหม (checkTeamDocUpdate กรองโหมด/เวลาเอง)
