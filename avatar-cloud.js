@@ -25,11 +25,17 @@
      save({ auto:true })      บันทึกอัตโนมัติ: ไม่ถาม/ไม่เด้งหน้าต่าง — throw code 'conflict' | 'drive' แทน
      doc.everSaved            งานนี้เคยบันทึกเนื้อหาแล้วหรือยัง · connectDrive() ขอสิทธิ์ Drive (ต้องมาจากการกด)
      checkRemote() / reload() เช็ค/โหลดเวอร์ชันล่าสุดของงานที่เปิดอยู่ · meta.quietPhotos = ห้ามเด้งขอสิทธิ์ Drive
+     saveNow()                (ไม่บังคับ) ขั้นตอนบันทึกของแอพเอง ใช้ตอน "ส่งขึ้นทีม" — คืน true ถ้าสำเร็จ
 
    หมายเหตุ: ต้องรัน MIGRATION 4 ใน minute-of-meeting-supabase-schema.sql ก่อน
    ============================================================================ */
 (function (global) {
 'use strict';
+
+/* เลขเวอร์ชันของไฟล์นี้ — เพิ่มทุกครั้งที่แอพต้องใช้ความสามารถใหม่/แก้บั๊กในไฟล์นี้
+   แอพเช็คเลขนี้ตอนเปิด (เช่น pmform: NEED_AVATAR_CLOUD_API) → ถ้าไฟล์บนเว็บเก่ากว่าจะเตือนให้อัปโหลด
+   2 = แก้ "ส่งขึ้นทีม" กดแล้วไม่มีอะไรเกิดขึ้น (id ตัวเลข vs ข้อความ) + saveNow + อัปรูปทีละ 3 */
+const API_VERSION = 2;
 
 /* ---- CONFIG (ชุดเดียวกับ minute-of-meeting.html) ---- */
 const SUPABASE_URL         = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
@@ -281,11 +287,12 @@ async function uploadPhotos(root, onProgress, interactive = true) {
   if (!els.length) return;
   if (!hasDriveToken() && !(await getDriveToken(interactive))) throw codedError('drive', 'ต้องเชื่อมต่อ Google Drive ก่อนบันทึก');
   const folderId = await ensureDocFolder();
-  let n = 0;
-  for (const el of els) {
+  // อัปพร้อมกันทีละ 3 รูป (ส่งงานรูปเยอะขึ้นทีมเร็วขึ้นมาก) — รูปที่ขึ้นแล้วได้ data-drive ทันที
+  // ถ้ามีรูปไหนพัง: หยุดรับรูปใหม่ รอรูปที่กำลังอัปเสร็จ แล้วค่อยแจ้ง error (รอบหน้าอัปต่อเฉพาะที่เหลือ)
+  let next = 0, done = 0, failed = null;
+  const uploadOne = async el => {
     const dataUrl = readPhotoData(el);
-    if (!dataUrl) continue;
-    if (onProgress) onProgress(++n, els.length);
+    if (!dataUrl) return;
     const blob = await (await fetch(dataUrl)).blob();
     const oldId = el.dataset.drive;
     const id = await driveUpload(blob, `${el.id || 'photo'}_${Date.now()}.jpg`, folderId);
@@ -293,7 +300,26 @@ async function uploadPhotos(root, onProgress, interactive = true) {
     el.dataset.driveHash = hashString(dataUrl);
     photoCache.setItem(id, dataUrl);
     if (oldId && oldId !== id) driveDelete(oldId, currentUser.id, false);
-  }
+  };
+  await Promise.all([0, 1, 2].map(async () => {
+    while (!failed && next < els.length) {
+      const el = els[next++];
+      try { await uploadOne(el); } catch (e) { failed = failed || e; return; }
+      if (onProgress) onProgress(++done, els.length);
+    }
+  }));
+  if (failed) throw failed;
+}
+
+/* state ที่เก็บไว้ (เช่น งานออฟไลน์) มีรูปแบบ data URL ที่ต้องอัปขึ้น Drive ไหม */
+function stateHasPhotoData(state) {
+  let found = false;
+  (function walk(v) {
+    if (found || !v) return;
+    if (typeof v === 'string') { if (v.includes('data:image')) found = true; return; }
+    if (typeof v === 'object') Object.values(v).forEach(walk);
+  })(state);
+  return found;
 }
 
 /* HTML สำหรับเก็บลง database — ถอด dataUrl ออก เหลือแค่ data-drive */
@@ -725,9 +751,11 @@ async function showDocList(opts = {}) {
     }
     catch (e) { console.error(e); toast('เปิดงานไม่สำเร็จ'); }
   });
+  // id งานในเครื่องอาจเป็นตัวเลข (ประวัติของ pmform ใช้ Date.now()) แต่ data-* เป็นข้อความเสมอ → เทียบเป็นข้อความ
+  const sameId = (a, b) => String(a) === String(b);
   bg.querySelectorAll('[data-lopen]').forEach(el => el.onclick = async () => {
     close();
-    const m = local.find(x => x.id === el.dataset.lopen);
+    const m = local.find(x => sameId(x.id, el.dataset.lopen));
     if (!m) return;
     if (!(await canSwitch())) return;
     doc = { id: m.id, name: m.name, updatedAt: m.updatedAt };
@@ -749,34 +777,41 @@ async function showDocList(opts = {}) {
   });
   bg.querySelectorAll('[data-ldel]').forEach(el => el.onclick = async e => {
     e.stopPropagation();
-    const m = local.find(x => x.id === el.dataset.ldel);
+    const m = local.find(x => sameId(x.id, el.dataset.ldel));
     if (!await confirmDialog({
       title: 'ลบงานออกจากเครื่องนี้',
       message: `ต้องการลบงานออฟไลน์ "<b>${esc(m ? m.name : '')}</b>" ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
       confirmText: 'ลบ', danger: true
     })) return;
-    await localSaveList(local.filter(x => x.id !== el.dataset.ldel));
+    await localSaveList(local.filter(x => !sameId(x.id, el.dataset.ldel)));
     toast('ลบงานแล้ว');
     close(); showDocList(opts);
   });
   bg.querySelectorAll('[data-push]').forEach(el => el.onclick = async () => {
-    const m = local.find(x => x.id === el.dataset.push);
-    if (!m) return;
+    const m = local.find(x => sameId(x.id, el.dataset.push));
+    if (!m) { toast('ไม่พบงานนี้ในเครื่อง'); return; }
     if (!await confirmDialog({
       title: 'ส่งงานขึ้นทีม',
       message: `สร้างงาน "<b>${esc(m.name)}</b>" ในระบบทีมจากสำเนาออฟไลน์ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">รูปจะถูกอัปโหลดขึ้น Google Drive · สำเนาในเครื่องยังอยู่</span>`,
       confirmText: 'ส่งขึ้นทีม'
     })) return;
     close();
+    // ขอสิทธิ์ Drive ทันทีตอนกด (ยังนับเป็นการกดของผู้ใช้) — ถ้ารอไปขอตอนอัปโหลด เบราว์เซอร์จะบล็อกหน้าต่าง Google
+    if (stateHasPhotoData(m.state) && !hasDriveToken() && !(await getDriveToken(true))) {
+      toast('ต้องเชื่อมต่อ Google Drive ก่อน (ใช้อัปโหลดรูป) — ลองกด "ส่งขึ้นทีม" อีกครั้ง');
+      return;
+    }
     try {
       if (!(await canSwitch())) return;
+      toast('กำลังส่งงานขึ้นทีม...');
       const id = await createDocument(m.name);
       doc = { id, name: m.name, updatedAt: null, everSaved: false };
       lsSet(lastDocKey(), id);
       await cfg.applyState(m.state);
-      await saveDocument({ force: true });
-      toast('ส่งขึ้นทีมแล้ว');
-    } catch (e) { console.error(e); toast('ส่งขึ้นทีมไม่สำเร็จ'); }
+      // แอพมีขั้นตอนบันทึกของตัวเอง (สถานะ/ร่างในเครื่อง) → ใช้อันนั้น
+      const ok = cfg.saveNow ? await cfg.saveNow() : await saveDocument({ force: true });
+      toast(ok ? 'ส่งขึ้นทีมแล้ว' : 'ส่งขึ้นทีมยังไม่สำเร็จ — งานเปิดอยู่แล้ว กด "บันทึก" เพื่อลองใหม่');
+    } catch (e) { console.error(e); toast('ส่งขึ้นทีมไม่สำเร็จ — ถ้างานเปิดอยู่แล้ว กด "บันทึก" เพื่อลองใหม่'); }
   });
   return { close };
 }
@@ -909,6 +944,8 @@ const AvatarCloud = {
     if (cfg.silentStart) { renderChip(); cfg.onReady?.(isOnline() ? 'online' : 'offline'); return; }
     showLogin(true);
   },
+
+  version: API_VERSION,
 
   // สถานะ
   isOnline, get user() { return currentUser; }, get doc() { return doc; },
