@@ -1980,6 +1980,8 @@
 
                 // ก่อนเปลี่ยนงาน / เริ่มงานใหม่ / ออกจากระบบ / สลับโหมด — เตือนถ้ายังไม่บันทึก (false = ยกเลิก)
                 beforeSwitch: () => proceedSwitch(),
+                // "ส่งขึ้นทีม" (งานในเครื่อง → ระบบทีม) ใช้ขั้นตอนบันทึกเดียวกับปุ่ม "บันทึก" (สถานะ + ร่างในเครื่องถูกต้อง)
+                saveNow: () => saveToTeam(),
                 onReady: async (mode) => {
                     if (mode === 'online') teamPhotosMissing = countMissingPhotos();
                     teamResumeCheckAt = Date.now();   // เพิ่งโหลดงานมาสด ๆ — ไม่ต้องเช็คซ้ำทันที
