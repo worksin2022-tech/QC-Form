@@ -114,45 +114,17 @@
 
     <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0 flex items-center cursor-pointer hover:text-blue-400 transition" onclick="switchApp('home')">
-                    <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
-                    <span class="font-bold text-xl hidden sm:block">Quality Control Forms</span>
+            <div class="flex items-center justify-between h-16 gap-2">
+                <div class="flex items-center min-w-0 cursor-pointer hover:text-blue-400 transition" onclick="switchApp('home')">
+                    <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 flex-shrink-0 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
+                    <span class="font-bold text-base sm:text-xl truncate">Quality Control Forms</span>
                 </div>
-                <div class="hidden md:block">
-                    <div class="ml-4 flex items-baseline space-x-2">
-                        <button onclick="switchApp('home')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="home">หน้าแรก</button>
-                        <button onclick="switchApp('missing-item')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="missing-item">Missing Item</button>
-                        <button onclick="switchApp('claim-item')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="claim-item">Eq. Claim</button>
-                        <button onclick="switchApp('trip-fac')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-fac">Trip (Fac)</button>
-                        <button onclick="switchApp('trip-site')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="trip-site">Trip (Trading)</button>
-                        <button onclick="window.location.href='pmform.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-purple-300">PM Report</button>
-                        <button onclick="window.location.href='minute-of-meeting.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-teal-300">Minute of Meeting</button>
-                        <button onclick="window.location.href='thermoscan_report.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-yellow-300">Thermoscan</button>
-                        <button onclick="window.location.href='qr.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-cyan-300">Drive QR</button>
-                        <button onclick="window.location.href='photograph-inspection.html'" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition text-indigo-300">Photograph</button>
-                    </div>
-                </div>
-                <span id="acChipHost" class="hidden md:flex items-center ml-2 no-print"></span>
-                <div class="md:hidden flex items-center">
-                    <span id="acChipHostMobile" class="flex items-center mr-1 no-print"></span>
-                    <button id="mobileMenuBtn" class="outline-none mobile-menu-button p-2 rounded-md hover:bg-gray-700 focus:outline-none" onclick="toggleMobileMenu()">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                    </button>
+                <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <button onclick="switchApp('home')" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition nav-btn" data-target="home">หน้าแรก</button>
+                    <!-- โปรไฟล์ (ชิปบัญชี avatar-cloud.js) -->
+                    <span id="acChipHost" class="flex items-center no-print"></span>
                 </div>
             </div>
-        </div>
-        <div id="mobileMenuPanel" class="hidden md:hidden bg-gray-700 pb-3 pt-2">
-            <button onclick="switchApp('home'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="home">หน้าแรก (Home)</button>
-            <button onclick="switchApp('missing-item'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="missing-item">Missing Item Form</button>
-            <button onclick="switchApp('claim-item'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="claim-item">Equipment Claim</button>
-            <button onclick="switchApp('trip-fac'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="trip-fac">Trip Unit Test (Factory)</button>
-            <button onclick="switchApp('trip-site'); toggleMobileMenu()" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-white hover:bg-gray-600 nav-btn-mobile" data-target="trip-site">Trip Unit Test (Trading)</button>
-            <button onclick="window.location.href='pmform.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-purple-300 hover:bg-gray-600">PM Report</button>
-            <button onclick="window.location.href='minute-of-meeting.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-teal-300 hover:bg-gray-600">Minute of Meeting</button>
-            <button onclick="window.location.href='thermoscan_report.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-yellow-300 hover:bg-gray-600">Thermoscan Report</button>
-            <button onclick="window.location.href='qr.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-cyan-300 hover:bg-gray-600">Drive → QR Code</button>
-            <button onclick="window.location.href='photograph-inspection.html'" class="block w-full text-left pl-4 pr-4 py-2 text-base font-medium text-indigo-300 hover:bg-gray-600">Photograph Inspection</button>
         </div>
     </nav>
 
@@ -372,6 +344,8 @@
 </button>
                 </div>
 
+                <div id="missingAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
+
                 <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[285mm] overflow-hidden report-print-view">
                     <div class="relative w-full pt-0 pb-2">
                         <div class="w-full flex h-[14px]">
@@ -516,6 +490,8 @@
     ดาวน์โหลด PDF
 </button>
                 </div>
+
+                <div id="claimAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
 
                 <div id="claimReportView" class="bg-white shadow-lg mx-auto flex flex-col relative overflow-hidden pt-[5mm] w-full max-w-[210mm] h-[285mm] report-print-view">
                     <div class="relative w-full pt-0 pb-2 shrink-0">
@@ -1237,7 +1213,7 @@
         }
 
         function toggleMobileMenu() {
-            document.getElementById('mobileMenuPanel').classList.toggle('hidden');
+            document.getElementById('mobileMenuPanel')?.classList.toggle('hidden');
         }
 
         function formatDateThai(dateString) {
@@ -1527,6 +1503,8 @@
             
             // ตั้งชื่อไฟล์ PDF: Missing Item_ชื่อโปรเจค_ชื่อตู้
             document.title = `Missing Item_${projectName}_${cabinetId}`;
+
+            autoSaveReport('missing-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
         }
 
         function editMissingForm() {
@@ -1598,6 +1576,8 @@
             const eqBrand = document.getElementById('claimEqBrand').value || 'Brand';
             const docNo = document.getElementById('claimDocNo').value || 'DocNo';
             document.title = `Equipment Claim_${eqBrand}_${docNo}`;
+
+            autoSaveReport('claim-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
         }
 
         function editClaimForm() {
@@ -2101,9 +2081,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             await AvatarCloud.init({
                 app: activeFormKey,
                 appTitle: () => activeForm().title,
-                chipContainer: window.matchMedia('(min-width: 768px)').matches ? 'acChipHost' : 'acChipHostMobile',
+                chipContainer: 'acChipHost',
+                chipCompact: window.matchMedia('(max-width: 639px)').matches,   // จอมือถือ: เหลือแค่รูปโปรไฟล์
                 silentStart: true,   // หน้ารวมแอพ — ไม่บังคับล็อกอิน ค่อยขอตอนกดบันทึก/ประวัติ
-                root: () => document.getElementById(activeForm().scope),
+                // ไม่เก็บ HTML — รูปอยู่ใน array (uploadDataUrls) ไม่ต้องให้ไล่อัปรูปใน DOM
+                // (ไม่งั้นรูปพรีวิว/ลายเซ็น/รูปในหน้ารายงานถูกอัปขึ้น Drive ซ้ำทุกครั้งที่บันทึก)
+                root: () => null,
                 docName: () => activeForm().nameFrom() || 'งานที่ยังไม่ได้ตั้งชื่อ',
                 docCustomer: () => (currentAppId === 'missing-item' ? val('projectName') : val('claimEqBrand')),
                 onToast: m => alert(m),
@@ -2181,6 +2164,77 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
                 if (await AvatarCloud.save()) { updateCloudDocBars(); alert('บันทึกขึ้นระบบทีมแล้ว'); }
             } catch (e) { console.error(e); alert(e.message || 'บันทึกไม่สำเร็จ'); }
+        }
+
+        // ==========================================
+        // กด "สร้างรายงาน" → บันทึกขึ้นระบบทีมอัตโนมัติ (Missing Item / Equipment Claim)
+        // ==========================================
+        let reportSaveChain = Promise.resolve();
+        const escHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        function showAutoSave(formKey, tone, html) {
+            const el = document.getElementById(formKey === 'missing-item' ? 'missingAutoSave' : 'claimAutoSave');
+            if (!el) return;
+            const tones = {
+                busy: 'bg-blue-50 border-blue-200 text-blue-700',
+                ok:   'bg-green-50 border-green-200 text-green-700',
+                warn: 'bg-amber-50 border-amber-200 text-amber-800',
+                err:  'bg-red-50 border-red-200 text-red-700'
+            };
+            el.className = `no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2 ${tones[tone]}`;
+            el.innerHTML = html;
+        }
+        const reportImages = formKey => (formKey === 'missing-item' ? missingUploadedImages : claimUploadedImages);
+        const autoSaveBtn = (label, onclick) =>
+            `<button type="button" onclick="${onclick}" class="ml-auto bg-white border border-current px-3 py-1 rounded-md text-xs font-bold hover:opacity-80">${label}</button>`;
+
+        // ต้องเรียกตอนผู้ใช้กดเท่านั้น (ขอสิทธิ์ Drive ได้ทันทีโดยเบราว์เซอร์ไม่บล็อกหน้าต่าง Google)
+        function autoSaveReport(formKey) {
+            if (!window.AvatarCloud) return;
+            const online = AvatarCloud.isOnline();
+            if (online && !AvatarCloud.signedIn()) {
+                showAutoSave(formKey, 'warn', `<span>⚠ ยังไม่ได้เข้าสู่ระบบ — รายงานนี้ยังไม่ได้บันทึกขึ้นระบบทีม (เข้าสู่ระบบแล้วกด "สร้างรายงาน" อีกครั้ง)</span>`
+                    + autoSaveBtn('เข้าสู่ระบบ', 'AvatarCloud.signOutOrLogin()'));
+                return;
+            }
+            const tokenP = online && reportImages(formKey).length && !AvatarCloud.hasDriveToken() ? AvatarCloud.connectDrive() : null;
+            showAutoSave(formKey, 'busy', '<span>⏳ กำลังบันทึกขึ้นระบบทีม...</span>');
+            reportSaveChain = reportSaveChain.then(() => runReportSave(formKey, tokenP));
+        }
+
+        async function runReportSave(formKey, tokenP) {
+            const retry = autoSaveBtn('ลองอีกครั้ง', `autoSaveReport('${formKey}')`);
+            if (currentAppId !== formKey) return;   // ผู้ใช้สลับไปฟอร์มอื่นแล้ว — ไม่บันทึกข้อมูลผิดฟอร์ม
+            try {
+                if (tokenP && !(await tokenP)) {
+                    showAutoSave(formKey, 'err', '<span>⚠ ยังไม่ได้บันทึก — ต้องเชื่อมต่อ Google Drive ก่อน (สำหรับเก็บรูป)</span>' + retry);
+                    return;
+                }
+                const d = AvatarCloud.doc;
+                const newName = activeForm().nameFrom();
+                if (d && d.everSaved !== false && d.name && newName && d.name !== newName) {
+                    // ชื่องานในฟอร์มไม่ตรงกับงานที่เปิดอยู่ (เช่น กรอกตู้ใหม่ทับฟอร์มเดิม) — ถามก่อน กันรายงานเก่าถูกทับ
+                    const overwrite = await AvatarCloud.confirmDialog({
+                        title: 'ชื่องานเปลี่ยนไปจากเดิม',
+                        message: `งานที่เปิดอยู่: <b>${escHtml(d.name)}</b><br>ในฟอร์มตอนนี้: <b>${escHtml(newName)}</b><br><br>จะบันทึกรายงานนี้เป็นงานใหม่ หรือบันทึกทับงานเดิม?`,
+                        confirmText: 'บันทึกทับงานเดิม', cancelText: 'บันทึกเป็นงานใหม่', danger: true
+                    });
+                    if (!overwrite) await AvatarCloud.bindNewDoc();
+                }
+                if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
+                if (!(await AvatarCloud.save())) {
+                    showAutoSave(formKey, 'warn', '<span>ยังไม่ได้บันทึก — ยกเลิกการบันทึกทับ</span>' + retry);
+                    return;
+                }
+                updateCloudDocBars();
+                const name = escHtml(AvatarCloud.doc?.name || '');
+                showAutoSave(formKey, 'ok', AvatarCloud.isOnline()
+                    ? `<span>✓ บันทึกขึ้นระบบทีมแล้ว${reportImages(formKey).length ? ' · รูปเก็บบน Google Drive' : ''}</span><span class="font-bold truncate">${name}</span>`
+                    : `<span>✓ บันทึกในเครื่องแล้ว (โหมดออฟไลน์)</span><span class="font-bold truncate">${name}</span>`);
+            } catch (e) {
+                console.error(e);
+                showAutoSave(formKey, 'err', `<span>⚠ บันทึกไม่สำเร็จ: ${escHtml(e.message || e)}</span>` + retry);
+            }
         }
 
         function cloudOpenList() {
