@@ -2058,6 +2058,9 @@
                     // เปิดงานพร้อมการแก้ที่ค้างในเครื่อง — สถานะ "เปิดงานแล้ว" ของระบบทับไป ต้องบอกซ้ำ
                     if (mode === 'online' && historyDirty) showSaveStatus('<i class="fa-solid fa-floppy-disk"></i> มีการแก้ที่ยังไม่ขึ้นระบบ', false);
                     if (mode === 'offline' && !skipStartup) await showStartupModal(false);
+                    // 🌟 โหมดทีม: เข้าแอพ/รีเฟรช → โชว์รายการงานทุกครั้ง ให้เลือก "ทำงานต่อ" หรือเปลี่ยนงานเอง (กันแก้ผิดงาน)
+                    //    ยังไม่มีงานเปิด → avatar-cloud โชว์รายการให้แล้ว ; เพิ่งกด "เริ่มงานใหม่"/"ล้าง" (reload มาเอง) → ไม่ต้องถาม
+                    if (mode === 'online' && !skipStartup && AvatarCloud.signedIn() && AvatarCloud.hasDoc()) AvatarCloud.openList({ resume: true });
                 }
             });
         }
