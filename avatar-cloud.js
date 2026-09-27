@@ -34,8 +34,10 @@
 
 /* เลขเวอร์ชันของไฟล์นี้ — เพิ่มทุกครั้งที่แอพต้องใช้ความสามารถใหม่/แก้บั๊กในไฟล์นี้
    แอพเช็คเลขนี้ตอนเปิด (เช่น pmform: NEED_AVATAR_CLOUD_API) → ถ้าไฟล์บนเว็บเก่ากว่าจะเตือนให้อัปโหลด
-   2 = แก้ "ส่งขึ้นทีม" กดแล้วไม่มีอะไรเกิดขึ้น (id ตัวเลข vs ข้อความ) + saveNow + อัปรูปทีละ 3 */
-const API_VERSION = 2;
+   2 = แก้ "ส่งขึ้นทีม" กดแล้วไม่มีอะไรเกิดขึ้น (id ตัวเลข vs ข้อความ) + saveNow + อัปรูปทีละ 3
+   3 = "ส่งขึ้นทีม" มีหน้าต่างความคืบหน้า + กันปิดหน้ากลางทาง + ล้มแล้วบอกเหตุผล/ลบงานว่าง + วันที่ไทยในรายการ
+   4 = uploadDataUrls จำรูปที่ขึ้น Drive แล้ว (บันทึกซ้ำไม่อัปรูปเดิมซ้ำ) */
+const API_VERSION = 4;
 
 /* ---- CONFIG (ชุดเดียวกับ minute-of-meeting.html) ---- */
 const SUPABASE_URL         = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
@@ -83,7 +85,33 @@ const esc = s => String(s == null ? '' : s)
 const codedError = (code, msg) => Object.assign(new Error(msg), { code });
 
 function toast(msg, ms) { if (cfg && cfg.onToast) cfg.onToast(msg, ms); }
-function status(text, ok) { if (cfg && cfg.onStatus) cfg.onStatus(text, ok !== false); }
+function status(text, ok) {
+  if (busyEl) { const m = busyEl.querySelector('[data-msg]'); if (m) m.textContent = text; }
+  if (cfg && cfg.onStatus) cfg.onStatus(text, ok !== false);
+}
+
+/* หน้าต่าง "กำลังทำงาน" — บล็อกการกดอื่น + เตือนถ้าจะปิด/รีโหลดหน้า (ใช้ตอน "ส่งขึ้นทีม" ที่อาจนานเพราะอัปรูป)
+   ข้อความอัปเดตตาม status() เช่น "กำลังอัปโหลดรูป 3/20..." */
+let busyEl = null;
+const busyUnload = e => { e.preventDefault(); e.returnValue = ''; };
+function showBusy(title, text) {
+  hideBusy();
+  busyEl = document.createElement('div');
+  busyEl.className = 'ac-modal';
+  busyEl.innerHTML = `<div class="ac-box" style="width:min(92vw,380px);">
+      <div class="ac-head"><span>${esc(title)}</span></div>
+      <div class="ac-body" style="text-align:center;padding:24px 18px;">
+        <div class="ac-spin"></div>
+        <div data-msg style="font-size:14px;color:#0f2744;font-weight:700;margin-top:14px;">${esc(text)}</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:6px;">อย่าปิดหรือรีโหลดหน้านี้จนกว่าจะเสร็จ</div>
+      </div></div>`;
+  document.body.appendChild(busyEl);
+  global.addEventListener('beforeunload', busyUnload);
+}
+function hideBusy() {
+  if (busyEl) { busyEl.remove(); busyEl = null; }
+  global.removeEventListener('beforeunload', busyUnload);
+}
 
 /* ========================================================================
    DRIVE
@@ -363,20 +391,27 @@ async function restorePhotos(root, onProgress, interactive = true) {
 }
 
 /* ---- แบบที่ 2: รูปที่แอพเก็บเป็น array ของ dataUrl (เช่น index.html) ----
-   เก็บลง state เป็น [{drive:'<id>'}] แทน dataUrl เพื่อไม่ให้ database บวม */
+   เก็บลง state เป็น [{drive:'<id>'}] แทน dataUrl เพื่อไม่ให้ database บวม
+   จำไว้ว่ารูปไหนขึ้น Drive ของงานนี้แล้ว (งาน + แฮชรูป → id) — บันทึกซ้ำจะไม่อัปรูปเดิมซ้ำ */
+const dataUrlDriveIds = new Map();
+const dataUrlKey = d => (doc ? doc.id : '') + '|' + hashString(d);
+
 async function uploadDataUrls(arr) {
   if (!Array.isArray(arr) || !arr.length) return [];
   if (!isOnline()) return arr.slice();
-  const need = arr.some(x => typeof x === 'string' && x.startsWith('data:'));
+  const need = arr.some(x => typeof x === 'string' && x.startsWith('data:') && !dataUrlDriveIds.has(dataUrlKey(x)));
   if (need && !hasDriveToken() && !(await getDriveToken(true))) throw new Error('ต้องเชื่อมต่อ Google Drive ก่อนบันทึก');
   const folderId = need ? await ensureDocFolder() : null;
   const out = [];
   for (const item of arr) {
     if (item && typeof item === 'object' && item.drive) { out.push({ drive: item.drive }); continue; }
     if (typeof item !== 'string' || !item.startsWith('data:')) { out.push(item); continue; }
+    const key = dataUrlKey(item);
+    if (dataUrlDriveIds.has(key)) { out.push({ drive: dataUrlDriveIds.get(key) }); continue; }
     const blob = await (await fetch(item)).blob();
     const id = await driveUpload(blob, `img_${Date.now()}_${out.length}.jpg`, folderId);
     photoCache.setItem(id, item);
+    dataUrlDriveIds.set(key, id);
     out.push({ drive: id });
   }
   return out;
@@ -394,6 +429,7 @@ async function restoreDataUrls(arr) {
       try { d = await driveDownloadDataUrl(item.drive); photoCache.setItem(item.drive, d); }
       catch (e) { console.warn('[cloud] photo', item.drive, e.message); continue; }
     }
+    dataUrlDriveIds.set(dataUrlKey(d), item.drive);
     out.push(d);
   }
   return out;
@@ -586,6 +622,8 @@ function injectStyles() {
   .ac-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:#0f2744;font-family:'Sarabun',sans-serif;}
   .ac-chip img{width:24px;height:24px;border-radius:50%;background:#e2e8f0;}
   .ac-chip span{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ac-spin{width:34px;height:34px;border:4px solid #e2e8f0;border-top-color:#1f3a5f;border-radius:50%;margin:0 auto;animation:acspin .8s linear infinite;}
+  @keyframes acspin{to{transform:rotate(360deg);}}
   .ac-chip.compact{width:38px;height:38px;padding:0;gap:0;border-radius:50%;justify-content:center;overflow:hidden;flex-shrink:0;border-width:2px;color:#64748b;}
   .ac-chip.compact:hover{border-color:#a5b4fc;}
   .ac-chip.compact img{width:100%;height:100%;object-fit:cover;}
@@ -683,6 +721,17 @@ function confirmDialog({ title, message, confirmText = 'ตกลง', cancelTex
   });
 }
 
+function infoDialog(title, message) {
+  return new Promise(resolve => {
+    const { bg, close } = modal(title,
+      `<div style="font-size:13.5px;color:#475569;line-height:1.7;">${message}</div>`,
+      `<button class="ac-btn primary" data-ok style="flex:1;">ตกลง</button>`, { sticky: true });
+    const done = () => { close(); resolve(); };
+    bg.querySelector('[data-ok]').onclick = done;
+    bg.querySelector('[data-close]').onclick = done;
+  });
+}
+
 function confirmOverwrite(remoteTime) {
   return confirmDialog({
     title: 'มีคนบันทึกงานนี้หลังจากคุณเปิด',
@@ -700,11 +749,24 @@ async function showDocList(opts = {}) {
     catch (e) { console.error(e); toast('โหลดรายการงานไม่สำเร็จ'); }
   }
   // updatedAt อาจเป็น timestamp, ISO string หรือข้อความไทยที่แอพเก็บไว้เอง — รองรับทุกแบบ
-  const tnum = t => (typeof t === 'number' ? t : (isNaN(Date.parse(t)) ? 0 : Date.parse(t)));
+  //   ข้อความไทย "8/9/69 10:54" = วัน/เดือน/ปี พ.ศ. (Date.parse อ่านเป็น เดือน/วัน/ค.ศ. → วันที่ผิด)
+  const tnum = t => {
+    if (typeof t === 'number') return t;
+    const s = String(t || '');
+    const th = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+    if (th) {
+      let y = +th[3];
+      if (y < 100) y += 2500;
+      if (y > 2400) y -= 543;
+      return new Date(y, th[2] - 1, +th[1], +(th[4] || 0), +(th[5] || 0)).getTime();
+    }
+    const n = Date.parse(s);
+    return isNaN(n) ? 0 : n;
+  };
   const fmt = t => {
-    const d = new Date(typeof t === 'number' ? t : t);
-    return isNaN(d.getTime()) ? String(t || '')
-      : d.toLocaleString('th-TH', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const n = tnum(t);
+    return n ? new Date(n).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : String(t || '');
   };
   local.sort((a, b) => tnum(b.updatedAt) - tnum(a.updatedAt));
   const cur = doc && doc.id;
@@ -801,17 +863,37 @@ async function showDocList(opts = {}) {
       toast('ต้องเชื่อมต่อ Google Drive ก่อน (ใช้อัปโหลดรูป) — ลองกด "ส่งขึ้นทีม" อีกครั้ง');
       return;
     }
+    if (!(await canSwitch())) return;
+    // ขั้นตอน: สร้างงาน (ว่าง) → เอาของลงหน้าจอ → อัปรูป + บันทึก — ระหว่างนี้งานบนระบบยังว่าง ห้ามปิด/รีโหลด
+    let stage = 'create', id = null;
+    showBusy('กำลังส่งงานขึ้นทีม', 'กำลังสร้างงานในระบบ...');
     try {
-      if (!(await canSwitch())) return;
-      toast('กำลังส่งงานขึ้นทีม...');
-      const id = await createDocument(m.name);
+      id = await createDocument(m.name);
       doc = { id, name: m.name, updatedAt: null, everSaved: false };
       lsSet(lastDocKey(), id);
+      stage = 'apply';
+      status('กำลังเปิดงาน...', true);
       await cfg.applyState(m.state);
+      stage = 'save';
       // แอพมีขั้นตอนบันทึกของตัวเอง (สถานะ/ร่างในเครื่อง) → ใช้อันนั้น
       const ok = cfg.saveNow ? await cfg.saveNow() : await saveDocument({ force: true });
-      toast(ok ? 'ส่งขึ้นทีมแล้ว' : 'ส่งขึ้นทีมยังไม่สำเร็จ — งานเปิดอยู่แล้ว กด "บันทึก" เพื่อลองใหม่');
-    } catch (e) { console.error(e); toast('ส่งขึ้นทีมไม่สำเร็จ — ถ้างานเปิดอยู่แล้ว กด "บันทึก" เพื่อลองใหม่'); }
+      if (!ok) throw new Error('บันทึกไม่สำเร็จ');
+      hideBusy();
+      toast('ส่งขึ้นทีมแล้ว');
+    } catch (e) {
+      console.error(e);
+      hideBusy();
+      let msg;
+      if (stage === 'save') {
+        msg = 'งานเปิดอยู่บนหน้าจอแล้ว ข้อมูลครบอยู่ในเครื่อง (สำเนาในประวัติก็ยังอยู่)<br>กดปุ่ม <b>"บันทึก"</b> เพื่อส่งขึ้นทีมอีกครั้ง';
+      } else {
+        // ยังไม่ได้เอาของลงงาน → งานว่างที่เพิ่งสร้างไม่มีประโยชน์ ลบทิ้งกันงานว่างค้างในรายการ
+        if (id) await deleteDocument(id).catch(() => {});
+        msg = 'ยังไม่ได้สร้างงานในระบบทีม — สำเนาในประวัติยังอยู่ครบ<br>ลองกด "ส่งขึ้นทีม" ใหม่อีกครั้ง';
+      }
+      await infoDialog('ส่งงานขึ้นทีมยังไม่สำเร็จ',
+        `งาน "<b>${esc(m.name)}</b>"${e && e.message ? ` <span style="color:#94a3b8;">(${esc(e.message)})</span>` : ''}<br><br>${msg}`);
+    }
   });
   return { close };
 }
