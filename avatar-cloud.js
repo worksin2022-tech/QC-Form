@@ -558,6 +558,17 @@ async function saveDocument(opts = {}) {
   return true;
 }
 
+/* รูปที่งานที่เปิดอยู่ไม่ใช้แล้ว (เช่น ผู้ใช้กดลบรูป) → ถังขยะ — เฉพาะไฟล์ในโฟลเดอร์ของงานนี้เท่านั้น
+   (html ของงานอาจคัดลอกมาจากงานอื่น เช่น นำเข้า JSON แล้วส่งขึ้นทีม → รูปชี้ไฟล์ของงานเดิม ห้ามลบของเขา)
+   ไม่มีสิทธิ์ Drive / เช็คไม่ได้ → ข้าม (ไฟล์ค้างในโฟลเดอร์งาน ถูกลบตอนลบงาน) ; ไม่ใช่เจ้าของไฟล์ → เข้าคิวให้เจ้าของลบ */
+async function trashDocPhoto(fileId) {
+  if (!fileId || !doc || !doc.driveFolderId || !isOnline() || !hasDriveToken()) return;
+  const folderId = doc.driveFolderId;
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=parents&supportsAllDrives=true`);
+  if (!((await res.json()).parents || []).includes(folderId)) return;
+  await driveDelete(fileId, null, false);
+}
+
 async function deleteDocument(id) {
   const { data } = await sb.from('documents').select('state, drive_folder_id, drive_folder_owner').eq('id', id).single();
   const { error } = await sb.from('documents').delete().eq('id', id);
@@ -1056,6 +1067,7 @@ const AvatarCloud = {
 
   // รูป
   uploadPhotos, restorePhotos, cleanHtml, uploadDataUrls, restoreDataUrls,
+  trashDriveFile: trashDocPhoto,   // รูปที่งานนี้ไม่ใช้แล้ว (เช่น ผู้ใช้กดลบรูป) → ถังขยะ
 
   // เผื่ออยากเรียกเอง
   confirmDialog, toast
