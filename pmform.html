@@ -999,10 +999,6 @@
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
                 <!-- ปุ่มใช้ไม่บ่อย → ไอคอนอย่างเดียว (ชื่อดูได้จาก tooltip) ประหยัดที่ในแถบเมนู -->
                 <div class="hidden md:flex gap-1 bg-slate-100 p-[3px] rounded-xl border border-slate-200 mr-0.5 shadow-inner">
-                    <button onclick="rebuildLayout()" class="w-8 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-lg text-[13px] shadow-sm transition-all flex items-center justify-center border border-slate-100" title="Rebuild — สร้าง Layout ใหม่จาก template ปัจจุบัน (ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน)" aria-label="Rebuild">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                    </button>
-                    <div class="w-px bg-slate-300 my-1"></div>
                     <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100" title="ล้างข้อมูลทั้งหมด เริ่มจากกระดาษเปล่า">
                         <i class="fa-solid fa-trash-can"></i> <span class="nav-lbl-1">ล้าง</span>
                     </button>
@@ -1944,13 +1940,11 @@
                     return false;
                 } catch {}
             }
-            const dlg = document.getElementById('dialogModal');
-            dlg.style.zIndex = '100070';   // อยู่เหนือหน้าเข้าสู่ระบบของ avatar-cloud (100050)
-            showAlert({
+            showStartupAlert({
                 title: 'ไฟล์ระบบทีมบนเว็บยังเป็นเวอร์ชันเก่า',
                 message: 'avatar-cloud.js บนเว็บเก่ากว่า pmform.html — บางปุ่มในระบบทีม (เช่น "ส่งขึ้นทีม") จะใช้งานไม่ได้\n\nให้อัปโหลดไฟล์ avatar-cloud.js ล่าสุดขึ้นเว็บ รอสักครู่ แล้วรีโหลดหน้านี้',
                 variant: 'warning'
-            }).then(() => { dlg.style.zIndex = ''; });
+            });
             return true;   // ใช้งานต่อได้ (ส่วนที่เหลือยังทำงาน) แต่เตือนไว้แล้ว
         }
 
@@ -2044,7 +2038,7 @@
 
                 // ออฟไลน์ = ใช้ draft + ประวัติ 5 ช่องของแอพเองแบบเดิม (ไม่เก็บซ้ำอีกชุด)
                 offlineManagedByApp: true,
-                localList: async () => (await getHistory()).map(h => ({
+                localList: async () => (await Promise.all((await getHistoryIndex()).map(m => getHistoryItem(m.id)))).filter(Boolean).map(h => ({
                     id: h.id, name: h.name, updatedAt: h.savedAt,
                     state: { globals: h.globals, html: h.html }
                 })),
@@ -3180,21 +3174,72 @@
         // 🌟 HISTORY — บันทึก/โหลด/ลบ รายงานย้อนหลัง (สูงสุด 5 รายการ)
         //   + auto-sync รายงานที่ "กำลังเปิดอยู่" ทุก 3 วิ ผ่าน saveDraft()
         // ============================================================
-        const HISTORY_KEY = 'smart_pm_history';
+        // 🌟 เก็บแบบแยกงาน: เดิมทั้ง 5 งาน (รวมรูป งานละหลายสิบ MB) อยู่ใน key เดียว → กดบันทึกทีไร
+        //    อ่าน+เขียนทั้งก้อน แค่โชว์ชื่องานก็อ่านทั้งก้อน → ช้า และ iPad อาจเด้ง
+        //    ตอนนี้: รายการชื่องาน (เล็ก) แยกจากเนื้อหา + เนื้อหาเก็บทีละงาน → เขียนเฉพาะงานที่บันทึก
+        const HISTORY_KEY = 'smart_pm_history';               // รูปแบบเดิม (ทุกงานใน key เดียว) — ย้ายออกอัตโนมัติ
+        const HISTORY_INDEX_KEY = 'smart_pm_history_index';   // [{ id, name, savedAt }] ใหม่สุดอยู่หน้า
+        const historyStore = localforage.createInstance({ name: 'smart_pm_history_items' });   // key = id → { globals, html }
         const HISTORY_MAX = 5;
         const CURRENT_ID_KEY = 'smart_pm_current_history_id'; // เก็บ id ของรายงานที่กำลังเปิด ข้าม session
 
         // ตัวแปร state — id ของ history item ที่กำลังถูกแก้ไขอยู่ (null = รายงานใหม่ ยังไม่ได้บันทึก)
         let currentHistoryId = null;
 
-        async function getHistory() {
+        // รายการงานในประวัติ (ไม่มีเนื้อหา) — ครั้งแรกย้ายจากรูปแบบเดิมให้
+        let historyMigration = null;
+        async function getHistoryIndex() {
             try {
-                return (await localforage.getItem(HISTORY_KEY)) || [];
-            } catch { return []; }
+                const idx = await localforage.getItem(HISTORY_INDEX_KEY);
+                if (idx) return idx;
+                historyMigration = historyMigration || migrateHistoryStore().finally(() => { historyMigration = null; });
+                return await historyMigration;
+            } catch (e) {
+                // ย้ายไม่สำเร็จ (เช่น ที่เก็บเต็ม) → ใช้รายการจากของเดิมไปก่อน ; getHistoryItem อ่านเนื้อหาจากของเดิมให้
+                console.error('ย้ายประวัติไม่สำเร็จ — ใช้ของเดิมไปก่อน', e);
+                try { return ((await localforage.getItem(HISTORY_KEY)) || []).map(h => ({ id: h.id, name: h.name, savedAt: h.savedAt })); }
+                catch { return []; }
+            }
         }
 
-        async function saveHistory(list) {
-            await localforage.setItem(HISTORY_KEY, list);
+        // ย้ายทีละงาน → เขียนรายการ → ค่อยลบของเดิม (ล้มกลางทาง ของเดิมยังอยู่ครบ)
+        async function migrateHistoryStore() {
+            const old = await localforage.getItem(HISTORY_KEY);
+            const idx = [];
+            if (Array.isArray(old)) {
+                for (const h of old) {
+                    await historyStore.setItem(String(h.id), { globals: h.globals, html: h.html });
+                    idx.push({ id: h.id, name: h.name, savedAt: h.savedAt });
+                }
+            }
+            await localforage.setItem(HISTORY_INDEX_KEY, idx);
+            if (old) await localforage.removeItem(HISTORY_KEY);
+            return idx;
+        }
+
+        async function saveHistoryIndex(idx) {
+            await localforage.setItem(HISTORY_INDEX_KEY, idx);
+        }
+
+        // งานในประวัติแบบเต็ม { id, name, savedAt, globals, html } — null = ไม่มี
+        async function getHistoryItem(id) {
+            const meta = (await getHistoryIndex()).find(h => h.id === id);
+            if (!meta) return null;
+            let data = await historyStore.getItem(String(id)).catch(() => null);
+            if (!data) {
+                // ย้ายรูปแบบเดิมไม่สำเร็จ → งานนี้ยังอยู่ใน key เดิม
+                const old = await localforage.getItem(HISTORY_KEY).catch(() => null);
+                data = Array.isArray(old) ? old.find(h => h.id === id) : null;
+            }
+            return data ? { ...meta, globals: data.globals, html: data.html } : null;
+        }
+
+        async function deleteHistoryEntry(id) {
+            const idx = await getHistoryIndex();
+            await saveHistoryIndex(idx.filter(h => h.id !== id));
+            await historyStore.removeItem(String(id)).catch(() => {});
+            // 🌟 ถ้าลบรายงานที่กำลังแก้อยู่ → reset currentHistoryId
+            if (currentHistoryId === id) await setCurrentHistoryId(null);
         }
 
         async function setCurrentHistoryId(id) {
@@ -3208,19 +3253,18 @@
 
         // sync รายงานปัจจุบันเข้า history item ที่ตรงกับ currentHistoryId
         async function syncCurrentToHistory(draft) {
-            const history = await getHistory();
-            const idx = history.findIndex(h => h.id === currentHistoryId);
-            if (idx < 0) {
+            const idx = await getHistoryIndex();
+            const meta = idx.find(h => h.id === currentHistoryId);
+            if (!meta) {
                 // item ถูกลบไปแล้ว → reset
                 currentHistoryId = null;
                 try { await localforage.removeItem(CURRENT_ID_KEY); } catch {}
                 updateCurrentHistoryIndicator();
                 return;
             }
-            history[idx].globals = draft.globals;
-            history[idx].html = draft.html;
-            history[idx].savedAt = new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
-            await saveHistory(history);
+            await historyStore.setItem(String(meta.id), { globals: draft.globals, html: draft.html });
+            meta.savedAt = new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+            await saveHistoryIndex(idx);
         }
 
         // แสดง/ซ่อนแถบ "กำลังแก้รายงาน" ใต้ header
@@ -3243,8 +3287,7 @@
                 nameEl.textContent = '';
                 return;
             }
-            const history = await getHistory();
-            const item = history.find(h => h.id === currentHistoryId);
+            const item = (await getHistoryIndex()).find(h => h.id === currentHistoryId);
             if (!item) {
                 indicator.style.display = 'none';
                 return;
@@ -3284,10 +3327,9 @@
             // 🌟 แจ้ง user ถ้ากำลังแก้รายงานที่บันทึกอยู่แล้ว
             const noteEl = document.getElementById('historyModalNote');
             if (currentHistoryId !== null) {
-                const history = await getHistory();
-                const cur = history.find(h => h.id === currentHistoryId);
+                const cur = (await getHistoryIndex()).find(h => h.id === currentHistoryId);
                 noteEl.innerHTML = cur
-                    ? `<i class="fa-solid fa-circle-info text-indigo-400"></i> รายงานปัจจุบัน <strong class="text-indigo-700">"${cur.name}"</strong> sync อัตโนมัติอยู่แล้ว — ตั้งชื่อใหม่และกด <strong>บันทึก</strong> ด้านล่างเพื่อสร้าง <strong>สำเนาแยก</strong>เป็นรายงานอีกฉบับ`
+                    ? `<i class="fa-solid fa-circle-info text-indigo-400"></i> รายงานปัจจุบัน <strong class="text-indigo-700">"${escapeHtml(cur.name)}"</strong> sync อัตโนมัติอยู่แล้ว — ตั้งชื่อใหม่และกด <strong>บันทึก</strong> ด้านล่างเพื่อสร้าง <strong>สำเนาแยก</strong>เป็นรายงานอีกฉบับ`
                     : '';
                 noteEl.classList.toggle('hidden', !cur);
             } else {
@@ -3315,9 +3357,7 @@
             }
 
             // ถ้ามีชื่อซ้ำ ให้ถามก่อนเขียนทับ
-            const history = await getHistory();
-            const dupIdx = history.findIndex(h => h.name === name);
-            if (dupIdx >= 0) {
+            if ((await getHistoryIndex()).some(h => h.name === name)) {
                 if (!await showConfirm({
                     title: 'เขียนทับรายงานเดิม?',
                     message: `มีรายงานชื่อ "${name}" อยู่แล้วในประวัติ ต้องการเขียนทับหรือไม่?`,
@@ -3348,7 +3388,7 @@
 
         async function renderHistoryList() {
             const list = document.getElementById('historyList');
-            const history = await getHistory();
+            const history = await getHistoryIndex();
 
             if (history.length === 0) {
                 list.innerHTML = `
@@ -3372,7 +3412,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 <span class="text-xs font-bold text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full shrink-0">#${history.length - idx}</span>
-                                <span class="font-bold text-slate-800 text-sm truncate" title="${item.name}">${item.name}</span>
+                                <span class="font-bold text-slate-800 text-sm truncate" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                                 ${isCurrent ? '<span class="text-[10px] font-bold text-white bg-indigo-500 px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">กำลังแก้</span>' : ''}
                             </div>
                             <p class="text-xs text-slate-400 flex items-center gap-1.5">
@@ -3407,8 +3447,7 @@
         }
 
         async function deleteFromHistory(id) {
-            const history = await getHistory();
-            const item = history.find(h => h.id === id);
+            const item = (await getHistoryIndex()).find(h => h.id === id);
             if (!item) return;
             if (!await showConfirm({
                 title: 'ลบรายงานออกจากประวัติ?',
@@ -3416,12 +3455,7 @@
                 confirmText: 'ลบรายงาน',
                 variant: 'danger'
             })) return;
-            const newHistory = history.filter(h => h.id !== id);
-            await saveHistory(newHistory);
-            // 🌟 ถ้าลบรายงานที่กำลังแก้อยู่ → reset currentHistoryId
-            if (currentHistoryId === id) {
-                await setCurrentHistoryId(null);
-            }
+            await deleteHistoryEntry(id);
             await renderHistoryList();
         }
 
@@ -3446,7 +3480,13 @@
             if (proj) return true;
             const wrap = document.getElementById('exportWrapper');
             if (!wrap) return false;
-            // มีรูปที่ผู้ใช้อัปโหลดไหม (img ที่ src เป็น data:/blob:)
+            // มีรูปในรายงานไหม — รูปเป็นพื้นหลังของ .photo-image (ไม่ใช่ <img>) ; ช่องว่างมี .hidden
+            //   นับรูปที่อยู่บน Drive แล้วแต่ยังโหลดไม่ขึ้น (data-drive) ด้วย
+            //   (เดิมเช็คแค่ <img> → งานที่มีแต่รูปถูกมองว่าว่าง: เริ่มงานใหม่/เปิดงานอื่นแล้วหายไม่เตือน)
+            const hasPhoto = Array.from(wrap.querySelectorAll('.photo-image:not(.hidden)')).some(el =>
+                (el.getAttribute('style') || '').includes('data:') || !!el.dataset.drive);
+            if (hasPhoto) return true;
+            // โลโก้หน้าปกที่ผู้ใช้อัปโหลด (img ที่ src เป็น data:/blob:)
             return Array.from(wrap.querySelectorAll('img')).some(img => {
                 const s = img.getAttribute('src') || '';
                 return s.startsWith('data:') || s.startsWith('blob:');
@@ -3476,16 +3516,22 @@
                 // 🌟 ตัด class ไฮไลท์ชั่วคราว (กรอบเขียว/ส้ม) ออกจาก snapshot — กันถูกเซฟฝังถาวร
                 html: document.getElementById('exportWrapper').innerHTML.replace(/\bblock-flash-(?:new|goto)\b/g, '')
             };
-            let history = await getHistory();
-            const dupIdx = history.findIndex(h => h.name === name);
+            let idx = await getHistoryIndex();
+            const dupIdx = idx.findIndex(h => h.name === name);
+            if (dupIdx >= 0) snapshot.id = idx[dupIdx].id;
+            // เนื้อหาก่อน แล้วค่อยรายการ — รายการต้องไม่ชี้ไปงานที่ยังไม่ได้เขียน
+            await historyStore.setItem(String(snapshot.id), { globals: snapshot.globals, html: snapshot.html });
+            const meta = { id: snapshot.id, name, savedAt: snapshot.savedAt };
+            let dropped = [];
             if (dupIdx >= 0) {
-                snapshot.id = history[dupIdx].id;
-                history[dupIdx] = snapshot;
+                idx[dupIdx] = meta;
             } else {
-                history.unshift(snapshot);
-                if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+                idx.unshift(meta);
+                dropped = idx.slice(HISTORY_MAX);   // เกินจำนวน → งานเก่าสุดหลุด
+                idx = idx.slice(0, HISTORY_MAX);
             }
-            await saveHistory(history);
+            await saveHistoryIndex(idx);
+            for (const h of dropped) await historyStore.removeItem(String(h.id)).catch(() => {});
             await setCurrentHistoryId(snapshot.id);
             markHistorySynced(); // 🌟 B: บันทึกเข้า history แล้ว → ไม่ค้าง
             return snapshot;
@@ -3493,8 +3539,7 @@
 
         // โหลด history item ลง DOM แล้วผูก currentHistoryId (ใช้ภายในจากหลายที่)
         async function applyHistoryItemById(id) {
-            const history = await getHistory();
-            const item = history.find(h => h.id === id);
+            const item = await getHistoryItem(id);
             if (!item) return false;
             applyDataToDOM(item);
             await setCurrentHistoryId(id);
@@ -3571,6 +3616,8 @@
             clearTimeout(teamAutoTimer); teamAutoTimer = null;
             teamAutoFirstDirtyAt = 0;
             teamAutosavePaused = null;
+            // รูปที่ลบค้างไว้เป็นของงานก่อนหน้า / การแก้ที่ถูกทิ้ง — บนระบบยังใช้อยู่ ห้ามย้ายไปถังขยะ
+            teamRemovedDriveIds.clear();
         }
 
         // บันทึกงานปัจจุบันขึ้นระบบทีม — คืน true ถ้าสำเร็จ
@@ -3597,6 +3644,16 @@
             else writeDraftTag(cloudDraftTag());
         }
 
+        // เวอร์ชันบนระบบไม่อ้างถึงรูปพวกนี้แล้ว → ย้ายไฟล์ Drive ไปถังขยะ (กู้คืนได้ 30 วัน)
+        //   ต้องใช้ avatar-cloud.js ที่มี trashDriveFile — ไฟล์บนเว็บยังเก่า = ข้ามไป (ไฟล์ค้างใน Drive แต่ไม่พัง)
+        function trashRemovedDrivePhotos(ids) {
+            if (!ids.length || typeof AvatarCloud.trashDriveFile !== 'function') return;
+            ids.forEach(id => {
+                teamRemovedDriveIds.delete(id);
+                AvatarCloud.trashDriveFile(id).catch(e => console.warn('[team] trash photo', id, e));
+            });
+        }
+
         async function saveToTeamNow(opts) {
             clearTimeout(teamAutoTimer); teamAutoTimer = null;
             teamAutoFirstDirtyAt = 0;
@@ -3607,9 +3664,12 @@
                 // ยังไม่ผูกงาน (เช่น ปิดหน้ารายการงานไปโดยไม่เลือก) → สร้างงานใหม่จากที่กรอกไว้ ไม่ล้างฟอร์ม
                 if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
                 const seq = editSeq;
+                // รูปที่ลบก่อนเริ่มรอบนี้ → ไม่อยู่ใน state ที่กำลังส่งแน่นอน (ที่ลบระหว่างอัปโหลด รอรอบหน้า)
+                const removedDriveIds = [...teamRemovedDriveIds];
                 if (!(await AvatarCloud.save({ auto: !!opts.auto }))) { await persistTeamSnap(); updateTeamSaveBadge(); return false; }   // ผู้ใช้ยกเลิกการบันทึกทับ
                 teamAutosavePaused = null;      // บันทึกผ่าน (รวมถึงผู้ใช้เลือกบันทึกทับเอง) → บันทึกอัตโนมัติต่อได้
                 teamLastSavedAt = Date.now();
+                trashRemovedDrivePhotos(removedDriveIds);
                 if (seq === editSeq) markHistorySynced();
                 else scheduleTeamAutosave();    // มีการแก้ระหว่างอัปโหลด → รอบหน้าค่อยเก็บ
                 // ร่างในเครื่อง = snapshot เดียวกับที่ส่งขึ้นระบบ + ป้าย "ตรงกับระบบแล้ว"
@@ -3890,7 +3950,7 @@
 
         // popup ตอนเปิดแอป — เลือกทำงานต่อ / เปิดงานเก่า / เริ่มงานใหม่
         async function showStartupModal(force = false) {
-            const history = await getHistory();
+            const history = await getHistoryIndex();
             const hasContent = reportHasContent();
             if (!force && history.length === 0 && !hasContent) return;
 
@@ -3955,9 +4015,7 @@
                     variant: 'danger'
                 });
                 if (!ok) return;
-                const l = await getHistory();
-                await saveHistory(l.filter(x => x.id !== id));
-                if (currentHistoryId === id) await setCurrentHistoryId(null);
+                await deleteHistoryEntry(id);
                 close();
                 showStartupModal(true);
             });
@@ -4058,26 +4116,80 @@
         });
 
         async function loadDraft() {
+            let draft;
             try {
-                const draft = await localforage.getItem('smart_pm_draft');
-                if (draft) {
-                    // 🌟 โหลดงานเดิมอัตโนมัติ — ไม่ถามผู้ใช้เพื่อกันการกดพลาดเสียงาน
-                    // ถ้าต้องการเริ่มใหม่ ให้ใช้ปุ่ม "ล้างข้อมูล" ที่มีอยู่แล้ว
-                    applyDataToDOM(draft);
-                    await restoreDraftPhotos();   // ร่าง v2 เก็บรูปแยก → เติมกลับ
-                    let tag = draft.cloud || null;   // ร่างแบบเก่าเก็บป้ายไว้ในตัว
-                    if (draft.v === 2) { try { tag = JSON.parse(localStorage.getItem(DRAFT_TAG_KEY) || 'null'); } catch { tag = null; } }
-                    draftCloudTag = tag;
-                    return true;
-                }
+                draft = await localforage.getItem('smart_pm_draft');
             } catch (e) {
-                console.error("โหลดข้อมูลล้มเหลว", e);
+                // อ่านร่างไม่ได้ (ที่เก็บในเครื่องมีปัญหา) — ห้ามบันทึกทับ ไม่งั้นงานที่ค้างไว้หายถาวร
+                console.error("อ่านร่างไม่สำเร็จ", e);
+                blockDraftAfterLoadFailure('อ่านงานที่ค้างไว้จากเครื่องไม่สำเร็จ');
+                return false;
             }
-            return false;
+            if (!draft) return false;
+            if (!draft.globals || typeof draft.html !== 'string') {
+                // ร่างเสียหาย (โครงสร้างไม่ครบ) — เก็บสำรองไว้ แล้วเริ่มกระดาษเปล่า
+                console.error('ร่างเสียหาย — สำรองไว้ที่ smart_pm_draft_broken', draft);
+                await localforage.setItem('smart_pm_draft_broken', draft).catch(() => {});
+                return false;
+            }
+            // 🌟 โหลดงานเดิมอัตโนมัติ — ไม่ถามผู้ใช้เพื่อกันการกดพลาดเสียงาน
+            // ถ้าต้องการเริ่มใหม่ ให้ใช้ปุ่ม "ล้างข้อมูล" ที่มีอยู่แล้ว
+            try {
+                applyDataToDOM(draft);
+            } catch (e) {
+                // ส่วนหลักโหลดไม่ขึ้น (หน้าจอไม่ใช่งานนี้) — ห้ามบันทึกทับร่างเดิม
+                console.error("โหลดข้อมูลล้มเหลว", e);
+                blockDraftAfterLoadFailure('เปิดงานที่ค้างไว้ไม่สำเร็จ');
+                return false;
+            }
+            // ร่าง v2 เก็บรูปแยก → เติมกลับ (ต้องทำเสมอ ไม่งั้นรอบบันทึกถัดไปนึกว่ารูปถูกลบ แล้วลบรูปออกจากที่เก็บ)
+            await restoreDraftPhotos();
+            let tag = draft.cloud || null;   // ร่างแบบเก่าเก็บป้ายไว้ในตัว
+            if (draft.v === 2) { try { tag = JSON.parse(localStorage.getItem(DRAFT_TAG_KEY) || 'null'); } catch { tag = null; } }
+            draftCloudTag = tag;
+            return true;
         }
 
+        // โหลดร่างไม่สำเร็จ → ปิดการเขียนร่างทั้ง session (กันกระดาษเปล่าทับงานเดิม) + บอกผู้ใช้ให้ชัด
+        function blockDraftAfterLoadFailure(reason) {
+            draftSaveBlocked = true;
+            showStartupAlert({
+                title: reason,
+                message: 'งานเดิมยังเก็บอยู่ในเครื่อง — ระบบปิดการบันทึกอัตโนมัติไว้ เพื่อไม่ให้หน้าเปล่านี้บันทึกทับงานเดิม\n\nให้รีโหลดหน้านี้อีกครั้ง ถ้ายังเปิดไม่ได้ ห้ามกด "ล้าง" และแจ้งผู้ดูแลระบบ',
+                variant: 'danger'
+            });
+        }
+
+        // แจ้งเตือนตอนเปิดแอปที่ต้องเห็นแน่ ๆ — อยู่เหนือหน้าเข้าสู่ระบบของ avatar-cloud (100050)
+        function showStartupAlert(opts) {
+            const dlg = document.getElementById('dialogModal');
+            dlg.style.zIndex = '100070';
+            return showAlert(opts).then(() => { dlg.style.zIndex = ''; });
+        }
+
+        // โหลดงาน (ร่าง / ประวัติ / งานทีม / ไฟล์ JSON) ลงหน้าจอ
+        //   ส่วนหลัก (ตัวนับ + html) ต้องสำเร็จ ไม่งั้น throw ; ส่วน "ปรับงานเก่า" แยก try ทีละขั้น —
+        //   ขั้นไหนพังก็ข้ามไป ไม่ทำให้การโหลดทั้งหมดล้ม และปลด suppressDirty เสมอ (finally)
+        //   (เดิม: ขั้นไหน throw → suppressDirty ค้าง true ทั้ง session = ไม่บันทึกอะไรอีกเลย แบบเงียบ ๆ)
         function applyDataToDOM(draft) {
             suppressDirty = true; // 🌟 โค้ดกำลังเขียน DOM เอง — อย่านับเป็นการแก้ของผู้ใช้
+            try {
+                applyDraftCore(draft);
+                const failed = applyDraftRetrofits(draft);
+                if (failed.length) showToast('บางส่วนของงานปรับรูปแบบไม่สำเร็จ — ข้อมูลยังอยู่ครบ บันทึกได้ตามปกติ', 'info');
+            } finally {
+                // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการโหลดถูกประมวลผลเสร็จ (observer callback เป็น async)
+                //    แล้วเคลียร์ flag dirty — เพราะเพิ่งโหลดมา = ตรงกับที่บันทึกไว้ ยังไม่มีการแก้
+                setTimeout(() => {
+                    suppressDirty = false;
+                    draftDirty = false;
+                    historyDirty = false;
+                }, 0);
+            }
+        }
+
+        // ส่วนหลัก: ตัวนับ/หัวข้อ + html ของรายงาน
+        function applyDraftCore(draft) {
             pagePristine = false;
             selectedModules = draft.globals.selectedModules || [];
             breakerCount = draft.globals.breakerCount || 0;
@@ -4102,8 +4214,6 @@
             if (photoCounters.hip === undefined) photoCounters.hip = 0;
             if (photoCounters.dch === undefined) photoCounters.dch = 0;
             moduleTitles = draft.globals.moduleTitles || moduleTitles;
-            
-            const loadedCustomScopes = draft.globals.customScopes || [];
 
             if (draft.html.includes('id="coverPage"')) {
                 document.getElementById('exportWrapper').innerHTML = draft.html;
@@ -4126,191 +4236,219 @@
                     if (oldTocList && curTocList) curTocList.innerHTML = oldTocList.innerHTML;
                 }
             }
+        }
+
+        // ปรับงานเก่าให้เข้ากับโค้ดปัจจุบัน + ซ่อมร่องรอยบั๊กเก่า — คืนรายชื่อขั้นที่พัง
+        function applyDraftRetrofits(draft) {
+            const failed = [];
+            const step = (name, fn) => {
+                try { fn(); } catch (e) { console.error(`[โหลดงาน] ขั้น "${name}" พลาด`, e); failed.push(name); }
+            };
 
             // 🌟 Recover: ถ้า draft/JSON ถูก save ตอนอยู่ใน print mode (เช่น autosave บังเอิญรัน
             //    ระหว่าง prepareDocumentForPrint → restoreDocumentAfterPrint) จะมีร่องรอย
             //    .print-text-span / .tmp-hidden-element / .tmp-no-print / .tmp-split-wrapper /
             //    inline display:none บน .no-print ติดมาด้วย → input/photo/curve UI จะหายไปบนหน้าจอ
             //    เรียก purgePrintArtifacts() เพื่อล้างแบบไม่พึ่ง data-orig-display
-            try { purgePrintArtifacts(); } catch (e) { console.warn('purgePrintArtifacts failed', e); }
+            step('purgePrintArtifacts', purgePrintArtifacts);
 
             // 🌟 Self-heal: เติม module containers ที่ขาดหายไปใน draft เก่า
             //    บั๊กเดิม: ถ้า user save draft ไว้ก่อนที่จะเพิ่ม module ใหม่ (เช่น mod_gc) draft.html
             //    จะไม่มี <div id="mod_gc"> ทำให้ getOrFallbackContainer('gc_container') คืน
             //    moduleContainer แทน gc_container → block ใหม่ไปอยู่ผิดที่และไม่ผูกกับ module
-            ensureAllModuleContainers();
+            step('ensureAllModuleContainers', ensureAllModuleContainers);
 
-            document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
-            selectedModules.forEach(modId => {
-                const cb = document.querySelector(`input[onchange="toggleModule('${modId}', this.checked)"]`);
-                if(cb) cb.checked = true;
+            step('modules', () => {
+                document.querySelectorAll('.custom-checkbox').forEach(cb => cb.checked = false);
+                selectedModules.forEach(modId => {
+                    const cb = document.querySelector(`input[onchange="toggleModule('${modId}', this.checked)"]`);
+                    if(cb) cb.checked = true;
 
-                // 🌟 ล้าง reorder-hidden ที่อาจค้างอยู่กับ module ที่ active
-                //    บั๊ก: ตอน save draft ถ้า user เคย uncheck แล้ว recheck (หรือ draft ถูก save
-                //    ตอน module ซ่อนอยู่) wrapper จะมี class reorder-hidden ค้างมา
-                //    ผลคือ <div id="mod_xxx"> ถูก display:none → blocks ข้างในไม่ render
-                //    user เห็นว่ากดปุ่ม + แล้ว block ใหม่ "หาย"
-                //
-                //    ⚠️ ยกเว้น: ถ้า user เคย "จัดเรียง" → sub-container ว่าง + blocks ของ group นี้
-                //       เป็น direct child ของ moduleContainer แล้ว → ห้ามถอด reorder-hidden!
-                //       ไม่งั้น shell เปล่าจะโผล่ขึ้นมาเป็นหน้าว่างใน PDF และทำให้ปุ่ม + ใส่ block
-                //       ใหม่ผิดที่ (ไปอยู่บนสุดของรายงาน)
-                const modDiv = document.getElementById(modId);
-                if (modDiv) {
-                    const subInfo = getSubContainerInfo(modId);
-                    let isReorderedState = false;
-                    if (subInfo) {
-                        const subContainer = document.getElementById(subInfo.id);
-                        const subContainerEmpty = !subContainer || subContainer.children.length === 0;
-                        if (subContainerEmpty) {
-                            const mc = document.getElementById('moduleContainer');
-                            const blocksInMC = mc ? Array.from(mc.children).filter(c => {
-                                if (!c.classList.contains(subInfo.cls)) return false;
+                    // 🌟 ล้าง reorder-hidden ที่อาจค้างอยู่กับ module ที่ active
+                    //    บั๊ก: ตอน save draft ถ้า user เคย uncheck แล้ว recheck (หรือ draft ถูก save
+                    //    ตอน module ซ่อนอยู่) wrapper จะมี class reorder-hidden ค้างมา
+                    //    ผลคือ <div id="mod_xxx"> ถูก display:none → blocks ข้างในไม่ render
+                    //    user เห็นว่ากดปุ่ม + แล้ว block ใหม่ "หาย"
+                    //
+                    //    ⚠️ ยกเว้น: ถ้า user เคย "จัดเรียง" → sub-container ว่าง + blocks ของ group นี้
+                    //       เป็น direct child ของ moduleContainer แล้ว → ห้ามถอด reorder-hidden!
+                    //       ไม่งั้น shell เปล่าจะโผล่ขึ้นมาเป็นหน้าว่างใน PDF และทำให้ปุ่ม + ใส่ block
+                    //       ใหม่ผิดที่ (ไปอยู่บนสุดของรายงาน)
+                    const modDiv = document.getElementById(modId);
+                    if (modDiv) {
+                        const subInfo = getSubContainerInfo(modId);
+                        let isReorderedState = false;
+                        if (subInfo) {
+                            const subContainer = document.getElementById(subInfo.id);
+                            const subContainerEmpty = !subContainer || subContainer.children.length === 0;
+                            if (subContainerEmpty) {
+                                const mc = document.getElementById('moduleContainer');
+                                const blocksInMC = mc ? Array.from(mc.children).filter(c => {
+                                    if (!c.classList.contains(subInfo.cls)) return false;
+                                    if (subInfo.cls === 'photo-group-block') {
+                                        const pfx = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
+                                        return pfx && c.id && c.id.startsWith(pfx);
+                                    }
+                                    return true;
+                                }) : [];
+                                if (blocksInMC.length > 0) isReorderedState = true;
+                            }
+                        }
+                        if (!isReorderedState) {
+                            modDiv.classList.remove('reorder-hidden');
+                        }
+                        modDiv.classList.remove('hidden');
+                        // ล้าง reorder-hidden จาก sub-blocks ของ module นี้ (เฉพาะกรณี "ไม่ใช่" reorder state)
+                        if (!isReorderedState && subInfo) {
+                            document.querySelectorAll('.' + subInfo.cls + '.reorder-hidden').forEach(b => {
+                                let belongs = true;
                                 if (subInfo.cls === 'photo-group-block') {
-                                    const pfx = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
-                                    return pfx && c.id && c.id.startsWith(pfx);
+                                    const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
+                                    belongs = prefix && b.id && b.id.startsWith(prefix);
                                 }
-                                return true;
-                            }) : [];
-                            if (blocksInMC.length > 0) isReorderedState = true;
+                                if (belongs) b.classList.remove('reorder-hidden');
+                            });
                         }
                     }
-                    if (!isReorderedState) {
-                        modDiv.classList.remove('reorder-hidden');
-                    }
-                    modDiv.classList.remove('hidden');
-                    // ล้าง reorder-hidden จาก sub-blocks ของ module นี้ (เฉพาะกรณี "ไม่ใช่" reorder state)
-                    if (!isReorderedState && subInfo) {
-                        document.querySelectorAll('.' + subInfo.cls + '.reorder-hidden').forEach(b => {
-                            let belongs = true;
-                            if (subInfo.cls === 'photo-group-block') {
-                                const prefix = { 'mod_before': 'block_bf_', 'mod_cleaning': 'block_cl_', 'mod_after': 'block_af_', 'mod_blank': 'block_blk_' }[modId];
-                                belongs = prefix && b.id && b.id.startsWith(prefix);
-                            }
-                            if (belongs) b.classList.remove('reorder-hidden');
+                });
+            });
+
+            step('scope', () => {
+                const loadedCustomScopes = draft.globals.customScopes || [];
+                const listUl = document.getElementById('dynamicScopeList');
+                if (listUl) {
+                    listUl.innerHTML = '';
+                    if (loadedCustomScopes.length > 0) {
+                        loadedCustomScopes.forEach(item => {
+                            // backward compat: ของเก่าเป็น string ; ใหม่เป็น {text, subs}
+                            if (typeof item === 'string') addCustomScope(item, []);
+                            else addCustomScope(item.text || '', item.subs || []);
                         });
+                    } else {
+                        checkEmptyScope();
                     }
                 }
             });
 
-            const listUl = document.getElementById('dynamicScopeList');
-            if (listUl) {
-                listUl.innerHTML = '';
-                if (loadedCustomScopes.length > 0) {
-                    loadedCustomScopes.forEach(item => {
-                        // backward compat: ของเก่าเป็น string ; ใหม่เป็น {text, subs}
-                        if (typeof item === 'string') addCustomScope(item, []);
-                        else addCustomScope(item.text || '', item.subs || []);
-                    });
-                } else {
-                    checkEmptyScope();
-                }
-            }
+            step('patchOldPhotoBoxes', patchOldPhotoBoxes);
+            step('ensureDeleteButtons', ensureDeleteButtons);
 
-            patchOldPhotoBoxes();
-            ensureDeleteButtons();
-
-            document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
-            syncCoverInputs(); 
+            step('cover', () => {
+                document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
+                syncCoverInputs();
+            });
 
             // 🌟 อัปเดต sidebar quick-add buttons หลังโหลด draft
-            if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd();
+            step('sidebarQuickAdd', () => { if (typeof renderSidebarQuickAdd === 'function') renderSidebarQuickAdd(); });
 
             // 🌟 ใส่ contenteditable ให้ .block-base-title ทุกตัว (เผื่อ draft เก่าก่อนฟีเจอร์นี้ยังไม่มี attribute)
-            if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable();
+            step('baseTitleEditable', () => { if (typeof ensureBaseTitleEditable === 'function') ensureBaseTitleEditable(); });
 
             // 🌟 เปิด drag-and-drop sortable ให้ทุก photo grid ที่ restore จาก draft
-            if (typeof ensurePhotoGridSortable === 'function') {
-                document.querySelectorAll('[id^="grid_"]').forEach(ensurePhotoGridSortable);
-            }
+            step('photoGridSortable', () => {
+                if (typeof ensurePhotoGridSortable === 'function') {
+                    document.querySelectorAll('[id^="grid_"]').forEach(ensurePhotoGridSortable);
+                }
+            });
 
             // 🌟 sync การจัดหน้า contact block จาก draft เก่า (เซฟก่อนมีฟีเจอร์ multipage)
             //    เรียก checkContactPageBreak เต็มๆ — จัดทั้ง class contact-multipage + break ของรูปให้ตรงเงื่อนไขปัจจุบัน
-            document.querySelectorAll('.contact-block').forEach(blk => {
-                const tb = blk.querySelector('tbody[id^="tbody_"]');
-                const ps = blk.querySelector('[id^="photoSec_"]');
-                if (tb && ps && typeof checkContactPageBreak === 'function') checkContactPageBreak(tb.id, ps.id);
-                retrofitContactBlock(blk);
-                // retrofit: แทรกแถว spacer ใน thead ถ้ายังไม่มี (draft เก่าก่อนฟีเจอร์นี้)
-                const thead = blk.querySelector('table thead');
-                if (thead && !thead.querySelector('.contact-thead-spacer')) {
-                    thead.insertAdjacentHTML('afterbegin',
-                        '<tr class="contact-thead-spacer"><td colspan="6" style="height: 8mm; border: none !important; padding: 0 !important; background: transparent !important;"></td></tr>');
-                }
+            step('contact', () => {
+                document.querySelectorAll('.contact-block').forEach(blk => {
+                    const tb = blk.querySelector('tbody[id^="tbody_"]');
+                    const ps = blk.querySelector('[id^="photoSec_"]');
+                    if (tb && ps && typeof checkContactPageBreak === 'function') checkContactPageBreak(tb.id, ps.id);
+                    retrofitContactBlock(blk);
+                    // retrofit: แทรกแถว spacer ใน thead ถ้ายังไม่มี (draft เก่าก่อนฟีเจอร์นี้)
+                    const thead = blk.querySelector('table thead');
+                    if (thead && !thead.querySelector('.contact-thead-spacer')) {
+                        thead.insertAdjacentHTML('afterbegin',
+                            '<tr class="contact-thead-spacer"><td colspan="6" style="height: 8mm; border: none !important; padding: 0 !important; background: transparent !important;"></td></tr>');
+                    }
+                });
             });
 
             // 🌟 retrofit: ช่อง Test connection (insulation/dielectric) จาก draft เก่า → ให้พิมพ์แก้ได้
-            document.querySelectorAll('.insulation-block table td:first-child, .dielectric-block table td:first-child, .hipot-block table td:first-child, .dchipot-block table td:first-child').forEach(td => {
-                if (!td.hasAttribute('contenteditable')) {
-                    td.setAttribute('contenteditable', 'true');
-                    td.setAttribute('spellcheck', 'false');
-                    td.classList.add('tc-edit');
-                }
+            step('testConnectionEditable', () => {
+                document.querySelectorAll('.insulation-block table td:first-child, .dielectric-block table td:first-child, .hipot-block table td:first-child, .dchipot-block table td:first-child').forEach(td => {
+                    if (!td.hasAttribute('contenteditable')) {
+                        td.setAttribute('contenteditable', 'true');
+                        td.setAttribute('spellcheck', 'false');
+                        td.classList.add('tc-edit');
+                    }
+                });
             });
 
             // 🌟 retrofit: โลโก้หน้าปกจาก draft เก่า → ตัด bg-white + ใส่ object-contain ให้พอดีบล็อก/คงพื้นใส
-            [['coverIsoLogoImg','object-left'],['coverEcoLogoImg','object-right']].forEach(([id, pos]) => {
-                const im = document.getElementById(id);
-                if (!im) return;
-                im.classList.remove('bg-white', 'bg-contain', 'bg-left', 'bg-right', 'bg-no-repeat');
-                im.classList.add('w-full', 'h-full', 'object-contain', pos);
+            step('coverLogos', () => {
+                [['coverIsoLogoImg','object-left'],['coverEcoLogoImg','object-right']].forEach(([id, pos]) => {
+                    const im = document.getElementById(id);
+                    if (!im) return;
+                    im.classList.remove('bg-white', 'bg-contain', 'bg-left', 'bg-right', 'bg-no-repeat');
+                    im.classList.add('w-full', 'h-full', 'object-contain', pos);
+                });
             });
 
             // 🌟 retrofit: กล่องรูป Blank Page จาก draft เก่า → เพิ่มตัวเลือกปรับขนาด (idempotent, เฉพาะกล่อง 'blk')
-            document.querySelectorAll('.photo-box').forEach(box => {
-                const isBlank = box.querySelector('[id^="prev_blk_"], [id^="img_blk_"]');
-                if (!isBlank) return;
-                // ตรวจขนาดปัจจุบันจากความสูงที่ถูกบันทึกไว้
-                const h = box.style.height;
-                let cur = 'normal';
-                if (h === '780px') cur = 'full';
-                else if (h === '450px') cur = 'large';
-                else if (h === '330px') cur = 'wide';
-                // self-heal (ทำกับทุกกล่อง แม้มี dropdown แล้ว) — ซ่อมกล่องที่บันทึกไว้ตอนยังมีบั๊ก:
-                //   1) aspect-ratio ยังเป็น 3/2 → ความกว้างถูกคำนวณจากความสูงจนล้นหน้า
-                //   2) ยังไม่มีคลาส blank-photo-enlarged → ตอนพิมพ์โดนบีบเหลือ 50% (กรอบใหญ่แต่รูปเล็ก)
-                if (cur !== 'normal') {
-                    box.style.aspectRatio = 'auto';
-                    box.style.gridColumn = 'span 2';
-                    box.classList.add('blank-photo-enlarged');
-                } else {
-                    box.classList.remove('blank-photo-enlarged');
-                }
-                if (box.querySelector('.blank-size-select')) return;   // มี dropdown แล้ว ไม่ต้องเพิ่มซ้ำ
-                const sel = document.createElement('select');
-                sel.className = 'blank-size-select no-print';
-                sel.title = 'ปรับขนาดรูป';
-                sel.setAttribute('onclick', 'event.stopPropagation()');
-                sel.setAttribute('onmousedown', 'event.stopPropagation()');
-                sel.setAttribute('onchange', 'event.stopPropagation(); setBlankPhotoSize(this)');
-                sel.innerHTML = '<option value="normal">▭ ปกติ</option><option value="wide">▬ กว้าง</option><option value="large">◼ ใหญ่</option><option value="full">⬛ เต็มหน้า</option>';
-                sel.value = cur;
-                box.insertBefore(sel, box.firstChild);
+            step('blankPhotoSize', () => {
+                document.querySelectorAll('.photo-box').forEach(box => {
+                    const isBlank = box.querySelector('[id^="prev_blk_"], [id^="img_blk_"]');
+                    if (!isBlank) return;
+                    // ตรวจขนาดปัจจุบันจากความสูงที่ถูกบันทึกไว้
+                    const h = box.style.height;
+                    let cur = 'normal';
+                    if (h === '780px') cur = 'full';
+                    else if (h === '450px') cur = 'large';
+                    else if (h === '330px') cur = 'wide';
+                    // self-heal (ทำกับทุกกล่อง แม้มี dropdown แล้ว) — ซ่อมกล่องที่บันทึกไว้ตอนยังมีบั๊ก:
+                    //   1) aspect-ratio ยังเป็น 3/2 → ความกว้างถูกคำนวณจากความสูงจนล้นหน้า
+                    //   2) ยังไม่มีคลาส blank-photo-enlarged → ตอนพิมพ์โดนบีบเหลือ 50% (กรอบใหญ่แต่รูปเล็ก)
+                    if (cur !== 'normal') {
+                        box.style.aspectRatio = 'auto';
+                        box.style.gridColumn = 'span 2';
+                        box.classList.add('blank-photo-enlarged');
+                    } else {
+                        box.classList.remove('blank-photo-enlarged');
+                    }
+                    if (box.querySelector('.blank-size-select')) return;   // มี dropdown แล้ว ไม่ต้องเพิ่มซ้ำ
+                    const sel = document.createElement('select');
+                    sel.className = 'blank-size-select no-print';
+                    sel.title = 'ปรับขนาดรูป';
+                    sel.setAttribute('onclick', 'event.stopPropagation()');
+                    sel.setAttribute('onmousedown', 'event.stopPropagation()');
+                    sel.setAttribute('onchange', 'event.stopPropagation(); setBlankPhotoSize(this)');
+                    sel.innerHTML = '<option value="normal">▭ ปกติ</option><option value="wide">▬ กว้าง</option><option value="large">◼ ใหญ่</option><option value="full">⬛ เต็มหน้า</option>';
+                    sel.value = cur;
+                    box.insertBefore(sel, box.firstChild);
+                });
+            });
+
+            // 🌟 retrofit: ช่องรูปที่ถูกลบไปแล้วแต่ยังจำไฟล์ Drive เดิมไว้ (บั๊กเก่าของปุ่ม "ลบรูป")
+            //    → ล้างการอ้างอิง ไม่งั้นเปิดงานแล้วดาวน์โหลดรูปที่ลบไปแล้ว + ป้าย "รูปยังโหลดไม่ได้" นับผิด
+            //    (ช่องว่าง = .photo-image ที่มี .hidden เสมอ)
+            step('staleDriveRefs', () => {
+                document.querySelectorAll('#exportWrapper .photo-image.hidden[data-drive]').forEach(forgetDrivePhoto);
             });
 
             // 🌟 ล้างไฮไลท์ที่ถูกเซฟค้างใน draft (บั๊กเก่า: autosave ยิงตอนกรอบเขียว/ส้มยังโชว์
             //    → inline outline ฝังลง innerHTML ถาวร + ติดตอนพิมพ์)
-            document.querySelectorAll('#exportWrapper .block-flash-new, #exportWrapper .block-flash-goto').forEach(el => {
-                el.classList.remove('block-flash-new', 'block-flash-goto');
-            });
-            document.querySelectorAll('#exportWrapper [style*="outline"]').forEach(el => {
-                // ⚠️ ห้ามเช็คด้วย /4px solid/ — เบราว์เซอร์ serialize กลับด้านเป็น "rgb(16,185,129) solid 4px"
-                //    inline outline ในเนื้อรายงานมีที่มาเดียวคือบั๊กไฮไลท์เก่า → ล้างทิ้งได้เลยไม่มีเงื่อนไข
-                el.style.outline = '';
-                el.style.outlineOffset = '';
-                if (/outline/.test(el.style.transition || '')) el.style.transition = '';
-                if ((el.style.borderRadius || '') === '8px') el.style.borderRadius = '';   // ของแถมจากบั๊กเดิม (ไม่เคยถูกคืนค่า)
-                const st = el.getAttribute('style');
-                if (!st || !st.trim()) el.removeAttribute('style');
+            step('flashCleanup', () => {
+                document.querySelectorAll('#exportWrapper .block-flash-new, #exportWrapper .block-flash-goto').forEach(el => {
+                    el.classList.remove('block-flash-new', 'block-flash-goto');
+                });
+                document.querySelectorAll('#exportWrapper [style*="outline"]').forEach(el => {
+                    // ⚠️ ห้ามเช็คด้วย /4px solid/ — เบราว์เซอร์ serialize กลับด้านเป็น "rgb(16,185,129) solid 4px"
+                    //    inline outline ในเนื้อรายงานมีที่มาเดียวคือบั๊กไฮไลท์เก่า → ล้างทิ้งได้เลยไม่มีเงื่อนไข
+                    el.style.outline = '';
+                    el.style.outlineOffset = '';
+                    if (/outline/.test(el.style.transition || '')) el.style.transition = '';
+                    if ((el.style.borderRadius || '') === '8px') el.style.borderRadius = '';   // ของแถมจากบั๊กเดิม (ไม่เคยถูกคืนค่า)
+                    const st = el.getAttribute('style');
+                    if (!st || !st.trim()) el.removeAttribute('style');
+                });
             });
 
-            // 🌟 ปลดล็อก suppressDirty หลัง mutation ของการโหลดถูกประมวลผลเสร็จ (observer callback เป็น async)
-            //    แล้วเคลียร์ flag dirty — เพราะเพิ่งโหลดมา = ตรงกับที่บันทึกไว้ ยังไม่มีการแก้
-            setTimeout(() => {
-                suppressDirty = false;
-                draftDirty = false;
-                historyDirty = false;
-            }, 0);
+            return failed;
         }
 
         // 🌟 ใส่ contenteditable + spellcheck=false ให้ .block-base-title ทุกตัวที่ยังไม่มี
@@ -4322,306 +4460,6 @@
                 }
                 if (!el.hasAttribute('spellcheck')) {
                     el.setAttribute('spellcheck', 'false');
-                }
-            });
-        }
-
-        // 🌟 Rebuild Layout — สร้าง HTML ของ moduleContainer ใหม่จาก template ปัจจุบัน
-        // ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน
-        // หลักการ: เก็บ values → clear DOM → เรียก add*Block ใหม่ตามจำนวนเดิม → restore values
-        async function rebuildLayout() {
-            if (!await showConfirm({
-                title: 'สร้าง Layout ใหม่จาก template?',
-                message: 'การทำงาน:\n• เก็บข้อมูลทั้งหมดที่กรอกไว้\n• สร้าง HTML ของ block ทั้งหมดใหม่ (โครงสร้างจากโค้ดล่าสุด)\n• ใส่ข้อมูลกลับเข้าที่เดิม\n\nใช้เมื่อ: โหลดไฟล์ JSON เก่าและพบบั๊กที่ถูกแก้แล้วในโค้ดใหม่',
-                confirmText: 'สร้างใหม่',
-                variant: 'info'
-            })) return;
-
-            showSaveStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้าง Layout ใหม่...');
-            syncDOMValues();
-
-            // ════════════════════════════════════════════════════════════
-            // 1. เก็บ snapshot ของแต่ละ module — order ของ block + values ในแต่ละ block
-            // ════════════════════════════════════════════════════════════
-            const snapshot = {
-                modules: []  // [{moduleId, blocks: [{type, values: [], photos: [], selects: [], extraRows: 0}]}]
-            };
-
-            // เก็บลำดับ modules จริง (ตาม DOM order, ไม่ใช่ selectedModules array)
-            const moduleContainer = document.getElementById('moduleContainer');
-            const moduleNodes = Array.from(moduleContainer.children).filter(m => !m.classList.contains('hidden'));
-
-            moduleNodes.forEach(modNode => {
-                const moduleId = modNode.id;
-                const moduleData = { moduleId, blocks: [] };
-                
-                // หา blocks ทั้งหมดใน module นี้ (insulation-block, photo-group-block, etc.)
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block, .general-block, .photo-group-block, .blank-group-block';
-                const blocks = modNode.querySelectorAll(blockSelectors);
-                
-                blocks.forEach(block => {
-                    const blockData = captureBlockData(block);
-                    moduleData.blocks.push(blockData);
-                });
-
-                snapshot.modules.push(moduleData);
-            });
-
-            // ════════════════════════════════════════════════════════════
-            // 2. Clear moduleContainer + reset counters
-            // ════════════════════════════════════════════════════════════
-            insCount = 0; dieCount = 0; groCount = 0; gcCount = 0; ctCount = 0; tripCount = 0; relayCount = 0; capCount = 0; hipotCount = 0; dchipotCount = 0; genCount = 0;
-            groupCounts = { bf: 0, cl: 0, af: 0, blk: 0 };
-            photoCounters = { bf: 0, cl: 0, af: 0, ins: 0, die: 0, gro: 0, gc: 0, ct: 0, trip: 0, relay: 0, cap: 0, hip: 0, dch: 0, blk: 0 };
-
-            // ลบ blocks ทั้งหมดออกจาก container ของแต่ละ module (แต่เก็บโครง module ไว้)
-            ['ins_container', 'die_container', 'gro_container', 'gc_container', 'ct_container', 'trip_container', 'relay_container', 'cap_container', 'hipot_container', 'dchipot_container',
-             'gen_container', 'bf_container', 'cl_container', 'af_container', 'blk_container'].forEach(containerId => {
-                const c = document.getElementById(containerId);
-                if (c) c.innerHTML = '';
-            });
-
-            // ════════════════════════════════════════════════════════════
-            // 3. Rebuild — เรียก add*Block() ตามจำนวนเดิม (สร้าง HTML จาก template ปัจจุบัน)
-            // ════════════════════════════════════════════════════════════
-            const adderMap = {
-                'insulation-block': addInsulationBlock,
-                'dielectric-block': addDielectricBlock,
-                'grounding-block': addGroundingBlock,
-                'gc-block': addGcBlock,
-                'contact-block': addContactBlock,
-                'trip-block': addTripBlock,
-                'relay-block': addRelayBlock,
-                'cap-block': addCapBlock,
-                'hipot-block': addHipotBlock,
-                'dchipot-block': addDcHipotBlock,
-                'general-block': addGeneralCheckBlock,
-                'photo-group-block': null,  // ใช้ addPhotoGroup ที่ต้องการ type argument
-                'blank-group-block': null,  // ใช้ addBlankGroup
-            };
-
-            snapshot.modules.forEach(moduleData => {
-                moduleData.blocks.forEach(blockData => {
-                    if (blockData.type === 'photo-group-block') {
-                        // 🌟 mod_blank ใช้ class 'photo-group-block' เหมือนกัน แต่ต้องเรียก addBlankGroup
-                        if (blockData.photoGroupType === 'blk') addBlankGroup('blk');
-                        else addPhotoGroup(blockData.photoGroupType);
-                    } else if (blockData.type === 'blank-group-block') {
-                        addBlankGroup('blk');
-                    } else {
-                        const adder = adderMap[blockData.type];
-                        if (adder) adder();
-                    }
-                });
-            });
-
-            // ════════════════════════════════════════════════════════════
-            // 4. Restore values — ใส่ค่ากลับเข้า block ใหม่ที่ตำแหน่งเดียวกัน
-            // ════════════════════════════════════════════════════════════
-            await new Promise(r => setTimeout(r, 100));  // รอ DOM render
-
-            snapshot.modules.forEach(moduleData => {
-                const modNode = document.getElementById(moduleData.moduleId);
-                if (!modNode) return;
-                const blockSelectors = '.insulation-block, .dielectric-block, .grounding-block, .gc-block, .contact-block, .trip-block, .relay-block, .cap-block, .hipot-block, .dchipot-block, .general-block, .photo-group-block, .blank-group-block';
-                const newBlocks = modNode.querySelectorAll(blockSelectors);
-                
-                moduleData.blocks.forEach((blockData, idx) => {
-                    const newBlock = newBlocks[idx];
-                    if (newBlock) restoreBlockData(newBlock, blockData);
-                });
-            });
-
-            markUnsaved(); // 🌟 สร้าง layout ใหม่ = การแก้ที่ยังไม่บันทึกเข้า history
-            await saveDraft();
-            showSaveStatus('<i class="fa-solid fa-check-circle"></i> สร้าง Layout ใหม่สำเร็จ');
-        }
-
-        // เก็บ values ของ block — generic ตามประเภท HTML element
-        function captureBlockData(block) {
-            const blockData = {
-                type: detectBlockType(block),
-                inputs: [],     // [{idx, value}]
-                selects: [],    // [{idx, value}]
-                checkboxes: [], // [{idx, checked}]
-                photos: [],     // [{idx, src}]  // base64
-                photoGroupType: null,
-                generalRows: 0, // จำนวน row พิเศษใน general check (เกิน default)
-            };
-
-            // เก็บ inputs (รวม type=text, number, etc. — ไม่รวม file)
-            block.querySelectorAll('input:not([type="file"]):not([type="checkbox"])').forEach((inp, idx) => {
-                blockData.inputs.push({ idx, value: inp.value });
-            });
-
-            // เก็บ checkboxes
-            block.querySelectorAll('input[type="checkbox"]').forEach((cb, idx) => {
-                blockData.checkboxes.push({ idx, checked: cb.checked });
-            });
-
-            // เก็บ selects
-            block.querySelectorAll('select').forEach((sel, idx) => {
-                blockData.selects.push({ idx, value: sel.value });
-            });
-
-            // 🌟 เก็บ reference dropdown (custom 2-line) แยกจาก select ปกติ
-            blockData.refDropdowns = [];
-            block.querySelectorAll('.ref-dropdown-wrapper').forEach((wrap, idx) => {
-                blockData.refDropdowns.push({
-                    idx,
-                    line1: wrap.querySelector('.ref-line1')?.textContent || '',
-                    line2: wrap.querySelector('.ref-line2')?.textContent || ''
-                });
-            });
-
-            // เก็บ textarea
-            blockData.textareas = [];
-            block.querySelectorAll('textarea').forEach((ta, idx) => {
-                blockData.textareas.push({ idx, value: ta.value });
-            });
-
-            // เก็บรูป — รองรับ 2 รูปแบบ:
-            //   (1) <div class="photo-image"> ที่มี style="background-image: url(data:...)"  (template ปัจจุบัน)
-            //   (2) <img class="photo-image" src="data:..."> (HTML แบบเก่า)
-            block.querySelectorAll('.photo-box .photo-image').forEach((el, idx) => {
-                let src = '';
-                if (el.tagName === 'IMG') {
-                    if (el.src && el.src.startsWith('data:')) src = el.src;
-                } else {
-                    // div with background-image
-                    const bg = el.style.backgroundImage || '';
-                    // bg = url("data:image/...") — extract URL
-                    const m = bg.match(/url\(['"]?(data:[^'")]+)['"]?\)/);
-                    if (m) src = m[1];
-                }
-                if (src) blockData.photos.push({ idx, src });
-            });
-
-            // photo-group-block: detect type จาก id หรือ class
-            if (blockData.type === 'photo-group-block') {
-                const id = block.id || '';
-                if (id.includes('_bf_') || id.startsWith('group_bf')) blockData.photoGroupType = 'bf';
-                else if (id.includes('_cl_') || id.startsWith('group_cl')) blockData.photoGroupType = 'cl';
-                else if (id.includes('_af_') || id.startsWith('group_af')) blockData.photoGroupType = 'af';
-                else if (id.includes('_blk_') || id.startsWith('group_blk')) blockData.photoGroupType = 'blk';
-                else blockData.photoGroupType = 'bf';  // fallback
-            }
-
-            // general-block: นับ rows ที่เกิน default
-            if (blockData.type === 'general-block') {
-                const rows = block.querySelectorAll('tbody tr');
-                blockData.generalRows = Math.max(0, rows.length);
-            }
-
-            // photo count (จำนวนรูปจริงใน grid — รวมที่ไม่มีรูป)
-            const photoBoxes = block.querySelectorAll('.photo-box');
-            blockData.photoBoxCount = photoBoxes.length;
-
-            return blockData;
-        }
-
-        function detectBlockType(block) {
-            const types = ['insulation-block', 'dielectric-block', 'grounding-block', 'gc-block', 'contact-block',
-                          'trip-block', 'relay-block', 'cap-block', 'hipot-block', 'dchipot-block', 'general-block', 'photo-group-block', 'blank-group-block'];
-            for (const t of types) {
-                if (block.classList.contains(t)) return t;
-            }
-            return 'unknown';
-        }
-
-        // ใส่ values กลับเข้า block ใหม่
-        function restoreBlockData(newBlock, blockData) {
-            // เพิ่ม photo box ให้ครบจำนวน (ถ้าเกิน default 6)
-            const currentPhotos = newBlock.querySelectorAll('.photo-box').length;
-            const targetPhotos = blockData.photoBoxCount;
-            if (targetPhotos > currentPhotos) {
-                const grid = newBlock.querySelector('[id^="grid_"]');
-                if (grid) {
-                    const prefix = grid.id.replace('grid_', '').split('_')[0]; // ins, die, etc.
-                    for (let i = currentPhotos; i < targetPhotos; i++) {
-                        addPhotoBox(grid.id, prefix);
-                    }
-                }
-            }
-
-            // เพิ่ม general check rows ที่เกิน default
-            if (blockData.type === 'general-block' && blockData.generalRows > 0) {
-                const tbody = newBlock.querySelector('tbody');
-                const currentRows = tbody ? tbody.querySelectorAll('tr').length : 0;
-                const need = blockData.generalRows - currentRows;
-                if (need > 0 && tbody) {
-                    for (let i = 0; i < need; i++) {
-                        addGeneralCheckRow(tbody.id);
-                    }
-                }
-            }
-
-            // Restore inputs ตาม index
-            const inputs = newBlock.querySelectorAll('input:not([type="file"]):not([type="checkbox"])');
-            blockData.inputs.forEach(({ idx, value }) => {
-                if (inputs[idx]) {
-                    inputs[idx].value = value;
-                    inputs[idx].setAttribute('value', value);
-                }
-            });
-
-            // Restore checkboxes
-            const checkboxes = newBlock.querySelectorAll('input[type="checkbox"]');
-            blockData.checkboxes.forEach(({ idx, checked }) => {
-                if (checkboxes[idx]) checkboxes[idx].checked = checked;
-            });
-
-            // Restore selects
-            const selects = newBlock.querySelectorAll('select');
-            blockData.selects.forEach(({ idx, value }) => {
-                if (selects[idx]) {
-                    selects[idx].value = value;
-                    if (typeof updateResultColor === 'function') updateResultColor(selects[idx]);
-                }
-            });
-
-            // 🌟 Restore reference dropdown แบบ 2-line (รายงานเก่าไม่มี field นี้ → ใช้ค่า default)
-            const refDropdowns = newBlock.querySelectorAll('.ref-dropdown-wrapper');
-            (blockData.refDropdowns || []).forEach(({ idx, line1, line2 }) => {
-                const wrap = refDropdowns[idx];
-                if (!wrap) return;
-                const l1 = wrap.querySelector('.ref-line1');
-                const l2 = wrap.querySelector('.ref-line2');
-                if (l1) l1.textContent = line1;
-                if (l2) l2.textContent = line2;
-                wrap.setAttribute('data-ref-value', `${line1} ${line2}`.trim());
-            });
-
-            // Restore textareas
-            const textareas = newBlock.querySelectorAll('textarea');
-            (blockData.textareas || []).forEach(({ idx, value }) => {
-                if (textareas[idx]) textareas[idx].value = value;
-            });
-
-            // Restore รูป — template ปัจจุบันใช้ <div class="photo-image"> + background-image
-            const photoElements = newBlock.querySelectorAll('.photo-box .photo-image');
-            blockData.photos.forEach(({ idx, src }) => {
-                const el = photoElements[idx];
-                if (!el) return;
-                
-                if (el.tagName === 'IMG') {
-                    // กรณี (เก่า) — ใช้ src
-                    el.src = src;
-                } else {
-                    // กรณี (ปัจจุบัน) — ใช้ background-image
-                    el.style.backgroundImage = `url("${src}")`;
-                }
-                el.classList.remove('hidden');
-                
-                // ซ่อน placeholder + แสดงปุ่มต่างๆ
-                const box = el.closest('.photo-box');
-                if (box) {
-                    // ซ่อน placeholder (ไอคอน + ขึ้นข้อความ "อัปโหลดรูปภาพ")
-                    box.querySelectorAll('.text-slate-400').forEach(ph => {
-                        if (ph.querySelector('.fa-plus')) ph.classList.add('hidden');
-                    });
-                    // แสดงปุ่ม "ลบรูป", "วาด" และ "Crop"
-                    box.querySelectorAll('.delete-photo-btn, .edit-photo-btn, .crop-photo-btn').forEach(btn => btn.classList.remove('hidden'));
                 }
             });
         }
@@ -4732,13 +4570,20 @@
             reader.onload = async function(e) {
                 try {
                     const draft = JSON.parse(e.target.result);
-                    if(!draft.globals || !draft.html) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
-                    const ok = await showConfirm({
-                        title: 'นำเข้าข้อมูล?',
-                        message: 'ข้อมูลที่อยู่บนจอขณะนี้จะถูกลบและเขียนทับทันที\n\nต้องการดำเนินการต่อหรือไม่?',
-                        confirmText: 'นำเข้า',
-                        variant: 'warning'
-                    });
+                    if(!draft.globals || typeof draft.html !== 'string') throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
+                    // โหมดทีม: หน้าจอผูกกับงานทีมอยู่ — นำเข้าตรงนี้จะถูกบันทึกอัตโนมัติทับงานนั้น
+                    //   (ตอนนี้ปุ่มนำเข้าอยู่ในหน้าต่างประวัติซึ่งโหมดทีมเปิดไม่ถึง — กันไว้เผื่อย้ายปุ่มในอนาคต)
+                    if (isTeamMode()) {
+                        await showAlert({
+                            title: 'นำเข้าได้เฉพาะโหมดออฟไลน์',
+                            message: 'ออกจากระบบทีมเป็นโหมดออฟไลน์ก่อน แล้วนำเข้าไฟล์ → ใช้ "ส่งขึ้นทีม" จากหน้ารายการงาน เพื่อสร้างเป็นงานใหม่ในระบบ',
+                            variant: 'info'
+                        });
+                        event.target.value = '';
+                        return;
+                    }
+                    // งานปัจจุบันยังไม่บันทึก → ถาม บันทึกก่อน / ไม่บันทึก / ยกเลิก (เหมือนเปิดงานอื่นจากประวัติ)
+                    const ok = await proceedSwitch();
                     if (ok) {
                         // 🌟 สำคัญ: detach ออกจาก history ก่อน เพื่อไม่ให้ auto-sync เอาข้อมูลใหม่ไปทับรายงานเก่าใน history
                         await setCurrentHistoryId(null);
@@ -5383,6 +5228,7 @@
                 variant: 'danger'
             });
             if (!ok) return false;
+            block.querySelectorAll('[data-drive]').forEach(forgetDrivePhoto);   // รูปในชุดนี้ → ไฟล์ Drive ไปถังขยะหลังบันทึก
             block.remove();
             return true;
         }
@@ -6742,10 +6588,14 @@
             if (typeof markUnsaved === 'function') markUnsaved();
         }
 
+        // ย่อรูปเป็น JPEG → callback(dataUrl) ; อ่าน/ถอดรหัสไม่ได้ (เช่น HEIC บน Windows) → callback(null)
+        //   (เดิมไม่มี onerror → callback ไม่ถูกเรียกเลย อัปหลายรูปแล้วหยุดกลางทางเงียบ ๆ)
         function compressImage(file, callback) {
             const reader = new FileReader();
+            reader.onerror = () => callback(null);
             reader.onload = function(e) {
                 const img = new Image();
+                img.onerror = () => callback(null);
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -6784,6 +6634,7 @@
 
             const grid = document.getElementById(gridId);
             let fileIdx = 0;
+            const unreadable = [];   // ไฟล์ที่เบราว์เซอร์เปิดไม่ได้ — ข้ามไป แล้วแจ้งทีเดียวตอนจบ
 
             let boxes = Array.from(grid.querySelectorAll('.photo-box'));
             let startIdx = boxes.findIndex(box => box.querySelector(`input[id="img_${prefix}_${clickedIndex}"]`));
@@ -6792,6 +6643,7 @@
             const processNextFile = () => {
                 if (fileIdx >= files.length) {
                     event.target.value = ''; // Reset file input
+                    if (unreadable.length) showUnreadableImages(unreadable);
                     return;
                 }
                 
@@ -6810,16 +6662,22 @@
                 if (isClickedBox || imgElement.classList.contains('hidden')) {
                     const file = files[fileIdx++];
                     compressImage(file, (compressedBase64) => {
+                        if (!compressedBase64) {
+                            // เปิดไม่ได้ → ข้ามไฟล์นี้ ช่องเดิมยังว่างให้รูปถัดไปใช้
+                            unreadable.push(file.name);
+                            processNextFile();
+                            return;
+                        }
                         imgElement.style.backgroundImage = `url('${compressedBase64}')`;
                         imgElement.classList.remove('hidden');
-                        
+
                         const editBtn = box.querySelector('.edit-photo-btn');
                         if(editBtn) editBtn.classList.remove('hidden');
                         const cropBtn = box.querySelector('.crop-photo-btn');
                         if(cropBtn) cropBtn.classList.remove('hidden');
-                        
+
                         markUnsaved();   // รูปเปลี่ยน = การแก้ (เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง)
-                        
+
                         startIdx++;
                         processNextFile(); // ประมวลผลรูปถัดไปเมื่อรูปปัจจุบันเสร็จแล้ว
                     });
@@ -6833,10 +6691,20 @@
             processNextFile();
         }
 
+        function showUnreadableImages(names) {
+            const list = names.slice(0, 5).join('\n') + (names.length > 5 ? `\n... และอีก ${names.length - 5} ไฟล์` : '');
+            showAlert({
+                title: `เปิดรูปไม่ได้ ${names.length} ไฟล์ (ข้ามไป)`,
+                message: `${list}\n\nมักเป็นไฟล์ HEIC จาก iPhone ที่เบราว์เซอร์นี้เปิดไม่ได้ — แปลงเป็น JPG ก่อน หรืออัปจาก iPad/iPhone โดยตรง`,
+                variant: 'warning'
+            });
+        }
+
         function previewImg(event, previewId) {
             const file = event.target.files[0];
             if (file) {
                 compressImage(file, (compressedBase64) => {
+                    if (!compressedBase64) { showUnreadableImages([file.name]); return; }
                     const imgElement = document.getElementById(previewId);
                     imgElement.style.backgroundImage = `url('${compressedBase64}')`;
                     imgElement.classList.remove('hidden');
@@ -6855,8 +6723,21 @@
             event.target.value = '';
         }
 
+        // 🌟 โหมดทีม: รูปที่ถูกลบ — ลืมไฟล์ Drive เดิมทันที (เดิม data-drive ค้าง → เปิดงานแล้วดาวน์โหลด
+        //    รูปที่ลบไปแล้วกลับมา + ป้าย "รูปยังโหลดไม่ได้" นับรูปที่ลบ + ไฟล์ค้างใน Drive)
+        //    ตัวไฟล์ย้ายไปถังขยะหลังบันทึกขึ้นระบบสำเร็จ (ลบทันทีไม่ได้ — เวอร์ชันบนระบบยังอ้างถึงจนกว่าจะบันทึกทับ)
+        const teamRemovedDriveIds = new Set();
+        function forgetDrivePhoto(el) {
+            const id = el.dataset.drive;
+            if (!id) return;
+            teamRemovedDriveIds.add(id);
+            delete el.dataset.drive;
+            delete el.dataset.driveHash;
+        }
+
         function removeImg(previewId, inputId) {
             const imgElement = document.getElementById(previewId);
+            forgetDrivePhoto(imgElement);
             imgElement.style.backgroundImage = "";
             imgElement.classList.add('hidden');
             const inputElement = document.getElementById(inputId);
@@ -10850,7 +10731,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
 
         function aiCompressFileToDataUrl(file) {
             return new Promise((resolve, reject) => {
-                try { compressImage(file, dataUrl => resolve(dataUrl)); }
+                try { compressImage(file, dataUrl => dataUrl ? resolve(dataUrl) : reject(new Error('เปิดรูปไม่ได้: ' + file.name))); }
                 catch (e) { reject(e); }
             });
         }
