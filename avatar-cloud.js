@@ -797,12 +797,19 @@ async function showDocList(opts = {}) {
       ${appManagesOffline() ? '' : `<button class="ac-del" data-ldel="${m.id}" title="ลบออกจากเครื่อง">🗑</button>`}
     </div>`;
   const sec = t => `<div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 2px 8px;">${esc(t)}</div>`;
-  const body = online
+  // opts.resume = เปิดตอนเข้าแอพ/รีเฟรช → ปุ่มใหญ่ "ทำงานต่อ" บอกชื่องานที่เปิดอยู่ ให้ผู้ใช้ยืนยันก่อนแก้ (กันแก้ผิดงาน)
+  const resumeHtml = (opts.resume && online && doc)
+    ? `<button class="ac-btn primary" data-resume style="flex-direction:column;align-items:flex-start;gap:2px;text-align:left;margin-bottom:14px;">
+         <span>▶ ทำงานต่อ (งานที่เปิดอยู่)</span>
+         <span style="font-size:12.5px;font-weight:600;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(doc.name || 'ไม่ระบุชื่องาน')}</span>
+       </button>` + sec('หรือเลือกงานอื่น')
+    : '';
+  const body = resumeHtml + (online
     ? sec(`งานทีม (${rows.length})`) + (rows.length ? rows.map(teamItem).join('') : `<div class="ac-empty">ยังไม่มีงานในระบบ</div>`)
       + (local.length ? `<div style="height:1px;background:#e2e8f0;margin:14px 0;"></div>`
           + sec(`${appManagesOffline() ? 'ประวัติในเครื่องนี้' : 'งานออฟไลน์ในเครื่องนี้'} (${local.length}) — กด "ส่งขึ้นทีม" เพื่อย้ายเข้าระบบ`)
           + local.map(localItem).join('') : '')
-    : sec(`งานในเครื่องนี้ (${local.length})`) + (local.length ? local.map(localItem).join('') : `<div class="ac-empty">ยังไม่มีงานในเครื่องนี้</div>`);
+    : sec(`งานในเครื่องนี้ (${local.length})`) + (local.length ? local.map(localItem).join('') : `<div class="ac-empty">ยังไม่มีงานในเครื่องนี้</div>`));
 
   const { bg, close } = modal(online ? 'รายการงาน (ทีม)' : 'งานในเครื่องนี้ (ออฟไลน์)', body,
     `<button class="ac-btn" data-switch style="flex:1;">${online ? 'ใช้งานออฟไลน์' : 'เข้าสู่ระบบทีม'}</button>
@@ -810,6 +817,8 @@ async function showDocList(opts = {}) {
     { sticky: !!opts.sticky });
 
   bg.querySelector('[data-new]').onclick = async () => { close(); await startNew(); };
+  const resumeBtn = bg.querySelector('[data-resume]');
+  if (resumeBtn) resumeBtn.onclick = () => close();
   bg.querySelector('[data-switch]').onclick = async () => {
     close();
     if (!(await canSwitch())) return;
