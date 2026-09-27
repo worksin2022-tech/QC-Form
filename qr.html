@@ -165,7 +165,7 @@
       <ol>
         <li>เปิด <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a> แล้วสร้าง <b>โปรเจกต์ใหม่</b></li>
         <li>เมนู <b>APIs &amp; Services → Library</b> → ค้นหา <b>Google Picker API</b> → กด <b>Enable</b></li>
-        <li>เมนู <b>OAuth consent screen</b> → เลือก <b>Internal</b> (สำหรับ Google Workspace) → กรอกชื่อแอพและอีเมลติดต่อ → บันทึกจนจบ</li>
+        <li>เมนู <b>OAuth consent screen</b> → ถ้าทีมใช้ Gmail ส่วนตัว เลือก <b>External</b> แล้วเพิ่มอีเมลทุกคนในทีมที่ <b>Audience → Test users</b> (ถ้าเป็น Google Workspace เลือก <b>Internal</b> ได้เลย)</li>
         <li>เมนู <b>Credentials → Create Credentials → OAuth client ID</b>
           <br>• Application type: <b>Web application</b>
           <br>• Authorized JavaScript origins ใส่โดเมนของคุณ เช่น <code>https://ชื่อบัญชี.github.io</code> และ <code>http://localhost:5599</code> (ไว้ทดสอบ)
@@ -2647,8 +2647,8 @@ document.getElementById('link').addEventListener('keydown',function(e){
    วิธีตั้งค่า: ใส่ Client ID และ API Key ที่ได้จาก Google Cloud Console
    (ดูขั้นตอนในข้อความแชท) ถ้ายังไม่ใส่ ปุ่มเลือกโฟลเดอร์จะแจ้งเตือน
    แต่การวางลิงค์เองยังใช้ได้ตามปกติ                                */
-var GOOGLE_CLIENT_ID = "ใส่_CLIENT_ID_ที่นี่.apps.googleusercontent.com";
-var GOOGLE_API_KEY   = "ใส่_API_KEY_ที่นี่";
+var GOOGLE_CLIENT_ID = "817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com";
+var GOOGLE_API_KEY   = "AIzaSyB2c-4aFxgZ7PaIFF1mnmT8rvt8lTDE0ls";
 var DRIVE_SCOPE      = "https://www.googleapis.com/auth/drive.readonly";
 
 var pickerInited=false, gisInited=false, tokenClient=null, accessToken=null, tokenExp=0;
