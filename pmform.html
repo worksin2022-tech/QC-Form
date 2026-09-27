@@ -68,6 +68,12 @@
            (photo-image ที่ยังไม่มีรูปจะมีคลาส .hidden ; ถ้าไม่มีกล่องไหนมีรูป → ซ่อนทั้งส่วน) */
         .preparing-pdf .contact-block .contact-photo-section:not(:has(.photo-image:not(.hidden))) { display: none !important; }
         .print-text-span { display: inline-block; width: 100%; background: transparent !important; border: none !important; min-height: 1.5em; word-break: break-word; white-space: pre-wrap; }
+        /* 🌟 Contact: ชื่อเบรกเกอร์เป็น textarea ตัดบรรทัดได้ — ฟอนต์/padding/การตัดคำ เท่ากับ span ตอนพิมพ์
+           (span ได้ class นี้ไปด้วย) → บนจอขึ้นบรรทัดใหม่ตรงเดียวกับใน PDF ; สูงตามเนื้อหา (field-sizing + JS สำรอง) */
+        /* ปุ่มลบเบรกเกอร์: คอลัมน์กว้าง 0 + ปุ่มลอยนอกขอบตาราง → ความกว้างคอลัมน์บนจอ = ตอนพิมพ์ (ที่คอลัมน์นี้ถูกซ่อน) */
+        .contact-del-col { width: 0 !important; padding: 0 !important; position: relative; }
+        .contact-del-col > button { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); margin: 0 !important; }
+        .breaker-name-input { display: block; resize: none; overflow: hidden; border: none; outline: none; padding: 0 !important; font-size: 15px; line-height: 1.25; min-height: 1.25em !important; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; field-sizing: content; }
 
         /* กฎการตัดหน้ากระดาษ (บังคับตัดก่อนโมดูล/บล็อกเสมอ) */
         .pdf-page-break { page-break-before: always !important; break-before: page !important; }
@@ -728,6 +734,26 @@
             pointer-events: none;
         }
 
+        /* iPad / มือถือ: 100vh ของ Safari อาจสูงกว่าจอที่เห็นจริง (แถบเครื่องมือบังด้านล่าง) → ใช้ความสูงจอจริง */
+        @supports (height: 100dvh) {
+            body.h-screen, #mainContent.h-screen { height: 100dvh; }
+        }
+        #sidebarScroll { -webkit-overflow-scrolling: touch; }
+
+        /* เมนูซ้ายบนจอ < 1024px (มือถือ / iPad แนวตั้ง): เปิดเป็นแผงลอยทับหน้างาน สูงเต็มจอ เลื่อนรายการได้
+           (เดิมกด ☰ แล้วแถบกลายเป็น display:block → รายการไม่ถูกจำกัดความสูง เลื่อนไม่ได้ + เบียดหน้างาน) */
+        #sidebarBackdrop { display: none; }
+        @media (max-width: 1023.98px) {
+            #sidebar.sidebar-open {
+                display: flex !important;
+                position: fixed; top: 0; left: 0; bottom: 0;
+                height: 100vh; height: 100dvh;
+                max-width: 85vw;
+                z-index: 60;
+            }
+            #sidebarBackdrop.show { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(15, 23, 42, 0.45); }
+        }
+
         /* แถบเมนูบนจอแคบ: ถ้าปุ่มล้นจอ ซ่อนข้อความของปุ่มเป็นขั้น ๆ เหลือแค่ไอคอน (fitTopNavbar)
            ขั้น 1 = ปุ่มที่ใช้ไม่บ่อย, ขั้น 2 = ทุกปุ่ม — ชื่อปุ่มยังดูได้จาก tooltip */
         #topNavbar.nav-tight-1 .nav-lbl-1,
@@ -789,14 +815,14 @@
                     <span id="saveStatus" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold shadow-sm inline-flex items-center gap-1 mt-0.5 whitespace-nowrap"><i class="fa-solid fa-cloud-check"></i> เซฟแล้ว</span>
                 </div>
             </div>
-            <!-- ปุ่มซ่อนเมนูในมือถือ -->
-            <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="lg:hidden text-slate-400 hover:text-slate-600 p-2">
+            <!-- ปุ่มซ่อนเมนูในมือถือ / iPad แนวตั้ง -->
+            <button onclick="toggleSidebar(false)" class="lg:hidden text-slate-400 hover:text-slate-600 p-2" aria-label="ปิดเมนู">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
 
         <!-- Module List Sidebar -->
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50">
+        <div id="sidebarScroll" class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 custom-scrollbar bg-slate-50/50">
             <span class="text-[12px] font-extrabold text-slate-400 uppercase tracking-wider mb-3 block"><i class="fa-solid fa-layer-group mr-1.5"></i> เลือกหัวข้อรายงาน</span>
             
             <div class="flex flex-col gap-2.5">
@@ -949,6 +975,9 @@
         </div>
     </aside>
 
+    <!-- ฉากหลังตอนเปิดเมนูแบบลอย (มือถือ / iPad แนวตั้ง) — แตะเพื่อปิด -->
+    <div id="sidebarBackdrop" class="no-print" onclick="toggleSidebar(false)"></div>
+
     <!-- ======================================================= -->
     <!-- 💻 MAIN CONTENT AREA (พื้นที่ทำงานหลัก) -->
     <!-- ======================================================= -->
@@ -957,7 +986,7 @@
         <!-- 🎯 TOP NAVBAR -->
         <header id="topNavbar" class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center z-40 no-print shadow-sm shrink-0">
             <div class="flex items-center gap-3">
-                <button onclick="document.getElementById('sidebar').classList.toggle('hidden'); document.getElementById('sidebar').classList.toggle('absolute'); document.getElementById('sidebar').classList.toggle('h-full');" class="lg:hidden text-slate-500 hover:text-orange-600 bg-white border border-slate-200 w-10 h-10 rounded-lg flex items-center justify-center transition-colors shadow-sm">
+                <button onclick="toggleSidebar()" aria-label="เมนูหัวข้อรายงาน" class="lg:hidden text-slate-500 hover:text-orange-600 bg-white border border-slate-200 w-10 h-10 rounded-lg flex items-center justify-center transition-colors shadow-sm">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <a href="index.html" class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 text-slate-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-colors shrink-0" title="กลับหน้าแรก">
@@ -968,19 +997,20 @@
             <div class="flex items-center gap-1.5">
                 <!-- นำออก/นำเข้า ย้ายไปไว้ในป๊อบอัพ "ประวัติ" แล้ว เพื่อให้แถบเมนูไม่ล้น -->
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                <div class="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-1.5 shadow-inner">
-                    <button onclick="rebuildLayout()" class="whitespace-nowrap bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-slate-100" title="สร้าง Layout ใหม่จาก template ปัจจุบัน — ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน">
-                        <i class="fa-solid fa-arrows-rotate"></i> <span class="nav-lbl-1">Rebuild</span>
+                <!-- ปุ่มใช้ไม่บ่อย → ไอคอนอย่างเดียว (ชื่อดูได้จาก tooltip) ประหยัดที่ในแถบเมนู -->
+                <div class="hidden md:flex gap-1 bg-slate-100 p-[3px] rounded-xl border border-slate-200 mr-0.5 shadow-inner">
+                    <button onclick="rebuildLayout()" class="w-8 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-lg text-[13px] shadow-sm transition-all flex items-center justify-center border border-slate-100" title="Rebuild — สร้าง Layout ใหม่จาก template ปัจจุบัน (ใช้เมื่อโหลดไฟล์ JSON เก่าและต้องการให้บั๊กฟิกซ์ใหม่ทำงาน)" aria-label="Rebuild">
+                        <i class="fa-solid fa-arrows-rotate"></i>
                     </button>
-                    <div class="w-px bg-slate-300 mx-1 my-1"></div>
-                    <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100" title="ล้างข้อมูลทั้งหมด เริ่มจากกระดาษเปล่า">
+                    <div class="w-px bg-slate-300 my-1"></div>
+                    <button onclick="clearDraft()" class="whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 rounded-lg text-[13px] font-bold shadow-sm transition-all flex items-center gap-1.5 border border-red-100" title="ล้างข้อมูลทั้งหมด เริ่มจากกระดาษเปล่า">
                         <i class="fa-solid fa-trash-can"></i> <span class="nav-lbl-1">ล้าง</span>
                     </button>
                 </div>
 
                 <!-- 🌟 ปุ่ม Import จาก AI classification -->
-                <button onclick="openAiImportModal()" class="whitespace-nowrap no-print justify-center bg-purple-50 border border-purple-200 hover:bg-purple-100 hover:text-purple-700 text-purple-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="Import รูปและ caption อัตโนมัติจาก AI classification.json">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline nav-lbl-1">Import AI</span>
+                <button onclick="openAiImportModal()" class="w-[38px] h-[38px] shrink-0 no-print bg-purple-50 border border-purple-200 hover:bg-purple-100 hover:text-purple-700 text-purple-600 rounded-xl text-sm shadow-sm transition-all flex items-center justify-center" title="Import AI — ใส่รูปและ caption อัตโนมัติจาก AI classification.json" aria-label="Import AI">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
                 </button>
 
                 <!-- บัญชีผู้ใช้ / โหมดออฟไลน์ (ระบบทีม) -->
@@ -988,7 +1018,7 @@
 
                 <!-- 🌟 ปุ่มบันทึกและประวัติรายงาน -->
                 <button onclick="openSaveToHistoryModal()" class="whitespace-nowrap no-print justify-center bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="บันทึกรายงานนี้ไว้ดูและแก้ไขภายหลัง">
-                    <i class="fa-solid fa-bookmark"></i> <span class="hidden lg:inline nav-lbl-2">บันทึก</span>
+                    <i class="fa-solid fa-floppy-disk"></i> <span class="hidden lg:inline nav-lbl-2">บันทึก</span>
                 </button>
                 <button onclick="openHistoryModal()" class="whitespace-nowrap no-print justify-center bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-slate-700 text-slate-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2" title="ดูรายงานที่บันทึกไว้">
                     <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden lg:inline nav-lbl-2">ประวัติ</span>
@@ -1536,14 +1566,6 @@
             }
         });
 
-        function adjustFontSize(el) {
-            const valLen = el.value.length;
-            if (valLen > 15) el.style.fontSize = '11px';
-            else if (valLen > 10) el.style.fontSize = '13px';
-            else if (valLen > 6) el.style.fontSize = '15px';
-            else el.style.fontSize = '18px'; 
-        }
-
         function adjustCoverFontSize(el) {
             // 🌟 ปรับขนาดฟอนต์ตาม "ความกว้างจริง" ของข้อความ (ไม่ใช่นับจำนวนตัวอักษร)
             //    ใช้ฟอนต์ใหญ่สุด (MAX) ที่ยังพอดีความกว้างช่อง → ข้อความไปเต็มแถวก่อน
@@ -1816,7 +1838,6 @@
             updateCurrentHistoryIndicator();
 
             document.querySelectorAll('select').forEach(updateResultColor);
-            document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
 
             document.addEventListener('change', (e) => {
@@ -1872,6 +1893,17 @@
             await initTeamCloud(skipStartup);
         });
 
+        // 🌟 เปิด/ปิดเมนูซ้ายแบบลอย (จอ < 1024px เช่น มือถือ / iPad แนวตั้ง) — open ไม่ส่ง = สลับ
+        //    จอใหญ่เมนูแสดงค้างอยู่แล้ว (lg:flex) คลาสนี้ไม่มีผล
+        function toggleSidebar(open) {
+            const sb = document.getElementById('sidebar');
+            const bd = document.getElementById('sidebarBackdrop');
+            if (!sb) return;
+            const show = open === undefined ? !sb.classList.contains('sidebar-open') : !!open;
+            sb.classList.toggle('sidebar-open', show);
+            if (bd) bd.classList.toggle('show', show);
+        }
+
         // 🌟 แถบเมนูไม่ให้ล้นจอ: แสดงข้อความปุ่มเต็มก่อน → ล้นก็ซ่อนขั้น 1 (ปุ่มใช้ไม่บ่อย) → ยังล้นซ่อนขั้น 2 (ทุกปุ่ม)
         function fitTopNavbar() {
             const nav = document.getElementById('topNavbar');
@@ -1891,12 +1923,14 @@
             const ro = new ResizeObserver(() => fitTopNavbar());
             ro.observe(nav);
             ro.observe(nav.lastElementChild);   // กลุ่มปุ่มเปลี่ยนขนาด เช่น ชิปบัญชีโผล่หลังล็อกอิน
+            // ฟอนต์ไทย (Sarabun) โหลดเสร็จทีหลัง → ความกว้างข้อความบนปุ่มเปลี่ยน → จัดใหม่อีกรอบ
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTopNavbar);
         }
 
         // 🌟 avatar-cloud.js ต้องใหม่พอสำหรับหน้านี้ (อัปโหลดขึ้นเว็บแยกไฟล์กัน — เคยอัปแค่ pmform แล้ว "ส่งขึ้นทีม" เงียบ)
         //    เก่ากว่า → ลองโหลดใหม่แบบไม่ใช้ cache 1 ครั้ง (GitHub Pages ให้เบราว์เซอร์จำไฟล์ 10 นาที)
         //    ยังเก่าอยู่ = ไฟล์บนเว็บเก่าจริง → เตือนให้อัปโหลด avatar-cloud.js
-        const NEED_AVATAR_CLOUD_API = 2;   // ตรงกับ API_VERSION ใน avatar-cloud.js
+        const NEED_AVATAR_CLOUD_API = 3;   // ตรงกับ API_VERSION ใน avatar-cloud.js
         async function checkAvatarCloudVersion() {
             const KEY = 'pm_cloud_refetch';
             if ((AvatarCloud.version || 0) >= NEED_AVATAR_CLOUD_API) { try { sessionStorage.removeItem(KEY); } catch {} return true; }
@@ -1992,9 +2026,18 @@
                     }
                     applyDataToDOM(s);
                     await AvatarCloud.restorePhotos(wrapper(), (n, t) => showSaveStatus(`กำลังโหลดรูป ${n}/${t}...`, true), !(meta && meta.quietPhotos));
+                    // applyDataToDOM ล้าง flag ด้วย setTimeout(0) — รอให้มันทำก่อน แล้วค่อยตั้งสถานะจริงด้านล่าง
+                    // (ไม่งั้นป้าย "ค้าง" ของงานที่ส่งขึ้นทีมถูกล้างทีหลัง → ล้มแล้วรีโหลดได้กระดาษเปล่า)
+                    await new Promise(r => setTimeout(r, 0));
                     teamPhotosMissing = countMissingPhotos();   // ยังไม่มีสิทธิ์ Drive → แถบสถานะขึ้นปุ่ม "เชื่อมต่อ"
                     teamLastSavedAt = meta && meta.updatedAt ? Date.parse(meta.updatedAt) : 0;   // เวลาของเวอร์ชันที่เพิ่งโหลดมา
-                    markHistorySynced();   // ก่อน saveDraft — ป้ายใน draft ต้องเป็น "ไม่ค้าง"
+                    if (meta) markHistorySynced();   // โหลดมาจากระบบ = ตรงกับระบบ (ก่อน saveDraft — ป้ายต้อง "ไม่ค้าง")
+                    else {
+                        // "ส่งขึ้นทีม": ของนี้ยังไม่อยู่บนระบบจนกว่าจะบันทึกสำเร็จ → ป้าย "ค้าง"
+                        //   ถ้าบันทึกล้ม / หน้ารีโหลดกลางทาง งานที่เปิดใหม่จะใช้ของในเครื่อง ไม่ถูกล้างเป็นกระดาษเปล่า
+                        historyDirty = true;
+                        editSeq++;
+                    }
                     await saveDraft();
                     updateCurrentHistoryIndicator();
                 },
@@ -2009,7 +2052,11 @@
                 // ก่อนเปลี่ยนงาน / เริ่มงานใหม่ / ออกจากระบบ / สลับโหมด — เตือนถ้ายังไม่บันทึก (false = ยกเลิก)
                 beforeSwitch: () => proceedSwitch(),
                 // "ส่งขึ้นทีม" (งานในเครื่อง → ระบบทีม) ใช้ขั้นตอนบันทึกเดียวกับปุ่ม "บันทึก" (สถานะ + ร่างในเครื่องถูกต้อง)
-                saveNow: () => saveToTeam(),
+                saveNow: async () => {
+                    if (await saveToTeam()) return true;
+                    if (lastTeamSaveError) throw lastTeamSaveError;   // ให้หน้าต่าง "ส่งขึ้นทีม" บอกเหตุผล
+                    return false;
+                },
                 onReady: async (mode) => {
                     if (mode === 'online') teamPhotosMissing = countMissingPhotos();
                     teamResumeCheckAt = Date.now();   // เพิ่งโหลดงานมาสด ๆ — ไม่ต้องเช็คซ้ำทันที
@@ -3308,7 +3355,7 @@
                     <div class="text-center py-12 text-slate-400">
                         <i class="fa-solid fa-inbox text-4xl mb-3 opacity-40"></i>
                         <p class="font-semibold text-sm">ยังไม่มีรายงานที่บันทึกไว้</p>
-                        <p class="text-xs mt-1">กดปุ่ม <i class="fa-solid fa-bookmark"></i> บันทึก เพื่อเก็บรายงานปัจจุบัน</p>
+                        <p class="text-xs mt-1">กดปุ่ม <i class="fa-solid fa-floppy-disk"></i> บันทึก เพื่อเก็บรายงานปัจจุบัน</p>
                     </div>`;
                 return;
             }
@@ -3541,6 +3588,7 @@
 
         // snapshot ที่ getState ใช้ส่งขึ้นระบบรอบนี้ → เขียนเป็นร่างในเครื่องต่อ (ไม่ต้อง snapshot ซ้ำ)
         let teamSnap = null;
+        let lastTeamSaveError = null;   // สาเหตุที่บันทึกล่าสุดล้ม (ให้ "ส่งขึ้นทีม" แสดงเหตุผลได้)
         async function persistTeamSnap() {
             const snap = teamSnap;
             teamSnap = null;
@@ -3553,6 +3601,7 @@
             clearTimeout(teamAutoTimer); teamAutoTimer = null;
             teamAutoFirstDirtyAt = 0;
             teamSnap = null;
+            lastTeamSaveError = null;
             updateTeamSaveBadge('saving');
             try {
                 // ยังไม่ผูกงาน (เช่น ปิดหน้ารายการงานไปโดยไม่เลือก) → สร้างงานใหม่จากที่กรอกไว้ ไม่ล้างฟอร์ม
@@ -3571,6 +3620,7 @@
                 return true;
             } catch (e) {
                 console.error(e);
+                lastTeamSaveError = e;
                 await persistTeamSnap().catch(() => {});   // บันทึกขึ้นระบบไม่ได้ → อย่างน้อยร่างในเครื่องต้องมีของล่าสุด (ป้าย "ค้าง")
                 if (!opts.auto) { updateTeamSaveBadge(); showToast(e.message || 'บันทึกไม่สำเร็จ'); return false; }
                 const code = e.code || (e.status === 401 ? 'drive' : 'error');
@@ -3632,15 +3682,19 @@
 
         async function checkTeamDocUpdate() {
             if (!isTeamMode() || !AvatarCloud.signedIn() || !AvatarCloud.hasDoc()) return;
+            // งานที่ยังไม่เคยบันทึก (เช่น กำลัง "ส่งขึ้นทีม" อยู่) ไม่ต้องเช็ค — บนระบบยังว่าง ถ้าโหลดมาจะได้กระดาษเปล่า
+            if (!AvatarCloud.doc.everSaved) return;
             if (document.visibilityState !== 'visible' || inPrintMode()) return;
             if (teamAutosavePaused === 'conflict') return;   // รู้อยู่แล้ว (เลือก "เก็บของฉันไว้" / แถบสถานะเตือนอยู่) — ไม่ถามซ้ำทุกครั้งที่กลับมา
             if (teamResumeChecking || Date.now() - teamResumeCheckAt < TEAM_RESUME_CHECK_GAP_MS) return;
             teamResumeChecking = true;
             teamResumeCheckAt = Date.now();
             try {
+                const docId = AvatarCloud.doc.id;
+                const stillSameDoc = () => AvatarCloud.doc && AvatarCloud.doc.id === docId;   // ระหว่างรอเน็ต อาจเปลี่ยนงานไปแล้ว
                 while (teamSaveInFlight) await teamSaveInFlight.catch(() => {});   // รอบันทึกของเราให้เสร็จก่อน
                 const r = await AvatarCloud.checkRemote();
-                if (!r) return;
+                if (!r || !stillSameDoc()) return;
                 if (r.deleted) { showToast('งานนี้ถูกลบออกจากระบบทีมแล้ว', 'info'); return; }
                 if (!r.newer) return;
                 const when = new Date(r.updatedAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -3653,6 +3707,7 @@
                     });
                     if (!useRemote) { teamAutosavePaused = 'conflict'; updateTeamSaveBadge(); return; }
                 }
+                if (!stillSameDoc()) return;
                 // โหลดของล่าสุด — ล้างป้าย "แก้ค้าง" ใน draft ก่อน ไม่งั้น applyState จะถามซ้ำว่าจะใช้ของในเครื่องไหม
                 draftCloudTag = null;
                 historyDirty = false;
@@ -3747,7 +3802,7 @@
                             <p class="text-sm text-slate-500 leading-relaxed">${msg}</p>
                         </div>
                         <div class="p-4 pt-0 flex flex-col gap-2">
-                            <button data-act="save" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-bookmark"></i> บันทึกก่อน</button>
+                            <button data-act="save" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> บันทึกก่อน</button>
                             <div class="flex gap-2">
                                 <button data-act="cancel" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm border border-slate-200">ยกเลิก</button>
                                 <button data-act="discard" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-red-600 hover:bg-red-50 transition-colors text-sm border border-red-200">ไม่บันทึก</button>
@@ -4155,7 +4210,6 @@
             patchOldPhotoBoxes();
             ensureDeleteButtons();
 
-            document.querySelectorAll('input[oninput*="adjustFontSize"]').forEach(adjustFontSize);
             document.querySelectorAll('input[oninput*="adjustCoverFontSize"]').forEach(adjustCoverFontSize);
             syncCoverInputs(); 
 
@@ -4176,6 +4230,7 @@
                 const tb = blk.querySelector('tbody[id^="tbody_"]');
                 const ps = blk.querySelector('[id^="photoSec_"]');
                 if (tb && ps && typeof checkContactPageBreak === 'function') checkContactPageBreak(tb.id, ps.id);
+                retrofitContactBlock(blk);
                 // retrofit: แทรกแถว spacer ใน thead ถ้ายังไม่มี (draft เก่าก่อนฟีเจอร์นี้)
                 const thead = blk.querySelector('table thead');
                 if (thead && !thead.querySelector('.contact-thead-spacer')) {
@@ -5919,10 +5974,10 @@
                                  (โชว์เฉพาะ print + multipage ; thead ซ้ำทุกหน้าอัตโนมัติ) -->
                             <tr class="contact-thead-spacer"><td colspan="6" style="height: 8mm; border: none !important; padding: 0 !important; background: transparent !important;"></td></tr>
                             <tr>
-                                <th class="w-[15%]">Breaker</th>
-                                <th class="w-[15%]">Phase</th>
-                                <th class="w-[20%]">Test Current</th>
-                                <th class="w-[25%]">
+                                <th style="width: 32%;">Breaker</th>
+                                <th style="width: 10%;">Phase</th>
+                                <th style="width: 16%;">Test Current</th>
+                                <th style="width: 28%;">
                                     <div class="flex items-center justify-center gap-1 whitespace-nowrap">
                                         Observation 
                                         <select class="bg-transparent outline-none cursor-pointer normal-case font-bold text-[#475569] text-center hover:bg-slate-200 rounded px-1 transition-colors !w-auto">
@@ -5931,8 +5986,8 @@
                                         </select>
                                     </div>
                                 </th>
-                                <th class="w-[20%]">Result</th>
-                                <th class="no-print w-[5%]" style="border: none !important; background: transparent;"></th>
+                                <th style="width: 14%;">Result</th>
+                                <th class="no-print contact-del-col" style="border: none !important; background: transparent;"></th>
                             </tr>
                         </thead>
                         <tbody id="tbody_${prefix}"></tbody>
@@ -6488,18 +6543,57 @@
             }
         }
 
+        // 🌟 ชื่อเบรกเกอร์ = textarea (paper-textarea → ตอนพิมพ์ถูกแปลงเป็น span ตัดบรรทัดแบบเดียวกัน)
+        //    ชื่อยาวขึ้นบรรทัดใหม่บนจอ ตรงกับที่เห็นใน PDF
+        function breakerNameTextareaHtml(n, value) {
+            const esc = String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<textarea rows="1" spellcheck="false" class="paper-textarea breaker-name-input text-center text-orange-600 font-black bg-transparent w-full sync-name-${n}" oninput="syncInputs('sync-name-${n}', this.value); autoGrowBreakerName(this)">${esc}</textarea>`;
+        }
+
+        // สำรองสำหรับเบราว์เซอร์ที่ไม่รองรับ field-sizing: content (Safari/iPad) — ปรับความสูงตามจำนวนบรรทัด
+        function autoGrowBreakerName(el) {
+            if (!el || CSS.supports('field-sizing', 'content')) return;
+            if (!el.getClientRects().length) return;   // ถูกซ่อนอยู่ วัดไม่ได้ — คงความสูงเดิม (style ถูกเซฟไปกับ draft)
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        // ความกว้างคอลัมน์ Contact: Breaker | Phase | Test Current | Observation | Result
+        const CONTACT_COL_WIDTHS = ['32%', '10%', '16%', '28%', '14%'];   // รวม 100% — คอลัมน์ปุ่มลบกว้าง 0
+
+        // retrofit draft เก่า: ช่องชื่อ input → textarea + ความกว้างคอลัมน์ใหม่
+        function retrofitContactBlock(blk) {
+            const ths = blk.querySelectorAll('thead tr:not(.contact-thead-spacer) th');
+            CONTACT_COL_WIDTHS.forEach((w, i) => { if (ths[i]) ths[i].style.width = w; });
+            ths[5]?.classList.add('contact-del-col');
+            blk.querySelectorAll('tbody .breaker-group').forEach(tr => {
+                const tds = tr.children;
+                CONTACT_COL_WIDTHS.forEach((w, i) => { if (tds[i]) tds[i].style.width = w; });
+                tds[5]?.classList.add('contact-del-col');
+                const inp = tr.querySelector('input[class*="sync-name-"]');
+                if (inp) {
+                    const cls = Array.from(inp.classList).find(c => c.startsWith('sync-name-'));
+                    const n = cls ? cls.slice('sync-name-'.length) : '';
+                    inp.closest('td')?.classList.remove('text-lg');
+                    inp.insertAdjacentHTML('beforebegin', breakerNameTextareaHtml(n, inp.value));
+                    inp.remove();
+                }
+            });
+            blk.querySelectorAll('.breaker-name-input').forEach(autoGrowBreakerName);
+        }
+
         function addBreakerRow(tbodyId, photoSecId) {
             breakerCount++;
             const tbody = document.getElementById(tbodyId);
             if (!tbody) return;
             const rowHtml = `
                 <tr class="breaker-group" id="breaker_row_${breakerCount}_1">
-                    <td class="border border-slate-300 p-2 font-bold text-lg text-center align-middle" rowspan="3" style="width: 15%;"><input type="text" value="F${breakerCount}" class="paper-input text-center text-orange-600 font-black text-lg bg-transparent w-full sync-name-${breakerCount}" oninput="syncInputs('sync-name-${breakerCount}', this.value); adjustFontSize(this)"></td>
-                    <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center" style="width: 15%;">L1</td>
-                    <td class="border border-slate-300 p-2 text-center align-middle" rowspan="3" style="width: 20%;"><input type="text" value="50 A" class="paper-input text-center font-medium text-slate-600 bg-transparent w-full sync-amp-${breakerCount}" oninput="syncInputs('sync-amp-${breakerCount}', this.value)"></td>
-                    <td class="border border-slate-300 p-1 text-center" style="width: 25%;"><input type="text" placeholder="..." class="paper-input text-center py-1 font-bold text-orange-600 w-full"></td>
-                    <td class="border border-slate-300 p-1 text-center" style="width: 20%;"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
-                    <td class="no-print text-center border-none w-[5%] align-middle" rowspan="3" style="border: none !important; background: transparent;"><button onclick="removeBreakerRow(${breakerCount}, '${tbodyId}', '${photoSecId}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2"><i class="fa-solid fa-trash-can"></i></button></td>
+                    <td class="border border-slate-300 p-2 font-bold text-center align-middle" rowspan="3" style="width: 32%;">${breakerNameTextareaHtml(breakerCount, `F${breakerCount}`)}</td>
+                    <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center" style="width: 10%;">L1</td>
+                    <td class="border border-slate-300 p-2 text-center align-middle" rowspan="3" style="width: 16%;"><input type="text" value="50 A" class="paper-input text-center font-medium text-slate-600 bg-transparent w-full sync-amp-${breakerCount}" oninput="syncInputs('sync-amp-${breakerCount}', this.value)"></td>
+                    <td class="border border-slate-300 p-1 text-center" style="width: 28%;"><input type="text" placeholder="..." class="paper-input text-center py-1 font-bold text-orange-600 w-full"></td>
+                    <td class="border border-slate-300 p-1 text-center" style="width: 14%;"><select onchange="updateResultColor(this)" class="w-full text-center bg-transparent font-bold text-emerald-600 text-center-last outline-none"><option value="Pass">Pass</option><option value="Fail" class="text-red-600">Fail</option></select></td>
+                    <td class="no-print contact-del-col border-none align-middle" rowspan="3" style="border: none !important; background: transparent;"><button onclick="removeBreakerRow(${breakerCount}, '${tbodyId}', '${photoSecId}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
                 <tr id="breaker_row_${breakerCount}_2">
                     <td class="border border-slate-300 p-2 font-bold text-slate-700 text-center">L2</td>
@@ -7457,6 +7551,7 @@
                     
                     let w = img.width;
                     let h = img.height;
+                    drawSrcWidth = img.width;   // ความละเอียดจริงของรูป — ใช้ตอนบันทึก (saveDrawing)
                     
                     // ย่อขนาด Canvas ให้พอดีกับหน้าจอโดยรักษาสัดส่วนรูป
                     if (w > maxWidth || h > maxHeight) {
@@ -7495,6 +7590,8 @@
             }, 50);
         }
 
+        let drawSrcWidth = 0;   // ความกว้างจริงของรูปที่กำลังวาดทับ
+
         function closeDrawingModal() {
             const modal = document.getElementById('drawingModal');
             modal.classList.add('hidden');
@@ -7516,11 +7613,15 @@
             fCanvas.discardActiveObject(); 
             fCanvas.renderAll();
             
-            // แปลง Canvas กลับเป็นรูปภาพคุณภาพสูง (เพิ่ม multiplier เพื่อให้ภาพคมชัด)
+            // แปลง Canvas กลับเป็นรูป "เท่าความละเอียดเดิมของรูป" (สูงสุด 1600px) — เส้นที่วาดยังคม (fabric วาดใหม่ตามขนาด)
+            //   เดิม multiplier 2 + quality 0.9 = ย่อรูปลงตามจอแล้วขยาย 2 เท่า → ไฟล์ใหญ่ขึ้นหลายเท่าแต่ไม่คมขึ้น
+            //   รูปที่วาดทับจึงหนักกว่ารูปปกติมาก → PDF ใหญ่/บันทึก PDF ช้า + บันทึกอัตโนมัติ/อัปรูปช้าตาม
+            const cw = fCanvas.getWidth() || 1;
+            const targetW = Math.min(drawSrcWidth || cw * 2, 1600);
             const dataUrl = fCanvas.toDataURL({
                 format: 'jpeg',
-                quality: 0.9,
-                multiplier: 2 
+                quality: 0.85,
+                multiplier: Math.max(1, targetW / cw)
             });
             
             const imgElement = document.getElementById(currentPreviewIdToEdit);
@@ -10966,7 +11067,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
                 const row1 = groups[gi];
                 if (!row1) return;
                 // ชื่อเบรกเกอร์ (sync-name input ในแถวแรก)
-                const nameInput = row1.querySelector('input[class*="sync-name-"]');
+                const nameInput = row1.querySelector('[class*="sync-name-"]');
                 if (nameInput && bk.name) {
                     aiSetInput(nameInput, bk.name);
                     if (typeof syncInputs === 'function') {
@@ -11432,7 +11533,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
             <div class="flex justify-between items-center p-5 border-b bg-slate-50">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-bookmark text-indigo-500"></i> บันทึกรายงาน
+                    <i class="fa-solid fa-floppy-disk text-indigo-500"></i> บันทึกรายงาน
                 </h3>
                 <button onclick="closeSaveToHistoryModal()" class="text-slate-400 hover:text-red-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -11450,7 +11551,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             <div class="p-4 pt-0 flex gap-2 justify-end">
                 <button onclick="closeSaveToHistoryModal()" class="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm">ยกเลิก</button>
                 <button onclick="confirmSaveToHistory()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-bookmark"></i> บันทึก
+                    <i class="fa-solid fa-floppy-disk"></i> บันทึก
                 </button>
             </div>
         </div>
