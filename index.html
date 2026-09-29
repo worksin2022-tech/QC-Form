@@ -159,13 +159,17 @@
                     </div>
                 </div>
 
-                <div onclick="switchApp('trip-fac')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
-                    <div class="h-2 bg-orange-500 w-full"></div>
+                <!-- พักการใช้งานชั่วคราว: เปิดใช้คืน → แทน div ด้านล่างด้วย
+                     <div onclick="switchApp('trip-fac')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                     และคืนสีส้ม (bg-orange-500 / bg-orange-100 text-orange-500 / text-gray-800) + ลบป้าย "พักการใช้งาน" -->
+                <div aria-disabled="true" title="พักการใช้งานชั่วคราว" class="relative bg-gray-200 rounded-2xl shadow-none cursor-not-allowed select-none border border-gray-300 overflow-hidden opacity-60 grayscale">
+                    <div class="h-2 bg-gray-400 w-full"></div>
+                    <span class="absolute top-4 right-4 bg-gray-500 text-white text-xs font-semibold px-2 py-1 rounded-full">พักการใช้งาน</span>
                     <div class="p-6">
-                        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-500">
+                        <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mb-4 text-gray-500">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-800 mb-1">Trip Unit Test (Factory)</h3>
+                        <h3 class="text-lg font-bold text-gray-500 mb-1">Trip Unit Test (Factory)</h3>
                         <p class="text-gray-500 text-sm">แบบฟอร์มบันทึกผลการทดสอบ Trip Unit (ฉบับโรงงาน)</p>
                     </div>
                 </div>
