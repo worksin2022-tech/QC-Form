@@ -951,6 +951,54 @@
   .reorder-list li:active{cursor:grabbing;}
   .sortable-ghost{opacity:.4;background:#fef3c7 !important;}
 
+  /* Reorder modal — จัดกลุ่มตามหมวด; ห้ามเลือกข้อความ/เมนูกดค้าง (สาเหตุ "คลุมดำ" ตอนลาก) */
+  #reorderModal .modal-body, #reorderModal .modal-body *{
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+  }
+  #reorderModal select{ -webkit-user-select:auto; user-select:auto; }
+  .ro-dragging, .ro-dragging *{ -webkit-user-select:none !important; user-select:none !important; cursor:grabbing !important; }
+  .ro-toolbar{
+    position:sticky;top:-20px;z-index:3;margin:0 -22px 10px;padding:8px 22px;
+    background:#fff;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;
+  }
+  .ro-all{display:flex;align-items:center;gap:5px;font-weight:700;color:#334155;cursor:pointer;}
+  .ro-all input, .ro-cat-check{width:18px;height:18px;accent-color:#f97316;cursor:pointer;flex:none;}
+  .ro-sel-count{color:#64748b;}
+  .ro-spacer{flex:1;}
+  .ro-btn{
+    border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 9px;
+    font-size:12px;font-weight:700;color:#334155;cursor:pointer;min-height:30px;
+  }
+  .ro-btn:hover:not(:disabled){background:#fff7ed;border-color:#fdba74;}
+  .ro-btn:disabled{opacity:.4;cursor:default;}
+  .ro-fold{color:#64748b;font-weight:600;}
+  .ro-cat{
+    border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:#f8fafc;overflow:hidden;
+  }
+  .ro-cat.checked{border-color:#fb923c;box-shadow:0 0 0 2px #fed7aa;}
+  .ro-cat-head{
+    display:flex;align-items:center;gap:9px;padding:9px 12px;background:#1e293b;color:#fff;
+    font-size:13px;font-weight:700;
+  }
+  .ro-cat.checked .ro-cat-head{background:#c2410c;}
+  .ro-cat-handle{cursor:grab;font-size:18px;line-height:1;color:#94a3b8;padding:4px 6px;margin:-4px -2px;touch-action:none;}
+  .ro-cat-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ro-cat-count{font-size:11px;font-weight:600;color:#cbd5e1;}
+  .ro-cat-fold{background:none;border:none;color:#cbd5e1;font-size:13px;cursor:pointer;padding:4px 6px;}
+  .ro-cat.folded .ro-cat-fold{transform:rotate(-90deg);}
+  .ro-cat.folded .reorder-list{display:none;}
+  .ro-cat .reorder-list{padding:8px 8px 2px;min-height:40px;}
+  .ro-cat .reorder-list:empty::before{
+    content:'ลากคอมเม้นมาวางที่นี่';display:block;text-align:center;font-size:11px;color:#94a3b8;
+    padding:8px;border:1px dashed #cbd5e1;border-radius:8px;margin-bottom:6px;
+  }
+  .reorder-list li{cursor:default;}
+  .reorder-handle{cursor:grab;touch-action:none;padding:6px 4px;margin:-6px -2px;}
+  .ro-cat.sortable-ghost{opacity:.35;}
+  .sortable-fallback{opacity:.9 !important;box-shadow:0 12px 28px -8px rgba(0,0,0,.35);}
+
   /* Toast */
   #toast{
     position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -1551,8 +1599,18 @@
       <span class="close-btn" onclick="closeReorderModal()">×</span>
     </div>
     <div class="modal-body">
-      <p class="text-xs text-slate-500 mb-3">ลากเพื่อจัดเรียงลำดับคอมเม้น (จะยังอยู่ในหมวดเดิม)</p>
-      <ul class="reorder-list" id="reorderList"></ul>
+      <p class="text-xs text-slate-500 mb-2">ลาก <b>⋮⋮</b> เพื่อย้าย — ลากหัวหมวดเพื่อย้ายทั้ง Panel · ลากคอมเม้นข้ามหมวดได้ · หรือติ๊กหมวดแล้วกดปุ่มด้านล่าง</p>
+      <div class="ro-toolbar" id="roToolbar">
+        <label class="ro-all"><input type="checkbox" id="roSelAll" onchange="roToggleAll(this.checked)"> ทั้งหมด</label>
+        <span class="ro-sel-count" id="roSelCount">ยังไม่ได้เลือกหมวด</span>
+        <span class="ro-spacer"></span>
+        <button type="button" class="ro-btn" data-ro-move="top" title="ย้ายหมวดที่เลือกไปบนสุด">⤒ บนสุด</button>
+        <button type="button" class="ro-btn" data-ro-move="up" title="ย้ายหมวดที่เลือกขึ้น 1 ตำแหน่ง">▲ ขึ้น</button>
+        <button type="button" class="ro-btn" data-ro-move="down" title="ย้ายหมวดที่เลือกลง 1 ตำแหน่ง">▼ ลง</button>
+        <button type="button" class="ro-btn" data-ro-move="bottom" title="ย้ายหมวดที่เลือกไปล่างสุด">⤓ ล่างสุด</button>
+        <button type="button" class="ro-btn ro-fold" id="roFoldBtn" onclick="roToggleFoldAll()">ยุบทั้งหมด</button>
+      </div>
+      <div class="reorder-groups" id="reorderList"></div>
     </div>
     <div class="modal-foot">
       <button onclick="closeReorderModal()" class="top-btn">ยกเลิก</button>
@@ -2162,96 +2220,235 @@ async function removePhoto(cmt, which, sidx){
 /* ========================================================================
    REORDER MODAL
    ======================================================================== */
-let reorderSortable = null;
+let reorderSortables = [];
+
+function roDestroySortables(){
+  reorderSortables.forEach(s=>{ try{ s.destroy(); }catch(_){} });
+  reorderSortables = [];
+}
+/* ระหว่างลาก: ล้าง selection ที่ค้าง + กันไม่ให้ browser เริ่มเลือกข้อความใหม่ (สาเหตุ "คลุมดำ") */
+function roClearSelection(){ try{ const s = window.getSelection && window.getSelection(); if(s && s.removeAllRanges) s.removeAllRanges(); }catch(_){} }
+function roBlockSelect(e){ e.preventDefault(); }
+const roSortOpts = {
+  animation: 150,
+  ghostClass: 'sortable-ghost',
+  forceFallback: true,       // ใช้ระบบลากของ Sortable เอง (native HTML5 drag บน iPad ไม่เสถียร)
+  fallbackOnBody: true,
+  fallbackTolerance: 4,
+  scroll: true,
+  scrollSensitivity: 70,
+  scrollSpeed: 14,
+  bubbleScroll: true,
+  onChoose(){ roClearSelection(); },
+  onStart(){
+    roClearSelection();
+    document.body.classList.add('ro-dragging');
+    document.addEventListener('selectstart', roBlockSelect, true);
+  },
+  onEnd(){
+    document.body.classList.remove('ro-dragging');
+    document.removeEventListener('selectstart', roBlockSelect, true);
+    roClearSelection();
+    roRefreshCounts();
+  }
+};
 
 function openReorderModal(){
   const list = document.getElementById('reorderList');
+  roDestroySortables();
   list.innerHTML = '';
-  const flat = [];
-  state.categories.forEach((cat, ci)=>{
-    cat.comments.forEach((cmt, idx)=>{
-      flat.push({ cat, cmt, ci, idx });
-    });
-  });
-  if(flat.length===0){
-    list.innerHTML = '<p class="text-sm text-slate-400 italic text-center py-4">ยังไม่มีคอมเม้นให้จัดเรียง</p>';
+  if(!state.categories.length){
+    list.innerHTML = '<p class="text-sm text-slate-400 italic text-center py-4">ยังไม่มีหมวด/คอมเม้นให้จัดเรียง</p>';
   } else {
-    // build category options once
-    const catOptions = state.categories
-      .map(c => `<option value="${c.id}">${escapeHtml(c.name || '(ไม่ระบุ)')}</option>`)
-      .join('');
-
-    flat.forEach(({cat,cmt,ci,idx})=>{
-      const li = document.createElement('li');
-      li.className = cmt.mode === 'after' ? 'after-mode' : 'before-mode';
-      li.dataset.cmtId = cmt.id;
-      li.innerHTML = `
-        <span class="text-slate-400 text-lg leading-none reorder-handle" style="cursor:grab;">⋮⋮</span>
-        <div class="flex-1 min-w-0">
-          <div class="font-bold text-slate-800 truncate">${escapeHtml(cmt.text||'(ยังไม่ได้กรอก)')}</div>
-          <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-            <span class="${cmt.mode==='after'?'text-emerald-600':'text-blue-600'} font-bold">${cmt.mode.toUpperCase()}</span>
-            <span>·</span>
-            <span>หมวด:</span>
-            <select class="cat-select text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none focus:border-orange-400" data-cmt-target="${cmt.id}">
-              ${catOptions}
-            </select>
-          </div>
+    state.categories.forEach(cat=>{
+      const grp = document.createElement('div');
+      grp.className = 'ro-cat';
+      grp.dataset.catId = cat.id;
+      grp.innerHTML = `
+        <div class="ro-cat-head">
+          <span class="ro-cat-handle" title="ลากเพื่อย้ายทั้งหมวด">⋮⋮</span>
+          <input type="checkbox" class="ro-cat-check" title="เลือกหมวดนี้">
+          <span class="ro-cat-name"></span>
+          <span class="ro-cat-count"></span>
+          <button type="button" class="ro-cat-fold" title="ยุบ/ขยาย">▼</button>
         </div>
-      `;
-      list.appendChild(li);
-      // set selected
-      li.querySelector('.cat-select').value = cat.id;
+        <ul class="reorder-list"></ul>`;
+      const ul = grp.querySelector('ul');
+      cat.comments.forEach(cmt=>{
+        const li = document.createElement('li');
+        li.className = cmt.mode === 'after' ? 'after-mode' : 'before-mode';
+        li.dataset.cmtId = cmt.id;
+        li.innerHTML = `
+          <span class="text-slate-400 text-lg leading-none reorder-handle" title="ลากเพื่อย้ายคอมเม้น">⋮⋮</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-slate-800 truncate">${escapeHtml(cmt.text||'(ยังไม่ได้กรอก)')}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+              <span class="${cmt.mode==='after'?'text-emerald-600':'text-blue-600'} font-bold">${cmt.mode.toUpperCase()}</span>
+              <span>·</span>
+              <span>ย้ายไปหมวด:</span>
+              <select class="cat-select text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none focus:border-orange-400"></select>
+            </div>
+          </div>`;
+        ul.appendChild(li);
+      });
+      list.appendChild(grp);
+      reorderSortables.push(new Sortable(ul, Object.assign({}, roSortOpts, {
+        group: 'ro-comments',   // ลากคอมเม้นข้ามหมวดได้
+        handle: '.reorder-handle',
+        draggable: 'li'
+      })));
     });
+    // ลากหัวหมวด = ย้ายทั้ง Panel (พร้อมคอมเม้นข้างใน)
+    reorderSortables.push(new Sortable(list, Object.assign({}, roSortOpts, {
+      handle: '.ro-cat-handle',
+      draggable: '.ro-cat'
+    })));
   }
-  if(reorderSortable) reorderSortable.destroy();
-  reorderSortable = new Sortable(list, {
-    animation: 150,
-    ghostClass: 'sortable-ghost',
-    handle: '.reorder-handle',
-    draggable: 'li',
-    forceFallback: true,
-    fallbackTolerance: 5
-  });
+  const allBox = document.getElementById('roSelAll');
+  allBox.checked = false; allBox.indeterminate = false;
+  document.getElementById('roToolbar').style.display = state.categories.length ? '' : 'none';
+  roRefreshCounts();
   document.getElementById('reorderModal').classList.add('open');
 }
+
+/* เลขหมวด, จำนวนคอมเม้น, ตัวเลือก "ย้ายไปหมวด" — ตามลำดับที่เห็นตอนนี้ */
+function roRefreshCounts(){
+  const groups = Array.from(document.querySelectorAll('#reorderList .ro-cat'));
+  const nameOf = id=>{ const c = state.categories.find(x=> x.id === id); return (c && c.name) || '(ไม่ระบุชื่อหมวด)'; };
+  const opts = groups.map((g, i)=> `<option value="${g.dataset.catId}">${i+1}. ${escapeHtml(nameOf(g.dataset.catId))}</option>`).join('');
+  groups.forEach((g, i)=>{
+    g.querySelector('.ro-cat-name').textContent = `${i+1}. ${nameOf(g.dataset.catId)}`;
+    g.querySelector('.ro-cat-count').textContent = `${g.querySelectorAll('li').length} คอมเม้น`;
+    g.querySelectorAll('li .cat-select').forEach(sel=>{ sel.innerHTML = opts; sel.value = g.dataset.catId; });
+  });
+  roUpdateToolbar();
+}
+
+function roCheckedGroups(){
+  return Array.from(document.querySelectorAll('#reorderList .ro-cat')).filter(g=> g.querySelector('.ro-cat-check').checked);
+}
+function roUpdateToolbar(){
+  const groups = Array.from(document.querySelectorAll('#reorderList .ro-cat'));
+  const sel = roCheckedGroups();
+  groups.forEach(g=> g.classList.toggle('checked', g.querySelector('.ro-cat-check').checked));
+  document.getElementById('roSelCount').textContent = sel.length ? `เลือก ${sel.length} หมวด` : 'ยังไม่ได้เลือกหมวด';
+  const allBox = document.getElementById('roSelAll');
+  allBox.checked = !!groups.length && sel.length === groups.length;
+  allBox.indeterminate = sel.length > 0 && sel.length < groups.length;
+  const idx = sel.map(g=> groups.indexOf(g));
+  // ปุ่มกดไม่ได้ถ้าหมวดที่เลือกชิดขอบบน/ล่างอยู่แล้วทั้งหมด
+  const atTop = idx.every((v, i)=> v === i);
+  const atBottom = idx.every((v, i)=> v === groups.length - idx.length + i);
+  document.querySelectorAll('[data-ro-move]').forEach(b=>{
+    const k = b.dataset.roMove;
+    b.disabled = !sel.length || ((k === 'top' || k === 'up') ? atTop : atBottom);
+  });
+  const anyOpen = groups.some(g=> !g.classList.contains('folded'));
+  document.getElementById('roFoldBtn').textContent = anyOpen ? 'ยุบทั้งหมด' : 'ขยายทั้งหมด';
+}
+function roToggleAll(on){
+  document.querySelectorAll('#reorderList .ro-cat-check').forEach(c=> c.checked = on);
+  roUpdateToolbar();
+}
+function roToggleFoldAll(){
+  const groups = Array.from(document.querySelectorAll('#reorderList .ro-cat'));
+  const fold = groups.some(g=> !g.classList.contains('folded'));
+  groups.forEach(g=> g.classList.toggle('folded', fold));
+  roUpdateToolbar();
+}
+/* ย้ายหมวดที่ติ๊กไว้ (เลือกหลายหมวดพร้อมกันได้ คงลำดับระหว่างกันไว้) */
+function roMoveChecked(kind){
+  const list = document.getElementById('reorderList');
+  const groups = Array.from(list.querySelectorAll('.ro-cat'));
+  const sel = roCheckedGroups();
+  if(!sel.length) return;
+  let order = groups.slice();
+  if(kind === 'top')    order = sel.concat(groups.filter(g=> !sel.includes(g)));
+  if(kind === 'bottom') order = groups.filter(g=> !sel.includes(g)).concat(sel);
+  if(kind === 'up'){
+    for(let i = 1; i < order.length; i++)
+      if(sel.includes(order[i]) && !sel.includes(order[i-1])) [order[i-1], order[i]] = [order[i], order[i-1]];
+  }
+  if(kind === 'down'){
+    for(let i = order.length - 2; i >= 0; i--)
+      if(sel.includes(order[i]) && !sel.includes(order[i+1])) [order[i], order[i+1]] = [order[i+1], order[i]];
+  }
+  order.forEach(g=> list.appendChild(g));
+  roRefreshCounts();
+  const focus = (kind === 'down' || kind === 'bottom') ? sel[sel.length-1] : sel[0];
+  focus.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const list = document.getElementById('reorderList');
+  if(!list) return;
+  list.addEventListener('change', e=>{
+    if(e.target.classList.contains('ro-cat-check')){ roUpdateToolbar(); return; }
+    if(e.target.classList.contains('cat-select')){
+      // ย้ายคอมเม้นไปท้ายหมวดที่เลือกทันที (ไม่ต้องลากไกล ๆ บน iPad)
+      const li = e.target.closest('li');
+      const dest = list.querySelector(`.ro-cat[data-cat-id="${e.target.value}"] ul`);
+      if(li && dest && li.parentNode !== dest){
+        dest.appendChild(li);
+        dest.closest('.ro-cat').classList.remove('folded');
+        roRefreshCounts();
+        li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  });
+  list.addEventListener('click', e=>{
+    const fold = e.target.closest('.ro-cat-fold');
+    if(fold){ fold.closest('.ro-cat').classList.toggle('folded'); roUpdateToolbar(); return; }
+    // แตะชื่อหมวด = ติ๊ก/เอาติ๊กออก (เป้าใหญ่ขึ้นสำหรับนิ้ว)
+    if(e.target.closest('.ro-cat-name, .ro-cat-count')){
+      const box = e.target.closest('.ro-cat').querySelector('.ro-cat-check');
+      box.checked = !box.checked; roUpdateToolbar();
+    }
+  });
+  document.querySelectorAll('[data-ro-move]').forEach(b=> b.addEventListener('click', ()=> roMoveChecked(b.dataset.roMove)));
+});
+
 function closeReorderModal(){
   document.getElementById('reorderModal').classList.remove('open');
+  roDestroySortables();
 }
 function applyReorder(){
-  // Read items in their NEW visual order from the DOM
-  const items = Array.from(document.querySelectorAll('#reorderList li'));
+  const groups = Array.from(document.querySelectorAll('#reorderList .ro-cat'));
+  if(groups.length === 0){ closeReorderModal(); return; }
 
-  if(items.length === 0){
-    closeReorderModal();
-    return;
-  }
-
-  // Build a lookup of comment objects
-  const cmtById = {};
+  const catById = {}, cmtById = {}, homeOf = {};
   state.categories.forEach(cat=>{
-    cat.comments.forEach(cmt=>{ cmtById[cmt.id] = cmt; });
+    catById[cat.id] = cat;
+    cat.comments.forEach(cmt=>{ cmtById[cmt.id] = cmt; homeOf[cmt.id] = cat; });
   });
-
-  // Clear all category comment lists
-  state.categories.forEach(cat=> cat.comments = []);
-
-  // For each item in the new visual order, append it to its chosen target category
-  // This is what makes ORDER + CROSS-CATEGORY MOVE actually apply.
-  items.forEach(li => {
-    const cmtId = li.dataset.cmtId;
-    const targetCatId = li.querySelector('.cat-select')?.value;
-    const cmt = cmtById[cmtId];
-    if(!cmt) return;
-    const targetCat = state.categories.find(c => c.id === targetCatId)
-                   || state.categories[0]; // fallback
-    if(targetCat) targetCat.comments.push(cmt);
+  const oldComments = new Map(state.categories.map(c=> [c, c.comments]));
+  const seenCats = new Set(), seenCmts = new Set();
+  const newCats = [];
+  groups.forEach(g=>{
+    const cat = catById[g.dataset.catId];
+    if(!cat) return;   // หมวดถูกลบไประหว่างเปิดหน้าต่างนี้
+    seenCats.add(cat.id);
+    cat.comments = Array.from(g.querySelectorAll('li')).map(li=> cmtById[li.dataset.cmtId]).filter(Boolean);
+    cat.comments.forEach(c=> seenCmts.add(c.id));
+    newCats.push(cat);
   });
+  // หมวด/คอมเม้นที่เพิ่งเข้ามาระหว่างเปิดหน้าต่างนี้ (เช่นเพื่อนในทีมเพิ่ม) — ไม่ทิ้ง เก็บไว้ในหมวดเดิม
+  state.categories.forEach(cat=>{
+    if(seenCats.has(cat.id)) return;
+    cat.comments = oldComments.get(cat).filter(c=> !seenCmts.has(c.id));
+    cat.comments.forEach(c=> seenCmts.add(c.id));
+    newCats.push(cat);
+  });
+  Object.values(cmtById).forEach(cmt=>{
+    if(!seenCmts.has(cmt.id)) homeOf[cmt.id].comments.push(cmt);
+  });
+  state.categories = newCats;
 
   closeReorderModal();
   render();
+  const catRows = state.categories.map((cat, i)=> ({ id: cat.id, meeting_id: state.meeting.id, sort_order: i }));
   const rows = [];
   state.categories.forEach(cat=> cat.comments.forEach((cmt, i)=> rows.push({ id: cmt.id, category_id: cat.id, sort_order: i })));
+  if(catRows.length) dbWrite(()=> sb.from('categories').upsert(catRows), 'reorder:categories');
   if(rows.length) dbWrite(()=> sb.from('comments').upsert(rows), 'reorder');
   showToast('จัดเรียงเรียบร้อย');
 }
