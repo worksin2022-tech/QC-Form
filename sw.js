@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2.9.2';
+const CACHE_VERSION = 'v2.9.3';
 const CACHE_NAME = `qc-forms-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
