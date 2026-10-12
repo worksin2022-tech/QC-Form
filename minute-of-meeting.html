@@ -2674,6 +2674,7 @@ async function flushPendingWrites(){
     if(table === 'meetings' || table === 'comments') patch.updated_by = currentUser && currentUser.id;
     await dbWrite(()=> sb.from(table).update(patch).eq('id', id), table + ':' + id);
   }
+  if(typeof runDeferredRefresh === 'function') runDeferredRefresh();
 }
 
 /* ========================================================================
@@ -3371,9 +3372,23 @@ function onAppResume(){
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') onAppResume(); });
 window.addEventListener('online', onAppResume);
 window.addEventListener('focus', onAppResume);
+/* ห้ามวาดหน้าใหม่ระหว่างพิมพ์: render() สร้างช่องกรอกใหม่ทั้งหมด → iPad รีเซ็ตแป้นพิมพ์ (Shift/ตัวพิมพ์ใหญ่เด้งกลับ)
+   และ realtime จะยิงกลับมาหาเราเองทุกครั้งที่บันทึก (~1 วิหลังหยุดพิมพ์) → เลื่อนไปทำตอนเลิกพิมพ์แทน */
+let refreshDeferred = false;
+function isTyping(){
+  const a = document.activeElement;
+  return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && !['file','checkbox','radio','button'].includes(a.type);
+}
+function runDeferredRefresh(){
+  if(refreshDeferred && !isTyping() && !pendingPatches.size){ refreshDeferred = false; scheduleRemoteRefresh(); }
+}
+document.addEventListener('focusout', ()=> setTimeout(runDeferredRefresh, 300));
+
 async function remoteRefresh(){
   const id = state.meeting.id;
   if(!id) return;
+  // กำลังพิมพ์ หรือยังมีค่าที่พิมพ์ค้างไม่ได้บันทึก → รอก่อน (กันค่าจาก server ทับสิ่งที่เพิ่งพิมพ์ด้วย)
+  if(isTyping() || pendingPatches.size){ refreshDeferred = true; return; }
   try{
     const row = await fetchMeetingTree(id);
     if(state.meeting.id !== id) return;
