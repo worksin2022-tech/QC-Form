@@ -99,7 +99,16 @@
   .fb-row{display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer;}
   .fb-row:hover{background:#33445c;}
   .fb-row .nm{flex:1; font-size:14px; word-break:break-all;}
-  .fb-row .pk{background:var(--accent); color:#052e16; border:none; border-radius:8px; padding:6px 12px; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit;}
+  .fb-row .ck{width:22px; height:22px; flex:0 0 auto; accent-color:var(--accent); cursor:pointer;}
+  .fb-row .go{color:var(--muted); font-size:18px;}
+  .fb-selbar{display:none; justify-content:space-between; align-items:center; font-size:13px; color:#bbf7d0;}
+  .fb-selbar span.clr{color:#fca5a5; cursor:pointer; text-decoration:underline;}
+  .bgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-top:14px;}
+  .bitem{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center;}
+  .bitem .qw{background:#fff; border-radius:8px; padding:6px;}
+  .bitem canvas{width:100%; height:auto; display:block;}
+  .bitem .bn{font-size:12px; margin:8px 0; word-break:break-all;}
+  .bitem button{width:100%; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:8px; padding:7px; font-size:12px; cursor:pointer; font-family:inherit;}
   .fb-msg{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
   #fbPickHere{margin-top:0;}
   .toast{
@@ -178,6 +187,12 @@
     </div>
   </div>
 
+  <div class="card" id="batch" style="display:none;">
+    <div class="seclabel" id="batchTitle"></div>
+    <button class="btn sec" id="zipAll" type="button">📦 ดาวน์โหลดทั้งหมด (.zip)</button>
+    <div class="bgrid" id="bgrid"></div>
+  </div>
+
   <div class="card guide">
     <details>
       <summary>📘 วิธีตั้งค่า Google Drive (ทำครั้งเดียว)</summary>
@@ -205,6 +220,7 @@
     </div>
     <input id="fbSearch" type="search" placeholder="🔍 ค้นหาชื่อโฟลเดอร์">
     <div class="fb-crumb" id="fbCrumb"></div>
+    <div class="fb-selbar" id="fbSelBar"><span id="fbSelCount"></span><span class="clr" id="fbClear">ล้างที่เลือก</span></div>
     <div class="fb-list" id="fbList"></div>
     <button class="btn" id="fbPickHere" type="button">✓ เลือกโฟลเดอร์นี้</button>
   </div>
@@ -2563,8 +2579,25 @@ function setCurrentName(n){
   document.getElementById('folderchip').style.display=currentName?'flex':'none';
 }
 function fileBase(){
-  var n=(currentName||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[\\\/:*?"<>|]+/g,'_').trim();
-  return n||'gdrive-qr';
+  return safeName(currentName)||'gdrive-qr';
+}
+function makeQRCanvas(text){
+  var qr=qrcode(0,'M');
+  qr.addData(text);
+  qr.make();
+  var count=qr.getModuleCount();
+  var cell=8, margin=cell*2, size=count*cell+margin*2;
+  var canvas=document.createElement('canvas');
+  canvas.width=size; canvas.height=size;
+  var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
+  ctx.fillStyle='#000';
+  for(var r=0;r<count;r++) for(var c=0;c<count;c++) if(qr.isDark(r,c))
+    ctx.fillRect(margin+c*cell, margin+r*cell, cell, cell);
+  return canvas;
+}
+function safeName(n){
+  return (n||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[\\\/:*?"<>|]+/g,'_').trim();
 }
 // พิมพ์/วางลิงค์ใหม่เอง → ล้างชื่อเดิม
 document.getElementById('link').addEventListener('input',function(){ setCurrentName(''); });
@@ -2579,21 +2612,7 @@ document.getElementById('gen').addEventListener('click',function(){
   var finalUrl=buildLink(raw,STATE.mode);
   currentLink=finalUrl;
 
-  // สร้าง QR
-  var qr=qrcode(0,'M');
-  qr.addData(finalUrl);
-  qr.make();
-
-  // วาดลง canvas เพื่อบันทึกเป็นรูปได้
-  var count=qr.getModuleCount();
-  var cell=8, margin=cell*2, size=count*cell+margin*2;
-  var canvas=document.createElement('canvas');
-  canvas.width=size; canvas.height=size;
-  var ctx=canvas.getContext('2d');
-  ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
-  ctx.fillStyle='#000';
-  for(var r=0;r<count;r++) for(var c=0;c<count;c++) if(qr.isDark(r,c))
-    ctx.fillRect(margin+c*cell, margin+r*cell, cell, cell);
+  var canvas=makeQRCanvas(finalUrl);
   canvas.style.width='240px'; canvas.style.height='240px';
 
   var box=document.getElementById('qrbox');
@@ -2602,6 +2621,7 @@ document.getElementById('gen').addEventListener('click',function(){
 
   document.getElementById('finallink').textContent=finalUrl;
   document.getElementById('result').style.display='block';
+  document.getElementById('batch').style.display='none';
 
   // พรีวิวไฟล์เป็นรูปภาพ
   showFilePreview(extractFileId(raw));
@@ -2790,7 +2810,7 @@ function listAll(path, params, key){
 function qStr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 /* ---------- หน้าต่างเลือกโฟลเดอร์ ---------- */
-var FB={stack:[], search:''};
+var FB={stack:[], search:'', sel:new Map()};
 var fbEl=document.getElementById('fb');
 var fbList=document.getElementById('fbList');
 var fbCrumb=document.getElementById('fbCrumb');
@@ -2838,8 +2858,7 @@ var fbReq=0;
 function loadFB(){
   renderCrumb();
   var cur=currentFolder();
-  fbPickHere.disabled=!cur;
-  fbPickHere.textContent=cur ? '✓ เลือก “'+cur.name+'”' : '✓ เลือกโฟลเดอร์นี้';
+  updatePickBtn();
   fbMsg('⏳ กำลังโหลด…');
   var my=++fbReq, top=FB.stack[FB.stack.length-1], p;
   var base={fields:'nextPageToken,files(id,name)', pageSize:'200', supportsAllDrives:'true', includeItemsFromAllDrives:'true', corpora:'allDrives'};
@@ -2864,10 +2883,11 @@ function loadFB(){
     items.forEach(function(it){
       var row=document.createElement('div'); row.className='fb-row';
       var nm=document.createElement('div'); nm.className='nm'; nm.textContent=(it.kind==='drive'?'🗄️ ':'📁 ')+it.name;
-      var pk=document.createElement('button'); pk.className='pk'; pk.type='button'; pk.textContent='เลือก';
-      pk.onclick=function(e){ e.stopPropagation(); pickFolder(it.id,it.name); };
+      var ck=document.createElement('input'); ck.type='checkbox'; ck.className='ck'; ck.checked=FB.sel.has(it.id);
+      ck.onclick=function(e){ e.stopPropagation(); if(ck.checked) FB.sel.set(it.id,it.name); else FB.sel.delete(it.id); updatePickBtn(); };
+      var go=document.createElement('span'); go.className='go'; go.textContent='›';
       row.onclick=function(){ FB.search=''; fbSearch.value=''; FB.stack.push(it); loadFB(); };
-      row.appendChild(nm); row.appendChild(pk); fbList.appendChild(row);
+      row.appendChild(ck); row.appendChild(nm); row.appendChild(go); fbList.appendChild(row);
     });
   }).catch(function(e){
     if(my!==fbReq) return;
@@ -2881,7 +2901,95 @@ document.querySelectorAll('#fbTabs button').forEach(function(b){
 });
 document.getElementById('fbClose').addEventListener('click',closeBrowser);
 fbEl.addEventListener('click',function(e){ if(e.target===fbEl) closeBrowser(); });
-fbPickHere.addEventListener('click',function(){ var c=currentFolder(); if(c) pickFolder(c.id,c.name); });
+function updatePickBtn(){
+  var n=FB.sel.size, cur=currentFolder();
+  document.getElementById('fbSelBar').style.display=n?'flex':'none';
+  document.getElementById('fbSelCount').textContent='เลือกแล้ว '+n+' โฟลเดอร์';
+  if(n){ fbPickHere.disabled=false; fbPickHere.textContent='✓ สร้าง QR ('+n+' โฟลเดอร์)'; }
+  else if(cur){ fbPickHere.disabled=false; fbPickHere.textContent='✓ สร้าง QR “'+cur.name+'”'; }
+  else { fbPickHere.disabled=true; fbPickHere.textContent='ติ๊กเลือกโฟลเดอร์'; }
+}
+document.getElementById('fbClear').addEventListener('click',function(){
+  FB.sel.clear(); fbList.querySelectorAll('.ck').forEach(function(c){ c.checked=false; }); updatePickBtn();
+});
+fbPickHere.addEventListener('click',function(){
+  var items=[]; FB.sel.forEach(function(name,id){ items.push({id:id,name:name}); });
+  if(!items.length){ var c=currentFolder(); if(c) items=[{id:c.id,name:c.name}]; }
+  if(!items.length) return;
+  FB.sel.clear();
+  if(items.length===1){ pickFolder(items[0].id,items[0].name); return; }
+  closeBrowser();
+  makeBatch(items);
+});
+
+/* ---------- สร้าง QR หลายโฟลเดอร์ ---------- */
+var batchItems=[];
+function makeBatch(items){
+  var used={};
+  batchItems=items.map(function(it){
+    var base=safeName(it.name)||'folder', fn=base, k=2;
+    while(used[fn.toLowerCase()]) fn=base+' ('+(k++)+')';
+    used[fn.toLowerCase()]=1;
+    var url='https://drive.google.com/drive/folders/'+it.id;
+    return {name:it.name, file:fn+'.png', url:url, canvas:makeQRCanvas(url)};
+  });
+  var grid=document.getElementById('bgrid'); grid.innerHTML='';
+  batchItems.forEach(function(b){
+    var d=document.createElement('div'); d.className='bitem';
+    var qw=document.createElement('div'); qw.className='qw'; qw.appendChild(b.canvas);
+    var bn=document.createElement('div'); bn.className='bn'; bn.textContent='📁 '+b.name;
+    var bt=document.createElement('button'); bt.type='button'; bt.textContent='💾 ดาวน์โหลด';
+    bt.onclick=function(){ var a=document.createElement('a'); a.download=b.file; a.href=b.canvas.toDataURL('image/png'); a.click(); };
+    d.appendChild(qw); d.appendChild(bn); d.appendChild(bt); grid.appendChild(d);
+  });
+  document.getElementById('batchTitle').textContent='QR Code ('+batchItems.length+' โฟลเดอร์)';
+  document.getElementById('result').style.display='none';
+  document.getElementById('link').value=''; setCurrentName('');
+  var bc=document.getElementById('batch'); bc.style.display='block';
+  bc.scrollIntoView({behavior:'smooth',block:'start'});
+  showToast('สร้าง QR '+batchItems.length+' โฟลเดอร์แล้ว ✓');
+}
+
+// ZIP แบบไม่บีบอัด (รองรับชื่อไฟล์ภาษาไทย)
+var CRC_T=(function(){ var t=new Uint32Array(256); for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u8){ var c=0xFFFFFFFF; for(var i=0;i<u8.length;i++) c=CRC_T[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function makeZip(files){
+  var enc=new TextEncoder(), parts=[], central=[], offset=0;
+  var d=new Date(), dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1)), dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate());
+  files.forEach(function(f){
+    var nm=enc.encode(f.name), crc=crc32(f.data), sz=f.data.length;
+    var h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(8,0,true);
+    h.setUint16(10,dt,true); h.setUint16(12,dd,true); h.setUint32(14,crc,true); h.setUint32(18,sz,true); h.setUint32(22,sz,true);
+    h.setUint16(26,nm.length,true); h.setUint16(28,0,true);
+    parts.push(h,nm,f.data);
+    var c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(10,0,true);
+    c.setUint16(12,dt,true); c.setUint16(14,dd,true); c.setUint32(16,crc,true); c.setUint32(20,sz,true); c.setUint32(24,sz,true);
+    c.setUint16(28,nm.length,true); c.setUint32(42,offset,true);
+    central.push(c,nm);
+    offset+=30+nm.length+sz;
+  });
+  var cdSize=central.reduce(function(a,x){ return a+x.byteLength; },0);
+  var e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true);
+  e.setUint32(12,cdSize,true); e.setUint32(16,offset,true);
+  return new Blob(parts.concat(central,[e]),{type:'application/zip'});
+}
+function canvasBytes(cv){
+  return new Promise(function(res){ cv.toBlob(function(b){ b.arrayBuffer().then(function(ab){ res(new Uint8Array(ab)); }); },'image/png'); });
+}
+document.getElementById('zipAll').addEventListener('click',function(){
+  if(!batchItems.length) return;
+  Promise.all(batchItems.map(function(b){ return canvasBytes(b.canvas).then(function(u8){ return {name:b.file, data:u8}; }); }))
+  .then(function(files){
+    var d=new Date(), p=function(x){ return ('0'+x).slice(-2); };
+    var u=URL.createObjectURL(makeZip(files)), a=document.createElement('a');
+    a.href=u; a.download='QR-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.zip'; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); },3000);
+    showToast('ดาวน์โหลด .zip แล้ว ✓');
+  });
+});
 var fbT=null;
 fbSearch.addEventListener('input',function(){
   clearTimeout(fbT);
