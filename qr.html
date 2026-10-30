@@ -83,6 +83,25 @@
     border:1px solid var(--accent); color:#bbf7d0; border-radius:10px;
     padding:9px 12px; font-size:13px; margin-top:12px; text-align:left; word-break:break-all;
   }
+  .fb-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:100; padding:16px;}
+  .fb-box{background:var(--card); border:1px solid var(--line); border-radius:16px; width:100%; max-width:520px; height:85vh; display:flex; flex-direction:column; gap:10px; padding:16px;}
+  .fb-head{display:flex; justify-content:space-between; align-items:center; font-size:16px;}
+  .fb-x{background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;}
+  .fb-tabs{display:flex; gap:6px;}
+  .fb-tabs button{flex:1; background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:8px 4px; font-size:13px; cursor:pointer; font-family:inherit;}
+  .fb-tabs button.on{border-color:var(--accent); background:rgba(34,197,94,.12); color:#bbf7d0;}
+  #fbSearch{width:100%; background:var(--card2); border:1px solid var(--line); border-radius:10px; color:var(--text); padding:10px 12px; font-size:14px; font-family:inherit;}
+  #fbSearch:focus{outline:none; border-color:var(--accent);}
+  .fb-crumb{font-size:12px; color:var(--muted); word-break:break-all;}
+  .fb-crumb span{cursor:pointer; color:#93c5fd;}
+  .fb-crumb span.cur{cursor:default; color:var(--text);}
+  .fb-list{flex:1; overflow:auto; border:1px solid var(--line); border-radius:10px; background:var(--card2);}
+  .fb-row{display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .fb-row:hover{background:#33445c;}
+  .fb-row .nm{flex:1; font-size:14px; word-break:break-all;}
+  .fb-row .pk{background:var(--accent); color:#052e16; border:none; border-radius:8px; padding:6px 12px; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit;}
+  .fb-msg{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
+  #fbPickHere{margin-top:0;}
   .toast{
     position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
     background:#052e16; color:#bbf7d0; border:1px solid var(--accent); padding:10px 18px;
@@ -164,23 +183,31 @@
       <summary>📘 วิธีตั้งค่า Google Drive (ทำครั้งเดียว)</summary>
       <ol>
         <li>เปิด <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a> แล้วสร้าง <b>โปรเจกต์ใหม่</b></li>
-        <li>เมนู <b>APIs &amp; Services → Library</b> → ค้นหา <b>Google Picker API</b> → กด <b>Enable</b></li>
+        <li>เมนู <b>APIs &amp; Services → Library</b> → ค้นหา <b>Google Drive API</b> → กด <b>Enable</b></li>
         <li>เมนู <b>OAuth consent screen</b> → ถ้าทีมใช้ Gmail ส่วนตัว เลือก <b>External</b> แล้วเพิ่มอีเมลทุกคนในทีมที่ <b>Audience → Test users</b> (ถ้าเป็น Google Workspace เลือก <b>Internal</b> ได้เลย)</li>
-        <li>เมนู <b>Credentials → Create Credentials → OAuth client ID</b>
-          <br>• Application type: <b>Web application</b>
-          <br>• Authorized JavaScript origins ใส่โดเมนของคุณ เช่น <code>https://ชื่อบัญชี.github.io</code> และ <code>http://localhost:5599</code> (ไว้ทดสอบ)
-          <br>• กด Create แล้วก๊อป <b>Client ID</b> ไว้</li>
-        <li>เมนู <b>Create Credentials → API key</b> → ก๊อป <b>API Key</b>
-          <br>• แนะนำกด Edit เพื่อจำกัด <b>HTTP referrer</b> = โดเมนคุณ และจำกัดเฉพาะ <b>Google Picker API</b></li>
-        <li>เปิดไฟล์ <code>gdrive-qr-standalone.html</code> ด้วยโปรแกรมแก้ข้อความ หา 2 บรรทัดนี้แล้วใส่ค่าที่ก๊อปมา:
-          <br><code>var GOOGLE_CLIENT_ID = "...";</code>
-          <br><code>var GOOGLE_API_KEY = "...";</code></li>
+        <li>เมนู <b>Clients → Create client</b> → <b>Web application</b> → Authorized JavaScript origins ใส่ <code>https://ชื่อบัญชี.github.io</code></li>
+        <li>ก๊อป <b>Client ID</b> ไปใส่ในไฟล์ <code>qr.html</code> ที่บรรทัด <code>var GOOGLE_CLIENT_ID = "...";</code></li>
       </ol>
-      <div class="note">💡 โฟลเดอร์ที่ทำ QR ต้องแชร์ให้คนที่จะสแกนเข้าถึงได้ (แชร์ในองค์กร หรือ “ทุกคนที่มีลิงค์”) — ตัว Picker ไม่เปลี่ยนการแชร์ให้<br>💡 ปุ่มเลือกโฟลเดอร์ต้องต่อเน็ต ส่วนการวางลิงค์เองใช้งานออฟไลน์ได้</div>
+      <div class="note">💡 โฟลเดอร์ที่ทำ QR ต้องแชร์ให้คนที่จะสแกนเข้าถึงได้ (แชร์ในองค์กร หรือ “ทุกคนที่มีลิงค์”) — แอพไม่เปลี่ยนการแชร์ให้<br>💡 ปุ่มเลือกโฟลเดอร์ต้องต่อเน็ต ส่วนการวางลิงค์เองใช้งานออฟไลน์ได้</div>
     </details>
   </div>
 
   <footer>ทำงานบนเครื่องคุณทั้งหมด • ไม่ส่งข้อมูลออกไปที่ไหน</footer>
+</div>
+
+<div class="fb-overlay" id="fb" style="display:none;">
+  <div class="fb-box">
+    <div class="fb-head"><b>เลือกโฟลเดอร์</b><button class="fb-x" id="fbClose" type="button">✕</button></div>
+    <div class="fb-tabs" id="fbTabs">
+      <button type="button" data-src="my">ไดรฟ์ของฉัน</button>
+      <button type="button" data-src="shared">แชร์กับฉัน</button>
+      <button type="button" data-src="drives">ไดรฟ์ที่แชร์</button>
+    </div>
+    <input id="fbSearch" type="search" placeholder="🔍 ค้นหาชื่อโฟลเดอร์">
+    <div class="fb-crumb" id="fbCrumb"></div>
+    <div class="fb-list" id="fbList"></div>
+    <button class="btn" id="fbPickHere" type="button">✓ เลือกโฟลเดอร์นี้</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2509,6 +2536,11 @@ function extractFileId(url){
   return null;
 }
 
+function extractId(url){
+  var m=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m) return m[1];
+  return extractFileId(url);
+}
+
 function buildLink(url,mode){
   url=url.trim();
   var id=extractFileId(url);
@@ -2524,7 +2556,18 @@ function showToast(msg){
   clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},1800);
 }
 
-var currentCanvas=null, currentLink="";
+var currentCanvas=null, currentLink="", currentName="";
+function setCurrentName(n){
+  currentName=n||'';
+  document.getElementById('folderName').textContent=currentName;
+  document.getElementById('folderchip').style.display=currentName?'flex':'none';
+}
+function fileBase(){
+  var n=(currentName||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[\\\/:*?"<>|]+/g,'_').trim();
+  return n||'gdrive-qr';
+}
+// พิมพ์/วางลิงค์ใหม่เอง → ล้างชื่อเดิม
+document.getElementById('link').addEventListener('input',function(){ setCurrentName(''); });
 
 document.getElementById('gen').addEventListener('click',function(){
   var raw=document.getElementById('link').value.trim();
@@ -2562,6 +2605,7 @@ document.getElementById('gen').addEventListener('click',function(){
 
   // พรีวิวไฟล์เป็นรูปภาพ
   showFilePreview(extractFileId(raw));
+  if(!currentName) lookupName(extractId(raw));
 
   document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
 });
@@ -2604,7 +2648,7 @@ document.getElementById('saveImg').addEventListener('click',function(){
   fetch(currentPreviewUrl).then(function(r){return r.blob();}).then(function(b){
     var u=URL.createObjectURL(b);
     var a=document.createElement('a');
-    a.href=u; a.download='gdrive-preview.png'; a.click();
+    a.href=u; a.download=fileBase()+' (ภาพ).png'; a.click();
     setTimeout(function(){URL.revokeObjectURL(u);},1500);
     showToast('ดาวน์โหลดภาพแล้ว ✓');
   }).catch(function(){
@@ -2618,7 +2662,7 @@ document.getElementById('saveImg').addEventListener('click',function(){
 document.getElementById('save').addEventListener('click',function(){
   if(!currentCanvas) return;
   var a=document.createElement('a');
-  a.download='gdrive-qr.png';
+  a.download=fileBase()+'.png';
   a.href=currentCanvas.toDataURL('image/png');
   a.click();
   showToast('บันทึกรูป QR แล้ว ✓');
@@ -2643,15 +2687,13 @@ document.getElementById('link').addEventListener('keydown',function(e){
   if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ document.getElementById('gen').click(); }
 });
 
-/* ===================== Google Drive Picker =====================
-   วิธีตั้งค่า: ใส่ Client ID และ API Key ที่ได้จาก Google Cloud Console
-   (ดูขั้นตอนในข้อความแชท) ถ้ายังไม่ใส่ ปุ่มเลือกโฟลเดอร์จะแจ้งเตือน
-   แต่การวางลิงค์เองยังใช้ได้ตามปกติ                                */
+/* ===================== Google Drive: เลือกโฟลเดอร์ =====================
+   ใช้ Drive API ด้วยการล็อกอิน Google อย่างเดียว (ไม่ต้องใช้ API Key)     */
 var GOOGLE_CLIENT_ID = "817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com";
-var GOOGLE_API_KEY   = "AIzaSyB2c-4aFxgZ7PaIFF1mnmT8rvt8lTDE0ls";
-var DRIVE_SCOPE      = "https://www.googleapis.com/auth/drive.readonly";
+var DRIVE_SCOPE      = "https://www.googleapis.com/auth/drive.metadata.readonly";
+var FOLDER_MIME      = "application/vnd.google-apps.folder";
 
-var pickerInited=false, gisInited=false, tokenClient=null, accessToken=null, tokenExp=0;
+var gisInited=false, tokenClient=null, accessToken=null, tokenExp=0;
 var connectBtn=document.getElementById('connect');
 var TOK_KEY='gdqr_token', EXP_KEY='gdqr_token_exp', CONSENT_KEY='gdqr_consented';
 
@@ -2682,92 +2724,187 @@ document.getElementById('disconnect').addEventListener('click',function(){
   showToast('ออกจากระบบ Google แล้ว');
 });
 
-function gapiLoaded(){ gapi.load('picker', function(){ pickerInited=true; }); }
 function gisLoaded(){
   try{
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: DRIVE_SCOPE,
-      callback: function(){}  // ตั้งค่าตอนกดปุ่ม
+      callback: function(){}
     });
     gisInited=true;
-  }catch(e){ /* สคริปต์ยังไม่พร้อม */ }
+  }catch(e){}
 }
-window.gapiLoaded=gapiLoaded; window.gisLoaded=gisLoaded;
+window.gisLoaded=gisLoaded;
 
-function isConfigured(){
-  return GOOGLE_CLIENT_ID.indexOf('ใส่_')!==0 && GOOGLE_API_KEY.indexOf('ใส่_')!==0;
-}
-
-connectBtn.addEventListener('click',function(){
-  if(!isConfigured()){
-    showToast('ยังไม่ได้ตั้งค่า Google — ดูขั้นตอนในคู่มือ');
-    var err=document.getElementById('err');
-    err.textContent='ยังไม่ได้ใส่ Client ID / API Key ของ Google (แก้ในไฟล์ตรงตัวแปร GOOGLE_CLIENT_ID และ GOOGLE_API_KEY)';
-    err.style.display='block';
-    return;
-  }
-  if(!pickerInited || !gisInited || !tokenClient){
-    showToast('กำลังโหลด Google… ลองกดอีกครั้ง');
-    return;
-  }
-  // ถ้ามี token ที่ยังไม่หมดอายุ → เปิด Picker ได้เลย ไม่ต้องล็อกอินซ้ำ
-  if(tokenValid()){ createPicker(); return; }
-
+// ขอ token (ใช้ของเดิมถ้ายังไม่หมดอายุ) แล้วค่อยทำงานต่อ
+function withToken(cb){
+  if(tokenValid()){ cb(); return; }
+  if(!gisInited || !tokenClient){ showToast('กำลังโหลด Google… ลองกดอีกครั้ง'); return; }
   tokenClient.callback=function(resp){
     if(resp && resp.error){
-      showToast('เชื่อม Google ไม่สำเร็จ');
-      // ถ้าต่ออายุเงียบไม่ผ่าน (เช่น session หมด) ให้ขอยินยอมใหม่
-      if(resp.error==='interaction_required' || resp.error==='login_required'){
+      if(resp.error==='interaction_required' || resp.error==='login_required' || resp.error==='consent_required'){
         tokenClient.requestAccessToken({prompt:'consent'});
+      }else{
+        showToast('เชื่อม Google ไม่สำเร็จ');
       }
       return;
     }
     accessToken=resp.access_token;
-    tokenExp=Date.now() + ((resp.expires_in||3600)*1000) - 60000; // เผื่อเวลา 1 นาที
+    tokenExp=Date.now() + ((resp.expires_in||3600)*1000) - 60000;
     saveToken();
     markConnected(true);
-    createPicker();
+    cb();
   };
-  // เคยยินยอมแล้ว → ขอแบบเงียบ (prompt:'') ; ครั้งแรก → ขอเลือกบัญชี/ยินยอม
-  var consented = localStorage.getItem(CONSENT_KEY)==='1';
+  var consented=false;
+  try{ consented = localStorage.getItem(CONSENT_KEY)==='1'; }catch(e){}
   tokenClient.requestAccessToken({prompt: consented ? '' : 'consent'});
-});
-
-function createPicker(){
-  var view=new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-    .setSelectFolderEnabled(true)
-    .setMimeTypes('application/vnd.google-apps.folder')
-    .setIncludeFolders(true);
-  var picker=new google.picker.PickerBuilder()
-    .setDeveloperKey(GOOGLE_API_KEY)
-    .setOAuthToken(accessToken)
-    .addView(view)
-    .setTitle('เลือกโฟลเดอร์เพื่อสร้าง QR')
-    .setCallback(pickerCallback)
-    .build();
-  picker.setVisible(true);
 }
 
-function pickerCallback(data){
-  if(data.action!==google.picker.Action.PICKED) return;
-  var doc=data.docs[0];
-  if(!doc) return;
-  var id=doc.id;
-  var name=doc.name||'โฟลเดอร์';
-  var url='https://drive.google.com/drive/folders/'+id;
+// เรียก Drive API
+function driveGet(path, params){
+  var qs=Object.keys(params||{}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
+  return fetch('https://www.googleapis.com/drive/v3/'+path+(qs?'?'+qs:''),{
+    headers:{Authorization:'Bearer '+accessToken}
+  }).then(function(r){
+    if(r.status===401){ clearToken(); markConnected(false); throw new Error('auth'); }
+    return r.json().then(function(j){
+      if(!r.ok) throw new Error((j.error&&j.error.message)||('HTTP '+r.status));
+      return j;
+    });
+  });
+}
 
-  // แสดงชื่อโฟลเดอร์ที่เลือก
-  document.getElementById('folderName').textContent=name;
-  document.getElementById('folderchip').style.display='flex';
+function listAll(path, params, key){
+  var out=[], pages=0;
+  function next(token){
+    var p=Object.assign({},params); if(token) p.pageToken=token;
+    return driveGet(path,p).then(function(j){
+      out=out.concat(j[key]||[]); pages++;
+      if(j.nextPageToken && pages<10) return next(j.nextPageToken);
+      return out;
+    });
+  }
+  return next(null);
+}
 
-  // ใส่ลิงค์แล้วสร้าง QR ทันที
-  document.getElementById('link').value=url;
+function qStr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+/* ---------- หน้าต่างเลือกโฟลเดอร์ ---------- */
+var FB={stack:[], search:''};
+var fbEl=document.getElementById('fb');
+var fbList=document.getElementById('fbList');
+var fbCrumb=document.getElementById('fbCrumb');
+var fbSearch=document.getElementById('fbSearch');
+var fbPickHere=document.getElementById('fbPickHere');
+var ROOTS={
+  my:{kind:'root', id:'root', name:'ไดรฟ์ของฉัน'},
+  shared:{kind:'shared', name:'แชร์กับฉัน'},
+  drives:{kind:'drives', name:'ไดรฟ์ที่แชร์'}
+};
+
+function openBrowser(){
+  fbEl.style.display='flex';
+  if(!FB.stack.length) setTab('my'); else loadFB();
+}
+function closeBrowser(){ fbEl.style.display='none'; }
+
+function setTab(src){
+  document.querySelectorAll('#fbTabs button').forEach(function(b){ b.classList.toggle('on', b.dataset.src===src); });
+  FB.stack=[ROOTS[src]]; FB.search=''; fbSearch.value='';
+  loadFB();
+}
+
+function fbMsg(t){ fbList.innerHTML=''; var d=document.createElement('div'); d.className='fb-msg'; d.textContent=t; fbList.appendChild(d); }
+
+function renderCrumb(){
+  fbCrumb.innerHTML='';
+  if(FB.search){ fbCrumb.textContent='ผลการค้นหา “'+FB.search+'”'; return; }
+  FB.stack.forEach(function(s,i){
+    if(i>0) fbCrumb.appendChild(document.createTextNode(' › '));
+    var sp=document.createElement('span'); sp.textContent=s.name;
+    if(i<FB.stack.length-1){ sp.onclick=function(){ FB.stack=FB.stack.slice(0,i+1); loadFB(); }; }
+    else sp.className='cur';
+    fbCrumb.appendChild(sp);
+  });
+}
+
+function currentFolder(){
+  if(FB.search) return null;
+  var top=FB.stack[FB.stack.length-1];
+  return (top.kind==='folder'||top.kind==='drive') ? top : null;
+}
+
+var fbReq=0;
+function loadFB(){
+  renderCrumb();
+  var cur=currentFolder();
+  fbPickHere.disabled=!cur;
+  fbPickHere.textContent=cur ? '✓ เลือก “'+cur.name+'”' : '✓ เลือกโฟลเดอร์นี้';
+  fbMsg('⏳ กำลังโหลด…');
+  var my=++fbReq, top=FB.stack[FB.stack.length-1], p;
+  var base={fields:'nextPageToken,files(id,name)', pageSize:'200', supportsAllDrives:'true', includeItemsFromAllDrives:'true', corpora:'allDrives'};
+  function toFolders(a){ return a.map(function(f){return {kind:'folder',id:f.id,name:f.name};}); }
+
+  if(FB.search){
+    p=listAll('files', Object.assign({},base,{q:"name contains '"+qStr(FB.search)+"' and mimeType='"+FOLDER_MIME+"' and trashed=false"}),'files').then(toFolders);
+  }else if(top.kind==='drives'){
+    p=listAll('drives',{pageSize:'100', fields:'nextPageToken,drives(id,name)'},'drives')
+      .then(function(a){ return a.map(function(d){return {kind:'drive',id:d.id,name:d.name};}); });
+  }else if(top.kind==='shared'){
+    p=listAll('files', Object.assign({},base,{corpora:'user', q:"sharedWithMe and mimeType='"+FOLDER_MIME+"' and trashed=false"}),'files').then(toFolders);
+  }else{
+    p=listAll('files', Object.assign({},base,{q:"'"+qStr(top.id)+"' in parents and mimeType='"+FOLDER_MIME+"' and trashed=false"}),'files').then(toFolders);
+  }
+
+  p.then(function(items){
+    if(my!==fbReq) return;
+    items.sort(function(a,b){ return a.name.localeCompare(b.name,'th',{numeric:true}); });
+    if(!items.length){ fbMsg(FB.search ? 'ไม่พบโฟลเดอร์' : 'ไม่มีโฟลเดอร์ย่อย'); return; }
+    fbList.innerHTML='';
+    items.forEach(function(it){
+      var row=document.createElement('div'); row.className='fb-row';
+      var nm=document.createElement('div'); nm.className='nm'; nm.textContent=(it.kind==='drive'?'🗄️ ':'📁 ')+it.name;
+      var pk=document.createElement('button'); pk.className='pk'; pk.type='button'; pk.textContent='เลือก';
+      pk.onclick=function(e){ e.stopPropagation(); pickFolder(it.id,it.name); };
+      row.onclick=function(){ FB.search=''; fbSearch.value=''; FB.stack.push(it); loadFB(); };
+      row.appendChild(nm); row.appendChild(pk); fbList.appendChild(row);
+    });
+  }).catch(function(e){
+    if(my!==fbReq) return;
+    if(e.message==='auth'){ fbMsg('การล็อกอินหมดอายุ — กำลังล็อกอินใหม่…'); withToken(loadFB); return; }
+    fbMsg('โหลดไม่สำเร็จ: '+e.message);
+  });
+}
+
+document.querySelectorAll('#fbTabs button').forEach(function(b){
+  b.addEventListener('click',function(){ setTab(b.dataset.src); });
+});
+document.getElementById('fbClose').addEventListener('click',closeBrowser);
+fbEl.addEventListener('click',function(e){ if(e.target===fbEl) closeBrowser(); });
+fbPickHere.addEventListener('click',function(){ var c=currentFolder(); if(c) pickFolder(c.id,c.name); });
+var fbT=null;
+fbSearch.addEventListener('input',function(){
+  clearTimeout(fbT);
+  fbT=setTimeout(function(){ FB.search=fbSearch.value.trim(); loadFB(); },400);
+});
+
+function pickFolder(id,name){
+  closeBrowser();
+  document.getElementById('link').value='https://drive.google.com/drive/folders/'+id;
+  setCurrentName(name);
   document.getElementById('gen').click();
   showToast('เลือกโฟลเดอร์: '+name+' ✓');
 }
+
+connectBtn.addEventListener('click',function(){ withToken(openBrowser); });
+
+// ลิงค์ที่วางเอง: ถ้าล็อกอินอยู่ ดึงชื่อโฟลเดอร์/ไฟล์มาตั้งเป็นชื่อไฟล์ดาวน์โหลด
+function lookupName(id){
+  if(!id || !tokenValid()) return;
+  driveGet('files/'+encodeURIComponent(id),{fields:'name',supportsAllDrives:'true'})
+    .then(function(j){ if(j.name) setCurrentName(j.name); }).catch(function(){});
+}
 </script>
-<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
