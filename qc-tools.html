@@ -101,6 +101,14 @@ svg{flex:none}
 .c-meter{background:var(--info-bg);color:var(--info)}
 .c-hand{background:var(--violet-bg);color:var(--violet)}
 .c-light{background:var(--warn-bg);color:var(--warn)}
+.pin{position:fixed;inset:0;z-index:90;background:var(--bg);display:grid;place-items:center;padding:16px}
+.pin-card{width:min(320px,100%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:var(--shadow)}
+.pin-card .logo{width:52px;height:52px;border-radius:15px}
+.pin-t{font-weight:700;font-size:19px}
+.pin-card input{width:100%;height:50px;border:1px solid var(--border);border-radius:12px;background:var(--bg);text-align:center;font-size:24px;letter-spacing:8px;outline:none}
+.pin-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pin-card .alert{width:100%;text-align:center}
+.pin-card .btn{width:100%;height:46px;font-size:16px}
 .c-power{background:var(--ok-bg);color:var(--ok)}
 .spin svg{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -290,7 +298,8 @@ tbody tr:hover{background:var(--surface-2)}
 const API_DEFAULT='https://script.google.com/macros/s/AKfycbwk5gruxPpR_853rhIs-_VKrXAyeywgf8GZGY9pkpKKULM1GcBstzmBihcvhFV-vgtX/exec';
 const API_URL=(()=>{try{return new URLSearchParams(location.search).get('api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 const LIVE=!!API_URL;
-const LS_KEY='qctools.demo.v2', ME_KEY='qctools.me', THEME_KEY='qctools.theme', PLANT_KEY='qctools.plant';
+const LS_KEY='qctools.demo.v2', ME_KEY='qctools.me', THEME_KEY='qctools.theme', PLANT_KEY='qctools.plant', PIN_KEY='qctools.pin';
+let PIN='';try{PIN=localStorage.getItem(PIN_KEY)||''}catch(e){}
 const DAY=86400000, CAL_WARN=30;
 const PLANTS=['โรง 1','โรง 2'];
 const ST_OK='ใช้งาน', ST_REPAIR='ส่งซ่อม';
@@ -407,16 +416,27 @@ function norm(d){
 function loadDemo(){try{const s=localStorage.getItem(LS_KEY);if(s)DB=norm(JSON.parse(s))}catch(e){}if(!DB){DB=norm(seed());save()}}
 function save(){if(LIVE)return;try{localStorage.setItem(LS_KEY,JSON.stringify(DB))}catch(e){}}
 async function api(body){
-  const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});
+  const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...body,pin:PIN}),redirect:'follow'});
   if(!r.ok)throw new Error('เชื่อมต่อไม่ได้ ('+r.status+')');
-  const j=await r.json();if(!j.ok)throw new Error(j.error||'เกิดข้อผิดพลาด');return j;
+  const j=await r.json();if(!j.ok){const e=new Error(j.error||'เกิดข้อผิดพลาด');e.code=j.code;throw e}return j;
 }
 async function refresh(quiet){
-  if(!LIVE)return;
+  if(!LIVE||document.getElementById('pin'))return;
   if(!quiet)setSync(true);
   try{const j=await api({action:'all'});if(pending)return;DB=norm(j.data);loadErr='';render()}
-  catch(e){if(!DB){loadErr=e.message;render()}else if(!quiet)toast('โหลดข้อมูลไม่สำเร็จ: '+e.message)}
+  catch(e){if(e.code==='PIN')return pinFail(e);if(!DB){loadErr=e.message;render()}else if(!quiet)toast('โหลดข้อมูลไม่สำเร็จ: '+e.message)}
   finally{if(!quiet)setSync(false)}
+}
+function pinFail(e){const had=!!PIN;PIN='';try{localStorage.removeItem(PIN_KEY)}catch(_){}showPin(had?e.message:'')}
+function showPin(msg){
+  let el=document.getElementById('pin');
+  if(!el){el=document.createElement('div');el.id='pin';el.className='pin';document.body.appendChild(el)}
+  el.innerHTML=`<form class="pin-card" autocomplete="off"><div class="logo">${svg(I.logo,26,2)}</div><div class="pin-t">เครื่องมือ QC</div>
+    <input type="password" inputmode="numeric" name="p" placeholder="PIN" aria-label="PIN"><div class="alert a-bad">${esc(msg||'')}</div><button class="btn pri">เข้าใช้งาน</button></form>`;
+  const f=el.querySelector('form'),b=f.querySelector('button'),er=f.querySelector('.alert');setTimeout(()=>f.p.focus(),30);
+  f.onsubmit=async ev=>{ev.preventDefault();const v=f.p.value.trim();if(!v||b.disabled)return;b.disabled=true;b.textContent='กำลังตรวจสอบ…';er.textContent='';PIN=v;
+    try{const j=await api({action:'all'});try{localStorage.setItem(PIN_KEY,v)}catch(_){}el.remove();DB=norm(j.data);loadErr='';render()}
+    catch(x){PIN='';b.disabled=false;b.textContent='เข้าใช้งาน';er.textContent=x.message;f.p.select()}};
 }
 const op={add:(t,row)=>({t,op:'add',row}),set:(t,id,fields)=>({t,op:'set',id,fields}),put:(t,row)=>({t,op:'put',row}),del:(t,id)=>({t,op:'del',id})};
 async function commit(ops,checks,msg){
@@ -424,7 +444,7 @@ async function commit(ops,checks,msg){
   if(!LIVE){toast(msg);return}
   pending++;setSync();
   try{await api({action:'write',ops,checks:checks||[]});toast(msg)}
-  catch(e){toast('บันทึกไม่สำเร็จ: '+e.message);pending--;await refresh(true);pending++}
+  catch(e){if(e.code==='PIN'){pinFail(e);return}toast('บันทึกไม่สำเร็จ: '+e.message);pending--;await refresh(true);pending++}
   finally{pending--;setSync()}
 }
 function setSync(force){const b=document.getElementById('syncBtn');if(b)b.classList.toggle('spin',!!force||pending>0)}
