@@ -101,6 +101,8 @@ svg{flex:none}
 .c-meter{background:var(--info-bg);color:var(--info)}
 .c-hand{background:var(--violet-bg);color:var(--violet)}
 .c-light{background:var(--warn-bg);color:var(--warn)}
+.home-btn{color:var(--accent-strong);text-decoration:none;margin-left:-8px;flex:none}
+.pin-home{position:absolute;top:14px;left:22px}
 .pin{position:fixed;inset:0;z-index:90;background:var(--bg);display:grid;place-items:center;padding:16px}
 .pin-card{width:min(320px,100%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:var(--shadow)}
 .pin-card .logo{width:52px;height:52px;border-radius:15px}
@@ -314,6 +316,7 @@ const I={
   light:'<path d="M8 2.5h8v3.5l-2 3v11.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V9L8 6z"/><path d="M12 13v2.5"/>',
   other:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5h4v5"/>',
+  dash:'<rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.5"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/>',
   box:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8.5 7V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2M3 12.5h18M10.5 12.5v2h3v-2"/>',
   cal:'<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14h3M8 17.5h6"/>',
   shield:'<path d="M12 2.8 19.5 6v5.8c0 4.8-3.2 8.2-7.5 9.4-4.3-1.2-7.5-4.6-7.5-9.4V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>',
@@ -427,15 +430,22 @@ async function refresh(quiet){
   catch(e){if(e.code==='PIN')return pinFail(e);if(!DB){loadErr=e.message;render()}else if(!quiet)toast('โหลดข้อมูลไม่สำเร็จ: '+e.message)}
   finally{if(!quiet)setSync(false)}
 }
-function pinFail(e){const had=!!PIN;PIN='';try{localStorage.removeItem(PIN_KEY)}catch(_){}showPin(had?e.message:'')}
+/* ล็อกเมื่อไม่ได้ใช้งาน 15 นาที (เฉพาะเมื่อเซิร์ฟเวอร์เปิดใช้ PIN) */
+const LOCK_MS=15*60*1000;let pinRequired=false,lastActive=Date.now();
+['pointerdown','keydown','touchstart','wheel'].forEach(ev=>document.addEventListener(ev,()=>{if(!document.getElementById('pin'))lastActive=Date.now()},{passive:true,capture:true}));
+function checkIdle(){if(LIVE&&pinRequired&&PIN&&!document.getElementById('pin')&&Date.now()-lastActive>=LOCK_MS)lockApp()}
+function lockApp(){PIN='';document.getElementById('modalRoot').innerHTML='';closeDrawer();showPin('')}
+setInterval(checkIdle,20000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkIdle()});
+function pinFail(e){pinRequired=true;const had=!!PIN;PIN='';try{localStorage.removeItem(PIN_KEY)}catch(_){}showPin(had?e.message:'')}
 function showPin(msg){
   let el=document.getElementById('pin');
   if(!el){el=document.createElement('div');el.id='pin';el.className='pin';document.body.appendChild(el)}
-  el.innerHTML=`<form class="pin-card" autocomplete="off"><div class="logo">${svg(I.logo,26,2)}</div><div class="pin-t">เครื่องมือ QC</div>
+  el.innerHTML=`<a class="btn icon ghost home-btn pin-home" href="${QC_HOME}" title="Quality Control Forms" aria-label="กลับหน้าหลัก Quality Control Forms">${svg(I.home,21)}</a><form class="pin-card" autocomplete="off"><div class="logo">${svg(I.logo,26,2)}</div><div class="pin-t">เครื่องมือ QC</div>
     <input type="password" inputmode="numeric" name="p" placeholder="PIN" aria-label="PIN"><div class="alert a-bad">${esc(msg||'')}</div><button class="btn pri">เข้าใช้งาน</button></form>`;
   const f=el.querySelector('form'),b=f.querySelector('button'),er=f.querySelector('.alert');setTimeout(()=>f.p.focus(),30);
   f.onsubmit=async ev=>{ev.preventDefault();const v=f.p.value.trim();if(!v||b.disabled)return;b.disabled=true;b.textContent='กำลังตรวจสอบ…';er.textContent='';PIN=v;
-    try{const j=await api({action:'all'});el.remove();DB=norm(j.data);loadErr='';render()}
+    try{const j=await api({action:'all'});el.remove();lastActive=Date.now();DB=norm(j.data);loadErr='';render()}
     catch(x){PIN='';b.disabled=false;b.textContent='เข้าใช้งาน';er.textContent=x.message;f.p.select()}};
 }
 const op={add:(t,row)=>({t,op:'add',row}),set:(t,id,fields)=>({t,op:'set',id,fields}),put:(t,row)=>({t,op:'put',row}),del:(t,id)=>({t,op:'del',id})};
@@ -479,7 +489,8 @@ const UI={view:'home',filter:'all',cat:'',q:'',tlAll:false,drawer:null,plant:'al
 try{const p=localStorage.getItem(PLANT_KEY);if(p&&(p==='all'||p==='-'||PLANTS.includes(p)))UI.plant=p}catch(e){}
 const noPlant=t=>!PLANTS.includes(t.plant);
 const inPlant=t=>UI.plant==='all'||(UI.plant==='-'?noPlant(t):t.plant===UI.plant);
-const VIEWS=[['home','หน้าหลัก',I.home],['tools','เครื่องมือ',I.box],['book','การจอง',I.cal],['calib','สอบเทียบ',I.shield],['hist','ประวัติ',I.hist]];
+const QC_HOME='index.html';   // หน้าหลัก Quality Control Forms
+const VIEWS=[['home','ภาพรวม',I.dash],['tools','เครื่องมือ',I.box],['book','การจอง',I.cal],['calib','สอบเทียบ',I.shield],['hist','ประวัติ',I.hist]];
 
 function renderSide(){
   const c=counts();
@@ -499,6 +510,7 @@ function renderTop(){
   if(UI.view==='tools')action=`<button class="btn pri" data-act="addtool">${svg(I.plus,18,2.2)}<span class="lbl">เพิ่มเครื่องมือ</span></button>`;
   if(UI.view==='book'||UI.view==='home')action=`<button class="btn blue" data-act="book">${svg(I.plus,18,2.2)}<span class="lbl">จองเครื่องมือ</span></button>`;
   document.getElementById('top').innerHTML=`
+    <a class="btn icon ghost home-btn" href="${QC_HOME}" title="Quality Control Forms" aria-label="กลับหน้าหลัก Quality Control Forms">${svg(I.home,21)}</a>
     <h1>${title}</h1>${LIVE?'':'<span class="demo">DEMO</span>'}
     ${searchable?`<div class="search">${svg(I.search,18)}<input id="q" type="search" placeholder="ค้นหาเครื่องมือ, ผู้ยืม, งาน" value="${esc(UI.q)}" autocomplete="off"></div>`:'<div style="margin-left:auto"></div>'}
     ${LIVE?`<button class="btn icon ghost ${pending?'spin':''}" id="syncBtn" data-act="refresh" aria-label="โหลดข้อมูลใหม่">${svg(I.sync,19)}</button>`:''}
@@ -851,7 +863,7 @@ window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(VIEW
 if(LIVE){
   render();refresh();
   setInterval(()=>{if(document.visibilityState==='visible'&&!pending&&!modalOpen())refresh(true)},60000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!pending&&!modalOpen())refresh(true)});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!pending&&!modalOpen()&&!document.getElementById('pin'))refresh(true)});
 }else{loadDemo();render()}
 </script>
 </body>
