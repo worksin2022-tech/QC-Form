@@ -429,8 +429,9 @@ function buildBlocks(){
       // หัวข้อแบบมี label ย่อย (ข้อ 5,6,7,9,10) ผูก keepId ให้ทั้งชุดอยู่หน้าเดียวกันเสมอ
       d.subs.forEach((sub,si)=>{
         const first = si===0;
-        blocks.push({def, kind:'sub', keepId:def.key, title:d.title, sub, subIndex:si, showTitle:first, rows:1,
-                     h:(first?HEADING_H:0)+SUBLABEL_H+def.photoH+SUB_GAP});
+        const r=gridRows(sub.photos.length, def.cols);   // รองรับแถวย่อยที่มีหลายรูป -> หลายแถว
+        blocks.push({def, kind:'sub', keepId:def.key, title:d.title, sub, subIndex:si, showTitle:first, rows:r,
+                     h:(first?HEADING_H:0)+SUBLABEL_H+ r*def.photoH + (r-1)*ROW_GAP + SUB_GAP});
       });
     }
   });
@@ -555,6 +556,7 @@ function subBlockHTML(b, mode, photoH){
     ? `<div class="sec-head" style="margin-top:${b.showTitle?'4':'0'}px;">
          <input class="sub-label-input" value="${escapeAttr(b.sub.label)}"
                 oninput="setSubLabel('${def.key}',${b.subIndex},this.value)">
+         <button class="mini-btn" onclick="addSlot('${def.key}',${b.subIndex})"><i class="fa-solid fa-plus"></i> รูป</button>
        </div>`
     : `<div style="margin-top:${b.showTitle?'4':'0'}px;">${pdfText(b.sub.label+':', BODY_INNER_W, 11.5, 500, '#1f2937', 'start')}</div>`;
   const cells=b.sub.photos.map((src,i)=>
