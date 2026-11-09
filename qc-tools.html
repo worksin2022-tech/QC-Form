@@ -299,7 +299,7 @@ const API_DEFAULT='https://script.google.com/macros/s/AKfycbwk5gruxPpR_853rhIs-_
 const API_URL=(()=>{try{return new URLSearchParams(location.search).get('api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 const LIVE=!!API_URL;
 const LS_KEY='qctools.demo.v2', ME_KEY='qctools.me', THEME_KEY='qctools.theme', PLANT_KEY='qctools.plant', PIN_KEY='qctools.pin';
-let PIN='';try{PIN=localStorage.getItem(PIN_KEY)||''}catch(e){}
+let PIN='';try{localStorage.removeItem(PIN_KEY)}catch(e){}   // ถาม PIN ทุกครั้งที่เปิดแอป ไม่จำในเครื่อง
 const DAY=86400000, CAL_WARN=30;
 const PLANTS=['โรง 1','โรง 2'];
 const ST_OK='ใช้งาน', ST_REPAIR='ส่งซ่อม';
@@ -435,7 +435,7 @@ function showPin(msg){
     <input type="password" inputmode="numeric" name="p" placeholder="PIN" aria-label="PIN"><div class="alert a-bad">${esc(msg||'')}</div><button class="btn pri">เข้าใช้งาน</button></form>`;
   const f=el.querySelector('form'),b=f.querySelector('button'),er=f.querySelector('.alert');setTimeout(()=>f.p.focus(),30);
   f.onsubmit=async ev=>{ev.preventDefault();const v=f.p.value.trim();if(!v||b.disabled)return;b.disabled=true;b.textContent='กำลังตรวจสอบ…';er.textContent='';PIN=v;
-    try{const j=await api({action:'all'});try{localStorage.setItem(PIN_KEY,v)}catch(_){}el.remove();DB=norm(j.data);loadErr='';render()}
+    try{const j=await api({action:'all'});el.remove();DB=norm(j.data);loadErr='';render()}
     catch(x){PIN='';b.disabled=false;b.textContent='เข้าใช้งาน';er.textContent=x.message;f.p.select()}};
 }
 const op={add:(t,row)=>({t,op:'add',row}),set:(t,id,fields)=>({t,op:'set',id,fields}),put:(t,row)=>({t,op:'put',row}),del:(t,id)=>({t,op:'del',id})};
