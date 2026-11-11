@@ -736,7 +736,7 @@ function doBorrow(id){
       DB.loans.push(loan);
       const ops=[op.add('loans',loan)];
       upBookings(id).filter(b=>b.person===who&&b.from<=TODAY()).forEach(b=>{b.status=BK_PICKED;ops.push(op.set('bookings',b.id,{status:BK_PICKED}))});
-      setMe(who);commit([...ops,...personOps(who)],[{type:'toolFree',toolId:id}],'บันทึกการยืมแล้ว')}});
+      commit([...ops,...personOps(who)],[{type:'toolFree',toolId:id}],'บันทึกการยืมแล้ว')}});
 }
 function doReturn(id){
   const t=tool(id),l=activeLoan(id);if(!l)return;
@@ -748,7 +748,7 @@ function doReturn(id){
       const fields={inAt:new Date().toISOString(),returner:who,condition:cond,note:[l.note,nt].filter(Boolean).join(' / ')};
       Object.assign(l,fields);const ops=[op.set('loans',l.id,fields)];
       if(cond==='ชำรุด'){t.status=ST_REPAIR;t.note='ชำรุด'+(nt?' – '+nt:'');ops.push(op.set('tools',t.id,{status:t.status,note:t.note}))}
-      setMe(who);commit([...ops,...personOps(who)],[],cond==='ชำรุด'?'บันทึกการคืนและส่งซ่อมแล้ว':'บันทึกการคืนแล้ว')}});
+      commit([...ops,...personOps(who)],[],cond==='ชำรุด'?'บันทึกการคืนและส่งซ่อมแล้ว':'บันทึกการคืนแล้ว')}});
 }
 function doBook(id,date){
   const from=date||TODAY();
@@ -767,7 +767,7 @@ function doBook(id,date){
       if(f.from.value<TODAY())return'วันที่จองต้องไม่ก่อนวันนี้';
       const cl=upBookings(tid).find(b=>overlap(f.from.value,f.to.value,b.from,b.to));if(cl)return`ช่วงวันที่นี้ ${cl.person} จองไว้แล้ว`;
       const b={id:uid('B'),toolId:tid,toolName:t.name,person:who,project:f.proj.value.trim(),from:f.from.value,to:f.to.value,status:BK_ON,createdAt:new Date().toISOString()};
-      DB.bookings.push(b);setMe(who);
+      DB.bookings.push(b);
       commit([op.add('bookings',b),...personOps(who)],[{type:'noOverlap',toolId:tid,from:b.from,to:b.to}],'บันทึกการจองแล้ว')}});
 }
 function doCancelBk(bid){
