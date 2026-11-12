@@ -1579,11 +1579,11 @@
               <input id="meeting_date" placeholder="วันที่ประชุม...">
             </div>
             <div class="cover-info-cell">
-              <label><span class="ico">L</span> Location</label>
-              <input id="cover_location" placeholder="สถานที่ประชุม...">
+              <label><span class="ico">N</span> Drawing No.</label>
+              <input id="cover_location" placeholder="เลขที่แบบ...">
             </div>
             <div class="cover-info-cell">
-              <label><span class="ico">R</span> Revision</label>
+              <label><span class="ico">M</span> Meeting No.</label>
               <input id="cover_rev" placeholder="01" value="01">
             </div>
           </div>
@@ -2826,6 +2826,7 @@ function applyMetaToUI(){
   state.meeting.docType = dt;
   const lbl = document.getElementById('docTypeLabel');
   if(lbl) lbl.textContent = dt;
+  applyCoverTitle();
 }
 
 /* ========================================================================
@@ -2833,6 +2834,20 @@ function applyMetaToUI(){
    เพิ่ม option เพิ่มเติมได้โดยแก้ array DOC_TYPES — ไม่ต้องแตะส่วนอื่น
    ======================================================================== */
 const DOC_TYPES = ['Minute of Meeting', 'Defect'];
+
+/* หัวเรื่องหน้าปกตามประเภทเอกสาร (lead = สีน้ำเงิน, accent = สีส้ม) — ใช้ทั้งหน้าปกบนจอและใน PDF */
+const COVER_TEXT = {
+  'Minute of Meeting': { lead: 'Minute of ', accent: 'Meeting', sub: 'บันทึกการประชุมและรายการแก้ไขจากการทดสอบ FAT' },
+  'Defect':            { lead: '',           accent: 'Defect',  sub: 'รายการแก้ไขข้อบกพร่อง' }
+};
+function coverText(){ return COVER_TEXT[state.meeting.docType] || COVER_TEXT['Minute of Meeting']; }
+function applyCoverTitle(){
+  const t = coverText();
+  const h1 = document.querySelector('#coverPage .cover-title');
+  const sub = document.querySelector('#coverPage .cover-subtitle');
+  if(h1) h1.innerHTML = `${escapeHtml(t.lead)}<span class="accent">${escapeHtml(t.accent)}</span>`;
+  if(sub) sub.textContent = t.sub;
+}
 
 function openDocTypeMenu(e){
   e.stopPropagation();
@@ -2870,6 +2885,7 @@ function setDocType(val){
   state.meeting.docType = val;
   const lbl = document.getElementById('docTypeLabel');
   if(lbl) lbl.textContent = val;
+  applyCoverTitle();
   if(state.meeting.id) queueUpdate('meetings', state.meeting.id, { doc_type: val });
 }
 
@@ -4103,6 +4119,7 @@ function applyAppLogo(){
 
 function buildCoverPageForPdf(widthPx, heightPx) {
   const m = state.meeting;
+  const ct = coverText();
   const logoHtml = LOGO_DATAURL
     ? `<img src="${LOGO_DATAURL}" alt="logo" style="width:72px;height:64px;object-fit:contain;display:block;">`
     : `<div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#f5a623 0%,#ff8a00 100%);display:flex;align-items:center;justify-content:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/><circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/></svg></div>`;
@@ -4147,10 +4164,11 @@ function buildCoverPageForPdf(widthPx, heightPx) {
           <rect x="0" y="0" width="285" height="28" rx="5" fill="url(#ebGrad)"/>
           <text x="142" y="14" dy="0.35em" text-anchor="middle" fill="#ff8a00" font-size="14" font-weight="800" letter-spacing="2.5" font-family="Arial,Helvetica,sans-serif">FACTORY ACCEPTANCE TEST</text>
         </svg>
-        <h1 style="font-size:64px;font-weight:800;color:#0f2744;letter-spacing:-1.5px;line-height:1;margin:0 0 10px 0;">
-          Minute of <span style="color:#f5a623;">Meeting</span>
-        </h1>
-        <div style="font-size:18px;font-weight:500;color:#64748b;letter-spacing:.3px;">บันทึกการประชุมและรายการแก้ไขจากการทดสอบ FAT</div>
+        <!-- หัวเรื่องเป็น SVG text: html2canvas วางข้อความ HTML ต่ำกว่ากรอบ → ตัวใหญ่ 64px เคยซ้อนทับบรรทัดไทยด้านล่าง -->
+        <svg width="658" height="76" viewBox="0 0 658 76" style="display:block;margin:0 0 8px 0;">
+          <text x="0" y="38" dy="0.35em" font-size="64" font-weight="800" letter-spacing="-1.5" font-family="Arial,Helvetica,sans-serif" xml:space="preserve"><tspan fill="#0f2744">${escapeHtml(ct.lead)}</tspan><tspan fill="#f5a623">${escapeHtml(ct.accent)}</tspan></text>
+        </svg>
+        <div style="font-size:18px;font-weight:500;color:#64748b;letter-spacing:.3px;">${escapeHtml(ct.sub)}</div>
         <div style="height:4px;width:100px;background:linear-gradient(90deg,#f5a623 0%,#ff8a00 100%);margin:20px 0;border-radius:2px;"></div>
       </div>
 
@@ -4158,8 +4176,8 @@ function buildCoverPageForPdf(widthPx, heightPx) {
         ${coverCell('P', 'Project Name', m.name, true)}
         ${coverCell('C', 'Customer', m.customer, false)}
         ${coverCell('D', 'Meeting Date', m.date, false)}
-        ${coverCell('L', 'Location', m.location, false)}
-        ${coverCell('R', 'Revision', m.rev || '01', false)}
+        ${coverCell('N', 'Drawing No.', m.location, false)}
+        ${coverCell('M', 'Meeting No.', m.rev || '01', false)}
       </div>
 
       <!-- Signature block -->
