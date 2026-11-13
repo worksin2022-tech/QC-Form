@@ -105,6 +105,17 @@ svg{flex:none}
 .card.dim .hd,.card.dim .meta,.card.dim .who{opacity:.5;transition:opacity .15s}
 .card.dim .thumb img{filter:grayscale(.7)}
 .card.dim:hover .hd,.card.dim:hover .meta,.card.dim:hover .who{opacity:.85}
+.card .ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center;color:transparent;flex:none;background:var(--surface)}
+.card.picked{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.card.picked .ck{background:var(--accent);border-color:var(--accent);color:#fff}
+.card.picked.dim .hd,.card.picked.dim .meta,.card.picked.dim .who{opacity:.85}
+.selbar{position:fixed;left:264px;right:28px;bottom:20px;z-index:30;max-width:1100px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px 12px 10px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.selbar .sp{flex:1}
+.sel-sp{height:80px}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.pick-list{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow:auto}
+.pick-chk{display:flex;flex-direction:column;gap:8px;max-height:200px;overflow:auto;padding:2px}
+@media (max-width:860px){.selbar{left:10px;right:10px;bottom:calc(68px + env(safe-area-inset-bottom));padding:8px 8px 8px 14px}.selbar .btn{height:38px;padding:0 11px}.sel-sp{height:120px}}
 .home-btn{color:var(--accent-strong);text-decoration:none;margin-left:-8px;flex:none}
 .pin-home{position:absolute;top:14px;left:22px}
 .pin{position:fixed;inset:0;z-index:90;background:var(--bg);display:grid;place-items:center;padding:16px}
@@ -137,7 +148,8 @@ svg{flex:none}
 .chip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .chip .n{font-size:12px;opacity:.75}
 .chips select{height:34px;border-radius:99px;border:1px solid var(--border);background:var(--surface);padding:0 12px;color:var(--muted);margin-left:auto;outline:none}
-.plants{display:inline-flex;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;max-width:100%}
+.plants{display:inline-flex;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.plants::-webkit-scrollbar{display:none}
 .plants button{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 18px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);white-space:nowrap}
 .plants button:hover{color:var(--text)}
 .plants button.on{background:var(--surface);color:var(--accent-strong);box-shadow:0 1px 4px rgba(16,24,40,.12)}
@@ -320,6 +332,7 @@ const I={
   light:'<path d="M8 2.5h8v3.5l-2 3v11.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V9L8 6z"/><path d="M12 13v2.5"/>',
   other:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5h4v5"/>',
+  tick:'<path d="m5 12.5 4.5 4.5L19 7"/>',
   dash:'<rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.5"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/>',
   box:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8.5 7V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2M3 12.5h18M10.5 12.5v2h3v-2"/>',
   cal:'<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14h3M8 17.5h6"/>',
@@ -489,7 +502,7 @@ const counts=(list=DB.tools)=>{const c={all:list.length,free:0,out:0,over:0,repa
 const dueTxt=l=>{if(!l.dueAt){const o=dOf(l.outAt);return'ยืมตั้งแต่ '+(o.slice(0,4)==TODAY().slice(0,4)?fDs(o):fD(o))}const left=diffD(today0(),dParse(l.dueAt));return left<0?`เกิน ${-left} วัน`:left===0?'คืนวันนี้':'คืน '+fDs(l.dueAt)};
 
 /* ===================== UI state ===================== */
-const UI={view:'home',filter:'all',cat:'',q:'',tlAll:false,drawer:null,plant:'all'};
+const UI={view:'home',filter:'all',cat:'',q:'',tlAll:false,drawer:null,plant:'all',selMode:false,sel:new Set()};
 try{const p=localStorage.getItem(PLANT_KEY);if(p&&(p==='all'||p==='-'||PLANTS.includes(p)))UI.plant=p}catch(e){}
 const noPlant=t=>!PLANTS.includes(t.plant);
 const inPlant=t=>UI.plant==='all'||(UI.plant==='-'?noPlant(t):t.plant===UI.plant);
@@ -584,8 +597,9 @@ function vTools(){
   const groups=UI.plant==='all'?[...PLANTS.map(p=>[p,list.filter(t=>t.plant===p)]),['ยังไม่ระบุโรง',list.filter(noPlant)]].filter(g=>g[1].length):[[null,list]];
   return `<div class="plants">${pTabs.map(([k,l,n])=>`<button class="${UI.plant===k?'on':''}" data-act="plant" data-p="${esc(k)}">${k==='all'?'':svg(I.factory,18)}${l}<span class="n">${n}</span></button>`).join('')}</div>
   <div class="chips">${F.map(([k,l,n])=>`<button class="chip ${UI.filter===k?'on':''}" data-act="filter" data-f="${k}">${l}<span class="n">${n}</span></button>`).join('')}
+    <button class="chip ${UI.selMode?'on':''}" data-act="selmode" style="margin-left:auto">${svg(I.tick,15,2.4)}เลือกหลายชิ้น</button>
     <select id="catSel" aria-label="หมวด"><option value="">ทุกหมวด</option>${Object.keys(CATS).map(k=>`<option ${UI.cat===k?'selected':''}>${k}</option>`).join('')}</select></div>
-  ${list.length?groups.map(([l,g])=>`${l&&groups.length>1||l==='ยังไม่ระบุโรง'?`<div class="grp">${svg(I.factory,18)}${l}<span class="pill p-muted">${g.length} ชิ้น</span></div>`:''}<div class="grid">${g.map(card).join('')}</div>`).join(''):'<div class="panel"><div class="empty">ไม่พบเครื่องมือ</div></div>'}`;
+  ${list.length?groups.map(([l,g])=>`${l&&groups.length>1||l==='ยังไม่ระบุโรง'?`<div class="grp">${svg(I.factory,18)}${l}<span class="pill p-muted">${g.length} ชิ้น</span></div>`:''}<div class="grid">${g.map(card).join('')}</div>`).join(''):'<div class="panel"><div class="empty">ไม่พบเครื่องมือ</div></div>'}${UI.selMode?selBar():''}`;
 }
 function card(t){
   const s=status(t),l=s.l,c=calState(t),bk=upBookings(t.id)[0];
@@ -594,8 +608,9 @@ function card(t){
   else if(l){ft=`<span class="who"><b>${esc(l.borrower)}</b> · ${s.k==='over'?`<span style="color:var(--bad)">${dueTxt(l)}</span>`:dueTxt(l)}</span>`;
     btn=`<button class="btn sm" data-act="return" data-id="${esc(t.id)}">${svg(I.in,15,2)}คืน</button>`}
   else{ft=`<span class="who">${esc(t.loc||'')}</span>`;btn=`<button class="btn sm pri" data-act="borrow" data-id="${esc(t.id)}">${svg(I.out,15,2)}ยืม</button>`}
-  return `<div class="card ${s.k==='over'?'over':''} ${s.k!=='free'?'dim':''}" data-act="open" data-id="${esc(t.id)}">
-    <div class="hd">${thumb(t)}<div style="min-width:0;flex:1"><div class="nm">${esc(t.name)}</div><div class="sub">${esc(t.brand||t.cat)}</div></div></div>
+  const pk=UI.selMode;if(pk)btn='';
+  return `<div class="card ${s.k==='over'?'over':''} ${s.k!=='free'?'dim':''} ${pk&&UI.sel.has(t.id)?'picked':''}" data-act="${pk?'pick':'open'}" data-id="${esc(t.id)}">
+    <div class="hd">${thumb(t)}<div style="min-width:0;flex:1"><div class="nm">${esc(t.name)}</div><div class="sub">${esc(t.brand||t.cat)}</div></div>${pk?`<span class="ck">${svg(I.tick,15,3)}</span>`:''}</div>
     <div class="meta"><span class="pill ${s.cls}">${s.label}</span>${calPill(c)}${bk?`<span class="pill p-info">${svg(I.cal,13,2.2)}จอง ${rangeTxt(bk.from,bk.to)}</span>`:''}</div>
     <div class="ft">${ft}${btn}</div></div>`;
 }
@@ -714,61 +729,96 @@ const peopleList=()=>`<datalist id="ppl">${people().map(p=>`<option value="${esc
 const toolOptions=sel=>DB.tools.slice().sort(byName).map(t=>`<option value="${esc(t.id)}" ${t.id===sel?'selected':''}>${esc(t.name)}</option>`).join('');
 const dangerBtn='pri" style="background:var(--bad);border-color:var(--bad)';
 
-function doBorrow(id){
-  const t=tool(id);
-  modal({title:'ยืมเครื่องมือ',sub:esc(t.name),submit:'ยืนยันการยืม',
-    body:`${peopleList()}<div class="fld"><label>ผู้ยืม</label><input name="who" list="ppl" value="${esc(ME)}"></div>
+const asIds=x=>x==null?[]:Array.isArray(x)?x:[x];
+const pickList=ts=>ts.length>1?`<div class="pick-list">${ts.map(t=>`<span class="pill p-muted">${esc(t.name)}</span>`).join('')}</div>`:'';
+const subOf=ts=>ts.length>1?`${ts.length} รายการ`:esc(ts[0].name);
+const tag=(ts,t)=>ts.length>1?esc(t.name)+': ':'';
+function clearSel(){UI.selMode=false;UI.sel.clear()}
+
+function doBorrow(ids){
+  const ts=asIds(ids).map(tool).filter(t=>t&&!activeLoan(t.id)&&t.status!==ST_REPAIR);
+  if(!ts.length)return toast('ไม่มีรายการที่ยืมได้');
+  const many=ts.length>1;
+  modal({title:'ยืมเครื่องมือ',sub:subOf(ts),submit:many?`ยืนยันการยืม ${ts.length} รายการ`:'ยืนยันการยืม',
+    body:`${pickList(ts)}${peopleList()}<div class="fld"><label>ผู้ยืม</label><input name="who" list="ppl" value="${esc(ME)}"></div>
       <div class="fld"><label>งาน / โปรเจกต์</label><input name="proj" placeholder="เช่น FAT ตู้ MDB"></div>
       <div class="fld"><label>กำหนดคืน</label><div class="quick">${[['วันนี้',0],['3 วัน',3],['1 สัปดาห์',7],['ไม่กำหนด','']].map(([l,n])=>`<button type="button" class="chip" data-q="${n}">${l}</button>`).join('')}</div>
         <input type="date" name="due" min="${TODAY()}" style="margin-top:8px"></div>
       <div class="fld"><label>หมายเหตุ</label><input name="note"></div><div class="alert a-warn" id="bw"></div>`,
     mount(f,form){const w=form.querySelector('#bw');
-      const up=()=>{const msgs=[],to=f.due.value||'9999-12-31';
+      const up=()=>{const msgs=[],to=f.due.value||'9999-12-31',who=f.who.value.trim();
         form.querySelectorAll('[data-q]').forEach(b=>b.classList.toggle('on',(b.dataset.q===''?'':isoD(addD(today0(),+b.dataset.q)))===f.due.value));
-        upBookings(id).filter(b=>b.person!==f.who.value.trim()&&overlap(TODAY(),to,b.from,b.to)).forEach(b=>msgs.push(`${esc(b.person)} จองไว้ ${rangeTxt(b.from,b.to)}`));
-        const c=calState(t);if(c?.lvl==='bad')msgs.push(`เครื่องนี้เลยกำหนดสอบเทียบแล้ว ${-c.d} วัน`);
+        ts.forEach(t=>{
+          upBookings(t.id).filter(b=>b.person!==who&&overlap(TODAY(),to,b.from,b.to)).forEach(b=>msgs.push(`${tag(ts,t)}${esc(b.person)} จองไว้ ${rangeTxt(b.from,b.to)}`));
+          const c=calState(t);if(c?.lvl==='bad')msgs.push(`${tag(ts,t)}เลยกำหนดสอบเทียบแล้ว ${-c.d} วัน`)});
         w.innerHTML=msgs.join('<br>')};
       form.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{f.due.value=b.dataset.q===''?'':isoD(addD(today0(),+b.dataset.q));up()});
       f.who.oninput=up;f.due.oninput=up;up()},
     onSubmit(f){const who=f.who.value.trim();if(!who)return'กรุณาใส่ชื่อผู้ยืม';if(f.due.value&&f.due.value<TODAY())return'กำหนดคืนต้องไม่ก่อนวันนี้';
-      if(activeLoan(id))return'เครื่องมือนี้ถูกยืมไปแล้ว';
-      const loan={id:uid('L'),toolId:id,toolName:t.name,borrower:who,project:f.proj.value.trim(),outAt:new Date().toISOString(),dueAt:f.due.value,inAt:'',returner:'',condition:'',note:f.note.value.trim()};
-      DB.loans.push(loan);
-      const ops=[op.add('loans',loan)];
-      upBookings(id).filter(b=>b.person===who&&b.from<=TODAY()).forEach(b=>{b.status=BK_PICKED;ops.push(op.set('bookings',b.id,{status:BK_PICKED}))});
-      commit([...ops,...personOps(who)],[{type:'toolFree',toolId:id}],'บันทึกการยืมแล้ว')}});
+      const taken=ts.filter(t=>activeLoan(t.id));if(taken.length)return'ถูกยืมไปแล้ว: '+taken.map(t=>t.name).join(', ');
+      const ops=[],now=new Date().toISOString();
+      ts.forEach(t=>{
+        const loan={id:uid('L'),toolId:t.id,toolName:t.name,borrower:who,project:f.proj.value.trim(),outAt:now,dueAt:f.due.value,inAt:'',returner:'',condition:'',note:f.note.value.trim()};
+        DB.loans.push(loan);ops.push(op.add('loans',loan));
+        upBookings(t.id).filter(b=>b.person===who&&b.from<=TODAY()).forEach(b=>{b.status=BK_PICKED;ops.push(op.set('bookings',b.id,{status:BK_PICKED}))});
+      });
+      clearSel();
+      commit([...ops,...personOps(who)],ts.map(t=>({type:'toolFree',toolId:t.id})),many?`บันทึกการยืม ${ts.length} รายการแล้ว`:'บันทึกการยืมแล้ว')}});
 }
-function doReturn(id){
-  const t=tool(id),l=activeLoan(id);if(!l)return;
-  modal({title:'คืนเครื่องมือ',sub:`${esc(t.name)} · ยืมโดย ${esc(l.borrower)}`,submit:'ยืนยันการคืน',
-    body:`${peopleList()}<div class="fld"><label>ผู้คืน</label><input name="who" list="ppl" value="${esc(l.borrower)}"></div>
-      <div class="fld"><label>สภาพเครื่องมือ</label><div class="seg"><input type="radio" name="cond" id="c1" value="ปกติ" checked><label for="c1">ปกติ</label><input type="radio" name="cond" id="c2" value="ชำรุด" class="bad"><label for="c2">ชำรุด / ส่งซ่อม</label></div></div>
-      <div class="fld"><label>หมายเหตุ</label><input name="note"></div>`,
-    onSubmit(f){const who=f.who.value.trim();if(!who)return'กรุณาใส่ชื่อผู้คืน';const cond=f.cond.value,nt=f.note.value.trim();
-      const fields={inAt:new Date().toISOString(),returner:who,condition:cond,note:[l.note,nt].filter(Boolean).join(' / ')};
-      Object.assign(l,fields);const ops=[op.set('loans',l.id,fields)];
-      if(cond==='ชำรุด'){t.status=ST_REPAIR;t.note='ชำรุด'+(nt?' – '+nt:'');ops.push(op.set('tools',t.id,{status:t.status,note:t.note}))}
-      commit([...ops,...personOps(who)],[],cond==='ชำรุด'?'บันทึกการคืนและส่งซ่อมแล้ว':'บันทึกการคืนแล้ว')}});
+function doReturn(ids){
+  const ts=asIds(ids).map(tool).filter(t=>t&&activeLoan(t.id));
+  if(!ts.length)return toast('ไม่มีรายการที่ต้องคืน');
+  const many=ts.length>1,ls=ts.map(t=>activeLoan(t.id));
+  const names=[...new Set(ls.map(l=>l.borrower))];
+  const sub=many?`${ts.length} รายการ`:`${esc(ts[0].name)} · ยืมโดย ${esc(ls[0].borrower)}`;
+  const cond=many
+    ?`<div class="fld"><label>ชำรุด / ส่งซ่อม</label><div class="pick-chk">${ts.map((t,i)=>`<label class="chk"><input type="checkbox" name="bad" value="${esc(t.id)}">${esc(t.name)}<span class="muted" style="margin-left:6px;font-size:12.5px">· ${esc(ls[i].borrower)}</span></label>`).join('')}</div></div>`
+    :`<div class="fld"><label>สภาพเครื่องมือ</label><div class="seg"><input type="radio" name="cond" id="c1" value="ปกติ" checked><label for="c1">ปกติ</label><input type="radio" name="cond" id="c2" value="ชำรุด" class="bad"><label for="c2">ชำรุด / ส่งซ่อม</label></div></div>`;
+  modal({title:'คืนเครื่องมือ',sub,submit:many?`ยืนยันการคืน ${ts.length} รายการ`:'ยืนยันการคืน',
+    body:`${peopleList()}<div class="fld"><label>ผู้คืน</label><input name="who" list="ppl" value="${esc(names.length===1?names[0]:ME)}"></div>
+      ${cond}<div class="fld"><label>หมายเหตุ</label><input name="note"></div>`,
+    onSubmit(f,form){const who=f.who.value.trim();if(!who)return'กรุณาใส่ชื่อผู้คืน';const nt=f.note.value.trim(),now=new Date().toISOString();
+      const bad=new Set(many?[...form.querySelectorAll('[name=bad]:checked')].map(x=>x.value):(f.cond.value==='ชำรุด'?[ts[0].id]:[]));
+      const ops=[];
+      ts.forEach((t,i)=>{const l=ls[i],c=bad.has(t.id)?'ชำรุด':'ปกติ';
+        const fields={inAt:now,returner:who,condition:c,note:[l.note,nt].filter(Boolean).join(' / ')};
+        Object.assign(l,fields);ops.push(op.set('loans',l.id,fields));
+        if(c==='ชำรุด'){t.status=ST_REPAIR;t.note='ชำรุด'+(nt?' – '+nt:'');ops.push(op.set('tools',t.id,{status:t.status,note:t.note}))}});
+      clearSel();
+      commit([...ops,...personOps(who)],[],(many?`บันทึกการคืน ${ts.length} รายการแล้ว`:'บันทึกการคืนแล้ว')+(bad.size?` (ส่งซ่อม ${bad.size})`:''))}});
 }
-function doBook(id,date){
-  const from=date||TODAY();
-  modal({title:'จองเครื่องมือ',submit:'ยืนยันการจอง',submitCls:'blue',
-    body:`${peopleList()}<div class="fld"><label>เครื่องมือ</label><select name="tool">${toolOptions(id)}</select></div>
+function doBook(ids,date){
+  const pre=asIds(ids).map(tool).filter(Boolean),many=pre.length>1,from=date||TODAY();
+  modal({title:'จองเครื่องมือ',sub:many?`${pre.length} รายการ`:'',submit:many?`ยืนยันการจอง ${pre.length} รายการ`:'ยืนยันการจอง',submitCls:'blue',
+    body:`${peopleList()}${many?pickList(pre):`<div class="fld"><label>เครื่องมือ</label><select name="tool">${toolOptions(pre[0]?.id)}</select></div>`}
       <div class="fld"><label>ผู้จอง</label><input name="who" list="ppl" value="${esc(ME)}"></div>
       <div class="fld"><label>งาน / โปรเจกต์</label><input name="proj"></div>
       <div class="two"><div class="fld"><label>ตั้งแต่</label><input type="date" name="from" value="${from}" min="${TODAY()}"></div><div class="fld"><label>ถึง</label><input type="date" name="to" value="${from}" min="${TODAY()}"></div></div>
       <div class="alert a-warn" id="kw"></div>`,
-    mount(f,form){const w=form.querySelector('#kw');const up=()=>{if(f.to.value<f.from.value)f.to.value=f.from.value;const t=tool(f.tool.value),msgs=[];
-      upBookings(t.id).filter(b=>overlap(f.from.value,f.to.value,b.from,b.to)).forEach(b=>msgs.push(`ชนกับการจองของ ${esc(b.person)} (${rangeTxt(b.from,b.to)})`));
-      const l=activeLoan(t.id);if(l&&(!l.dueAt||l.dueAt>=f.from.value))msgs.push(`ตอนนี้ ${esc(l.borrower)} ยืมอยู่${l.dueAt?' กำหนดคืน '+fD(l.dueAt):''}`);
-      if(t.status===ST_REPAIR)msgs.push('เครื่องมือนี้อยู่ระหว่างส่งซ่อม');if(calState(t)&&t.calNext<=f.to.value)msgs.push(`ครบกำหนดสอบเทียบ ${fD(t.calNext)}`);
-      w.innerHTML=msgs.join('<br>')};['tool','from','to'].forEach(k=>f[k].oninput=up);up()},
-    onSubmit(f){const who=f.who.value.trim(),tid=f.tool.value,t=tool(tid);if(!who)return'กรุณาใส่ชื่อผู้จอง';if(!f.from.value||!f.to.value)return'กรุณาเลือกวันที่';
+    mount(f,form){const w=form.querySelector('#kw');const up=()=>{if(f.to.value<f.from.value)f.to.value=f.from.value;const ts=many?pre:[tool(f.tool.value)],msgs=[];
+      ts.forEach(t=>{
+        upBookings(t.id).filter(b=>overlap(f.from.value,f.to.value,b.from,b.to)).forEach(b=>msgs.push(`${tag(ts,t)}ชนกับการจองของ ${esc(b.person)} (${rangeTxt(b.from,b.to)})`));
+        const l=activeLoan(t.id);if(l&&(!l.dueAt||l.dueAt>=f.from.value))msgs.push(`${tag(ts,t)}${esc(l.borrower)} ยืมอยู่${l.dueAt?' กำหนดคืน '+fD(l.dueAt):''}`);
+        if(t.status===ST_REPAIR)msgs.push(`${tag(ts,t)}อยู่ระหว่างส่งซ่อม`);if(calState(t)&&t.calNext<=f.to.value)msgs.push(`${tag(ts,t)}ครบกำหนดสอบเทียบ ${fD(t.calNext)}`)});
+      w.innerHTML=msgs.join('<br>')};[...(many?[]:['tool']),'from','to'].forEach(k=>f[k].oninput=up);up()},
+    onSubmit(f){const who=f.who.value.trim(),ts=many?pre:[tool(f.tool.value)];if(!who)return'กรุณาใส่ชื่อผู้จอง';if(!f.from.value||!f.to.value)return'กรุณาเลือกวันที่';
       if(f.from.value<TODAY())return'วันที่จองต้องไม่ก่อนวันนี้';
-      const cl=upBookings(tid).find(b=>overlap(f.from.value,f.to.value,b.from,b.to));if(cl)return`ช่วงวันที่นี้ ${cl.person} จองไว้แล้ว`;
-      const b={id:uid('B'),toolId:tid,toolName:t.name,person:who,project:f.proj.value.trim(),from:f.from.value,to:f.to.value,status:BK_ON,createdAt:new Date().toISOString()};
-      DB.bookings.push(b);
-      commit([op.add('bookings',b),...personOps(who)],[{type:'noOverlap',toolId:tid,from:b.from,to:b.to}],'บันทึกการจองแล้ว')}});
+      const cl=ts.map(t=>[t,upBookings(t.id).find(b=>overlap(f.from.value,f.to.value,b.from,b.to))]).filter(x=>x[1]);
+      if(cl.length)return'ช่วงวันที่นี้มีคนจองแล้ว: '+cl.map(([t,b])=>`${t.name} (${b.person})`).join(', ');
+      const ops=[],now=new Date().toISOString();
+      ts.forEach(t=>{const b={id:uid('B'),toolId:t.id,toolName:t.name,person:who,project:f.proj.value.trim(),from:f.from.value,to:f.to.value,status:BK_ON,createdAt:now};
+        DB.bookings.push(b);ops.push(op.add('bookings',b))});
+      clearSel();
+      commit([...ops,...personOps(who)],ts.map(t=>({type:'noOverlap',toolId:t.id,from:f.from.value,to:f.to.value})),many?`บันทึกการจอง ${ts.length} รายการแล้ว`:'บันทึกการจองแล้ว')}});
+}
+function selBar(){
+  const ts=[...UI.sel].map(tool).filter(Boolean);
+  const nf=ts.filter(t=>!activeLoan(t.id)&&t.status!==ST_REPAIR).length,no=ts.filter(t=>activeLoan(t.id)).length;
+  return `<div class="sel-sp"></div><div class="selbar"><b>เลือก ${ts.length} ชิ้น</b>${ts.length?`<button class="btn sm ghost" data-act="selclear">ล้าง</button>`:''}<span class="sp"></span>
+    <button class="btn pri" data-act="mborrow" ${nf?'':'disabled'}>${svg(I.out,17,2)}ยืม${nf?' '+nf:''}</button>
+    <button class="btn" data-act="mreturn" ${no?'':'disabled'}>${svg(I.in,17,2)}คืน${no?' '+no:''}</button>
+    <button class="btn blue" data-act="mbook" ${ts.length?'':'disabled'}>${svg(I.cal,17,2)}จอง</button>
+    <button class="btn icon ghost" data-act="selmode" aria-label="ปิดโหมดเลือก">${svg(I.x,19)}</button></div>`;
 }
 function doCancelBk(bid){
   const b=DB.bookings.find(x=>x.id===bid);if(!b)return;const t=tool(b.toolId);
@@ -835,9 +885,15 @@ document.addEventListener('click',e=>{
   if(act!=='open'&&act!=='day')e.stopPropagation();
   if(!DB&&act!=='refresh')return;
   switch(act){
-    case'nav':UI.view=a.dataset.v;UI.q='';histN=100;location.hash=UI.view;closeDrawer();render();window.scrollTo(0,0);break;
+    case'nav':clearSel();UI.view=a.dataset.v;UI.q='';histN=100;location.hash=UI.view;closeDrawer();render();window.scrollTo(0,0);break;
     case'goto':UI.view=a.dataset.v;UI.filter=a.dataset.f||'all';UI.q='';location.hash=UI.view;render();window.scrollTo(0,0);break;
     case'filter':UI.filter=a.dataset.f;renderContent();break;
+    case'selmode':if(UI.selMode)clearSel();else{UI.selMode=true;closeDrawer()}renderContent();break;
+    case'pick':UI.sel.has(id)?UI.sel.delete(id):UI.sel.add(id);renderContent();break;
+    case'selclear':UI.sel.clear();renderContent();break;
+    case'mborrow':doBorrow([...UI.sel]);break;
+    case'mreturn':doReturn([...UI.sel]);break;
+    case'mbook':doBook([...UI.sel]);break;
     case'plant':UI.plant=a.dataset.p;try{localStorage.setItem(PLANT_KEY,UI.plant)}catch(e){}renderContent();break;
     case'tlall':UI.tlAll=!UI.tlAll;renderContent();break;
     case'more':histN+=200;renderContent();break;
