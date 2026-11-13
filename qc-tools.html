@@ -254,6 +254,12 @@ tbody tr:hover{background:var(--surface-2)}
 .fld input,.fld select,.fld textarea{width:100%;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;outline:none}
 .fld textarea{height:72px;padding:9px 12px;resize:vertical}
 .fld input[type=checkbox]{width:18px;height:18px;vertical-align:-3px;margin-right:8px}
+.dt{position:relative}
+.dt-v{display:flex;align-items:center;gap:8px;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;font-variant-numeric:tabular-nums}
+.dt-v .e{color:var(--muted)}.dt-v svg{margin-left:auto;color:var(--muted)}
+.dt:focus-within .dt-v{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fld .dt input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.fld .dt input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
 .chk{display:flex;align-items:center;font-size:14px;cursor:pointer}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .alert{border-radius:10px;padding:10px 12px;font-size:13.5px;font-weight:500}
@@ -721,8 +727,20 @@ function modal({title,sub,body,submit,submitCls='pri',onSubmit,mount,extra}){
     let r=onSubmit(f.elements,f);
     if(r&&typeof r.then==='function'){ok.disabled=true;ok.textContent='กำลังบันทึก…';try{r=await r}catch(x){r=x.message||'เกิดข้อผิดพลาด'}ok.disabled=false;ok.textContent=submit}
     if(typeof r==='string'){err.textContent=r;return}close()};
+  f.querySelectorAll('input[type=date]').forEach(dateField);
   mount&&mount(f.elements,f,close);
   const first=f.querySelector('input:not([type=hidden]):not([type=radio]):not([type=file]),select');first&&setTimeout(()=>first.focus(),30);
+}
+const dmy=v=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(v||'');return m?`${m[3]}/${m[2]}/${m[1]}`:''};
+function dateField(inp){
+  const w=document.createElement('div');w.className='dt';w.style.cssText=inp.style.cssText;inp.removeAttribute('style');
+  inp.replaceWith(w);const v=document.createElement('div');v.className='dt-v';w.append(v,inp);
+  const show=()=>{const s=dmy(inp.value);v.innerHTML=(s?`<span>${s}</span>`:'<span class="e">วว/ดด/ปปปป</span>')+svg(I.cal,18,2)};
+  const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+  Object.defineProperty(inp,'value',{configurable:true,get(){return d.get.call(this)},set(x){d.set.call(this,x);show()}});
+  inp.addEventListener('input',show);inp.addEventListener('change',show);
+  inp.addEventListener('click',()=>{try{inp.showPicker()}catch(e){}});
+  show();
 }
 const modalOpen=()=>!!document.getElementById('modalRoot').innerHTML;
 const peopleList=()=>`<datalist id="ppl">${people().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`;
