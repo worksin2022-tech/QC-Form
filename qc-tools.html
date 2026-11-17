@@ -253,6 +253,9 @@ tbody tr:hover{background:var(--surface-2)}
 .fld label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;font-weight:500}
 .fld input,.fld select,.fld textarea{width:100%;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;outline:none}
 .fld textarea{height:72px;padding:9px 12px;resize:vertical}
+body.ro :is([data-act=selmode],[data-act=borrow],[data-act=return],[data-act=book],[data-act=cancelbk],[data-act=calib],[data-act=repair],[data-act=unrepair],[data-act=edit],[data-act=addtool]){display:none!important}
+body.ro [data-act=day]{cursor:default}
+.ro-tag{white-space:nowrap}
 .fld input[type=checkbox]{width:18px;height:18px;vertical-align:-3px;margin-right:8px}
 .dt{position:relative}
 .dt-v{display:flex;align-items:center;gap:8px;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;font-variant-numeric:tabular-nums}
@@ -446,10 +449,13 @@ async function api(body){
   if(!r.ok)throw new Error('เชื่อมต่อไม่ได้ ('+r.status+')');
   const j=await r.json();if(!j.ok){const e=new Error(j.error||'เกิดข้อผิดพลาด');e.code=j.code;throw e}return j;
 }
+let ROLE='full';
+const RO_ACTS=new Set(['selmode','pick','selclear','mborrow','mreturn','mbook','borrow','return','book','day','cancelbk','calib','repair','unrepair','edit','addtool']);
+function setRole(r){ROLE=r==='view'?'view':'full';document.body.classList.toggle('ro',ROLE==='view');if(ROLE==='view')clearSel()}
 async function refresh(quiet){
   if(!LIVE||document.getElementById('pin'))return;
   if(!quiet)setSync(true);
-  try{const j=await api({action:'all'});if(pending)return;DB=norm(j.data);loadErr='';render()}
+  try{const j=await api({action:'all'});if(pending)return;setRole(j.role);DB=norm(j.data);loadErr='';render()}
   catch(e){if(e.code==='PIN')return pinFail(e);if(!DB){loadErr=e.message;render()}else if(!quiet)toast('โหลดข้อมูลไม่สำเร็จ: '+e.message)}
   finally{if(!quiet)setSync(false)}
 }
@@ -468,7 +474,7 @@ function showPin(msg){
     <input type="password" inputmode="numeric" name="p" placeholder="PIN" aria-label="PIN"><div class="alert a-bad">${esc(msg||'')}</div><button class="btn pri">เข้าใช้งาน</button></form>`;
   const f=el.querySelector('form'),b=f.querySelector('button'),er=f.querySelector('.alert');setTimeout(()=>f.p.focus(),30);
   f.onsubmit=async ev=>{ev.preventDefault();const v=f.p.value.trim();if(!v||b.disabled)return;b.disabled=true;b.textContent='กำลังตรวจสอบ…';er.textContent='';PIN=v;
-    try{const j=await api({action:'all'});el.remove();lastActive=Date.now();DB=norm(j.data);loadErr='';render()}
+    try{const j=await api({action:'all'});el.remove();lastActive=Date.now();setRole(j.role);DB=norm(j.data);loadErr='';render()}
     catch(x){PIN='';b.disabled=false;b.textContent='เข้าใช้งาน';er.textContent=x.message;f.p.select()}};
 }
 const op={add:(t,row)=>({t,op:'add',row}),set:(t,id,fields)=>({t,op:'set',id,fields}),put:(t,row)=>({t,op:'put',row}),del:(t,id)=>({t,op:'del',id})};
@@ -534,7 +540,7 @@ function renderTop(){
   if(UI.view==='book'||UI.view==='home')action=`<button class="btn blue" data-act="book">${svg(I.plus,18,2.2)}<span class="lbl">จองเครื่องมือ</span></button>`;
   document.getElementById('top').innerHTML=`
     <a class="btn icon ghost home-btn" href="${QC_HOME}" title="Quality Control Forms" aria-label="กลับหน้าหลัก Quality Control Forms">${svg(I.home,21)}</a>
-    <h1>${title}</h1>${LIVE?'':'<span class="demo">DEMO</span>'}
+    <h1>${title}</h1>${LIVE?'':'<span class="demo">DEMO</span>'}${ROLE==='view'?'<span class="demo ro-tag">ดูอย่างเดียว</span>':''}
     ${searchable?`<div class="search">${svg(I.search,18)}<input id="q" type="search" placeholder="ค้นหาเครื่องมือ, ผู้ยืม, งาน" value="${esc(UI.q)}" autocomplete="off"></div>`:'<div style="margin-left:auto"></div>'}
     ${LIVE?`<button class="btn icon ghost ${pending?'spin':''}" id="syncBtn" data-act="refresh" aria-label="โหลดข้อมูลใหม่">${svg(I.sync,19)}</button>`:''}
     <button class="btn icon ghost mob-only" data-act="theme" aria-label="สลับธีม">${svg(isDark()?I.sun:I.moon,20)}</button>
@@ -902,6 +908,7 @@ document.addEventListener('click',e=>{
   const act=a.dataset.act,id=a.dataset.id;
   if(act!=='open'&&act!=='day')e.stopPropagation();
   if(!DB&&act!=='refresh')return;
+  if(ROLE==='view'&&RO_ACTS.has(act))return;
   switch(act){
     case'nav':clearSel();UI.view=a.dataset.v;UI.q='';histN=100;location.hash=UI.view;closeDrawer();render();window.scrollTo(0,0);break;
     case'goto':UI.view=a.dataset.v;UI.filter=a.dataset.f||'all';UI.q='';location.hash=UI.view;render();window.scrollTo(0,0);break;
