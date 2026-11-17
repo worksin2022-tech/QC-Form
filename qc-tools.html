@@ -253,9 +253,10 @@ tbody tr:hover{background:var(--surface-2)}
 .fld label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;font-weight:500}
 .fld input,.fld select,.fld textarea{width:100%;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;outline:none}
 .fld textarea{height:72px;padding:9px 12px;resize:vertical}
-body.ro :is([data-act=selmode],[data-act=borrow],[data-act=return],[data-act=book],[data-act=cancelbk],[data-act=calib],[data-act=repair],[data-act=unrepair],[data-act=edit],[data-act=addtool]){display:none!important}
+body.ro :is([data-act=selmode],[data-act=borrow],[data-act=return],[data-act=book],[data-act=cancelbk],[data-act=bkpick],[data-act=calib],[data-act=repair],[data-act=unrepair],[data-act=edit],[data-act=addtool]){display:none!important}
 body.ro [data-act=day]{cursor:default}
 .ro-tag{white-space:nowrap}
+.bk-acts{display:inline-flex;gap:6px;align-items:center;justify-content:flex-end}
 .fld input[type=checkbox]{width:18px;height:18px;vertical-align:-3px;margin-right:8px}
 .dt{position:relative}
 .dt-v{display:flex;align-items:center;gap:8px;height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:0 12px;font-variant-numeric:tabular-nums}
@@ -450,7 +451,7 @@ async function api(body){
   const j=await r.json();if(!j.ok){const e=new Error(j.error||'เกิดข้อผิดพลาด');e.code=j.code;throw e}return j;
 }
 let ROLE='full';
-const RO_ACTS=new Set(['selmode','pick','selclear','mborrow','mreturn','mbook','borrow','return','book','day','cancelbk','calib','repair','unrepair','edit','addtool']);
+const RO_ACTS=new Set(['selmode','pick','selclear','mborrow','mreturn','mbook','borrow','return','book','day','cancelbk','bkpick','calib','repair','unrepair','edit','addtool']);
 function setRole(r){ROLE=r==='view'?'view':'full';document.body.classList.toggle('ro',ROLE==='view');if(ROLE==='view')clearSel()}
 async function refresh(quiet){
   if(!LIVE||document.getElementById('pin'))return;
@@ -651,7 +652,7 @@ function vBook(){
   <div class="tl"><div class="tl-grid">${head}${body||`<div class="empty">ไม่มีการจองใน 14 วันนี้</div>`}</div></div>
   <div class="sec-t">การจองที่จะถึง <span class="pill p-info">${list.length}</span></div>
   ${list.length?`<div class="tbl-wrap"><table><thead><tr><th>เครื่องมือ</th><th>ผู้จอง</th><th>งาน</th><th>วันที่</th><th></th></tr></thead><tbody>
-    ${list.map(b=>{const t=tool(b.toolId);return`<tr data-act="open" data-id="${esc(t.id)}"><td><div class="tdname">${thumb(t)}${esc(t.name)}</div></td><td>${esc(b.person)}</td><td class="muted">${esc(b.project||'–')}</td><td><span class="pill p-info">${rangeTxt(b.from,b.to)}</span></td><td style="text-align:right"><button class="btn sm ghost danger" data-act="cancelbk" data-bk="${esc(b.id)}">ยกเลิก</button></td></tr>`}).join('')}
+    ${list.map(b=>{const t=tool(b.toolId);return`<tr data-act="open" data-id="${esc(t.id)}"><td><div class="tdname">${thumb(t)}${esc(t.name)}</div></td><td>${esc(b.person)}</td><td class="muted">${esc(b.project||'–')}</td><td><span class="pill p-info">${rangeTxt(b.from,b.to)}</span></td><td style="text-align:right"><div class="bk-acts">${bkFree(b)?`<button class="btn sm pri" data-act="bkpick" data-bk="${esc(b.id)}">${svg(I.out,15,2)}ยืม</button>`:''}<button class="btn sm ghost danger" data-act="cancelbk" data-bk="${esc(b.id)}">ยกเลิก</button></div></td></tr>`}).join('')}
   </tbody></table></div>`:'<div class="panel"><div class="empty">ยังไม่มีการจอง</div></div>'}`;
 }
 
@@ -712,7 +713,7 @@ function renderDrawer(){
         <dt>กำหนดคืน</dt><dd>${l.dueAt?fD(l.dueAt):'ไม่กำหนด'} ${s.k==='over'?`<span class="pill p-bad">เกิน ${diffD(dParse(l.dueAt),today0())} วัน</span>`:''}</dd>${l.note?`<dt>หมายเหตุ</dt><dd>${esc(l.note)}</dd>`:''}</dl></div>`:''}
       ${s.k==='repair'&&t.note?`<div class="box hl"><h4>ส่งซ่อม</h4>${esc(t.note)}</div>`:''}
       <div class="box"><h4>การจอง <span class="pill p-info">${bks.length}</span></h4>
-        ${bks.map(b=>`<div class="li"><div class="t"><b>${esc(b.person)}</b><span>${rangeTxt(b.from,b.to)}${b.project?' · '+esc(b.project):''}</span></div><button class="btn sm ghost danger" data-act="cancelbk" data-bk="${esc(b.id)}">ยกเลิก</button></div>`).join('')||'<div class="muted" style="font-size:14px">ยังไม่มีการจอง</div>'}</div>
+        ${bks.map(b=>`<div class="li"><div class="t"><b>${esc(b.person)}</b><span>${rangeTxt(b.from,b.to)}${b.project?' · '+esc(b.project):''}</span></div><div class="bk-acts">${bkFree(b)?`<button class="btn sm pri" data-act="bkpick" data-bk="${esc(b.id)}">${svg(I.out,15,2)}ยืม</button>`:''}<button class="btn sm ghost danger" data-act="cancelbk" data-bk="${esc(b.id)}">ยกเลิก</button></div></div>`).join('')||'<div class="muted" style="font-size:14px">ยังไม่มีการจอง</div>'}</div>
       ${calBox}
       <div class="box"><h4>ข้อมูลเครื่องมือ</h4><dl class="kv"><dt>รหัส</dt><dd>${id}</dd><dt>โรงงาน</dt><dd>${esc(t.plant||'ยังไม่ระบุ')}</dd><dt>ยี่ห้อ / รุ่น</dt><dd>${esc(t.brand||'–')}</dd><dt>S/N</dt><dd>${esc(t.sn||'–')}</dd><dt>ที่เก็บ</dt><dd>${esc(t.loc||'–')}</dd>${t.note&&s.k!=='repair'?`<dt>หมายเหตุ</dt><dd>${esc(t.note)}</dd>`:''}</dl></div>
       <div class="box"><h4>ประวัติการยืม</h4>
@@ -759,15 +760,17 @@ const subOf=ts=>ts.length>1?`${ts.length} รายการ`:esc(ts[0].name);
 const tag=(ts,t)=>ts.length>1?esc(t.name)+': ':'';
 function clearSel(){UI.selMode=false;UI.sel.clear()}
 
-function doBorrow(ids){
+const bkFree=b=>{const t=tool(b.toolId);return!!t&&!activeLoan(t.id)&&t.status!==ST_REPAIR};
+function doBkPick(bid){const b=DB.bookings.find(x=>x.id===bid);if(b)doBorrow(b.toolId,{who:b.person,proj:b.project,due:b.to,bk:b.id})}
+function doBorrow(ids,pre={}){
   const ts=asIds(ids).map(tool).filter(t=>t&&!activeLoan(t.id)&&t.status!==ST_REPAIR);
   if(!ts.length)return toast('ไม่มีรายการที่ยืมได้');
   const many=ts.length>1;
   modal({title:'ยืมเครื่องมือ',sub:subOf(ts),submit:many?`ยืนยันการยืม ${ts.length} รายการ`:'ยืนยันการยืม',
-    body:`${pickList(ts)}${peopleList()}<div class="fld"><label>ผู้ยืม</label><input name="who" list="ppl" value="${esc(ME)}"></div>
-      <div class="fld"><label>งาน / โปรเจกต์</label><input name="proj" placeholder="เช่น FAT ตู้ MDB"></div>
+    body:`${pickList(ts)}${peopleList()}<div class="fld"><label>ผู้ยืม</label><input name="who" list="ppl" value="${esc(pre.who??ME)}"></div>
+      <div class="fld"><label>งาน / โปรเจกต์</label><input name="proj" placeholder="เช่น FAT ตู้ MDB" value="${esc(pre.proj||'')}"></div>
       <div class="fld"><label>กำหนดคืน</label><div class="quick">${[['วันนี้',0],['3 วัน',3],['1 สัปดาห์',7],['ไม่กำหนด','']].map(([l,n])=>`<button type="button" class="chip" data-q="${n}">${l}</button>`).join('')}</div>
-        <input type="date" name="due" min="${TODAY()}" style="margin-top:8px"></div>
+        <input type="date" name="due" min="${TODAY()}" value="${pre.due||''}" style="margin-top:8px"></div>
       <div class="fld"><label>หมายเหตุ</label><input name="note"></div><div class="alert a-warn" id="bw"></div>`,
     mount(f,form){const w=form.querySelector('#bw');
       const up=()=>{const msgs=[],to=f.due.value||'9999-12-31',who=f.who.value.trim();
@@ -784,7 +787,7 @@ function doBorrow(ids){
       ts.forEach(t=>{
         const loan={id:uid('L'),toolId:t.id,toolName:t.name,borrower:who,project:f.proj.value.trim(),outAt:now,dueAt:f.due.value,inAt:'',returner:'',condition:'',note:f.note.value.trim()};
         DB.loans.push(loan);ops.push(op.add('loans',loan));
-        upBookings(t.id).filter(b=>b.person===who&&b.from<=TODAY()).forEach(b=>{b.status=BK_PICKED;ops.push(op.set('bookings',b.id,{status:BK_PICKED}))});
+        upBookings(t.id).filter(b=>b.id===pre.bk||b.person===who&&b.from<=TODAY()).forEach(b=>{b.status=BK_PICKED;ops.push(op.set('bookings',b.id,{status:BK_PICKED}))});
       });
       clearSel();
       commit([...ops,...personOps(who)],ts.map(t=>({type:'toolFree',toolId:t.id})),many?`บันทึกการยืม ${ts.length} รายการแล้ว`:'บันทึกการยืมแล้ว')}});
@@ -928,6 +931,7 @@ document.addEventListener('click',e=>{
     case'return':doReturn(id);break;
     case'book':doBook(id);break;
     case'day':doBook(id,a.dataset.d);break;
+    case'bkpick':doBkPick(a.dataset.bk);break;
     case'cancelbk':doCancelBk(a.dataset.bk);break;
     case'calib':doCalib(id);break;
     case'repair':doRepair(id);break;
