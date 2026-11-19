@@ -12,6 +12,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+<!-- ระบบทีมแบบ MoM (Supabase + รูปบน Google Drive) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="avatar-team.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -211,16 +215,17 @@
         <a href="index.html" title="กลับหน้าแรก" class="text-slate-500 bg-white border border-slate-200 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-house"></i></a>
         <div>
           <h1 class="text-[15px] font-extrabold text-slate-800 leading-tight">เอกสารรูปถ่าย — Inspection</h1>
-          <p class="text-[11px] text-slate-400 -mt-0.5"><span id="pageCount">0</span> หน้า · <span id="photoCount">0</span> รูป · <span id="saveStatus" class="text-emerald-600 font-semibold">บันทึกแล้ว</span></p>
+          <p class="text-[11px] text-slate-400 -mt-0.5"><span id="pageCount">0</span> หน้า · <span id="photoCount">0</span> รูป</p>
         </div>
       </div>
       <div class="flex items-center gap-1.5">
         <input id="projName" placeholder="ชื่องาน..." oninput="onProjName(this.value)"
                class="text-[12.5px] border border-slate-200 rounded-lg px-2.5 py-2 w-32 md:w-44 focus:outline-none focus:border-orange-400">
-        <button onclick="openHistory()" title="งานที่บันทึกไว้" class="text-[12.5px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-folder-open mr-1"></i><span class="hidden lg:inline">งาน</span></button>
-        <button onclick="doSave()" class="text-[12.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-floppy-disk mr-1"></i><span class="hidden sm:inline">บันทึก</span></button>
+        <span id="teamSync"></span>
+        <button onclick="openHistory()" title="รายการงาน" class="text-[12.5px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-folder-open mr-1"></i><span class="hidden lg:inline">งาน</span></button>
         <button onclick="clearAllPhotos()" class="text-[12.5px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm"><i class="fa-regular fa-trash-can mr-1"></i><span class="hidden sm:inline">ล้างรูป</span></button>
         <button onclick="exportPDF()" class="text-[12.5px] font-bold text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg shadow-md"><i class="fa-solid fa-file-pdf mr-1"></i> Export PDF</button>
+        <span id="teamChip"></span>
       </div>
     </header>
 
@@ -329,9 +334,10 @@ const BODY_BUDGET = PAGE_H - 14 /*page pad*/ - 30 /*header*/ - 122 /*footer*/ - 
 const SAFE_BUDGET = BODY_BUDGET - 6; // 919
 
 /* ---------- state ---------- */
-let state = { projectName:'', data:{}, _histId:null };
-let isDirty = false;
-function markDirty(){ isDirty = true; }
+/* state = มุมมองของงานที่เปิดอยู่ (สร้างจากระบบทีมทุกครั้งที่ข้อมูลเปลี่ยน — ดู syncFromTeam)
+   data[key] = { enabled, title, photos:[...] } (grid) หรือ { enabled, title, subs:[{label, photos:[...]}] }
+   ช่องรูป = null (ว่าง) หรือ { dataUrl, cell } — ข้อมูลจริงอยู่ในระบบทีม (avatar-team.js) */
+let state = { projectName:'', data:{} };
 function freshData(){
   const d = {};
   SECTION_DEFS.forEach(def=>{
@@ -507,7 +513,7 @@ function photoSrc(p){ return typeof p==='string' ? p : (p && p.dataUrl) || ''; }
 function cellEdit(src, key, si, idx, h){
   const st=`height:${h}px`;
   if(src){
-    return `<div class="pcell" style="${st}">
+    return `<div class="pcell${src.dataUrl?'':' loading'}" data-cell="${src.cell||''}" style="${st}">
       <img src="${photoSrc(src)}">
       <button class="edit-btn" title="แก้ไขรูป (crop / วาด)" onclick="PhotoEditor.open('${key}',${si},${idx})"><i class="fa-solid fa-pen"></i></button>
       <button class="repl" title="เปลี่ยนรูป" onclick="replacePhoto('${key}',${si},${idx})"><i class="fa-solid fa-arrows-rotate"></i></button>
@@ -550,7 +556,7 @@ function subBlockHTML(b, mode, photoH){
   const def=b.def;
   const titleHTML = b.showTitle
     ? ( mode==='edit'
-        ? `<input class="sec-title-input" value="${escapeAttr(b.title)}" oninput="state.data['${def.key}'].title=this.value">`
+        ? `<input class="sec-title-input" value="${escapeAttr(b.title)}" oninput="setTitle('${def.key}',this.value)">`
         : pdfText('- '+b.title+':', BODY_INNER_W, 13, 600, '#111827', 'start') )
     : '';
   const labelHTML = (mode==='edit')
@@ -611,7 +617,6 @@ function render(){
   }
   document.getElementById('pageCount').textContent=pages.length;
   document.getElementById('photoCount').textContent=countPhotos();
-  scheduleSave();
 }
 function renderSidebar(){
   const list=document.getElementById('topicList');
@@ -639,11 +644,18 @@ function countPhotos(){
 /* =========================================================================
    INTERACTIONS
    ========================================================================= */
-function toggleTopic(key,on){ state.data[key].enabled=on; markDirty(); render(); }
-function setAll(on){ SECTION_DEFS.forEach(d=>state.data[d.key].enabled=on); markDirty(); render(); }
-function setTitle(key,val){ state.data[key].title=val; markDirty(); scheduleSave(); }
-function setSubLabel(key,si,val){ state.data[key].subs[si].label=val; markDirty(); scheduleSave(); }
-function onProjName(val){ state.projectName=val; markDirty(); scheduleSave(); }
+async function toggleTopic(key,on){ if(!(await ensureSection(key))) return; team.updateItem(view.sec[key],{enabled:on}); refresh(); }
+async function setAll(on){
+  for(const d of SECTION_DEFS){ if(await ensureSection(d.key)) team.updateItem(view.sec[d.key],{enabled:on}); }
+  refresh();
+}
+async function setTitle(key,val){ state.data[key].title=val; if(!(await ensureSection(key))) return; team.updateItem(view.sec[key],{title:val}); }
+async function setSubLabel(key,si,val){
+  state.data[key].subs[si].label=val;
+  if(!(await ensureSection(key))) return;
+  const id=view.sub[key][si]; if(id) team.updateItem(id,{label:val});
+}
+async function onProjName(val){ state.projectName=val; await team.updateJob({name:val}); }
 function toggleSidebar(){
   const s=document.getElementById('sidebar');
   s.classList.toggle('-translate-x-full');
@@ -660,18 +672,20 @@ async function onPick(e,key,si,idx){
   const files=[...(e.target.files||[])].filter(Boolean);
   if(!files.length) return;
   const inp=e.target;
-  const arr=arrFor(key,si);
+  team.ensureDriveTokenFromGesture();
+  if(!(await ensureSection(key))) return;
+  const cells=cellsFor(key,si).slice(), arr=arrFor(key,si).slice();
   let pos=idx;
   for(let i=0;i<files.length;i++){
     let src;
     try{ src=await downscaleDataUrl(await readFileDataUrl(files[i]),2000); }catch(_){ continue; }
-    if(i===0){ arr[idx]=src; pos=idx+1; continue; }
+    if(i===0){ if(cells[idx]) team.setPhoto(cells[idx],'0',{dataUrl:src, origDataUrl:null, edit:null}); pos=idx+1; continue; }
     while(pos<arr.length && arr[pos]!=null) pos++;   // หาช่องว่างถัดไป
     if(pos>=arr.length) break;                        // ไม่มีช่องว่างเหลือ -> ข้ามรูปที่เกิน
-    arr[pos]=src; pos++;
+    team.setPhoto(cells[pos],'0',{dataUrl:src, origDataUrl:null, edit:null}); arr[pos]={}; pos++;
   }
   try{ inp.value=''; }catch(_){}   // เคลียร์เพื่อเลือกไฟล์ชุดเดิมซ้ำได้
-  markDirty(); render();
+  refresh();
   // ถ่ายจากกล้อง (ไฟล์เดียว, เพิ่งถ่าย) -> เสนอบันทึกภาพต้นฉบับลงเครื่อง (หลังแทรกรูปเสร็จแล้วเท่านั้น)
   if(files.length===1 && isFreshCapture(files[0])) offerSaveOriginal(files[0]);
 }
@@ -737,12 +751,14 @@ function offerSaveOriginal(file){
   const dlBtn=bg.querySelector('#osDl');
   if(dlBtn) dlBtn.onclick=()=>{ downloadFile(named); close(); };
 }
-function removePhoto(key,si,idx){
-  const arr=arrFor(key,si);
+async function removePhoto(key,si,idx){
+  if(!(await ensureSection(key))) return;
+  const cells=cellsFor(key,si), id=cells[idx];
+  if(!id) return;
   // ลบช่องนี้ทิ้งจริง (ทั้งกริดและแถวย่อย) ; เหลืออย่างน้อย 1 ช่อง -> เคลียร์เป็นช่องว่างแทน
-  if(arr.length>1) arr.splice(idx,1);
-  else arr[idx]=null;
-  markDirty(); render();
+  if(cells.length>1) team.removeItem(id);
+  else team.removePhoto(id,'0');
+  refresh();
 }
 function replacePhoto(key,si,idx){
   const inp=document.createElement('input');
@@ -750,42 +766,127 @@ function replacePhoto(key,si,idx){
   inp.onchange=(e)=>onPick(e,key,si,idx);
   inp.click();
 }
-function addSlot(key,si){ arrFor(key,si).push(null); markDirty(); render(); }
+async function addSlot(key,si){
+  if(!(await ensureSection(key))) return;
+  const parent=si<0 ? view.sec[key] : view.sub[key][si];
+  if(parent) await team.addItem({parentId:parent, kind:'cell'});
+  refresh();
+}
 async function clearAllPhotos(){
   const ok=await confirmDialog({ title:'ล้างรูปทั้งหมด',
     message:'ต้องการล้างรูปทั้งหมดในงานนี้ใช่ไหม? (โครงหัวข้อยังอยู่)<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>',
     confirmText:'ล้างรูป', cancelText:'ยกเลิก', danger:true });
   if(!ok) return;
-  SECTION_DEFS.forEach(def=>{
-    const d=state.data[def.key];
-    if(def.type==='grid') d.photos=new Array(def.slots).fill(null);
-    else d.subs.forEach(s=>s.photos=[null,null]);
-  });
-  markDirty(); render();
+  if(!team.job) return;
+  // ช่องรูปทั้งหมด → ลบ แล้วสร้างช่องว่างตามจำนวนตั้งต้นของแต่ละหัวข้อ
+  const specs=[];
+  for(const def of SECTION_DEFS){
+    if(!view.sec[def.key]) continue;
+    if(def.type==='grid'){
+      cellsFor(def.key,-1).forEach(id=>team.removeItem(id));
+      for(let i=0;i<def.slots;i++) specs.push({parentId:view.sec[def.key], kind:'cell', sort:i});
+    } else {
+      view.sub[def.key].forEach((subId,si)=>{
+        cellsFor(def.key,si).forEach(id=>team.removeItem(id));
+        specs.push({parentId:subId, kind:'cell', sort:0},{parentId:subId, kind:'cell', sort:1});
+      });
+    }
+  }
+  await team.addItems(specs);
+  refresh();
 }
 
 /* =========================================================================
-   PERSISTENCE (localforage / IndexedDB)
+   TEAM — เก็บข้อมูลแบบ Minute of Meeting (avatar-team.js)
+   qc_items: หัวข้อ (section: key, enabled, title) → แถวย่อย (sub: label) → ช่องรูป (cell)
+             ช่องรูป 1 ช่อง = 1 แถว → เพิ่ม/ลบช่องพร้อมกันหลายเครื่องไม่ทับกัน
+   qc_photos: รูปของช่อง (slot '0') + ต้นฉบับก่อนครอป/วาด + ค่าครอป/ลายเส้น
+   บันทึกทันทีทุกครั้งที่แก้ (ไม่มีปุ่มบันทึก) · ออฟไลน์/ส่งขึ้นทีม/รายการงาน เหมือน MoM
    ========================================================================= */
-const DRAFT_KEY='ppv_draft_v1';
-let saveTimer=null;
-function scheduleSave(){
-  setSaveStatus('กำลังบันทึก...','text-amber-600');
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(saveDraft,600);
+let view = { sec:{}, sub:{}, cells:{} };   // key → id ของหัวข้อ / [id แถวย่อย] / 'key|si' → [id ช่องรูป]
+const cellsFor=(key,si)=> view.cells[key+'|'+si] || [];
+
+function cellPhoto(cellId){
+  const p=team.photo(cellId,'0');
+  return p ? { dataUrl:p.dataUrl||'', cell:cellId } : null;
 }
-async function saveDraft(){
-  try{
-    await localforage.setItem(DRAFT_KEY, { projectName:state.projectName||'', data:state.data, _histId:state._histId||null });
-    setSaveStatus('บันทึกแล้ว','text-emerald-600');
+function syncFromTeam(){
+  const j=team.job;
+  state.projectName = j ? (j.name||'') : '';
+  const byKey={};
+  if(j) team.children(null,'section').forEach(s=>{ if(s.data && !byKey[s.data.key]) byKey[s.data.key]=s; });
+  const data={}; view={ sec:{}, sub:{}, cells:{} };
+  SECTION_DEFS.forEach(def=>{
+    const s=byKey[def.key];
+    view.sec[def.key]=s?s.id:null;
+    const d={ enabled: s ? s.data.enabled!==false : true, title: s && typeof s.data.title==='string' ? s.data.title : def.title };
+    if(def.type==='grid'){
+      const cells=s ? team.children(s.id,'cell') : [];
+      view.cells[def.key+'|-1']=cells.map(c=>c.id);
+      d.photos = s ? cells.map(c=>cellPhoto(c.id)) : new Array(def.slots).fill(null);
+    } else {
+      const subs=s ? team.children(s.id,'sub') : [];
+      view.sub[def.key]=subs.map(x=>x.id);
+      d.subs = s ? subs.map((sub,si)=>{
+        const cells=team.children(sub.id,'cell');
+        view.cells[def.key+'|'+si]=cells.map(c=>c.id);
+        return { label: typeof sub.data.label==='string' ? sub.data.label : '', photos: cells.map(c=>cellPhoto(c.id)) };
+      }) : def.subs.map(l=>({ label:l, photos:[null,null] }));
+    }
+    data[def.key]=d;
+  });
+  state.data=data;
+}
+function refresh(){ syncFromTeam(); renderProjectName(); render(); }
+
+/* โครงของหัวข้อ (หัวข้อ → แถวย่อย → ช่องรูป) เป็นรายการสำหรับสร้างในคำสั่งเดียว */
+function sectionSpecs(def, sort){
+  const id=team.uuid(), specs=[{ id, kind:'section', sort, data:{ key:def.key, enabled:true, title:def.title } }];
+  if(def.type==='grid'){
+    for(let i=0;i<def.slots;i++) specs.push({ parentId:id, kind:'cell', sort:i });
+  } else {
+    def.subs.forEach((label,si)=>{
+      const sid=team.uuid();
+      specs.push({ id:sid, parentId:id, kind:'sub', sort:si, data:{ label } });
+      specs.push({ parentId:sid, kind:'cell', sort:0 }, { parentId:sid, kind:'cell', sort:1 });
+    });
   }
-  catch(e){ setSaveStatus('บันทึกไม่สำเร็จ','text-red-600'); }
+  return specs;
 }
-function setSaveStatus(t,cls){
-  const el=document.getElementById('saveStatus');
-  el.textContent=t; el.className=cls+' font-semibold';
+/* งานใหม่ → สร้างทุกหัวข้อตามแม่แบบ */
+async function seedJob(t){
+  const specs=[];
+  SECTION_DEFS.forEach((def,i)=> specs.push(...sectionSpecs(def,i)));
+  await t.addItems(specs);
 }
-// merge saved section-data เข้ากับ template ปัจจุบัน (กันคีย์ใหม่/เก่าไม่ตรง)
+/* ก่อนแก้หัวข้อไหน: ต้องมีงานเปิดอยู่ และหัวข้อนั้นมีแถวในระบบแล้ว (งานเก่าที่ยังไม่มีหัวข้อใหม่ → สร้างตอนแก้ครั้งแรก) */
+async function ensureSection(key){
+  if(!team.job){ if(!(await team.ensureJob())) return false; syncFromTeam(); }
+  if(view.sec[key]) return true;
+  const i=SECTION_DEFS.findIndex(d=>d.key===key);
+  if(i<0) return false;
+  await team.addItems(sectionSpecs(SECTION_DEFS[i], i));
+  syncFromTeam();
+  return true;
+}
+
+/* รูปโหลดเสร็จ → ใส่เฉพาะรูปนั้น (ไม่วาดทั้งหน้าใหม่ — ไม่กวนคนที่กำลังพิมพ์) */
+let renderLater=null;
+function onTeamPhoto(p){
+  const cell=document.querySelector(`.pcell[data-cell="${p.itemId}"]`);
+  const img=cell && cell.querySelector('img');
+  if(img && p.dataUrl){
+    img.src=p.dataUrl; cell.classList.remove('loading');
+    syncFromTeam();   // ให้ state มี dataUrl ล่าสุด (PDF / แก้รูป)
+    return;
+  }
+  clearTimeout(renderLater);
+  renderLater=setTimeout(()=>{ const a=document.activeElement; if(a && /INPUT|TEXTAREA/.test(a.tagName) && a.type!=='file') return; refresh(); },150);
+}
+
+/* ---- งานจากเวอร์ชันก่อน (ร่าง + ประวัติ 5 ช่องในเครื่อง) → รายการงานออฟไลน์ ส่งขึ้นทีมได้ ---- */
+const LEGACY_DRAFT_KEY='ppv_draft_v1', LEGACY_HISTORY_KEY='ppv_history_v1';
+// merge saved section-data เข้ากับแม่แบบ (กันคีย์ใหม่/เก่าไม่ตรง)
 function normalizeData(saved){
   const base=freshData();
   if(saved && typeof saved==='object'){
@@ -804,22 +905,60 @@ function normalizeData(saved){
   }
   return base;
 }
-async function loadDraft(){
-  try{
-    const saved=await localforage.getItem(DRAFT_KEY);
-    if(saved && typeof saved==='object'){
-      if(saved.data){ // รูปแบบใหม่ { projectName, data, _histId }
-        state.projectName = saved.projectName||'';
-        state._histId = saved._histId||null;
-        state.data = normalizeData(saved.data);
-      } else { // รูปแบบเก่า (เก็บ data map ตรงๆ)
-        state.data = normalizeData(saved);
-      }
-      return;
-    }
-  }catch(e){}
-  state.data=freshData();
+/* state แบบเดิม { projectName, data } → โมเดลของระบบทีม (รูปติดไปด้วย) */
+function legacyStateToModel(st){
+  const data=normalizeData(st && (st.data || st));
+  const items=[], photos=[];
+  const uid=()=> (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random());
+  const addCells=(parentId, arr)=> (arr && arr.length ? arr : [null]).forEach((p,i)=>{
+    const id=uid(); items.push({ id, parentId, kind:'cell', sort:i, data:{} });
+    if(!p) return;
+    const isObj=typeof p==='object', dataUrl=isObj ? p.dataUrl : p;
+    if(!dataUrl) return;
+    photos.push({ itemId:id, slot:'0', dataUrl, origDataUrl:(isObj && p.original && p.original!==dataUrl) ? p.original : null, edit:(isObj && p.edit) || null });
+  });
+  SECTION_DEFS.forEach((def,i)=>{
+    const d=data[def.key], sid=uid();
+    items.push({ id:sid, parentId:null, kind:'section', sort:i, data:{ key:def.key, enabled:d.enabled!==false, title:d.title } });
+    if(def.type==='grid') addCells(sid, d.photos);
+    else d.subs.forEach((sub,si)=>{ const id=uid(); items.push({ id, parentId:sid, kind:'sub', sort:si, data:{ label:sub.label } }); addCells(id, sub.photos); });
+  });
+  return { job:{ name:(st && st.projectName) || '', customer:'', meta:{} }, items, photos };
 }
+async function legacyLocalJobs(){
+  const out=[];
+  let hist=[], draft=null;
+  try{ hist=(await localforage.getItem(LEGACY_HISTORY_KEY))||[]; }catch(_){}
+  try{ draft=await localforage.getItem(LEGACY_DRAFT_KEY); }catch(_){}
+  const draftId=draft && draft._histId;
+  const hasContent=st=>{ if(!st) return false; if(((st.projectName)||'').trim()) return true;
+    const d=normalizeData(st.data||st); return SECTION_DEFS.some(def=> def.type==='grid' ? d[def.key].photos.some(Boolean) : d[def.key].subs.some(x=>x.photos.some(Boolean))); };
+  hist.forEach(h=>{
+    if(!h || !h.state) return;
+    const st=(draftId && h.id===draftId) ? draft : h.state;   // ร่าง = เวอร์ชันล่าสุดของช่องนั้น
+    out.push({ legacyId:'hist:'+h.id, name:h.name || st.projectName || '', updatedAt:h.ts || Date.now(), model:legacyStateToModel(st) });
+  });
+  if(draft && !(draftId && hist.some(h=>h.id===draftId)) && hasContent(draft))
+    out.push({ legacyId:'draft', name:draft.projectName || 'งานที่ค้างไว้', updatedAt:Date.now(), model:legacyStateToModel(draft) });
+  return out;
+}
+
+const team = AvatarTeam.init({
+  app:'photo-inspection', appTitle:'Photograph Inspection',
+  indicator:'teamSync', chip:'teamChip',
+  render: refresh,
+  onPhoto: onTeamPhoto,
+  seed: seedJob,
+  photoName: p=>{
+    // ชื่อไฟล์บน Drive = หัวข้อ / แถวย่อย / ลำดับช่อง
+    const cell=team.item(p.itemId); if(!cell) return 'photo';
+    const par=team.item(cell.parentId); if(!par) return 'photo';
+    const sec=par.kind==='section' ? par : team.item(par.parentId);
+    const n=team.children(par.id,'cell').findIndex(c=>c.id===cell.id)+1;
+    return [sec && sec.data.title, par.kind==='sub' ? par.data.label : '', n].filter(Boolean).join('_');
+  },
+  legacyLocal: legacyLocalJobs
+});
 
 /* =========================================================================
    EXPORT PDF (pipeline จาก skill avatar-ipad-pdf-export)
@@ -835,7 +974,10 @@ async function exportPDF(){
   const blocks=buildBlocks();
   const pages=paginate(blocks);
   if(pages.length===0){ alert('ยังไม่ได้เลือกหัวข้อ'); return; }
-  await saveDraft();
+  if(!(await team.ensurePhotosLoaded(t=> t ? showPdfProgress(t) : hidePdfProgress()))) return;
+  refresh();
+  const pagesNow=paginate(buildBlocks());
+  team.suspend();   // ระหว่างสร้าง PDF ห้ามวาดหน้าใหม่จาก realtime
   showPdfProgress('กำลังเตรียม...');
   try{
     const { jsPDF }=window.jspdf;
@@ -860,14 +1002,13 @@ async function exportPDF(){
       pdf.addImage(res.imgData,'JPEG',0,0,w,h,undefined,'FAST');
     };
 
-    for(let i=0;i<pages.length;i++){
-      showPdfProgress(`กำลังสร้างหน้า ${i+1}/${pages.length}...`);
-      const node=pageNode(pages[i],'pdf');
+    for(let i=0;i<pagesNow.length;i++){
+      showPdfProgress(`กำลังสร้างหน้า ${i+1}/${pagesNow.length}...`);
+      const node=pageNode(pagesNow[i],'pdf');
       node.style.cssText+=';margin:0;box-shadow:none;border-radius:0;';
       addToPdf(await renderToImage(node), i===0);
     }
     document.body.removeChild(rc);
-    await saveCurrentToHistory();   // เก็บ snapshot ลงประวัติอัตโนมัติเมื่อ export
 
     const filename='Photograph Inspection.pdf';
     const titleNoExt='Photograph Inspection';
@@ -889,7 +1030,7 @@ async function exportPDF(){
     }
   }catch(err){
     console.error(err); hidePdfProgress(); alert('สร้าง PDF ไม่สำเร็จ: '+err.message);
-  }
+  }finally{ team.resume(); }
 }
 function showPdfSaveButton(file){
   document.getElementById('pdfProgressText').textContent='พร้อมบันทึกแล้ว';
@@ -906,8 +1047,6 @@ function showPdfSaveButton(file){
 /* =========================================================================
    WORK HISTORY + DIALOGS (แพทเทิร์นจาก skill webapp-history-and-dialogs)
    ========================================================================= */
-const HISTORY_KEY='ppv_history_v1';
-const MAX_HISTORY=5;
 function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 let toastTimer=null;
 function showToast(msg){
@@ -973,183 +1112,7 @@ function promptDialog({title='ตั้งชื่อ', message='', placeholder
   });
 }
 
-/* ----- history store ----- */
-async function getHistory(){ try{ return (await localforage.getItem(HISTORY_KEY))||[]; }catch(e){ return []; } }
-async function setHistory(list){ try{ await localforage.setItem(HISTORY_KEY, list); }catch(e){ console.error(e); } }
-function draftHasContent(){ return (state.projectName||'').trim()!=='' || countPhotos()>0; }
-
-function loadStateIntoApp(s){
-  state={ projectName:s.projectName||'', data:normalizeData(s.data||s), _histId:s._histId||null };
-  renderProjectName(); render(); saveDraft();
-  isDirty=false;
-}
-async function startNewProject(){
-  state={ projectName:'', data:freshData(), _histId:null };
-  renderProjectName(); render(); await saveDraft();
-  isDirty=false; showToast('เริ่มงานใหม่');
-}
-
-async function saveCurrentToHistory(){
-  const id=state._histId||uid('hist');
-  state._histId=id;
-  await saveDraft();
-  const snap={ id,
-    name:(state.projectName||'').trim()||'ไม่ระบุชื่องาน',
-    date:new Date().toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}),
-    ts:Date.now(),
-    state:JSON.parse(JSON.stringify(state)) };
-  let list=await getHistory();
-  const idx=list.findIndex(h=>h.id===id);
-  let saved=true;
-  if(idx>=0){ list[idx]=snap; await setHistory(list); }
-  else if(list.length<MAX_HISTORY){ list.push(snap); await setHistory(list); }
-  else { saved=await showHistoryFullModal(list, snap); }
-  if(saved) isDirty=false;
-  return saved;
-}
-async function doSave(){
-  // ยังไม่ได้ตั้งชื่องาน -> ถามชื่อก่อนบันทึก
-  if(!(state.projectName||'').trim()){
-    const name=await promptDialog({ title:'ตั้งชื่องาน',
-      message:'ตั้งชื่อให้งานนี้ก่อนบันทึก เพื่อให้หาเจอง่ายในประวัติ',
-      placeholder:'เช่น SMDB ทรัพย์ทองหอม', confirmText:'บันทึก' });
-    if(name===null) return;                         // ยกเลิก
-    state.projectName=name; renderProjectName(); markDirty();
-  }
-  const ok=await saveCurrentToHistory();
-  if(ok) showToast('บันทึกงานแล้ว');
-}
-function openHistory(){ showStartupModal(true); }
-
-/* ----- unsaved-changes guard ----- */
-function confirmUnsavedChanges(){
-  return new Promise(resolve=>{
-    const bg=buildModalOverlay(`
-      <div class="modal-head"><span>ยังไม่ได้บันทึก</span></div>
-      <div class="modal-body"><p style="font-size:14px;color:#475569;line-height:1.6;">งานปัจจุบันมีการแก้ไขที่ยังไม่ได้บันทึก<br>ต้องการบันทึกก่อนเปลี่ยนงานไหม?</p></div>
-      <div class="modal-foot" style="flex-wrap:wrap;">
-        <button class="top-btn" id="unsCancel">ยกเลิก</button>
-        <button class="top-btn" id="unsDiscard" style="color:#ef4444;border-color:#fecaca;">ไม่บันทึก</button>
-        <button class="top-btn primary" id="unsSave">บันทึก</button>
-      </div>`);
-    bg.style.zIndex=420;
-    const done=v=>{ bg.remove(); resolve(v); };
-    bg.querySelector('#unsCancel').onclick=()=>done('cancel');
-    bg.querySelector('#unsDiscard').onclick=()=>done('discard');
-    bg.querySelector('#unsSave').onclick=()=>done('save');
-    bg.addEventListener('click',e=>{ if(e.target===bg) done('cancel'); });
-  });
-}
-async function proceedSwitch(){
-  if(isDirty && draftHasContent()){
-    const c=await confirmUnsavedChanges();
-    if(c==='cancel') return false;
-    if(c==='save'){ if(!(await saveCurrentToHistory())) return false; }
-  }
-  return true;
-}
-
-/* ----- history full: choose which to delete ----- */
-function showHistoryFullModal(list, snap){
-  return new Promise(resolve=>{
-    const sorted=list.slice().sort((a,b)=>b.ts-a.ts);
-    const itemsHtml=sorted.map(h=>`
-      <label class="hist-item" style="cursor:pointer;">
-        <input type="radio" name="histDel" value="${h.id}" style="width:18px;height:18px;flex-shrink:0;accent-color:#ef4444;">
-        <div class="hist-info"><div class="hist-name">${escapeHtml(h.name)}</div><div class="hist-date">${escapeHtml(h.date)}</div></div>
-      </label>`).join('');
-    const bg=buildModalOverlay(`
-      <div class="modal-head"><span>ประวัติเต็ม (${MAX_HISTORY}/${MAX_HISTORY})</span></div>
-      <div class="modal-body">
-        <p style="font-size:13px;color:#475569;margin-bottom:12px;">กำลังบันทึกงาน "<b>${escapeHtml(snap.name)}</b>" — เลือกงานเก่าที่จะลบออก 1 งาน</p>
-        <div class="hist-list">${itemsHtml}</div>
-      </div>
-      <div class="modal-foot">
-        <button class="top-btn" id="hfCancel">ไม่บันทึกประวัติ</button>
-        <button class="top-btn primary" id="hfOk">ลบแล้วบันทึก</button>
-      </div>`);
-    bg.style.zIndex=440;
-    const close=()=>bg.remove();
-    bg.querySelector('#hfCancel').onclick=()=>{ close(); resolve(false); };
-    bg.querySelector('#hfOk').onclick=async()=>{
-      const sel=bg.querySelector('input[name="histDel"]:checked');
-      if(!sel){ showToast('เลือกงานที่จะลบก่อน'); return; }
-      let l=await getHistory();
-      l=l.filter(x=>x.id!==sel.value); l.push(snap);
-      await setHistory(l); close(); resolve(true); showToast('บันทึกประวัติแล้ว');
-    };
-    bg.addEventListener('click',e=>{ if(e.target===bg){ close(); resolve(false); } });
-  });
-}
-
-/* ----- startup / history picker ----- */
-async function showStartupModal(force){
-  const list=(await getHistory()).sort((a,b)=>b.ts-a.ts);
-  const hasDraft=draftHasContent();
-  if(!force && list.length===0 && !hasDraft) return;
-
-  const continueHtml = hasDraft ? `
-    <button class="hist-continue" id="histContinue">
-      <div style="font-weight:800;font-size:14px;">&#9654; ทำงานต่อ (ล่าสุด)</div>
-      <div style="font-size:12px;opacity:.9;margin-top:2px;">${escapeHtml((state.projectName||'').trim()||'งานที่ค้างไว้')}</div>
-    </button>
-    <div style="height:1px;background:#e2e8f0;margin:14px 0;"></div>` : '';
-
-  const itemsHtml = list.length ? list.map(h=>`
-      <div class="hist-item">
-        <div class="hist-info" data-open="${h.id}">
-          <div class="hist-name">${escapeHtml(h.name)}${h.id===state._histId?'<span class="hist-tag">ล่าสุด</span>':''}</div>
-          <div class="hist-date">${escapeHtml(h.date)}</div>
-        </div>
-        <button class="hist-edit" data-edit="${h.id}" title="แก้ไขชื่องาน"><i class="fa-solid fa-pen"></i></button>
-        <button class="hist-del" data-del="${h.id}" title="ลบ"><i class="fa-regular fa-trash-can"></i></button>
-      </div>`).join('')
-    : `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">ยังไม่มีงานที่บันทึกไว้</div>`;
-
-  const bg=buildModalOverlay(`
-    <div class="modal-head"><span>เลือกงานที่จะทำต่อ</span><span class="close-btn" id="histClose"><i class="fa-solid fa-xmark"></i></span></div>
-    <div class="modal-body">
-      ${continueHtml}
-      <div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">งานที่บันทึกไว้ (${list.length}/${MAX_HISTORY})</div>
-      <div class="hist-list">${itemsHtml}</div>
-    </div>
-    <div class="modal-foot"><button class="top-btn primary" id="histNew" style="width:100%;justify-content:center;"><i class="fa-solid fa-plus"></i> เริ่มงานใหม่</button></div>`);
-  const close=()=>bg.remove();
-  bg.querySelector('#histClose').onclick=close;
-  bg.addEventListener('click',e=>{ if(e.target===bg) close(); });
-  const cont=bg.querySelector('#histContinue'); if(cont) cont.onclick=close;
-  bg.querySelector('#histNew').onclick=async()=>{ if(!(await proceedSwitch())) return; close(); startNewProject(); };
-  bg.querySelectorAll('[data-open]').forEach(el=> el.onclick=async()=>{
-    if(!(await proceedSwitch())) return;
-    const h=list.find(x=>x.id===el.dataset.open);
-    if(h && h.state){ loadStateIntoApp(JSON.parse(JSON.stringify(h.state))); showToast('เปิดงานแล้ว'); }
-    close();
-  });
-  bg.querySelectorAll('[data-edit]').forEach(el=> el.onclick=async(e)=>{
-    e.stopPropagation();
-    const h=list.find(x=>x.id===el.dataset.edit);
-    const name=await promptDialog({ title:'แก้ไขชื่องาน', initial:h?h.name:'',
-      placeholder:'ชื่องาน', confirmText:'บันทึก' });
-    if(name===null) return;
-    const newName=name || 'ไม่ระบุชื่องาน';
-    const l=await getHistory();
-    const item=l.find(x=>x.id===el.dataset.edit);
-    if(item){ item.name=newName; if(item.state) item.state.projectName=newName; await setHistory(l); }
-    if(state._histId===el.dataset.edit){ state.projectName=newName; renderProjectName(); saveDraft(); }
-    close(); showStartupModal(true);
-  });
-  bg.querySelectorAll('[data-del]').forEach(el=> el.onclick=async(e)=>{
-    e.stopPropagation();
-    const h=list.find(x=>x.id===el.dataset.del);
-    const ok=await confirmDialog({ title:'ลบงานที่บันทึก',
-      message:`ต้องการลบงาน "<b>${escapeHtml(h?h.name:'')}</b>" ออกจากประวัติใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">การลบนี้ย้อนกลับไม่ได้</span>`,
-      confirmText:'ลบ', cancelText:'ยกเลิก', danger:true });
-    if(!ok) return;
-    let l=await getHistory();
-    await setHistory(l.filter(x=>x.id!==el.dataset.del));
-    close(); showStartupModal(true);
-  });
-}
+function openHistory(){ team.openList(); }
 
 /* =========================================================================
    PHOTO EDITOR — crop/zoom (slider + ลากเลื่อน) + วาด (ลูกศร/สี่เหลี่ยม/วงกลม)
@@ -1168,7 +1131,6 @@ const PhotoEditor = (function(){
   let crop={zoom:1, ox:0, oy:0}, baseScale=1;
   let anns=[], selected=-1, drag=null;
 
-  function arrOf(t){ return t.si<0 ? state.data[t.key].photos : state.data[t.key].subs[t.si].photos; }
 
   function init(){
     modal=document.getElementById('photoEditorModal'); if(!modal) return;
@@ -1195,27 +1157,28 @@ const PhotoEditor = (function(){
     modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
   }
 
-  function open(key, si, idx){
+  async function open(key, si, idx){
     if(!modal) return;
-    const arr=(si<0? state.data[key].photos : state.data[key].subs[si].photos);
-    const photo=arr[idx]; if(!photo) return;
-    const isObj=typeof photo==='object';
-    const dataUrl=isObj?photo.dataUrl:photo; if(!dataUrl) return;
-    target={key,si,idx};
-    const src=(isObj && photo.original)?photo.original:dataUrl;
-    anns=(isObj && photo.edit && Array.isArray(photo.edit.annotations))?JSON.parse(JSON.stringify(photo.edit.annotations)):[];
-    const savedCrop=isObj && photo.edit && photo.edit.crop;
+    const cell=cellsFor(key,si)[idx];
+    const photo=cell && team.photo(cell,'0');
+    if(!photo || !photo.dataUrl){ showToast('รูปยังโหลดไม่เสร็จ'); return; }
+    const src=await team.loadOriginal(photo);   // ต้นฉบับก่อนครอป/วาด (โหลดจาก Drive ตอนต้องใช้)
+    if(!src) return;
+    target={key,si,idx,cell,original:src};
+    anns=(photo.edit && Array.isArray(photo.edit.annotations))?JSON.parse(JSON.stringify(photo.edit.annotations)):[];
+    const savedCrop=photo.edit && photo.edit.crop;
     color=COLORS[0]; tool='select'; selected=-1; drag=null;
     modal.querySelectorAll('.pe-sw').forEach(x=>x.classList.toggle('active',x.dataset.color===color));
-    img=new Image();
-    img.onload=()=>{
+    const im=new Image(); img=im;
+    im.onload=()=>{
+      if(img!==im) return;   // ปิดหน้าต่าง/เปิดรูปอื่นก่อนรูปนี้โหลดเสร็จ
       baseScale=Math.min(FRAME_W/img.naturalWidth, FRAME_H/img.naturalHeight);
       if(savedCrop){ crop={zoom:savedCrop.zoom||1, ox:savedCrop.ox||0, oy:savedCrop.oy||0}; }
       else { crop={zoom:1, ox:0, oy:0}; centerImage(); }
       zoomSlider.value=crop.zoom; setMode('crop'); draw();
     };
-    img.onerror=()=>showToast('โหลดรูปไม่สำเร็จ');
-    img.src=src;
+    im.onerror=()=>{ if(img===im) showToast('โหลดรูปไม่สำเร็จ'); };
+    im.src=src;
     modal.classList.add('open');
   }
   function close(){ modal.classList.remove('open'); target=null; img=null; anns=[]; selected=-1; drag=null; }
@@ -1324,18 +1287,16 @@ const PhotoEditor = (function(){
     const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
     o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
     anns.forEach(a=>drawShape(o,a,OUT_W,OUT_H,3*sx));
-    const arr=arrOf(target); const cur=arr[target.idx];
-    const original=(typeof cur==='object' && cur.original)?cur.original:img.src;
-    arr[target.idx]={ dataUrl:out.toDataURL('image/jpeg',0.95), original,
-                      edit:{ crop:{zoom:crop.zoom,ox:crop.ox,oy:crop.oy}, annotations:JSON.parse(JSON.stringify(anns)) } };
-    close(); markDirty(); render(); saveDraft(); showToast('บันทึกรูปแล้ว');
+    team.setPhoto(target.cell,'0',{ dataUrl:out.toDataURL('image/jpeg',0.95), origDataUrl:target.original,
+                      edit:{ crop:{zoom:crop.zoom,ox:crop.ox,oy:crop.oy}, annotations:JSON.parse(JSON.stringify(anns)) } });
+    close(); refresh(); showToast('บันทึกรูปแล้ว');
   }
 
   return { init, open };
 })();
 
 /* ---------- boot ---------- */
-(async function(){ await loadDraft(); renderProjectName(); render(); PhotoEditor.init(); isDirty=false; await showStartupModal(false); })();
+refresh(); PhotoEditor.init();   // หน้าว่างระหว่างรอระบบทีมเปิดงานล่าสุด / แสดงรายการงาน
 </script>
 </body>
 </html>
