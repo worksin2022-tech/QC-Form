@@ -2062,11 +2062,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         // ==========================================
         const CLOUD_FORMS = {
             'missing-item': { title: 'Missing Item', scope: 'app-missing-item', signPrefix: 'missing_',
-                              nameFrom: () => [val('projectName'), val('cabinetId')].filter(Boolean).join(' — ') },
+                              nameFrom: f => [fv(f, 'projectName'), fv(f, 'cabinetId')].filter(Boolean).join(' — ') },
             'claim-item':   { title: 'Equipment Claim', scope: 'app-claim-item', signPrefix: 'claim_',
-                              nameFrom: () => [val('claimEqBrand'), val('claimDocNo')].filter(Boolean).join(' — ') }
+                              nameFrom: f => [fv(f, 'claimEqBrand'), fv(f, 'claimDocNo')].filter(Boolean).join(' — ') }
         };
         const val = id => (document.getElementById(id)?.value || '').trim();
+        const fv = (f, id) => (f ? String(f[id] == null ? '' : f[id]).trim() : val(id));   // จากค่าที่ส่งมา (ถ้ามี) หรือจากฟอร์มบนจอ
         const activeForm = () => CLOUD_FORMS[currentAppId] || CLOUD_FORMS['missing-item'];
         const activeFormKey = () => (CLOUD_FORMS[currentAppId] ? currentAppId : 'missing-item');
 
@@ -2113,10 +2114,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             });
         }
 
-        const TEAM_SCHEMA = { roots: { images: 'image', sigs: 'sig', items: 'mitem' }, children: {} };
+        // ช่องในฟอร์ม 1 ช่อง = 1 แถว (field) → 2 คนแก้คนละช่องพร้อมกันไม่ทับกัน (แบบคอมเมนต์ของ MoM)
+        const TEAM_SCHEMA = { roots: { fields: 'field', images: 'image', sigs: 'sig', items: 'mitem' }, children: {} };
         const FORM_IMAGES = { 'missing-item': () => missingUploadedImages, 'claim-item': () => claimUploadedImages };
         let teamFormKey = null, teamReadyKey = null, teamApplying = false, teamPolling = false, teamBaseline = null, teamPulledJob;
         let teamIdx = new Map(), teamSigObjs = new Map();
+        let teamFieldObjs = new Map();   // id ช่อง → object (ใช้ซ้ำ → รู้ว่าเป็นแถวไหนในระบบ)
         const teamRowObj = new WeakMap();
         const teamFormEl = key => document.getElementById(key === 'missing-item' ? 'missingInspectionForm' : 'claimInspectionForm');
         const teamCustomer = key => (key === 'missing-item' ? val('projectName') : val('claimEqBrand'));
@@ -2139,7 +2142,13 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 o.remark = row.querySelector('.item-remark').value;
                 return o;
             }) : [];
-            return { images, sigs, items };
+            const fields = Object.entries(collectFormFields(f.scope)).map(([k, v]) => {
+                let o = teamFieldObjs.get(k);
+                if (!o) { o = { key: k }; teamFieldObjs.set(k, o); }
+                o.value = v;
+                return o;
+            });
+            return { fields, images, sigs, items };
         }
         function teamSnapshot(key) {
             const r = formRoots(key);
@@ -2159,9 +2168,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     if (!(await team.reconcile(formRoots(key)))) return;
                     const j = team.job;
                     if (!j || teamFormKey !== key) return;
-                    const fields = collectFormFields(CLOUD_FORMS[key].scope), name = CLOUD_FORMS[key].nameFrom(), cust = teamCustomer(key);
-                    if ((j.name || '') !== name || (j.customer || '') !== cust || team.stableStr((j.meta || {}).fields || {}) !== team.stableStr(fields))
-                        await team.updateJob({ name, customer: cust, meta: { fields } });
+                    const name = CLOUD_FORMS[key].nameFrom(), cust = teamCustomer(key);
+                    if ((j.name || '') !== name || (j.customer || '') !== cust) await team.updateJob({ name, customer: cust });
                     teamBaseline = snap;
                     teamPulledJob = j.id;
                 } catch (e) { console.error('[team poll]', e); }
@@ -2180,7 +2188,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 const { roots, index } = team.pull();
                 teamIdx = index;
                 teamFormEl(key).reset();
-                if (j && j.meta && j.meta.fields) applyFormFields(j.meta.fields);
+                // งานที่สร้างก่อนแยกช่องเป็นแถว เก็บช่องไว้ใน meta.fields → ใช้เป็นค่าตั้งต้น แล้วแถวช่องจะถูกสร้างตอนแก้ครั้งถัดไป
+                if (j && j.meta && j.meta.fields && !roots.fields.length) applyFormFields(j.meta.fields);
+                const fvals = {};
+                roots.fields.forEach(o => { fvals[o.key] = o.value; });
+                applyFormFields(fvals);
+                teamFieldObjs = new Map(roots.fields.map(o => [o.key, o]));
                 Object.keys(signaturesData || {}).forEach(k => {
                     if (!k.startsWith(f.signPrefix)) return;
                     signaturesData[k] = null;
@@ -2248,7 +2261,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 photos.push({ itemId: id, slot: 'img', dataUrl: v });
             });
             (st.items || []).forEach((o, i) => items.push({ id: team.uuid(), kind: 'mitem', sort: i, data: { name: o.name || '', qty: o.qty || '1', remark: o.remark || '' } }));
-            return { job: { name: doc.name || '', customer: doc.customer || '', meta: { fields: st.fields || {} } }, items, photos };
+            Object.entries(st.fields || {}).forEach(([k, v], i) => items.push({ id: team.uuid(), kind: 'field', sort: i, data: { key: k, value: v } }));
+            return { job: { name: doc.name || '', customer: doc.customer || '', meta: {} }, items, photos };
         }
         function teamUseForm(key) {
             if (!window.team) return;

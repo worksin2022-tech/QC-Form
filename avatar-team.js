@@ -252,14 +252,16 @@ let patchTimer = null;
 const inflight = new Map();   // id → { row, ver, sent } รายการที่สร้างแล้วแต่ server ยังไม่ยืนยัน
 
 /* เขียนทีละคำสั่งตามลำดับที่สั่ง — กันคำสั่งแซงกัน (ลูกถึงก่อนแม่ / ลบถึงก่อนสร้างแล้วแถวฟื้น) */
-let writeChain = Promise.resolve(), writesInFlight = 0;
+let writeChain = Promise.resolve(), writesInFlight = 0, writeSeq = 0;
 function dbWrite(op, key) {
   if (!isOnline()) { localAutosave(); return Promise.resolve(true); }
   setSync('saving');
   writesInFlight++;
+  writeSeq++;
   const run = writeChain.then(() => dbWriteNow(op, key)).finally(() => {
     writesInFlight--;
     if (!writesInFlight && !retryQueue.length && !pendingPatches.size && isOnline()) setSync('saved');
+    if (!writesInFlight) runDeferredRefresh();
   });
   writeChain = run.catch(() => {});
   return run;
@@ -834,19 +836,23 @@ function isTyping() {
   const a = document.activeElement;
   return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable) && !['file', 'checkbox', 'radio', 'button', 'range', 'color'].includes(a.type);
 }
+/* ยังมีของเราที่ยังไม่ถึง server (รอรวม / กำลังส่ง / รอส่งซ้ำ / แถวใหม่ยังไม่ยืนยัน) → ห้ามดึงของจาก server มาทับ */
+const unsentLocal = () => pendingPatches.size || writesInFlight || retryQueue.length || inflightUnsent();
 function runDeferredRefresh() {
-  if (refreshDeferred && !isTyping() && !pendingPatches.size && !suspendDepth) { refreshDeferred = false; scheduleRemoteRefresh(); }
+  if (refreshDeferred && !isTyping() && !unsentLocal() && !suspendDepth) { refreshDeferred = false; scheduleRemoteRefresh(); }
 }
 
 async function remoteRefresh() {
   const id = job && job.id;
   if (!id || !isOnline()) return;
   // กำลังพิมพ์ / มีค่าค้างยังไม่บันทึก / แอพขอพัก (เช่น กำลังสร้าง PDF) → รอก่อน
-  if (isTyping() || pendingPatches.size || suspendDepth || inflightUnsent()) { refreshDeferred = true; return; }
+  if (isTyping() || suspendDepth || unsentLocal()) { refreshDeferred = true; return; }
   try {
+    const seq = writeSeq;
     const row = await fetchJobTree(id);
     if (!job || job.id !== id) return;
-    if (isTyping() || pendingPatches.size || suspendDepth) { refreshDeferred = true; return; }
+    // ระหว่างดึง มีการเขียนของเราเกิดขึ้น → ของที่ได้มาอาจเก่ากว่าที่เราเพิ่งแก้ → ทิ้ง แล้วดึงใหม่หลังเขียนเสร็จ
+    if (isTyping() || suspendDepth || unsentLocal() || seq !== writeSeq) { refreshDeferred = true; runDeferredRefresh(); return; }
     applyRemote(rowsToModel(row), false);
     render(true);
     updateDriveBanner();
@@ -1259,6 +1265,11 @@ function splitObj(obj, childKeys) {
 let mirrorSchema = null;
 /* กันข้อมูลหาย: reconcile ได้เฉพาะเมื่อหน้าจอโหลดจากงานนี้แล้ว (pull) — ไม่งั้นของว่างบนจอจะถูกตีความว่า "ลบทุกอย่าง" */
 let mirrorJobId = null;
+/* ฐานเทียบของแต่ละรายการ = ตอน pull / ส่งล่าสุด — ส่งเฉพาะที่ "จอนี้" แก้จากฐาน
+   (ไม่งั้นจอที่ยังไม่ได้ดึงของล่าสุด จะส่งค่าเก่าไปทับของที่คนอื่นเพิ่งแก้)
+   mirrorKnown = รายการที่จอนี้เคยเห็น — ลบได้เฉพาะตัวที่เคยเห็นแล้วหายจากจอ (ตัวที่คนอื่นเพิ่งเพิ่ม ยังไม่ได้ดึง → คงไว้) */
+const mirrorBase = new Map();   // id → { data: stableStr, imgs: { slot: dataUrl } }
+let mirrorKnown = new Set();
 function mirrorKinds(schema) {
   const k = new Set(Object.values(schema.roots));
   Object.values(schema.children || {}).forEach(m => Object.values(m).forEach(x => k.add(x)));
@@ -1277,19 +1288,41 @@ async function reconcile(roots, schema) {
     const cm = (schema.children || {})[kind] || {}, ck = Object.keys(cm);
     (arr || []).forEach((obj, i) => {
       if (!obj || typeof obj !== 'object' || seen.has(obj._tid)) return;
-      const { data, imgs } = splitObj(obj, ck);
       const it = obj._tid && items.get(obj._tid);
+      // _keepData = บนจอนี้ไม่ได้แก้รายการนี้ (อาจเป็นของที่คนอื่นเพิ่งแก้ ยังไม่ได้ดึงมา) → ห้ามส่งข้อมูล/รูปของเราไปทับ
+      // _keepPos  = ห้ามย้ายตำแหน่งด้วย · ทั้งสองแบบยังนับว่า "ยังอยู่" (ไม่ถูกลบ)
+      if (it && obj._keepData) {
+        if (!obj._keepPos && ((it.parentId || null) !== (parentId || null) || it.sort !== i)) api.moveItem(it.id, { parentId, sort: i });
+        seen.add(it.id);
+        photosOf(it.id);   // (ไม่แตะรูป)
+        ck.forEach(k => walk(it.id, obj[k], cm[k]));
+        return;
+      }
+      const { data, imgs } = splitObj(obj, ck);
+      const base = it ? mirrorBase.get(it.id) : null;
+      const dataStr = stableStr(data);
       if (!it) {
+        // มี _tid แต่ไม่มีในระบบแล้ว + จอนี้ไม่ได้แก้ = คนอื่นเพิ่งลบ → ไม่สร้างกลับ
+        if (obj._tid && mirrorKnown.has(obj._tid) && mirrorBase.has(obj._tid) && mirrorBase.get(obj._tid).data === dataStr) return;
         obj._tid = uuid();
         specs.push({ id: obj._tid, parentId, kind, sort: i, data });
+        mirrorBase.set(obj._tid, { data: dataStr, imgs: {} });
       } else {
         if ((it.parentId || null) !== (parentId || null) || it.sort !== i) api.moveItem(it.id, { parentId, sort: i });
-        if (stableStr(data) !== stableStr(it.data)) api.setItemData(it.id, data);
+        if ((!base || base.data !== dataStr) && dataStr !== stableStr(it.data)) api.setItemData(it.id, data);
+        if (base) base.data = dataStr; else mirrorBase.set(it.id, { data: dataStr, imgs: {} });
       }
       const id = obj._tid;
       seen.add(id);
-      Object.entries(imgs).forEach(([slot, v]) => { if (v !== LOADING) photoOps.push([id, slot, v]); });
-      if (it) photosOf(id).forEach(p => { if (!(p.slot in imgs)) photoOps.push([id, p.slot, null]); });
+      mirrorKnown.add(id);
+      const b = mirrorBase.get(id);
+      Object.entries(imgs).forEach(([slot, v]) => {
+        if (v === LOADING) return;
+        if (b.imgs[slot] !== v) photoOps.push([id, slot, v]);   // จอนี้เปลี่ยนรูปช่องนี้
+        b.imgs[slot] = v;
+      });
+      // ช่องรูปที่จอนี้เคยมีแล้วหายไป = ลบรูป · ช่องที่จอนี้ไม่เคยมี (คนอื่นเพิ่งใส่) → คงไว้
+      if (it) photosOf(id).forEach(p => { if (!(p.slot in imgs) && (p.slot in b.imgs)) { photoOps.push([id, p.slot, null]); delete b.imgs[p.slot]; } });
       ck.forEach(k => walk(id, obj[k], cm[k]));
     });
   };
@@ -1301,18 +1334,23 @@ async function reconcile(roots, schema) {
     else if (!p || p.dataUrl !== v) api.setPhoto(id, slot, { dataUrl: v });
   });
   const kinds = mirrorKinds(schema);
-  [...items.values()].filter(it => kinds.has(it.kind) && !seen.has(it.id) && (!it.parentId || seen.has(it.parentId)))
-    .forEach(it => api.removeItem(it.id));
+  [...items.values()].filter(it => kinds.has(it.kind) && !seen.has(it.id) && mirrorKnown.has(it.id) && (!it.parentId || seen.has(it.parentId)))
+    .forEach(it => { api.removeItem(it.id); mirrorKnown.delete(it.id); mirrorBase.delete(it.id); });
   return true;
 }
 const photosOf = itemId => [...photos.values()].filter(p => (p.itemId || null) === (itemId || null));
 function pull(schema) {
   schema = schema || mirrorSchema;
   const index = new Map();
+  mirrorBase.clear();
+  mirrorKnown = new Set();
   const build = it => {
     const o = clone(it.data || {});
     o._tid = it.id;
-    photosOf(it.id).forEach(p => { o[p.slot] = p.dataUrl || LOADING; });
+    const bi = {};
+    photosOf(it.id).forEach(p => { o[p.slot] = p.dataUrl || LOADING; bi[p.slot] = p.dataUrl || LOADING; });
+    mirrorBase.set(it.id, { data: stableStr(it.data || {}), imgs: bi });
+    mirrorKnown.add(it.id);
     const cm = (schema.children || {})[it.kind] || {};
     Object.entries(cm).forEach(([k, kind]) => { o[k] = children(it.id, kind).map(build); });
     index.set(it.id, o);
