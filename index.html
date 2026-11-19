@@ -27,6 +27,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="avatar-cloud.js"></script>
+    <script src="avatar-team.js"></script>   <!-- ระบบทีมแบบ MoM ของฟอร์ม Missing Item / Equipment Claim -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -266,8 +267,8 @@
                         <p class="text-gray-500 mt-1">Missing Item Form</p>
                     </div>
                     <div class="flex items-center gap-2 no-print">
-                        <button type="button" onclick="cloudSaveCurrent()" class="bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">💾 บันทึก</button>
-                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 ประวัติ</button>
+                        <span id="missingSync"></span>
+                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 งาน</button>
                     </div>
                 </div>
                 <div id="missingDocBar" class="hidden mb-5 text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
@@ -425,8 +426,8 @@
                         <p class="text-gray-500 mt-1">Equipment Inspection Form</p>
                     </div>
                     <div class="flex items-center gap-2 no-print">
-                        <button type="button" onclick="cloudSaveCurrent()" class="bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">💾 บันทึก</button>
-                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 ประวัติ</button>
+                        <span id="claimSync"></span>
+                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 งาน</button>
                     </div>
                 </div>
                 <div id="claimDocBar" class="hidden mb-5 text-xs bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
@@ -1202,7 +1203,8 @@
             window.scrollTo(0, 0);
             currentAppId = appId;
             // ผูกกับชุดเอกสารของฟอร์มที่เพิ่งเปิด (Missing Item / Equipment Claim มีประวัติแยกกัน)
-            if (window.AvatarCloud && CLOUD_FORMS[appId]) AvatarCloud.useApp().then(updateCloudDocBars);
+            if (CLOUD_FORMS[appId]) teamUseForm(appId);
+            updateCloudDocBars();
 
             // Menu state updating
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400', 'text-red-400', 'text-orange-400', 'text-green-400'));
@@ -2034,6 +2036,11 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         }
 
         function clearDraftData() {
+            if (CLOUD_FORMS[currentAppId] && window.team) {
+                team.confirmDialog({ title: 'เริ่มงานใหม่', message: 'ล้างฟอร์มเพื่อเริ่มงานใหม่ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">งานที่กรอกไว้ถูกบันทึกแล้ว เปิดกลับได้จากปุ่ม "งาน"</span>', confirmText: 'เริ่มงานใหม่' })
+                    .then(ok => { if (ok) team.newJob(); });
+                return;
+            }
             if(confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ล้างข้อมูลทั้งหมด" ในฟอร์มนี้ เพื่อเริ่มงานใหม่?')) {
                 localStorage.removeItem('qcFormDraft_v1');
                 location.reload(); // โหลดหน้าเว็บใหม่เพื่อล้างค่าทั้งหมด
@@ -2048,9 +2055,10 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         });
 
         // ==========================================
-        // 🌟 ระบบทีมออนไลน์ — Missing Item / Equipment Claim
-        //    เก็บงานลง Supabase (ตาราง documents) รูปขึ้น Google Drive
-        //    แต่ละฟอร์มมีประวัติของตัวเองแยกกัน
+        // 🌟 ระบบทีมแบบ MoM — Missing Item / Equipment Claim (avatar-team.js)
+        //    งาน = qc_jobs (ช่องในฟอร์มอยู่ใน meta.fields) · รายการของขาด / รูปแนบ / ลายเซ็น = qc_items + qc_photos
+        //    บันทึกทันที: ทุก 1.2 วิ เทียบฟอร์มที่เปิดอยู่กับครั้งก่อน เปลี่ยน → ส่งเฉพาะที่เปลี่ยน
+        //    avatar-cloud.js เหลือหน้าที่แค่หน้าล็อกอินของทุกแอพ (loginHub) · งานเดิมในตาราง documents → ย้ายเข้าระบบใหม่จากรายการงาน
         // ==========================================
         const CLOUD_FORMS = {
             'missing-item': { title: 'Missing Item', scope: 'app-missing-item', signPrefix: 'missing_',
@@ -2093,170 +2101,194 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         async function initTeamCloud() {
             if (!window.AvatarCloud) return;
             await AvatarCloud.init({
-                app: activeFormKey,
-                appTitle: () => activeForm().title,
+                app: 'hub', appTitle: 'Quality Control Forms',
                 chipContainer: 'acChipHost',
                 chipCompact: window.matchMedia('(max-width: 639px)').matches,   // จอมือถือ: เหลือแค่รูปโปรไฟล์
-                silentStart: true,   // ไม่เปิดรายการงานเองตอนเข้า
-                loginHub: true,      // ล็อกอินจุดเดียวของทุกแอพ — ต้องล็อกอิน (หรือเลือกออฟไลน์) ก่อนใช้ แล้วส่งกลับแอพที่มาจาก ?next=
-                // ไม่เก็บ HTML — รูปอยู่ใน array (uploadDataUrls) ไม่ต้องให้ไล่อัปรูปใน DOM
-                // (ไม่งั้นรูปพรีวิว/ลายเซ็น/รูปในหน้ารายงานถูกอัปขึ้น Drive ซ้ำทุกครั้งที่บันทึก)
-                root: () => null,
-                docName: () => activeForm().nameFrom() || 'งานที่ยังไม่ได้ตั้งชื่อ',
-                docCustomer: () => (currentAppId === 'missing-item' ? val('projectName') : val('claimEqBrand')),
-                onToast: m => alert(m),
-
-                getState: async () => {
-                    const f = activeForm();
-                    const state = { fields: collectFormFields(f.scope), signatures: pickSignatures(f.signPrefix) };
-                    if (activeFormKey() === 'missing-item') {
-                        state.items = Array.from(document.querySelectorAll('#missingItemsContainer .item-row')).map(row => ({
-                            name: row.querySelector('.item-name').value,
-                            qty: row.querySelector('.item-qty').value,
-                            remark: row.querySelector('.item-remark').value
-                        }));
-                        state.images = await AvatarCloud.uploadDataUrls(missingUploadedImages.map(i => i.data));
-                    } else {
-                        state.images = await AvatarCloud.uploadDataUrls(claimUploadedImages.map(i => i.data));
-                    }
-                    return state;
-                },
-
-                applyState: async (s) => {
-                    const key = activeFormKey();
-                    if (!s) {   // เริ่มงานใหม่ — ล้างเฉพาะฟอร์มที่เปิดอยู่
-                        document.getElementById(key === 'missing-item' ? 'missingInspectionForm' : 'claimInspectionForm')?.reset();
-                        if (key === 'missing-item') { missingUploadedImages = []; renderMissingImagePreviews(); }
-                        else { claimUploadedImages = []; renderClaimImagePreviews(); }
-                        return;
-                    }
-                    applyFormFields(s.fields);
-                    applySignatures(s.signatures);
-                    const urls = await AvatarCloud.restoreDataUrls(s.images || []);
-                    if (key === 'missing-item') {
-                        if (Array.isArray(s.items) && s.items.length) {
-                            const c = document.getElementById('missingItemsContainer');
-                            c.innerHTML = ''; missingItemCount = 0;
-                            s.items.forEach(item => {
-                                addMissingItem();
-                                const rows = document.querySelectorAll('#missingItemsContainer .item-row');
-                                const last = rows[rows.length - 1];
-                                last.querySelector('.item-name').value = item.name;
-                                last.querySelector('.item-qty').value = item.qty;
-                                last.querySelector('.item-remark').value = item.remark;
-                            });
-                        }
-                        missingUploadedImages = urls.map((d, i) => ({ id: Date.now() + i, data: d }));
-                        renderMissingImagePreviews();
-                    } else {
-                        claimUploadedImages = urls.map((d, i) => ({ id: Date.now() + i, data: d }));
-                        renderClaimImagePreviews();
-                    }
-                    saveDraft();
-                },
-
-                onReady: () => updateCloudDocBars()
+                silentStart: true,          // ไม่เปิดรายการงานเองตอนเข้า
+                loginHub: true,             // ล็อกอินจุดเดียวของทุกแอพ — ต้องล็อกอิน (หรือเลือกออฟไลน์) ก่อนใช้ แล้วส่งกลับแอพที่มาจาก ?next=
+                noDocs: true,               // งานของฟอร์มอยู่ใน avatar-team.js แล้ว — ชั้นนี้ไม่เปิดงาน documents
+                offlineManagedByApp: true,
+                root: () => null, getState: async () => ({}), applyState: async () => {},
+                onToast: m => alert(m)
             });
-            updateCloudDocBars();
         }
 
+        const TEAM_SCHEMA = { roots: { images: 'image', sigs: 'sig', items: 'mitem' }, children: {} };
+        const FORM_IMAGES = { 'missing-item': () => missingUploadedImages, 'claim-item': () => claimUploadedImages };
+        let teamFormKey = null, teamReadyKey = null, teamApplying = false, teamPolling = false, teamBaseline = null, teamPulledJob;
+        let teamIdx = new Map(), teamSigObjs = new Map();
+        const teamRowObj = new WeakMap();
+        const teamFormEl = key => document.getElementById(key === 'missing-item' ? 'missingInspectionForm' : 'claimInspectionForm');
+        const teamCustomer = key => (key === 'missing-item' ? val('projectName') : val('claimEqBrand'));
+
+        /* ฟอร์มบนจอ → ต้นไม้ object สำหรับ team.reconcile (object เดิมของแต่ละแถว/รูป/ลายเซ็น ใช้ซ้ำ → รู้ว่าเป็นแถวไหนในระบบ) */
+        function formRoots(key) {
+            const f = CLOUD_FORMS[key];
+            const images = FORM_IMAGES[key]();
+            const sigs = Object.keys(signaturesData || {}).filter(k => k.startsWith(f.signPrefix)).map(k => {
+                let o = teamSigObjs.get(k);
+                if (!o) { o = { key: k }; teamSigObjs.set(k, o); }
+                o.img = signaturesData[k] || (o.img === team.LOADING ? team.LOADING : null);   // ยังโหลดจาก Drive ไม่เสร็จ ≠ ลบ
+                return o;
+            }).filter(o => o.img || o._tid);
+            const items = key === 'missing-item' ? [...document.querySelectorAll('#missingItemsContainer .item-row')].map(row => {
+                let o = teamRowObj.get(row);
+                if (!o) { o = {}; teamRowObj.set(row, o); }
+                o.name = row.querySelector('.item-name').value;
+                o.qty = row.querySelector('.item-qty').value;
+                o.remark = row.querySelector('.item-remark').value;
+                return o;
+            }) : [];
+            return { images, sigs, items };
+        }
+        function teamSnapshot(key) {
+            const r = formRoots(key);
+            return team.stableStr({ f: collectFormFields(CLOUD_FORMS[key].scope),
+                i: r.images.map(x => [x.id, (x.data || '').length]), s: r.sigs.map(o => [o.key, (o.img || '').length]),
+                m: r.items.map(o => [o.name, o.qty, o.remark]) });
+        }
+
+        /* ส่งการแก้ขึ้นระบบทีม (เรียกทุก 1.2 วิ / ตอนกดสร้างรายงาน) */
+        function teamPoll() {
+            if (!window.team || !teamFormKey || teamReadyKey !== teamFormKey || currentAppId !== teamFormKey || teamApplying || teamPolling) return;
+            const key = teamFormKey, snap = teamSnapshot(key);
+            if (snap === teamBaseline) return;
+            teamPolling = true;
+            (async () => {
+                try {
+                    if (!(await team.reconcile(formRoots(key)))) return;
+                    const j = team.job;
+                    if (!j || teamFormKey !== key) return;
+                    const fields = collectFormFields(CLOUD_FORMS[key].scope), name = CLOUD_FORMS[key].nameFrom(), cust = teamCustomer(key);
+                    if ((j.name || '') !== name || (j.customer || '') !== cust || team.stableStr((j.meta || {}).fields || {}) !== team.stableStr(fields))
+                        await team.updateJob({ name, customer: cust, meta: { fields } });
+                    teamBaseline = snap;
+                    teamPulledJob = j.id;
+                } catch (e) { console.error('[team poll]', e); }
+                finally { teamPolling = false; updateCloudDocBars(); }
+            })();
+        }
+        setInterval(teamPoll, 1200);
+
+        /* ของจากระบบทีม → ฟอร์มบนจอ */
+        function teamPullForm() {
+            const key = teamFormKey;
+            if (!key) return;
+            teamApplying = true;
+            try {
+                const f = CLOUD_FORMS[key], j = team.job;
+                const { roots, index } = team.pull();
+                teamIdx = index;
+                teamFormEl(key).reset();
+                if (j && j.meta && j.meta.fields) applyFormFields(j.meta.fields);
+                Object.keys(signaturesData || {}).forEach(k => {
+                    if (!k.startsWith(f.signPrefix)) return;
+                    signaturesData[k] = null;
+                    const im = document.getElementById(k + '_preview');
+                    if (im) { im.removeAttribute('src'); im.classList.add('hidden'); }
+                });
+                teamSigObjs = new Map();
+                roots.sigs.forEach(o => { teamSigObjs.set(o.key, o); if (o.img && o.img !== team.LOADING) applySignatures({ [o.key]: o.img }); });
+                if (key === 'missing-item') { missingUploadedImages = roots.images; renderMissingImagePreviews(); }
+                else { claimUploadedImages = roots.images; renderClaimImagePreviews(); }
+                if (key === 'missing-item') {
+                    const c = document.getElementById('missingItemsContainer');
+                    c.innerHTML = ''; missingItemCount = 0;
+                    (roots.items.length ? roots.items : [null]).forEach(o => {
+                        addMissingItem();
+                        const rows = c.querySelectorAll('.item-row'), row = rows[rows.length - 1];
+                        if (!o) return;
+                        row.querySelector('.item-name').value = o.name || '';
+                        row.querySelector('.item-qty').value = o.qty || '1';
+                        row.querySelector('.item-remark').value = o.remark || '';
+                        teamRowObj.set(row, o);
+                    });
+                }
+                teamPulledJob = j ? j.id : null;
+            } finally {
+                teamApplying = false;
+                teamReadyKey = key;
+                teamBaseline = teamSnapshot(key);
+                updateCloudDocBars();
+            }
+        }
+        function teamRender() {
+            const key = teamFormKey;
+            if (!key) return;
+            const jid = team.job ? team.job.id : null;
+            // งานเดิม + ยังมีการแก้บนจอที่ยังไม่ได้ส่ง (เช่น เพิ่งติ๊ก/เลือก) → ส่งก่อน แล้วค่อยดึงของล่าสุด (ไม่ให้ของในระบบทับ)
+            if (jid && jid === teamPulledJob && teamReadyKey === key && teamSnapshot(key) !== teamBaseline) {
+                teamPoll();
+                setTimeout(() => team.refresh(), 1500);
+                return;
+            }
+            teamPullForm();
+        }
+        function teamOnPhoto(p) {
+            const o = teamIdx.get(p.itemId);
+            if (!o || !p.dataUrl) return;
+            if (o[p.slot] === team.LOADING) o[p.slot] = p.dataUrl;
+            if (o.key && p.slot === 'img') { if (teamSigObjs.get(o.key) === o) applySignatures({ [o.key]: p.dataUrl }); }
+            else if (teamFormKey === 'missing-item') renderMissingImagePreviews();
+            else if (teamFormKey === 'claim-item') renderClaimImagePreviews();
+        }
+        /* งานในตาราง documents (ระบบเดิม) → โมเดลระบบใหม่ — รูปใช้ไฟล์เดิมบน Drive ไม่อัปซ้ำ */
+        function legacyDocModel(doc) {
+            const st = doc.state || {}, items = [], photos = [];
+            (st.images || []).forEach((x, i) => {
+                const id = team.uuid();
+                items.push({ id, kind: 'image', sort: i, data: { id: Date.now() + i } });
+                if (typeof x === 'string') photos.push({ itemId: id, slot: 'data', dataUrl: x });
+                else if (x && x.drive) photos.push({ itemId: id, slot: 'data', driveId: x.drive });
+            });
+            Object.entries(st.signatures || {}).forEach(([k, v], i) => {
+                if (!v || typeof v !== 'string') return;
+                const id = team.uuid();
+                items.push({ id, kind: 'sig', sort: i, data: { key: k } });
+                photos.push({ itemId: id, slot: 'img', dataUrl: v });
+            });
+            (st.items || []).forEach((o, i) => items.push({ id: team.uuid(), kind: 'mitem', sort: i, data: { name: o.name || '', qty: o.qty || '1', remark: o.remark || '' } }));
+            return { job: { name: doc.name || '', customer: doc.customer || '', meta: { fields: st.fields || {} } }, items, photos };
+        }
+        function teamUseForm(key) {
+            if (!window.team) return;
+            if (teamFormKey !== key) { teamReadyKey = null; teamBaseline = null; }
+            teamFormKey = key;
+            team.useApp(key, CLOUD_FORMS[key].title, {
+                indicator: key === 'missing-item' ? 'missingSync' : 'claimSync',
+                legacyDocs: { app: key, toModel: legacyDocModel }
+            });
+        }
+
+        const team = window.AvatarTeam ? AvatarTeam.init({
+            app: 'missing-item', appTitle: 'Missing Item',
+            client: window.AvatarCloud ? AvatarCloud.client : undefined,
+            autoStart: false,            // ยังไม่เปิดงานจนกว่าจะเข้าฟอร์ม (teamUseForm)
+            noLoginRedirect: true,       // หน้านี้คือหน้าล็อกอินเอง
+            indicator: 'missingSync',
+            render: teamRender,
+            onPhoto: teamOnPhoto,
+            photoName: p => {
+                const it = p.itemId && team.item(p.itemId), title = CLOUD_FORMS[teamFormKey] ? CLOUD_FORMS[teamFormKey].title : '';
+                if (it && it.kind === 'sig') return title + '_ลายเซ็น_' + (it.data.key || '');
+                return [title, (team.job && team.job.name) || '', 'รูป'].filter(Boolean).join('_');
+            }
+        }) : null;
+        if (team) { window.team = team; team.setSchema(TEAM_SCHEMA); }
+
         function updateCloudDocBars() {
-            const d = window.AvatarCloud && AvatarCloud.isOnline() ? AvatarCloud.doc : null;
+            const j = window.team ? team.job : null;
             [['missing-item', 'missingDocBar', 'missingDocName'], ['claim-item', 'claimDocBar', 'claimDocName']].forEach(([key, barId, nameId]) => {
                 const bar = document.getElementById(barId);
                 if (!bar) return;
-                const show = !!d && currentAppId === key;
+                const show = !!j && currentAppId === key && teamFormKey === key;
                 bar.classList.toggle('hidden', !show);
-                if (show) document.getElementById(nameId).textContent = d.name || 'ไม่ระบุชื่องาน';
+                if (show) document.getElementById(nameId).textContent = j.name || 'ไม่ระบุชื่องาน';
             });
         }
-
-        async function cloudSaveCurrent() {
-            if (!window.AvatarCloud) return;
-            if (!AvatarCloud.signedIn()) { AvatarCloud.signOutOrLogin(); return; }
-            try {
-                // ยังไม่เคยบันทึก → สร้างที่เก็บใหม่ (ไม่ล้างสิ่งที่กรอกไว้)
-                if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
-                if (await AvatarCloud.save()) { updateCloudDocBars(); alert('บันทึกขึ้นระบบทีมแล้ว'); }
-            } catch (e) { console.error(e); alert(e.message || 'บันทึกไม่สำเร็จ'); }
-        }
-
-        // ==========================================
-        // กด "สร้างรายงาน" → บันทึกขึ้นระบบทีมอัตโนมัติ (Missing Item / Equipment Claim)
-        // ==========================================
-        let reportSaveChain = Promise.resolve();
-        const escHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-        function showAutoSave(formKey, tone, html) {
-            const el = document.getElementById(formKey === 'missing-item' ? 'missingAutoSave' : 'claimAutoSave');
-            if (!el) return;
-            const tones = {
-                busy: 'bg-blue-50 border-blue-200 text-blue-700',
-                ok:   'bg-green-50 border-green-200 text-green-700',
-                warn: 'bg-amber-50 border-amber-200 text-amber-800',
-                err:  'bg-red-50 border-red-200 text-red-700'
-            };
-            el.className = `no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2 ${tones[tone]}`;
-            el.innerHTML = html;
-        }
-        const reportImages = formKey => (formKey === 'missing-item' ? missingUploadedImages : claimUploadedImages);
-        const autoSaveBtn = (label, onclick) =>
-            `<button type="button" onclick="${onclick}" class="ml-auto bg-white border border-current px-3 py-1 rounded-md text-xs font-bold hover:opacity-80">${label}</button>`;
-
-        // ต้องเรียกตอนผู้ใช้กดเท่านั้น (ขอสิทธิ์ Drive ได้ทันทีโดยเบราว์เซอร์ไม่บล็อกหน้าต่าง Google)
-        function autoSaveReport(formKey) {
-            if (!window.AvatarCloud) return;
-            const online = AvatarCloud.isOnline();
-            if (online && !AvatarCloud.signedIn()) {
-                showAutoSave(formKey, 'warn', `<span>⚠ ยังไม่ได้เข้าสู่ระบบ — รายงานนี้ยังไม่ได้บันทึกขึ้นระบบทีม (เข้าสู่ระบบแล้วกด "สร้างรายงาน" อีกครั้ง)</span>`
-                    + autoSaveBtn('เข้าสู่ระบบ', 'AvatarCloud.signOutOrLogin()'));
-                return;
-            }
-            const tokenP = online && reportImages(formKey).length && !AvatarCloud.hasDriveToken() ? AvatarCloud.connectDrive() : null;
-            showAutoSave(formKey, 'busy', '<span>⏳ กำลังบันทึกขึ้นระบบทีม...</span>');
-            reportSaveChain = reportSaveChain.then(() => runReportSave(formKey, tokenP));
-        }
-
-        async function runReportSave(formKey, tokenP) {
-            const retry = autoSaveBtn('ลองอีกครั้ง', `autoSaveReport('${formKey}')`);
-            if (currentAppId !== formKey) return;   // ผู้ใช้สลับไปฟอร์มอื่นแล้ว — ไม่บันทึกข้อมูลผิดฟอร์ม
-            try {
-                if (tokenP && !(await tokenP)) {
-                    showAutoSave(formKey, 'err', '<span>⚠ ยังไม่ได้บันทึก — ต้องเชื่อมต่อ Google Drive ก่อน (สำหรับเก็บรูป)</span>' + retry);
-                    return;
-                }
-                const d = AvatarCloud.doc;
-                const newName = activeForm().nameFrom();
-                if (d && d.everSaved !== false && d.name && newName && d.name !== newName) {
-                    // ชื่องานในฟอร์มไม่ตรงกับงานที่เปิดอยู่ (เช่น กรอกตู้ใหม่ทับฟอร์มเดิม) — ถามก่อน กันรายงานเก่าถูกทับ
-                    const overwrite = await AvatarCloud.confirmDialog({
-                        title: 'ชื่องานเปลี่ยนไปจากเดิม',
-                        message: `งานที่เปิดอยู่: <b>${escHtml(d.name)}</b><br>ในฟอร์มตอนนี้: <b>${escHtml(newName)}</b><br><br>จะบันทึกรายงานนี้เป็นงานใหม่ หรือบันทึกทับงานเดิม?`,
-                        confirmText: 'บันทึกทับงานเดิม', cancelText: 'บันทึกเป็นงานใหม่', danger: true
-                    });
-                    if (!overwrite) await AvatarCloud.bindNewDoc();
-                }
-                if (!AvatarCloud.hasDoc()) await AvatarCloud.bindNewDoc();
-                if (!(await AvatarCloud.save())) {
-                    showAutoSave(formKey, 'warn', '<span>ยังไม่ได้บันทึก — ยกเลิกการบันทึกทับ</span>' + retry);
-                    return;
-                }
-                updateCloudDocBars();
-                const name = escHtml(AvatarCloud.doc?.name || '');
-                showAutoSave(formKey, 'ok', AvatarCloud.isOnline()
-                    ? `<span>✓ บันทึกขึ้นระบบทีมแล้ว${reportImages(formKey).length ? ' · รูปเก็บบน Google Drive' : ''}</span><span class="font-bold truncate">${name}</span>`
-                    : `<span>✓ บันทึกในเครื่องแล้ว (โหมดออฟไลน์)</span><span class="font-bold truncate">${name}</span>`);
-            } catch (e) {
-                console.error(e);
-                showAutoSave(formKey, 'err', `<span>⚠ บันทึกไม่สำเร็จ: ${escHtml(e.message || e)}</span>` + retry);
-            }
-        }
-
-        function cloudOpenList() {
-            if (!window.AvatarCloud) return;
-            if (!AvatarCloud.signedIn()) { AvatarCloud.signOutOrLogin(); return; }
-            AvatarCloud.openList();
-        }
+        function cloudOpenList() { if (window.team) team.openList(); }
+        // กด "สร้างรายงาน" → บันทึกทันทีอยู่แล้ว แค่เร่งส่งของล่าสุด
+        function autoSaveReport() { teamPoll(); }
      // ==========================================
         // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================

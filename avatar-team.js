@@ -879,13 +879,16 @@ function leaveJob(keepLast) {
   if (!keepLast) lsSet(isOnline() ? lastJobKey() : lastJobKey() + '_offline', null);
 }
 
-async function createJob(meta) {
+async function createJob(meta, extra) {
   const id = uuid();
-  const { error } = await sb.from('qc_jobs').insert({
+  const row = {
     id, app: cfg.app,
     name: (meta && meta.name) || '', customer: (meta && meta.customer) || '', meta: (meta && meta.meta) || {},
     created_by: currentUser.id, updated_by: currentUser.id
-  });
+  };
+  if (extra && extra.legacyDocId) row.legacy_doc_id = extra.legacyDocId;
+  if (extra && extra.driveFolderId) { row.drive_folder_id = extra.driveFolderId; row.drive_folder_owner = extra.driveFolderOwner || null; }
+  const { error } = await sb.from('qc_jobs').insert(row);
   if (error) throw error;
   return id;
 }
@@ -948,9 +951,9 @@ async function startNewJob() {
 }
 
 /* สร้างงานใหม่ในทีมจากก้อนข้อมูล (งานออฟไลน์ / ไฟล์ JSON) → รูปเข้าคิวอัปโหลด → คืน id */
-async function pushModelToTeam(src) {
+async function pushModelToTeam(src, extra) {
   const m = normalizeModel(src);
-  const id = await createJob({ name: m.job.name, customer: m.job.customer, meta: m.job.meta });
+  const id = await createJob({ name: m.job.name, customer: m.job.customer, meta: m.job.meta }, extra);
   const idMap = new Map(m.items.map(i => [i.id, uuid()]));
   const rows = m.items.map(i => ({
     id: idMap.get(i.id), job_id: id, parent_id: i.parentId ? (idMap.get(i.parentId) || null) : null,
@@ -964,6 +967,15 @@ async function pushModelToTeam(src) {
   }
   for (let i = 0; i < ordered.length; i += 200) {
     const { error } = await sb.from('qc_items').insert(ordered.slice(i, i + 200));
+    if (error) throw error;
+  }
+  // รูปที่อยู่บน Drive อยู่แล้ว (ย้ายงานจากระบบเดิม) → ใช้ไฟล์เดิม ไม่อัปโหลดซ้ำ
+  const linked = m.photos.filter(p => !p.dataUrl && p.driveId && (!p.itemId || idMap.has(p.itemId))).map(p => ({
+    job_id: id, item_id: p.itemId ? idMap.get(p.itemId) : null, slot: String(p.slot), drive_file_id: p.driveId,
+    original_drive_file_id: p.origDriveId || null, edit: p.edit || null, uploaded_by: null
+  }));
+  for (let i = 0; i < linked.length; i += 200) {
+    const { error } = await sb.from('qc_photos').insert(linked.slice(i, i + 200));
     if (error) throw error;
   }
   await openJob(id);
@@ -980,6 +992,24 @@ async function pushModelToTeam(src) {
   updateDriveBanner();
   flushPendingUploads();
   return id;
+}
+
+/* ย้ายงานจากระบบเดิม (ตาราง documents) — ของเดิมไม่ลบไม่แก้ · รูปใช้ไฟล์เดิมบน Drive · โฟลเดอร์งานเดิมใช้ต่อ
+   2 คนกดพร้อมกัน → legacy_doc_id ซ้ำไม่ได้ → คนที่สองเปิดงานที่คนแรกย้ายไว้แทน */
+async function migrateLegacyDoc(docId) {
+  const { data: done } = await sb.from('qc_jobs').select('id').eq('legacy_doc_id', docId).maybeSingle();
+  if (done) { await openJob(done.id); return done.id; }
+  const { data: doc, error } = await sb.from('documents').select('*').eq('id', docId).single();
+  if (error) throw error;
+  const model = await cfg.legacyDocs.toModel(doc);
+  try {
+    return await pushModelToTeam(model, { legacyDocId: docId, driveFolderId: doc.drive_folder_id, driveFolderOwner: doc.drive_folder_owner });
+  } catch (e) {
+    if (!isDuplicate(e)) throw e;
+    const { data: again } = await sb.from('qc_jobs').select('id').eq('legacy_doc_id', docId).maybeSingle();
+    if (again) { await openJob(again.id); return again.id; }
+    throw e;
+  }
 }
 
 /* ========================================================================
@@ -1003,7 +1033,7 @@ function onSignedOut() {
   currentUser = null;
   leaveJob();
   renderChip();
-  toLogin();
+  if (!cfg.noLoginRedirect) toLogin();   // หน้า index มีหน้าล็อกอินของตัวเอง (avatar-cloud loginHub)
 }
 
 /* ========================================================================
@@ -1026,6 +1056,18 @@ async function showJobList(force) {
       if (!force) return;
     }
   }
+  // งานจากระบบเดิม (avatar-cloud / ตาราง documents) ที่ยังไม่ได้ย้าย
+  let legacyRows = [];
+  if (online && cfg.legacyDocs) {
+    try {
+      const [{ data: docs }, { data: moved }] = await Promise.all([
+        sb.from('documents').select('id, name, customer, updated_at').eq('app', cfg.legacyDocs.app || cfg.app).order('updated_at', { ascending: false }).limit(300),
+        sb.from('qc_jobs').select('legacy_doc_id').eq('app', cfg.app)
+      ]);
+      const done = new Set((moved || []).map(r => r.legacy_doc_id).filter(Boolean));
+      legacyRows = (docs || []).filter(d => !done.has(d.id));
+    } catch (e) { console.warn('[legacy docs]', e); }
+  }
   const cur = job && job.id;
   const fmt = t => new Date(t).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   const label = r => { try { return cfg.jobLabel ? cfg.jobLabel(r) : ''; } catch (_) { return ''; } };
@@ -1047,6 +1089,14 @@ async function showJobList(force) {
         ${online ? `<button class="at-btn primary" data-push="${m.id}" style="padding:6px 10px;font-size:12px;min-height:0;">ส่งขึ้นทีม</button>` : ''}
         <button class="at-hist-del" data-ldel="${m.id}" title="ลบออกจากเครื่อง">🗑</button>
       </div>`;
+  const legacyItem = m => `
+      <div class="at-hist-item" data-gid="${m.id}">
+        <div class="at-hist-info" style="cursor:default;">
+          <div class="at-hist-name">${esc(m.name || 'ไม่ระบุชื่องาน')}</div>
+          <div class="at-hist-date">${esc([m.customer, fmt(m.updated_at)].filter(Boolean).join(' · '))}</div>
+        </div>
+        <button class="at-btn primary" data-migrate="${m.id}" style="padding:6px 10px;font-size:12px;min-height:0;">ย้ายเข้าระบบใหม่</button>
+      </div>`;
   const empty = txt => `<div style="text-align:center;color:#94a3b8;font-size:13px;padding:14px;">${txt}</div>`;
   const sectionTitle = txt => `<div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.5px;margin:0 4px 8px;">${txt}</div>`;
   const continueHtml = cur ? `
@@ -1058,6 +1108,9 @@ async function showJobList(force) {
   const listsHtml = online
     ? sectionTitle(`งานทีม (${rows.length})`) +
       `<div class="at-hist-list">${rows.length ? rows.map(teamItem).join('') : empty('ยังไม่มีงานในระบบ')}</div>` +
+      (legacyRows.length ? `<div style="height:1px;background:#e2e8f0;margin:14px 0;"></div>` +
+        sectionTitle(`งานจากระบบเดิม (${legacyRows.length}) — กด "ย้ายเข้าระบบใหม่" ก่อนแก้ต่อ`) +
+        `<div class="at-hist-list">${legacyRows.map(legacyItem).join('')}</div>` : '') +
       (local.length ? `<div style="height:1px;background:#e2e8f0;margin:14px 0;"></div>` +
         sectionTitle(`งานออฟไลน์ในเครื่องนี้ (${local.length}) — กด "ส่งขึ้นทีม" เพื่อย้ายเข้าระบบ`) +
         `<div class="at-hist-list">${local.map(localItem).join('')}</div>` : '')
@@ -1089,7 +1142,7 @@ async function showJobList(force) {
   bg.querySelector('[data-search]').addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase();
     bg.querySelectorAll('.at-hist-item').forEach(it => {
-      const m = it.dataset.mid ? rows.find(r => r.id === it.dataset.mid) : local.find(r => r.id === it.dataset.lid);
+      const m = it.dataset.mid ? rows.find(r => r.id === it.dataset.mid) : it.dataset.gid ? legacyRows.find(r => r.id === it.dataset.gid) : local.find(r => r.id === it.dataset.lid);
       it.style.display = !q || (((m && m.name) || '') + ' ' + ((m && m.customer) || '')).toLowerCase().includes(q) ? '' : 'none';
     });
   });
@@ -1151,6 +1204,13 @@ async function showJobList(force) {
     if (!online && it.dataset.ldel === cur) leaveJob();
     toast('ลบงานแล้ว');
     showJobList(true);
+  });
+  bg.querySelectorAll('[data-migrate]').forEach(it => it.onclick = async () => {
+    ensureDriveTokenFromGesture();
+    close();
+    if (!(await canLeave())) return;
+    try { await migrateLegacyDoc(it.dataset.migrate); toast('ย้ายเข้าระบบใหม่แล้ว'); }
+    catch (e) { console.error(e); toast('ย้ายไม่สำเร็จ — งานเดิมยังอยู่ครบ'); showJobList(true); }
   });
   bg.querySelectorAll('[data-push]').forEach(it => it.onclick = async () => {
     const m = local.find(x => x.id === it.dataset.push);
@@ -1284,6 +1344,32 @@ function modelFromRoots(roots, schema, jobFields, jobPhotos) {
 /* ========================================================================
    API ให้แอพ
    ======================================================================== */
+let startedResolve = () => {};
+const started = new Promise(r => { startedResolve = r; });
+
+/* เปลี่ยนชุดงาน (หน้าเดียวมีหลายฟอร์ม) → เปิดงานล่าสุดของฟอร์มนั้น + รายการงาน (เหมือนเข้าแอพ MoM) */
+async function useApp(app, appTitle, opts = {}) {
+  await started;
+  if (cfg.app === app && job && !opts.force) { setSync(syncStatus); return; }
+  await flushPendingWrites();
+  if (rtChannel) { sb.removeChannel(rtChannel); rtChannel = null; }
+  job = null; items = new Map(); photos = new Map(); inflight.clear(); mirrorJobId = null;
+  cfg.app = app; cfg.appTitle = appTitle || app;
+  if (opts.indicator) cfg.indicator = opts.indicator;
+  if (opts.legacyDocs !== undefined) cfg.legacyDocs = opts.legacyDocs;
+  setSync(syncStatus);
+  updateDriveBanner();
+  if (isOnline() && !currentUser) { render(); if (!cfg.noLoginRedirect) toLogin(); return; }
+  const key = isOnline() ? lastJobKey() : lastJobKey() + '_offline';
+  const last = lsGet(key);
+  if (last) {
+    try { if (isOnline()) await openJob(last); else await openLocalJob(last); }
+    catch (_) { lsSet(key, null); }
+  }
+  if (!job) render();
+  await showJobList(true);
+}
+
 let renderDepth = 0;
 function render(remote) {
   if (!cfg || !cfg.render) return;
@@ -1481,7 +1567,8 @@ const api = {
   modelFromRoots: (roots, jobFields, jobPhotos, schema) => modelFromRoots(roots, schema || mirrorSchema, jobFields, jobPhotos),
   stableStr,
   // ขั้นตอน
-  ensureJob,
+  ensureJob, useApp,
+  refresh: () => scheduleRemoteRefresh(),   // ดึงงานล่าสุดจากระบบใหม่
   openList: () => showJobList(true),
   newJob: startNewJob,
   flush: flushPendingWrites,
@@ -1514,7 +1601,8 @@ function init(options) {
   if (cfg) return api;
   cfg = options;
   injectStyles();
-  sb = global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
+  // หน้าเดียวกันมี avatar-cloud.js อยู่แล้ว (index) → ใช้ client ตัวเดียวกัน กันต่ออายุ token ซ้อนกัน
+  sb = cfg.client || global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
   photoCache = localforage.createInstance({ name: 'avatar_team_photo_cache' });
   restoreDriveToken();
   renderChip();
@@ -1536,10 +1624,18 @@ function init(options) {
       if (event === 'SIGNED_OUT' && isOnline()) onSignedOut();
     });
     const { data: { session } } = await sb.auth.getSession();
-    if (!isOnline()) { await enterOfflineMode(); return; }
+    // autoStart:false = หน้าที่ยังไม่ได้เข้าฟอร์ม (เช่น index) — แค่รู้ว่าใครล็อกอิน รอแอพเรียก useApp()
+    if (cfg.autoStart === false) {
+      if (isOnline() && session) { currentUser = session.user; if (session.provider_token) setDriveToken(session.provider_token, 3500); processDriveCleanup(); }
+      renderChip(); setSync('saved');
+      startedResolve();
+      return;
+    }
+    if (!isOnline()) { await enterOfflineMode(); startedResolve(); return; }
     if (session) await onSignedIn(session);
     else toLogin();
-  })().catch(e => { console.error('[team] init', e); toast('เริ่มระบบทีมไม่สำเร็จ'); });
+    startedResolve();
+  })().catch(e => { console.error('[team] init', e); toast('เริ่มระบบทีมไม่สำเร็จ'); startedResolve(); });
 
   return api;
 }

@@ -1008,7 +1008,7 @@ async function enterOffline() {
   if (cfg.loginHub && returnToNext()) return;
   renderChip();
   // แอพจัดการออฟไลน์เอง → ชั้นนี้ไม่ยุ่งกับข้อมูล ปล่อยให้แอพใช้ระบบเดิมของตัวเอง
-  if (!appManagesOffline()) {
+  if (!appManagesOffline() && !cfg.noDocs) {
     const last = lsGet(lastDocKey());
     const list = await localList();
     const m = last && list.find(x => x.id === last);
@@ -1036,9 +1036,12 @@ async function onSignedIn(session) {
   if (cfg.loginHub && returnToNext()) return;
   renderChip();
   processDriveCleanup();
-  const last = lsGet(lastDocKey());
-  if (last) { try { await openDocument(last, { quietPhotos: true }); } catch (_) { doc = null; lsSet(lastDocKey(), null); } }
-  if (!doc && !cfg.silentStart) await showDocList();
+  // noDocs = ใช้ชั้นนี้แค่ล็อกอิน (index — งานของฟอร์มย้ายไป avatar-team.js แล้ว) ไม่เปิดงาน documents
+  if (!cfg.noDocs) {
+    const last = lsGet(lastDocKey());
+    if (last) { try { await openDocument(last, { quietPhotos: true }); } catch (_) { doc = null; lsSet(lastDocKey(), null); } }
+    if (!doc && !cfg.silentStart) await showDocList();
+  }
   cfg.onReady?.('online');
 }
 
@@ -1075,6 +1078,7 @@ const AvatarCloud = {
   },
 
   version: API_VERSION,
+  get client() { return sb; },   // ให้ avatar-team.js บนหน้าเดียวกันใช้ client ตัวเดียวกัน (ต่ออายุ token ซ้อนกันไม่ได้)
 
   // สถานะ
   isOnline, get user() { return currentUser; }, get doc() { return doc; },
@@ -1095,7 +1099,7 @@ const AvatarCloud = {
   /* หน้าที่มีหลายฟอร์ม (index.html): เรียกหลังสลับฟอร์ม เพื่อผูกกับชุดเอกสารของฟอร์มนั้น */
   async useApp() {
     doc = null;
-    if (!isOnline() || !currentUser) return null;
+    if (!isOnline() || !currentUser || cfg.noDocs) return null;
     const last = lsGet(lastDocKey());
     if (last) { try { await openDocument(last); } catch (_) { doc = null; lsSet(lastDocKey(), null); } }
     return doc;
