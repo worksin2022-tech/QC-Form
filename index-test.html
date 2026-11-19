@@ -2390,7 +2390,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 .sort((a, b) => b.ym.localeCompare(a.ym) || b.last.localeCompare(a.last));
             gs.forEach(g => g.items.sort((a, b) => (a.c || '').localeCompare(b.c || '', 'th', { numeric: true })));
             missingJobGroups = gs;
-            const search = `<input id="missingQ" value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">`;
+            // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
+            const search = `<input data-mq value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">`;
 
             // ----- หน้าในของ JOB: รายการตู้ -----
             const open = missingListJob !== null ? gs.find(g => g.key === missingListJob) : null;
@@ -2441,8 +2442,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     </div>`;
             });
             box.innerHTML = wrap(search + (body || `<div class="text-center text-gray-400 py-10">${q ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการ'}</div>`));
-            const qi = document.getElementById('missingQ');
-            qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = document.getElementById('missingQ'); n.focus(); n.setSelectionRange(pos, pos); };
+            const qi = box.querySelector('[data-mq]');
+            qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = box.querySelector('[data-mq]'); n.focus(); n.setSelectionRange(pos, pos); };
         }
         async function missingOpenRec(id) {
             if (!window.team) return;
