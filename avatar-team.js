@@ -371,7 +371,7 @@ function flushRetryQueue() {
     }
     retryQueue.unshift(...failed);
     setSync(retryQueue.length ? 'error' : 'saved');
-    if (!retryQueue.length) { flushPendingUploads(); runDeferredRefresh(); }
+    if (!retryQueue.length) { flushPendingUploads(); if (job) refreshDeferred = true; runDeferredRefresh(); }   // ของค้างถึงระบบครบ → ดึงล่าสุดลงจอ (ไม่ต้องรีเฟรชเอง)
   }).finally(() => { retrying = false; if (retryAgain) { retryAgain = false; setTimeout(flushRetryQueue, 0); } });
   writeChain = run.catch(() => {});
   return run;
@@ -736,7 +736,9 @@ const folderCache = new Map();  // jobId → drive folder id (งานที่
 async function folderFor(jobId) {
   if (job && job.id === jobId) return ensureJobFolder();
   if (folderCache.has(jobId)) return folderCache.get(jobId);
-  const { data } = await sb.from('qc_jobs').select('name, drive_folder_id').eq('id', jobId).single();
+  const { data, error } = await sb.from('qc_jobs').select('name, drive_folder_id').eq('id', jobId).single();
+  // ไม่มีเน็ต/server ล่ม ≠ งานถูกลบ — ทิ้งรูปเฉพาะเมื่อถามได้แล้วไม่มีงานนี้จริง (PGRST116) ไม่งั้นเก็บไว้ลองใหม่
+  if (error && error.code !== 'PGRST116') throw error;
   if (!data) throw codedErr('gone', 'งานนี้ถูกลบแล้ว');
   let fid = data.drive_folder_id;
   if (!fid) {
@@ -1019,6 +1021,7 @@ function scheduleRemoteRefresh() { clearTimeout(rtTimer); rtTimer = setTimeout(r
 
 /* iPad พักแอปเบื้องหลัง → websocket หลุด/พลาด event → กลับมาหน้าจอให้ดึงข้อมูลล่าสุดเสมอ */
 function onAppResume() {
+  if (waitingNet) { retryStart(); return; }
   if (!isOnline() || !currentUser) return;
   processDriveCleanup();
   if (!job) return;
@@ -1271,10 +1274,39 @@ async function onSignedIn(session) {
   setSync('saved');
   processDriveCleanup();
   await restoreOutbox();
+  await flushRetryQueue();   // ของค้างจากรอบก่อน (เช่น เปิดแอพตอนไม่มีเน็ต) → ส่งก่อนเปิดงาน
   await restorePending();
   const last = lsGet(lastJobKey());
-  if (last) { try { await openJob(last); } catch (e) { lsSet(lastJobKey(), null); } }
+  if (last) {
+    try { await openJob(last); }
+    catch (e) {
+      // เน็ตยังไม่มา (เปิดแอพตอนไม่มีเน็ต) → อย่าลืมงานล่าสุด รอเน็ตแล้วเปิดให้เอง · ลบเฉพาะเมื่องานไม่มีในระบบแล้วจริง ๆ
+      if (!(e && e.code === 'PGRST116')) { console.warn('[team] เปิดงานล่าสุดไม่ได้ — รอเน็ต', e); waitForNet(); return; }
+      lsSet(lastJobKey(), null);
+    }
+  }
   await showJobList(true);
+}
+
+/* เปิดแอพตอนไม่มีเน็ต: ของที่ยังไม่ได้ส่ง + รูปรออัป อยู่ในเครื่องแล้ว (outbox / pending) → พอเน็ตกลับมา เริ่มใหม่เอง
+   (ส่งของค้าง → เปิดงานล่าสุด) ไม่ต้องรีเฟรชเอง · ไม่ส่งไปหน้าล็อกอินระหว่างไม่มีเน็ต */
+let waitingNet = false, netRetrying = false;
+function waitForNet() {
+  if (waitingNet) return;
+  waitingNet = true;
+  setSync('error');
+  toast('ไม่มีอินเทอร์เน็ต — ของที่ยังไม่ได้ส่งเก็บไว้ในเครื่องแล้ว เน็ตกลับมาจะเปิดงานล่าสุดให้เอง');
+}
+async function retryStart() {
+  if (!waitingNet || netRetrying || !navigator.onLine || !isOnline()) return;
+  netRetrying = true;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { waitingNet = false; toLogin(); return; }
+    waitingNet = false;
+    await onSignedIn(session);
+  } catch (e) { console.warn('[team] retry start', e); waitingNet = true; }
+  finally { netRetrying = false; }
 }
 
 function onSignedOut() {
@@ -1903,11 +1935,11 @@ function init(options) {
   setSync('saved');
 
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') onAppResume(); });
-  window.addEventListener('online', () => { flushRetryQueue(); onAppResume(); });
+  window.addEventListener('online', () => { if (waitingNet) { retryStart(); return; } flushRetryQueue(); onAppResume(); });
   window.addEventListener('focus', onAppResume);
   document.addEventListener('focusout', () => setTimeout(runDeferredRefresh, 300));
   setInterval(() => { if (refreshDeferred) runDeferredRefresh(); }, 1500);   // กันพลาด: บางเครื่องไม่ยิง focusout
-  setInterval(() => { flushRetryQueue(); if (allPending().some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
+  setInterval(() => { if (waitingNet) { retryStart(); return; } flushRetryQueue(); if (allPending().some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
   // ปิด/ซ่อนแอพ → ส่งค่าที่ค้างในคิวทันที
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { flushPendingWrites(); persistOutbox(); } });
   window.addEventListener('pagehide', () => { flushPendingWrites(); persistOutbox(); });
@@ -1929,6 +1961,7 @@ function init(options) {
     }
     if (!isOnline()) { await enterOfflineMode(); startedResolve(); return; }
     if (session) await onSignedIn(session);
+    else if (!navigator.onLine) waitForNet();
     else toLogin();
     startedResolve();
   })().catch(e => { console.error('[team] init', e); toast('เริ่มระบบทีมไม่สำเร็จ'); startedResolve(); });

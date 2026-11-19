@@ -2235,9 +2235,8 @@ async function addCategory(name=''){
   const cat = { id: uuid(), name: name || `PANEL ${state.categories.length + 1}`, comments: [] };
   state.categories.push(cat);
   inflight.add(cat.id);
-  await dbWrite(()=> sb.from('categories').insert({
-    id: cat.id, meeting_id: state.meeting.id, name: cat.name, sort_order: state.categories.length - 1
-  }), 'categories:' + cat.id);
+  const catRow = { id: cat.id, meeting_id: state.meeting.id, name: cat.name, sort_order: state.categories.length - 1 };
+  await dbWrite(()=> sb.from('categories').insert(catRow), 'categories:new:' + cat.id, { t: 'insert', table: 'categories', rows: catRow });
   addCommentToCategory(cat.id, false);
   render();
   showToast('เพิ่มหมวดใหม่');
@@ -2266,10 +2265,9 @@ function addCommentToCategory(catId, doRender=true){
   };
   cat.comments.push(cmt);
   inflight.add(cmt.id);
-  dbWrite(()=> sb.from('comments').insert({
-    id: cmt.id, category_id: cat.id, mode: 'before', text: '', fixed_by: '',
-    sort_order: cat.comments.length - 1, updated_by: currentUser.id
-  }), 'comments:' + cmt.id);
+  const cmtRow = { id: cmt.id, category_id: cat.id, mode: 'before', text: '', fixed_by: '',
+    sort_order: cat.comments.length - 1, updated_by: currentUser.id };
+  dbWrite(()=> sb.from('comments').insert(cmtRow), 'comments:new:' + cmt.id, { t: 'insert', table: 'comments', rows: cmtRow });
   if(doRender){
     render();
     showToast('เพิ่มคอมเม้นใหม่');
@@ -2303,8 +2301,9 @@ async function removeCategory(catId){
   const driveIds = cat ? driveIdsOf(cat.comments) : [];
   state.categories = state.categories.filter(c=>c.id!==catId);
   inflight.delete(catId);
+  dropQueued(['categories:new:' + catId, 'categories:' + catId].concat(cat ? cat.comments.flatMap(c=> ['comments:new:' + c.id, 'comments:' + c.id]) : []));
   render();
-  await dbWrite(()=> sb.from('categories').delete().eq('id', catId), 'categories:' + catId);
+  await dbWrite(()=> sb.from('categories').delete().eq('id', catId), 'categories:' + catId, { t: 'delete', table: 'categories', id: catId });
   driveDeleteAll(driveIds);
   showToast('ลบหมวดแล้ว');
 }
@@ -2322,8 +2321,9 @@ async function removeComment(catId, cmtId){
   const driveIds = cmt ? driveIdsOf([cmt]) : [];
   cat.comments = cat.comments.filter(c=>c.id!==cmtId);
   inflight.delete(cmtId);
+  dropQueued(['comments:new:' + cmtId, 'comments:' + cmtId]);
   render();
-  await dbWrite(()=> sb.from('comments').delete().eq('id', cmtId), 'comments:' + cmtId);
+  await dbWrite(()=> sb.from('comments').delete().eq('id', cmtId), 'comments:' + cmtId, { t: 'delete', table: 'comments', id: cmtId });
   driveDeleteAll(driveIds);
   showToast('ลบคอมเม้นแล้ว');
 }
@@ -2353,7 +2353,8 @@ async function removePhoto(cmt, which, sidx){
   render();
   updateDriveBanner();
   if(!isOnline()){ localAutosave(); return; }
-  if(p && p.id) await dbWrite(()=> sb.from('photos').delete().eq('id', p.id), 'photos:' + p.id);
+  dropPendingPhoto(cmt.id, which, sidx);
+  if(p && p.id) await dbWrite(()=> sb.from('photos').delete().eq('id', p.id), 'photos:' + p.id, { t: 'delete', table: 'photos', id: p.id });
   if(p && p.driveId) driveDelete(p.driveId, p.uploadedBy, false);
 }
 
@@ -2588,8 +2589,8 @@ function applyReorder(){
   const catRows = state.categories.map((cat, i)=> ({ id: cat.id, meeting_id: state.meeting.id, sort_order: i }));
   const rows = [];
   state.categories.forEach(cat=> cat.comments.forEach((cmt, i)=> rows.push({ id: cmt.id, category_id: cat.id, sort_order: i })));
-  if(catRows.length) dbWrite(()=> sb.from('categories').upsert(catRows), 'reorder:categories');
-  if(rows.length) dbWrite(()=> sb.from('comments').upsert(rows), 'reorder');
+  if(catRows.length) dbWrite(()=> sb.from('categories').upsert(catRows), 'reorder:categories', { t: 'upsert', table: 'categories', rows: catRows });
+  if(rows.length) dbWrite(()=> sb.from('comments').upsert(rows), 'reorder', { t: 'upsert', table: 'comments', rows });
   showToast('จัดเรียงเรียบร้อย');
 }
 
@@ -2654,34 +2655,133 @@ function setSync(status){   // 'saving' | 'saved' | 'error'
     : (status === 'saving' ? 'กำลังบันทึก...' : 'บันทึกในเครื่องแล้ว');
 }
 
-async function dbWrite(op, key){
+/* OUTBOX — คำสั่งที่ยังไม่ถึง server (กำลังส่ง / รอลองใหม่ / รวมการแก้ 0.5 วิ) เก็บลงเครื่องด้วย (IndexedDB)
+   เน็ตหลุดแล้วปิดแอพ / iPad ปิดแอพเอง → เปิดใหม่ส่งต่อก่อนเปิดงาน ไม่หาย · ถึง server แล้วลบออก
+   spec = คำสั่งในรูปที่เก็บได้ { t:'insert'|'upsert'|'update'|'delete'|'deleteBy', table, ... } */
+const outboxStore = localforage.createInstance({ name: 'avatar_mom_outbox' });
+const TAB = Math.random().toString(36).slice(2, 10);
+const outbox = new Map();   // oid → { key, spec, at, n }
+let outboxN = 0, persistTimer = null, persistedKeys = new Set();
+/* แท็บที่ยังเปิดอยู่บอกว่ายังอยู่ทุก 5 วิ — ส่งต่อเฉพาะคิวของแท็บที่ปิดไปแล้ว (ไม่ส่งค่าเก่าของแท็บที่ยังทำงานไปทับ) */
+const TAB_BEAT = 'avatar_mom_tab_';
+const beat = ()=> lsSet(TAB_BEAT + TAB, String(Date.now()));
+const tabAlive = t=> t === TAB || (Date.now() - Number(lsGet(TAB_BEAT + t) || 0)) < 15000;
+beat(); setInterval(beat, 5000);
+function outboxAdd(key, spec){
+  if(!spec) return null;
+  const oid = TAB + '|' + (++outboxN);
+  outbox.set(oid, { key, spec, at: Date.now(), n: outboxN });
+  schedulePersist();
+  return oid;
+}
+function outboxDone(oid){ if(oid && outbox.delete(oid)) schedulePersist(); }
+function schedulePersist(){ clearTimeout(persistTimer); persistTimer = setTimeout(persistOutbox, 150); }
+async function persistOutbox(){
+  clearTimeout(persistTimer);
+  const cur = new Map();
+  outbox.forEach((e, oid)=> cur.set(oid, { key: e.key, spec: e.spec, at: e.at, n: e.n }));
+  pendingPatches.forEach((pp, k)=>{
+    const patch = Object.assign({}, pp.patch);
+    if(pp.table === 'meetings' || pp.table === 'comments') patch.updated_by = currentUser && currentUser.id;
+    cur.set(TAB + '|pp|' + k, { key: k, spec: { t: 'update', table: pp.table, id: pp.id, patch }, at: Date.now(), n: ++outboxN });
+  });
+  const old = persistedKeys;
+  persistedKeys = new Set(cur.keys());
+  try{
+    await Promise.all([...old].filter(k=> !cur.has(k)).map(k=> outboxStore.removeItem(k))
+      .concat([...cur].map(([k, v])=> outboxStore.setItem(k, v))));
+  }catch(e){ console.warn('[outbox] save', e); }
+}
+function opFromSpec(sp){
+  if(!sp) return null;
+  if(sp.t === 'insert') return ()=> sb.from(sp.table).insert(sp.rows);
+  if(sp.t === 'upsert') return ()=> sb.from(sp.table).upsert(sp.rows);
+  if(sp.t === 'update') return ()=> sb.from(sp.table).update(sp.patch).eq('id', sp.id);
+  if(sp.t === 'delete') return ()=> sb.from(sp.table).delete().eq('id', sp.id);
+  if(sp.t === 'deleteBy') return ()=> sb.from(sp.table).delete().eq(sp.col, sp.val);
+  return null;
+}
+/* เปิดแอพ: ส่งคำสั่งที่ค้างจากครั้งก่อนตามลำดับเดิม ก่อนเปิดงาน — ส่งซ้ำได้ไม่เสียหาย */
+let outboxRestored = null;
+function restoreOutbox(){
+  if(!outboxRestored) outboxRestored = (async ()=>{
+    const list = [];
+    await outboxStore.iterate((v, k)=>{ if(v && v.spec && !tabAlive(k.split('|')[0])) list.push([k, v]); }).catch(e=> console.warn('[outbox] restore', e));
+    try{ Object.keys(localStorage).filter(k=> k.startsWith(TAB_BEAT) && !tabAlive(k.slice(TAB_BEAT.length))).forEach(k=> localStorage.removeItem(k)); }catch(_){}
+    if(!list.length) return;
+    list.sort((a, b)=> (a[1].at - b[1].at) || (a[1].n - b[1].n));
+    const oids = list.map(([, v])=> outboxAdd(v.key, v.spec));
+    await persistOutbox();                                     // เก็บเป็นของแท็บนี้ก่อน แล้วค่อยลบชุดเดิม
+    await Promise.all(list.map(([k])=> outboxStore.removeItem(k).catch(()=>{})));
+    for(let i = 0; i < list.length; i++){                       // ตามลำดับ (หมวดก่อนคอมเม้น)
+      const v = list[i][1];
+      await dbWrite(opFromSpec(v.spec), v.key, v.spec, oids[i]);
+    }
+  })();
+  return outboxRestored;
+}
+
+async function dbWrite(op, key, spec, oid){
   if(!isOnline()){ localAutosave(); return; }
+  if(!oid) oid = outboxAdd(key, spec);
   setSync('saving');
   try{
     const { error } = await op();
     if(error && !isDuplicate(error)) throw error;
+    outboxDone(oid);
     if(!retryQueue.length && !pendingPatches.size) setSync('saved');
   }catch(err){
     console.error('[db]', key, err);
     const i = retryQueue.findIndex(r => r.key === key);
-    if(i >= 0) retryQueue.splice(i, 1);
-    retryQueue.push({ key, op });
+    if(i >= 0){
+      // แถวเดียวกันแก้หลายครั้งตอนเน็ตหลุด → รวมทุกช่องที่แก้ (เดิมเก็บแค่ครั้งล่าสุด)
+      const old = retryQueue.splice(i, 1)[0];
+      if(old.spec && spec && old.spec.t === 'update' && spec.t === 'update'){
+        spec = Object.assign({}, spec, { patch: Object.assign({}, old.spec.patch, spec.patch) });
+        op = opFromSpec(spec);
+        const e = outbox.get(oid); if(e){ e.spec = spec; schedulePersist(); }
+      }
+      outboxDone(old.oid);
+    }
+    retryQueue.push({ key, op, spec, oid });
     setSync('error');
   }
 }
 
-async function flushRetryQueue(){
-  if(!retryQueue.length || !navigator.onLine || !currentUser) return;
-  const items = retryQueue.splice(0);
-  for(const it of items){
-    try{ const { error } = await it.op(); if(error && !isDuplicate(error)) throw error; }
-    catch(e){ retryQueue.push(it); }
-  }
-  setSync(retryQueue.length ? 'error' : 'saved');
-  if(!retryQueue.length) flushPendingUploads();
+/* ลบหมวด/คอมเม้น → ทิ้งคำสั่งสร้าง/แก้ของมันที่ยังค้างในคิว (ไม่งั้นส่งตามหลังแล้วแถวฟื้น / แก้แถวที่ไม่มีแล้ว) */
+function dropQueued(keys){
+  const ks = new Set(keys);
+  for(let i = retryQueue.length - 1; i >= 0; i--) if(ks.has(retryQueue[i].key)){ outboxDone(retryQueue[i].oid); retryQueue.splice(i, 1); }
+  ks.forEach(k=> pendingPatches.delete(k));
+  schedulePersist();
 }
-window.addEventListener('online', flushRetryQueue);
-setInterval(flushRetryQueue, 15000);
+
+let retrying = false, retryAgain = false;
+async function flushRetryQueue(){
+  if(retrying){ retryAgain = true; return; }   // เน็ตกลับมาระหว่างรอบที่กำลังส่ง → ส่งต่ออีกรอบทันทีเมื่อรอบนี้จบ
+  if(!retryQueue.length || !navigator.onLine || !currentUser) return;
+  retrying = true;
+  try{
+    const items = retryQueue.splice(0);
+    for(const it of items){
+      try{ const { error } = await it.op(); if(error && !isDuplicate(error)) throw error; outboxDone(it.oid); }
+      catch(e){ retryQueue.push(it); }
+    }
+    setSync(retryQueue.length ? 'error' : 'saved');
+    if(!retryQueue.length){
+      flushPendingUploads();
+      if(state.meeting.id){ refreshDeferred = true; runDeferredRefresh(); }   // ของค้างถึงระบบครบ → ดึงล่าสุดลงจอ (ไม่ต้องรีเฟรชเอง)
+    }
+  } finally {
+    retrying = false;
+    if(retryAgain){ retryAgain = false; setTimeout(flushRetryQueue, 0); }
+  }
+}
+window.addEventListener('online', ()=>{ if(!waitingNet) flushRetryQueue(); });
+setInterval(()=>{ if(waitingNet){ retryStart(); return; } flushRetryQueue(); if(hasPendingPhotos()) flushPendingUploads(); }, 15000);
+// ปิด/ซ่อนแอพ → เก็บคิวลงเครื่องทันที
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') persistOutbox(); });
+window.addEventListener('pagehide', ()=>{ persistOutbox(); lsSet(TAB_BEAT + TAB, null); });
 
 function queueUpdate(table, id, patch){
   if(!isOnline()){ localAutosave(); return; }
@@ -2690,6 +2790,7 @@ function queueUpdate(table, id, patch){
   pendingPatches.set(key, { table, id, patch: Object.assign(cur ? cur.patch : {}, patch) });
   clearTimeout(patchTimer);
   patchTimer = setTimeout(flushPendingWrites, 500);
+  schedulePersist();
   setSync('saving');
 }
 
@@ -2698,10 +2799,13 @@ async function flushPendingWrites(){
   if(!isOnline()){ await localAutosave(true); return; }
   const items = [...pendingPatches.values()];
   pendingPatches.clear();
-  for(const { table, id, patch } of items){
+  // เข้า outbox ทุกตัวก่อน (ไม่งั้นตัวที่ยังไม่ถึงคิวหายถ้าแอพถูกปิดกลางทาง) แล้วค่อยส่งทีละตัวตามลำดับ
+  const jobs = items.map(({ table, id, patch })=>{
     if(table === 'meetings' || table === 'comments') patch.updated_by = currentUser && currentUser.id;
-    await dbWrite(()=> sb.from(table).update(patch).eq('id', id), table + ':' + id);
-  }
+    const spec = { t: 'update', table, id, patch };
+    return { op: ()=> sb.from(table).update(patch).eq('id', id), key: table + ':' + id, spec, oid: outboxAdd(table + ':' + id, spec) };
+  });
+  for(const j of jobs) await dbWrite(j.op, j.key, j.spec, j.oid);
   if(typeof runDeferredRefresh === 'function') runDeferredRefresh();
 }
 
@@ -2976,9 +3080,38 @@ async function onSignedIn(session){
   showLogin(false);
   renderUserChip();
   processDriveCleanup();
+  await restoreOutbox();
+  await flushRetryQueue();   // ของค้างจากรอบก่อน (เช่น เปิดแอพตอนไม่มีเน็ต) → ส่งก่อนเปิดงาน
   const last = lsGet(LAST_MEETING_KEY);
-  if(last){ try{ await openMeeting(last); }catch(e){ lsSet(LAST_MEETING_KEY, null); } }
+  if(last){
+    try{ await openMeeting(last); }
+    catch(e){
+      // เน็ตยังไม่มา → อย่าลืมงานล่าสุด รอเน็ตแล้วเปิดให้เอง · ลบเฉพาะเมื่องานไม่มีในระบบแล้วจริง ๆ
+      if(!(e && e.code === 'PGRST116')){ console.warn('[mom] เปิดงานล่าสุดไม่ได้ — รอเน็ต', e); waitForNet(); return; }
+      lsSet(LAST_MEETING_KEY, null);
+    }
+  }
   await showMeetingListModal(true);
+}
+
+/* เปิดแอพตอนไม่มีเน็ต: ของที่ยังไม่ได้ส่ง + รูปรออัป อยู่ในเครื่องแล้ว → พอเน็ตกลับมา เริ่มใหม่เอง (ส่งของค้าง → เปิดงานล่าสุด)
+   ไม่ต้องรีเฟรชเอง · ไม่ส่งไปหน้าล็อกอินระหว่างไม่มีเน็ต */
+let waitingNet = false, netRetrying = false;
+function waitForNet(){
+  if(waitingNet) return;
+  waitingNet = true;
+  setSync('error');
+  showToast('ไม่มีอินเทอร์เน็ต — ของที่ยังไม่ได้ส่งเก็บไว้ในเครื่องแล้ว เน็ตกลับมาจะเปิดงานล่าสุดให้เอง');
+}
+async function retryStart(){
+  if(!waitingNet || netRetrying || !navigator.onLine || !isOnline()) return;
+  netRetrying = true;
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    waitingNet = false;
+    if(session) await onSignedIn(session); else showLogin(true);
+  }catch(e){ console.warn('[mom] retry start', e); waitingNet = true; }
+  finally{ netRetrying = false; }
 }
 
 function onSignedOut(){
@@ -2999,6 +3132,7 @@ async function initAuth(){
   const { data: { session } } = await sb.auth.getSession();
   if(!isOnline() && !fromOAuth){ await enterOfflineMode(); return; }
   if(session) await onSignedIn(session);
+  else if(!navigator.onLine) waitForNet();   // token หมดอายุ + ไม่มีเน็ต → รอเน็ต ไม่เด้งไปหน้าล็อกอิน
   else showLogin(true);
 }
 
@@ -3163,10 +3297,41 @@ function photoFileName(cmt, which, sidx){
   return `${ci}.${idx}_${which}${sidx+1}_${stamp}.jpg`;
 }
 
+/* รูปรออัปเก็บลงเครื่องด้วย (IndexedDB) — ปิดแอพ/รีโหลดก่อนอัปเสร็จ (ไม่มีเน็ต / ยังไม่เชื่อม Drive) → เปิดงานนี้ใหม่ รูปกลับมาแล้วอัปต่อ */
+const pendingPhotoStore = localforage.createInstance({ name: 'avatar_mom_pending_photos' });
+const pendKey = (mid, cmtId, which, sidx)=> [mid, cmtId, which, sidx].join('|');
+function savePendingPhoto(cmt, which, sidx, p){
+  if(!state.meeting.id || !p || !p.dataUrl) return;
+  pendingPhotoStore.setItem(pendKey(state.meeting.id, cmt.id, which, sidx), { meetingId: state.meeting.id, cmtId: cmt.id, which, sidx, dataUrl: p.dataUrl, savedAt: Date.now() })
+    .catch(e=> console.warn('[pending] save', e));
+}
+function dropPendingPhoto(cmtId, which, sidx){
+  if(state.meeting.id) pendingPhotoStore.removeItem(pendKey(state.meeting.id, cmtId, which, sidx)).catch(()=>{});
+}
+/* เปิดงาน: รูปของงานนี้ที่ค้างในเครื่อง → ใส่กลับเข้าช่อง (ยังรออัป) · คอมเม้นถูกลบไปแล้ว → ทิ้ง */
+async function adoptPendingPhotos(){
+  const mid = state.meeting.id;
+  if(!mid) return 0;
+  const list = [];
+  await pendingPhotoStore.iterate((v, k)=>{ if(v && v.meetingId === mid && v.dataUrl) list.push([k, v]); }).catch(()=>{});
+  let n = 0;
+  for(const [k, v] of list){
+    const cmt = findComment(v.cmtId);
+    if(!cmt){ pendingPhotoStore.removeItem(k).catch(()=>{}); continue; }
+    if(!cmt.photos[v.which]) cmt.photos[v.which] = [];
+    const cur = cmt.photos[v.which][v.sidx];
+    cmt.photos[v.which][v.sidx] = Object.assign(cur || {}, { dataUrl: v.dataUrl, pending: true, uploading: false });   // คง driveId เดิมไว้ → อัปเสร็จแล้วไฟล์เก่าเข้าถังขยะ
+    n++;
+  }
+  return n;
+}
+function hasPendingPhotos(){ let n = 0; forEachPhoto(p=>{ if(p.pending && !p.uploading) n++; }); return n > 0; }
+
 async function uploadPhoto(cmt, which, sidx){
   const p = currentPhoto(cmt.id, which, sidx) || (cmt.photos[which] && cmt.photos[which][sidx]);
   if(!isOnline() || !p || !p.dataUrl || p.uploading) return;
   p.pending = true;
+  savePendingPhoto(cmt, which, sidx, p);
   if(!hasDriveToken()){ updateDriveBanner(); return; }   // รอผู้ใช้กด "เชื่อมต่อ Drive"
   p.uploading = true;
   updateDriveBanner();
@@ -3179,6 +3344,8 @@ async function uploadPhoto(cmt, which, sidx){
     const row = { comment_id: cmt.id, kind: which, slot: sidx, drive_file_id: newId, uploaded_by: currentUser.id };
     const { data, error } = await sb.from('photos').upsert(row, { onConflict: 'comment_id,kind,slot' }).select('id').single();
     if(error){ driveDelete(newId, currentUser.id, false); throw error; }
+    lastDriveError = '';
+    if(p.dataUrl === src) dropPendingPhoto(cmt.id, which, sidx);   // ถูกแก้ระหว่างอัป → เก็บตัวใหม่ไว้จนกว่าจะอัปเสร็จ
     const oldId = p.driveId, oldOwner = p.uploadedBy;
     p.driveId = newId;
     p.id = data.id;
@@ -3193,7 +3360,11 @@ async function uploadPhoto(cmt, which, sidx){
     if(slot){ slot.dataset.pid = p.id; slot.classList.remove('pending'); }
   }catch(e){
     console.error('[upload]', e);
-    if(e.status !== 401){ lastDriveError = e.message; showToast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่'); }
+    if(e && e.code === '23503'){ p.pending = false; dropPendingPhoto(cmt.id, which, sidx); }   // คอมเม้นถูกลบไปแล้ว → ทิ้งรูปนี้
+    else if(e.status !== 401){
+      lastDriveError = e.message; showToast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่');
+      setTimeout(flushPendingUploads, 3000);   // เช่น ออกจากแอพระหว่างอัป → ลองใหม่เองเร็ว ๆ ไม่ต้องกดเอง
+    }
   }
   p.uploading = false;
   if(p.dataUrl !== src && !p.pending){ p.pending = true; return uploadPhoto(cmt, which, sidx); }   // ถูกแก้ระหว่างอัปโหลด → อัปรอบใหม่
@@ -3234,14 +3405,18 @@ function updateDriveBanner(){
   forEachPhoto(p=>{ if(p.pending && !p.uploading) pending++; if(p.driveId && !p.dataUrl && !p.pending) needLoad++; });
   const b = document.getElementById('driveBanner');
   if(!pending && !needLoad){ b.style.display = 'none'; lastDriveError = ''; return; }
+  const token = hasDriveToken();
+  const busy = token && !lastDriveError;   // กำลังอัป/โหลดตามปกติ → ไม่ต้องมีปุ่ม (ปุ่ม "ลองอีกครั้ง" ทำให้เข้าใจว่าพัง)
   const parts = [];
-  if(pending) parts.push(`รูป ${pending} รูปรออัปโหลด`);
-  if(needLoad) parts.push(`รูป ${needLoad} รูปยังไม่ได้โหลด`);
+  if(pending) parts.push(busy ? `กำลังอัปโหลดรูป ${pending} รูป…` : `รูป ${pending} รูปรออัปโหลด`);
+  if(needLoad) parts.push(busy ? `กำลังโหลดรูป ${needLoad} รูป…` : `รูป ${needLoad} รูปยังไม่ได้โหลด`);
   let text = parts.join(' · ');
-  if(!hasDriveToken()) text += ' — ต้องเชื่อมต่อ Google Drive';
+  if(!token) text += ' — ต้องเชื่อมต่อ Google Drive';
   else if(lastDriveError) text += ' — ' + lastDriveError;
   document.getElementById('driveBannerText').textContent = text;
-  document.getElementById('driveBannerBtn').textContent = hasDriveToken() ? 'ลองอีกครั้ง' : 'เชื่อมต่อ Drive';
+  const btn = document.getElementById('driveBannerBtn');
+  btn.textContent = token ? 'ลองอีกครั้ง' : 'เชื่อมต่อ Drive';
+  btn.style.display = busy ? 'none' : '';
   b.style.display = 'flex';
 }
 
@@ -3402,6 +3577,7 @@ function subscribeMeeting(id){
 function scheduleRemoteRefresh(){ clearTimeout(rtTimer); rtTimer = setTimeout(remoteRefresh, 600); }
 /* iPad พักแอปเบื้องหลัง → websocket realtime หลุด/พลาด event → กลับมาหน้าจอให้ดึงข้อมูลล่าสุดเสมอ */
 function onAppResume(){
+  if(waitingNet){ retryStart(); return; }
   if(!isOnline() || !currentUser) return;
   processDriveCleanup();
   if(!state.meeting.id) return;
@@ -3447,12 +3623,14 @@ async function openMeeting(id){
   const row = await fetchMeetingTree(id);
   inflight.clear();
   state = rowsToState(row);
+  const adopted = await adoptPendingPhotos();
   applyMetaToUI();
   render();
   subscribeMeeting(id);
   lsSet(LAST_MEETING_KEY, id);
   updateDriveBanner();
   loadMeetingPhotos();
+  if(adopted) flushPendingUploads();
 }
 
 function leaveMeeting(){
@@ -3781,7 +3959,7 @@ async function resetAll(){
   state.categories.forEach(c=> driveIds.push(...driveIdsOf(c.comments)));
   state.categories = [];
   render();
-  await dbWrite(()=> sb.from('categories').delete().eq('meeting_id', state.meeting.id), 'categories:clear:' + state.meeting.id);
+  await dbWrite(()=> sb.from('categories').delete().eq('meeting_id', state.meeting.id), 'categories:clear:' + state.meeting.id, { t: 'deleteBy', table: 'categories', col: 'meeting_id', val: state.meeting.id });
   driveDeleteAll(driveIds);
   await addCategory('MDB PANEL');
   showToast('ล้างข้อมูลแล้ว');
