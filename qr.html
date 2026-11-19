@@ -2,6 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<script src="avatar-gate.js"></script>   <!-- ล็อกอินจุดเดียวที่ index.html -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Google Drive → QR Code</title>
 <style>
@@ -146,7 +147,7 @@
       เลือกโฟลเดอร์จาก Google Drive
     </button>
     <div id="driveStatus" style="display:none; font-size:12px; color:#86efac; margin-top:8px; text-align:center;">
-      ✓ เชื่อม Google Drive ไว้แล้ว · <span id="disconnect" style="color:#fca5a5; cursor:pointer; text-decoration:underline;">ออกจากระบบ</span>
+      ✓ เชื่อม Google Drive ไว้แล้ว
     </div>
     <div class="folderchip" id="folderchip">📁 <span id="folderName"></span></div>
 
@@ -2710,39 +2711,40 @@ document.getElementById('link').addEventListener('keydown',function(e){
 /* ===================== Google Drive: เลือกโฟลเดอร์ =====================
    ใช้ Drive API ด้วยการล็อกอิน Google อย่างเดียว (ไม่ต้องใช้ API Key)     */
 var GOOGLE_CLIENT_ID = "817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com";
-var DRIVE_SCOPE      = "https://www.googleapis.com/auth/drive.metadata.readonly";
+var DRIVE_SCOPE      = "https://www.googleapis.com/auth/drive";   // ชุดเดียวกับตอนล็อกอินที่หน้า index → token ใช้ร่วมกันทุกแอพ
 var FOLDER_MIME      = "application/vnd.google-apps.folder";
 
 var gisInited=false, tokenClient=null, accessToken=null, tokenExp=0;
 var connectBtn=document.getElementById('connect');
-var TOK_KEY='gdqr_token', EXP_KEY='gdqr_token_exp', CONSENT_KEY='gdqr_consented';
+// สิทธิ์ Drive เก็บที่เดียวกับแอพอื่น (avatar-cloud.js / MoM) → ล็อกอินที่ index แล้วใช้ต่อได้เลย ไม่ต้องขอซ้ำ
+var SHARED_TOKEN_KEY='avatar_mom_drive_token';
 
 function saveToken(){
-  try{ localStorage.setItem(TOK_KEY,accessToken); localStorage.setItem(EXP_KEY,String(tokenExp)); localStorage.setItem(CONSENT_KEY,'1'); }catch(e){}
+  try{ localStorage.setItem(SHARED_TOKEN_KEY, JSON.stringify({token:accessToken, exp:tokenExp})); }catch(e){}
 }
 function clearToken(){
   accessToken=null; tokenExp=0;
-  try{ localStorage.removeItem(TOK_KEY); localStorage.removeItem(EXP_KEY); }catch(e){}
+  try{ localStorage.removeItem(SHARED_TOKEN_KEY); }catch(e){}
 }
-function tokenValid(){ return accessToken && Date.now() < tokenExp; }
+function readSharedToken(){
+  try{
+    var t=JSON.parse(localStorage.getItem(SHARED_TOKEN_KEY)||'null');
+    if(t && t.token && t.exp > Date.now()+30000){ accessToken=t.token; tokenExp=t.exp; return true; }
+  }catch(e){}
+  return false;
+}
+function tokenValid(){ return (accessToken && Date.now() < tokenExp - 30000) || readSharedToken(); }
 function markConnected(on){
   document.getElementById('driveStatus').style.display = on ? 'block' : 'none';
 }
 
-// จำ token ที่เคยล็อกอินไว้ (ถ้ายังไม่หมดอายุ)
+// ใช้ token ที่ได้จากการล็อกอินที่หน้า index (ถ้ายังไม่หมดอายุ)
 (function restoreToken(){
-  try{
-    var t=localStorage.getItem(TOK_KEY), e=parseInt(localStorage.getItem(EXP_KEY)||'0',10);
-    if(t && e && Date.now()<e){ accessToken=t; tokenExp=e; markConnected(true); }
-  }catch(e){}
+  try{ localStorage.removeItem('gdqr_token'); localStorage.removeItem('gdqr_token_exp'); }catch(e){}   // ที่เก็บเดิมของ QR — เลิกใช้
+  if(readSharedToken()) markConnected(true);
 })();
 
-// ออกจากระบบ Google (สำหรับเครื่องที่ใช้ร่วมกัน)
-document.getElementById('disconnect').addEventListener('click',function(){
-  clearToken(); markConnected(false);
-  try{ localStorage.removeItem(CONSENT_KEY); }catch(e){}
-  showToast('ออกจากระบบ Google แล้ว');
-});
+// ออกจากระบบ → ทำที่หน้า index (ล็อกอินจุดเดียว)
 
 function gisLoaded(){
   try{
@@ -2775,9 +2777,9 @@ function withToken(cb){
     markConnected(true);
     cb();
   };
-  var consented=false;
-  try{ consented = localStorage.getItem(CONSENT_KEY)==='1'; }catch(e){}
-  tokenClient.requestAccessToken({prompt: consented ? '' : 'consent'});
+  // ล็อกอินที่ index ให้สิทธิ์ Drive ไว้แล้ว → token หมดอายุ (ทุก ~1 ชม.) ก็ขอใหม่แบบไม่ต้องกดยืนยันซ้ำ
+  var hint=(window.AvatarGate && AvatarGate.email()) || undefined;
+  tokenClient.requestAccessToken({prompt:'', hint:hint});
 }
 
 // เรียก Drive API

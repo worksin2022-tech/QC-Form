@@ -36,8 +36,9 @@
    แอพเช็คเลขนี้ตอนเปิด (เช่น pmform: NEED_AVATAR_CLOUD_API) → ถ้าไฟล์บนเว็บเก่ากว่าจะเตือนให้อัปโหลด
    2 = แก้ "ส่งขึ้นทีม" กดแล้วไม่มีอะไรเกิดขึ้น (id ตัวเลข vs ข้อความ) + saveNow + อัปรูปทีละ 3
    3 = "ส่งขึ้นทีม" มีหน้าต่างความคืบหน้า + กันปิดหน้ากลางทาง + ล้มแล้วบอกเหตุผล/ลบงานว่าง + วันที่ไทยในรายการ
-   4 = uploadDataUrls จำรูปที่ขึ้น Drive แล้ว (บันทึกซ้ำไม่อัปรูปเดิมซ้ำ) */
-const API_VERSION = 4;
+   4 = uploadDataUrls จำรูปที่ขึ้น Drive แล้ว (บันทึกซ้ำไม่อัปรูปเดิมซ้ำ)
+   5 = ล็อกอินจุดเดียวที่ index.html (loginHub) — แอพอื่นไม่มีหน้าล็อกอินของตัวเอง ส่งไป index?next= แล้วเด้งกลับ */
+const API_VERSION = 5;
 
 /* ---- CONFIG (ชุดเดียวกับ minute-of-meeting.html) ---- */
 const SUPABASE_URL         = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
@@ -647,9 +648,32 @@ function injectStyles() {
 const GOOGLE_SVG = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
 const OFFLINE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 1l22 22M16.7 11.4A7 7 0 0 0 12 9.5c-1.7 0-3.3.6-4.5 1.7M20 8.5a12 12 0 0 0-3.4-2.3M4 8.5a12 12 0 0 1 3-2.1M8.5 14.5a3.5 3.5 0 0 1 5.1-.3M12 18.5h.01"/></svg>';
 
+/* ล็อกอินจุดเดียว: หน้าเข้าสู่ระบบมีแค่ที่ index.html (loginHub) — แอพอื่นถูกส่งไปที่นั่น แล้วเด้งกลับมาเอง */
+const NEXT_KEY = 'avatar_login_next';
+function safeNext(n) { return n && /^[\w.-]+\.html([?#].*)?$/.test(n) && !/^index\.html/.test(n) ? n : null; }
+function goToLoginHub() {
+  if (global.AvatarGate) { global.AvatarGate.toLogin(); return; }
+  location.replace('index.html?next=' + encodeURIComponent((location.pathname.split('/').pop() || '') + location.search));
+}
+/* หน้า index: มาจากแอพอื่น (?next=) → จำไว้ข้ามการเด้งไปหน้า Google; ล็อกอิน/เลือกออฟไลน์เสร็จ → ส่งกลับ */
+function rememberNext() {
+  const n = safeNext(new URLSearchParams(location.search).get('next'));
+  try {
+    if (n) sessionStorage.setItem(NEXT_KEY, n);
+    else if (!/[?&]code=/.test(location.search)) sessionStorage.removeItem(NEXT_KEY);
+  } catch (_) {}
+}
+function returnToNext() {
+  let n = null;
+  try { n = safeNext(sessionStorage.getItem(NEXT_KEY)); sessionStorage.removeItem(NEXT_KEY); } catch (_) {}
+  if (n) { location.replace(n); return true; }
+  return false;
+}
+
 function showLogin(show) {
   let el = document.getElementById('acLogin');
   if (!show) { if (el) el.remove(); return; }
+  if (!cfg.loginHub) { goToLoginHub(); return; }
   if (el) return;
   el = document.createElement('div');
   el.id = 'acLogin';
@@ -658,7 +682,7 @@ function showLogin(show) {
     <div class="ac-card">
       <div class="ac-logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 19 L12 4 L20 19 Z" fill="white" opacity=".95"/><circle cx="12" cy="14" r="2.5" fill="#1f3a5f"/></svg></div>
       <div class="ac-title">Avatar Electric</div>
-      <div class="ac-sub">${esc(appTitleText())} · ระบบทีม</div>
+      <div class="ac-sub">${esc(cfg.loginHub ? 'Quality Control Forms' : appTitleText())} · ระบบทีม</div>
       <button class="ac-btn primary" id="acLoginBtn">${GOOGLE_SVG} เข้าสู่ระบบด้วย Google</button>
       <div class="ac-note">ใช้บัญชี Google ที่ได้รับสิทธิ์จากทีมเท่านั้น<br>ครั้งแรกอาจเจอหน้า “Google hasn't verified this app” → กด Advanced → Go to app</div>
       <div class="ac-or">หรือ</div>
@@ -981,6 +1005,7 @@ async function enterOffline() {
   currentUser = null;
   doc = null;
   showLogin(false);
+  if (cfg.loginHub && returnToNext()) return;
   renderChip();
   // แอพจัดการออฟไลน์เอง → ชั้นนี้ไม่ยุ่งกับข้อมูล ปล่อยให้แอพใช้ระบบเดิมของตัวเอง
   if (!appManagesOffline()) {
@@ -1008,6 +1033,7 @@ async function onSignedIn(session) {
   if (session.provider_token) setDriveToken(session.provider_token, 3500);
   if (location.hash || /[?&]code=/.test(location.search)) history.replaceState(null, '', location.pathname);
   showLogin(false);
+  if (cfg.loginHub && returnToNext()) return;
   renderChip();
   processDriveCleanup();
   const last = lsGet(lastDocKey());
@@ -1030,6 +1056,7 @@ const AvatarCloud = {
     photoCache = localforage.createInstance({ name: 'avatar_cloud_photos' });
     injectStyles();
     restoreDriveToken();
+    if (cfg.loginHub) rememberNext();
 
     sb.auth.onAuthStateChange((event, session) => {
       if (session && session.provider_token) setDriveToken(session.provider_token, 3500);
@@ -1042,8 +1069,8 @@ const AvatarCloud = {
     const { data: { session } } = await sb.auth.getSession();
     if (!isOnline() && !fromOAuth) { await enterOffline(); return; }
     if (session) { await onSignedIn(session); return; }
-    // silentStart = หน้าที่ไม่ควรถูกบังคับล็อกอิน (เช่นหน้ารวมแอพ) — ค่อยขอตอนกดบันทึก/ประวัติ
-    if (cfg.silentStart) { renderChip(); cfg.onReady?.(isOnline() ? 'online' : 'offline'); return; }
+    // silentStart = หน้าที่ไม่ควรถูกบังคับล็อกอิน — ค่อยขอตอนกดบันทึก/ประวัติ (loginHub = index ต้องล็อกอินก่อนเสมอ)
+    if (cfg.silentStart && !cfg.loginHub) { renderChip(); cfg.onReady?.(isOnline() ? 'online' : 'offline'); return; }
     showLogin(true);
   },
 

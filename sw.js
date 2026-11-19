@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2.9.3';
+const CACHE_VERSION = 'v2.9.4';
 const CACHE_NAME = `qc-forms-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
@@ -22,7 +22,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   const isHTML = req.mode === 'navigate' || req.destination === 'document' || url.pathname.endsWith('.html');
   // สคริปต์ที่แก้บ่อย (ชั้นระบบทีม) ต้องเอาของใหม่เสมอ ไม่งั้นเครื่องผู้ใช้ค้างเวอร์ชันเก่า
-  const isAlwaysFresh = url.pathname.endsWith('/avatar-cloud.js');
+  const isAlwaysFresh = url.pathname.endsWith('/avatar-cloud.js') || url.pathname.endsWith('/avatar-gate.js');
 
   if (isHTML || isAlwaysFresh) {
     event.respondWith(

@@ -2097,7 +2097,8 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 appTitle: () => activeForm().title,
                 chipContainer: 'acChipHost',
                 chipCompact: window.matchMedia('(max-width: 639px)').matches,   // จอมือถือ: เหลือแค่รูปโปรไฟล์
-                silentStart: true,   // หน้ารวมแอพ — ไม่บังคับล็อกอิน ค่อยขอตอนกดบันทึก/ประวัติ
+                silentStart: true,   // ไม่เปิดรายการงานเองตอนเข้า
+                loginHub: true,      // ล็อกอินจุดเดียวของทุกแอพ — ต้องล็อกอิน (หรือเลือกออฟไลน์) ก่อนใช้ แล้วส่งกลับแอพที่มาจาก ?next=
                 // ไม่เก็บ HTML — รูปอยู่ใน array (uploadDataUrls) ไม่ต้องให้ไล่อัปรูปใน DOM
                 // (ไม่งั้นรูปพรีวิว/ลายเซ็น/รูปในหน้ารายงานถูกอัปขึ้น Drive ซ้ำทุกครั้งที่บันทึก)
                 root: () => null,
