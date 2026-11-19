@@ -1367,6 +1367,45 @@
     box-shadow:0 10px 24px -8px rgba(15,39,68,.45);
   }
   .fab:hover{box-shadow:0 14px 28px -8px rgba(15,39,68,.5);}
+
+  /* ===== มือถือแนวตั้ง (≤640px): ลด padding ซ้อนกันหลายชั้น + แถบบนไม่ทับกัน ===== */
+  @media (max-width:640px){
+    .topbar{padding:10px 10px;gap:6px;}
+    .topbar-title{gap:6px;}
+    .topbar-title h1{display:none;}
+    .topbar-actions{gap:6px;flex-shrink:0;}
+    .topbar .top-btn{padding:0 12px;}
+    .tb-lbl{display:none;}
+
+    .content-scroll{padding:10px 8px 110px 8px;}
+    .cover-body{padding:22px 18px 20px 18px;}
+    .cover-brand{margin-bottom:20px;}
+    .cover-title-block{margin-top:10px;margin-bottom:22px;}
+    .cover-info-cell{padding:14px 16px;}
+    .doc-body{padding:14px 10px 16px 10px;}
+    .ribbon-wrap{margin:4px 0 16px 0;}
+
+    .category-head{flex-wrap:wrap;padding:12px;gap:10px;}
+    .cat-name-input{flex:1 1 0;min-width:0;font-size:16px;}
+    .icon-btn.add-cmt{font-size:0;width:40px;padding:0;}
+    .icon-btn.add-cmt svg{margin:0 !important;width:16px;height:16px;}
+    .comments-container{padding:10px 8px 4px 8px;}
+
+    .cmt-head{padding:10px 10px 8px 6px;}
+    .cmt-head .drag-handle{order:1;}
+    .cmt-head .cmt-num{order:2;}
+    .cmt-head > .icon-btn{order:3;margin-left:auto;}
+    .cmt-head .cmt-text{order:4;flex:1 1 100%;}
+    .cmt-head .mode-switch{order:5;}
+    .fix-by-row{padding:10px 10px 0 10px;}
+    .fix-by-row input{max-width:none;}
+
+    .photo-grid{padding:10px;gap:8px;}
+    .photo-grid.mode-before,
+    .photo-grid.mode-after{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .photo-slot{min-height:0;}
+    .photo-slot .placeholder span{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -1513,17 +1552,17 @@
           <img id="userAvatar" alt="" referrerpolicy="no-referrer">
           <span id="userName"></span>
         </button>
-        <button class="top-btn" onclick="openReorderModal()">
+        <button class="top-btn" onclick="openReorderModal()" title="จัดเรียง" aria-label="จัดเรียง">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
           </svg>
-          จัดเรียง
+          <span class="tb-lbl">จัดเรียง</span>
         </button>
         <button class="top-btn primary" onclick="exportPDF()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
           </svg>
-          Export PDF
+          <span class="tb-lbl">Export </span>PDF
         </button>
       </div>
     </div>
