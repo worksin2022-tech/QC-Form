@@ -161,6 +161,7 @@ function syncNow() {
     if (mk !== baseMetaStr || (baseName !== null && name !== baseName) || (baseName === null && name !== (j.name || ''))) {
       await team.updateJob({ name, customer: name, meta: m });
       appliedMetaStr = mk;
+      updateCurrentHistoryIndicator();
     }
     baseMetaStr = mk;
     baseName = name;
@@ -307,6 +308,7 @@ function onRender() {
   }
   if (jid && jid === pulledJob && appliedMetaStr) incremental();
   else fullBuild();
+  updateCurrentHistoryIndicator();   // ชื่องานเปลี่ยนจากเครื่องอื่น
 }
 function onPhoto(p) {
   if (!p.dataUrl || !p.slot || p.slot.indexOf('p_') !== 0) return;

@@ -281,9 +281,10 @@ async function dbWriteNow(op, key) {
   }
 }
 
-let retrying = false;
+let retrying = false, retryAgain = false;
 function flushRetryQueue() {
-  if (retrying || !retryQueue.length || !navigator.onLine || !currentUser || !isOnline()) return;
+  if (retrying) { retryAgain = true; return; }   // เน็ตกลับมาระหว่างรอบที่กำลังส่ง → ส่งต่ออีกรอบทันทีเมื่อรอบนี้จบ (ไม่ต้องรอ 15 วิ)
+  if (!retryQueue.length || !navigator.onLine || !currentUser || !isOnline()) return;
   retrying = true;
   const run = writeChain.then(async () => {
     const list = retryQueue.splice(0);
@@ -295,7 +296,7 @@ function flushRetryQueue() {
     retryQueue.unshift(...failed);
     setSync(retryQueue.length ? 'error' : 'saved');
     if (!retryQueue.length) { flushPendingUploads(); runDeferredRefresh(); }
-  }).finally(() => { retrying = false; });
+  }).finally(() => { retrying = false; if (retryAgain) { retryAgain = false; setTimeout(flushRetryQueue, 0); } });
   writeChain = run.catch(() => {});
   return run;
 }
@@ -454,7 +455,8 @@ function setDriveToken(token, ttlSec) {
   driveToken = { token, exp: Date.now() + (ttlSec || 3500) * 1000 };
   lsSet(DRIVE_TOKEN_KEY, JSON.stringify(driveToken));
   lsSet(DRIVE_TOKEN_KEY + '_seen', token);
-  if (job) { flushPendingUploads(); loadJobPhotos(); }
+  if (job) loadJobPhotos();
+  if (allPending().length) flushPendingUploads();
   if (currentUser) processDriveCleanup();
 }
 function restoreDriveToken() {
@@ -622,6 +624,36 @@ function adoptPending() {       // เปิดงาน: รูปที่ค�
   });
 }
 const allPending = () => [...photos.values()].filter(p => p.pending && p.dataUrl).concat([...bgPending.values()]);
+/* รูปรออัปโหลดเก็บลงเครื่องด้วย (IndexedDB) — รีโหลด / ปิดแท็บ / iPad ปิดแอพเอง ก่อนเชื่อม Drive ทัน → รูปไม่หาย
+   เปิดแอพใหม่ → กลับมาเป็นรูปรออัป (งานที่เปิด = ขึ้นบนจอ, งานอื่น = อัปเบื้องหลัง) · ลบออกเมื่ออัปขึ้นระบบแล้ว / รายการถูกลบ */
+let pendingStore = null;
+function savePending(p) {
+  if (!pendingStore || !p || !p.dataUrl || !(p.jobId || job)) return;
+  p.jobId = p.jobId || job.id;
+  pendingStore.setItem(bgKey(p), {
+    jobId: p.jobId, itemId: p.itemId || null, slot: p.slot, dataUrl: p.dataUrl, origDataUrl: p.origDataUrl || null, edit: p.edit || null,
+    id: p.id || null, driveId: p.driveId || null, origDriveId: p.origDriveId || null, uploadedBy: p.uploadedBy || null, savedAt: Date.now()
+  }).catch(e => console.warn('[pending] save', e));
+}
+function dropPending(p) {
+  if (!pendingStore || !p || !p.jobId) return;
+  pendingStore.removeItem(bgKey(p)).catch(() => {});
+}
+let pendingRestored = null;
+function restorePending() {
+  if (!pendingRestored) pendingRestored = (async () => {
+    if (!pendingStore) return;
+    const list = [];
+    await pendingStore.iterate(v => { if (v && v.jobId && v.dataUrl) list.push(v); }).catch(e => console.warn('[pending] restore', e));
+    list.forEach(v => {
+      const p = Object.assign({ pending: true, uploading: false }, v);
+      const k = bgKey(p);
+      if (!bgPending.has(k)) bgPending.set(k, p);
+    });
+    if (list.length) { updateDriveBanner(); flushPendingUploads(); }
+  })();
+  return pendingRestored;
+}
 const folderCache = new Map();  // jobId → drive folder id (งานที่ไม่ได้เปิดอยู่)
 async function folderFor(jobId) {
   if (job && job.id === jobId) return ensureJobFolder();
@@ -667,6 +699,7 @@ async function uploadPhoto(p) {
     }
     driveBackoff = 0;
     bgPending.delete(bgKey(p));
+    if (p.dataUrl === src && p.origDataUrl === origSrc) dropPending(p);   // ถูกแก้ระหว่างอัป → เก็บตัวใหม่ไว้จนกว่าจะอัปเสร็จ
     const oldId = p.driveId, oldOwner = p.uploadedBy, oldOrig = p.origDriveId;
     Object.assign(p, { id: data.id, driveId: newId, origDriveId: origSrc ? origId : null, uploadedBy: currentUser.id, pending: false });
     photoCache.setItem(newId, src);
@@ -678,7 +711,7 @@ async function uploadPhoto(p) {
     if (job && job.id === jobId) notifyPhoto(p);
   } catch (e) {
     console.error('[upload]', e);
-    if (e.code === 'gone') { p.pending = false; bgPending.delete(bgKey(p)); }
+    if (e.code === 'gone') { p.pending = false; bgPending.delete(bgKey(p)); dropPending(p); }
     else if (isRateLimit(e)) {
       // Drive ให้รอ — พักทั้งคิวแล้วลองใหม่เอง (เพิ่มเวลารอทีละเท่า สูงสุด 1 นาที)
       driveBackoff = Math.min(60000, (driveBackoff || 2000) * 2);
@@ -1149,6 +1182,7 @@ async function onSignedIn(session) {
   renderChip();
   setSync('saved');
   processDriveCleanup();
+  await restorePending();
   const last = lsGet(lastJobKey());
   if (last) { try { await openJob(last); } catch (e) { lsSet(lastJobKey(), null); } }
   await showJobList(true);
@@ -1510,6 +1544,7 @@ async function useApp(app, appTitle, opts = {}) {
   if (cfg.app === app && job && !opts.force) { setSync(syncStatus); return; }
   await flushPendingWrites();
   if (rtChannel) { sb.removeChannel(rtChannel); rtChannel = null; }
+  parkPending();   // รูปที่ยังรออัปของงานเดิม → อัปต่อเบื้องหลัง
   job = null; items = new Map(); photos = new Map(); inflight.clear(); mirrorJobId = null;
   cfg.app = app; cfg.appTitle = appTitle || app;
   if (opts.indicator) cfg.indicator = opts.indicator;
@@ -1517,6 +1552,7 @@ async function useApp(app, appTitle, opts = {}) {
   setSync(syncStatus);
   updateDriveBanner();
   if (isOnline() && !currentUser) { render(); if (!cfg.noLoginRedirect) toLogin(); return; }
+  if (isOnline()) await restorePending();
   const key = isOnline() ? lastJobKey() : lastJobKey() + '_offline';
   const last = lsGet(key);
   if (last) {
@@ -1693,6 +1729,8 @@ const api = {
     p.edit = edit === undefined ? p.edit : (edit || null);
     if (!isOnline()) { localAutosave(); return p; }
     p.pending = true;
+    p.jobId = p.jobId || job.id;
+    savePending(p);
     if (p.uploading) { updateDriveBanner(); return p; }   // กำลังอัปรูปเดิมอยู่ → uploadPhoto จะอัปรอบใหม่ให้เองเมื่อเสร็จ
     updateDriveBanner();
     if (uploadsRunning) return p;   // คิวที่ทำงานอยู่จะหยิบไปเอง
@@ -1705,6 +1743,7 @@ const api = {
     if (!p) return;
     photos.delete(k);
     if (!isOnline()) { localAutosave(); return; }
+    if (p.pending) { p.pending = false; dropPending(p); }
     updateDriveBanner();
     if (p.id) await dbWrite(() => sb.from('qc_photos').delete().eq('id', p.id), 'qc_photos:del:' + p.id);
     else if (job) await dbWrite(() => {
@@ -1761,6 +1800,7 @@ function init(options) {
   // หน้าเดียวกันมี avatar-cloud.js อยู่แล้ว (index) → ใช้ client ตัวเดียวกัน กันต่ออายุ token ซ้อนกัน
   sb = cfg.client || global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
   photoCache = localforage.createInstance({ name: 'avatar_team_photo_cache' });
+  pendingStore = localforage.createInstance({ name: 'avatar_team_pending_photos' });
   restoreDriveToken();
   renderChip();
   setSync('saved');
@@ -1770,11 +1810,11 @@ function init(options) {
   window.addEventListener('focus', onAppResume);
   document.addEventListener('focusout', () => setTimeout(runDeferredRefresh, 300));
   setInterval(() => { if (refreshDeferred) runDeferredRefresh(); }, 1500);   // กันพลาด: บางเครื่องไม่ยิง focusout
-  setInterval(() => { flushRetryQueue(); if ([...photos.values()].some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
+  setInterval(() => { flushRetryQueue(); if (allPending().some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
   // ปิด/ซ่อนแอพ → ส่งค่าที่ค้างในคิวทันที
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingWrites(); });
   window.addEventListener('pagehide', () => { flushPendingWrites(); });
-  // ยังมีรูปรออัปโหลด → เบราว์เซอร์ถามก่อนปิด/รีโหลด (ปิดไปก็ไม่หาย: สำเนาในเครื่องยังอยู่ เปิดงานนี้ใหม่จะอัปต่อ)
+  // ยังมีรูปรออัปโหลด → เบราว์เซอร์ถามก่อนปิด/รีโหลด (ปิดไปก็ไม่หาย: รูปเก็บใน avatar_team_pending_photos เปิดแอพใหม่จะอัปต่อ)
   window.addEventListener('beforeunload', e => { if (isOnline() && allPending().length) { e.preventDefault(); e.returnValue = ''; } });
 
   (async () => {
