@@ -44,7 +44,7 @@ const API_VERSION = 5;
 const SUPABASE_URL         = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
 const SUPABASE_ANON_KEY    = 'sb_publishable_3_9pZH5Geg767TI9a6AARA_j4_VYUe1';
 const GOOGLE_CLIENT_ID     = '817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com';
-const DRIVE_ROOT_FOLDER_ID = '1NTny5sIco7pQLEKEjgAuTd5uNhVfTuG4';
+const DRIVE_ROOT_FOLDER_ID = '1XqINnLbpcNcoroabsjQBIiMAYIg5uktU';   // โฟลเดอร์ที่บริษัทแชร์ (19/11/2569) — งานเดิมเก็บโฟลเดอร์งานของตัวเองไว้ที่เดิม (1NTny5…) ไม่ย้าย
 const DRIVE_SCOPE          = 'https://www.googleapis.com/auth/drive';
 
 /* ---- keys (ใช้ร่วมกับ minute-of-meeting.html ตั้งใจให้ token/โหมดใช้ต่อกันได้) ---- */
