@@ -251,14 +251,79 @@ const pendingPatches = new Map();
 let patchTimer = null;
 const inflight = new Map();   // id → { row, ver, sent } รายการที่สร้างแล้วแต่ server ยังไม่ยืนยัน
 
+/* OUTBOX — คำสั่งที่ยังไม่ถึง server (กำลังส่ง / รอลองใหม่ / รวมการแก้ 0.5 วิ) เก็บลงเครื่องด้วย (IndexedDB)
+   เน็ตหลุดแล้วปิดแอพ / iPad ปิดแอพเอง → เปิดใหม่ส่งต่อก่อนเปิดงาน ไม่หาย · ถึง server แล้วลบออก
+   spec = คำสั่งในรูปที่เก็บได้ (update / insert / delete / delphoto) */
+let outboxStore = null;
+const TAB = Math.random().toString(36).slice(2, 10);
+const outbox = new Map();   // oid → { key, specFn, at, n }
+let outboxN = 0, persistTimer = null, persistedKeys = new Set();
+/* แท็บที่ยังเปิดอยู่ (แอพอื่นในเว็บเดียวกัน / แท็บซ้ำ) บอกว่ายังอยู่ทุก 5 วิ — ส่งต่อเฉพาะคิวของแท็บที่ปิดไปแล้ว
+   (ไม่งั้นแท็บใหม่จะส่งค่าเก่าของแท็บที่ยังทำงานอยู่ไปทับของที่ใหม่กว่า) */
+const TAB_BEAT = 'avatar_team_tab_';
+const beat = () => lsSet(TAB_BEAT + TAB, String(Date.now()));
+const tabAlive = t => t === TAB || (Date.now() - Number(lsGet(TAB_BEAT + t) || 0)) < 15000;
+function outboxAdd(key, specFn) {
+  if (!specFn) return null;
+  const oid = TAB + '|' + (++outboxN);
+  outbox.set(oid, { key, specFn, at: Date.now(), n: outboxN });
+  schedulePersist();
+  return oid;
+}
+function outboxDone(oid) { if (oid && outbox.delete(oid)) schedulePersist(); }
+function schedulePersist() { if (!outboxStore) return; clearTimeout(persistTimer); persistTimer = setTimeout(persistOutbox, 150); }
+async function persistOutbox() {
+  clearTimeout(persistTimer);
+  if (!outboxStore) return;
+  const cur = new Map();
+  outbox.forEach((e, oid) => { try { const spec = e.specFn(); if (spec) cur.set(oid, { key: e.key, spec, at: e.at, n: e.n }); } catch (_) {} });
+  pendingPatches.forEach((pp, k) => cur.set(TAB + '|pp|' + k, {
+    key: k, spec: { t: 'update', table: pp.table, id: pp.id, patch: Object.assign({}, pp.patch, { updated_by: currentUser && currentUser.id }) }, at: Date.now(), n: ++outboxN
+  }));
+  const old = persistedKeys;
+  persistedKeys = new Set(cur.keys());
+  try {
+    await Promise.all([...old].filter(k => !cur.has(k)).map(k => outboxStore.removeItem(k))
+      .concat([...cur].map(([k, v]) => outboxStore.setItem(k, v))));
+  } catch (e) { console.warn('[outbox] save', e); }
+}
+function opFromSpec(sp) {
+  if (!sp) return null;
+  if (sp.t === 'update') return () => sb.from(sp.table).update(sp.patch).eq('id', sp.id);
+  if (sp.t === 'insert') return () => sb.from('qc_items').insert(sp.rows);
+  if (sp.t === 'delete') return () => sb.from(sp.table).delete().eq('id', sp.id);
+  if (sp.t === 'delphoto') return () => { const q = sb.from('qc_photos').delete().eq('job_id', sp.jobId).eq('slot', sp.slot); return sp.itemId ? q.eq('item_id', sp.itemId) : q.is('item_id', null); };
+  return null;
+}
+/* เปิดแอพ: ส่งคำสั่งที่ค้างจากครั้งก่อน (ทุกแท็บ/ทุกครั้งที่ปิดไป) ตามลำดับเดิม ก่อนเปิดงาน — ส่งซ้ำได้ไม่เสียหาย */
+let outboxRestored = null;
+function restoreOutbox() {
+  if (!outboxRestored) outboxRestored = (async () => {
+    if (!outboxStore || !currentUser) return;
+    const list = [];
+    await outboxStore.iterate((v, k) => { if (v && v.spec && !tabAlive(k.split('|')[0])) list.push([k, v]); }).catch(e => console.warn('[outbox] restore', e));
+    // ล้างป้าย "ยังอยู่" ของแท็บที่ปิดไปนานแล้ว
+    try { Object.keys(localStorage).filter(k => k.startsWith(TAB_BEAT) && !tabAlive(k.slice(TAB_BEAT.length))).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+    if (!list.length) return;
+    list.sort((a, b) => (a[1].at - b[1].at) || (a[1].n - b[1].n));
+    const runs = [];
+    list.forEach(([, v]) => { const op = opFromSpec(v.spec), spec = v.spec; if (op) runs.push(dbWrite(op, v.key, () => spec)); });
+    await persistOutbox();                                   // เก็บเป็นของแท็บนี้ก่อน แล้วค่อยลบชุดเดิม
+    await Promise.all(list.map(([k]) => outboxStore.removeItem(k).catch(() => {})));
+    await Promise.race([Promise.all(runs), new Promise(r => setTimeout(r, 15000))]);
+  })();
+  return outboxRestored;
+}
+
 /* เขียนทีละคำสั่งตามลำดับที่สั่ง — กันคำสั่งแซงกัน (ลูกถึงก่อนแม่ / ลบถึงก่อนสร้างแล้วแถวฟื้น) */
 let writeChain = Promise.resolve(), writesInFlight = 0, writeSeq = 0;
-function dbWrite(op, key) {
+function dbWrite(op, key, specFn) {
   if (!isOnline()) { localAutosave(); return Promise.resolve(true); }
+  const oid = outboxAdd(key, specFn);
   setSync('saving');
   writesInFlight++;
   writeSeq++;
-  const run = writeChain.then(() => dbWriteNow(op, key)).finally(() => {
+  const run = writeChain.then(() => dbWriteNow(op, key, oid, specFn)).finally(() => {
     writesInFlight--;
     if (!writesInFlight && !retryQueue.length && !pendingPatches.size && isOnline()) setSync('saved');
     if (!writesInFlight) runDeferredRefresh();
@@ -266,16 +331,27 @@ function dbWrite(op, key) {
   writeChain = run.catch(() => {});
   return run;
 }
-async function dbWriteNow(op, key) {
+async function dbWriteNow(op, key, oid, specFn) {
   try {
     const { error } = await op();
     if (error && !isDuplicate(error)) throw error;
+    outboxDone(oid);
     return true;
   } catch (err) {
     console.error('[db]', key, err);
     const i = retryQueue.findIndex(r => r.key === key);
-    if (i >= 0) retryQueue.splice(i, 1);
-    retryQueue.push({ key, op });
+    if (i >= 0) {
+      // แถวเดียวกันแก้หลายครั้งตอนเน็ตหลุด → รวมทุกช่องที่แก้ (เดิมเก็บแค่ครั้งล่าสุด เช่น แก้เนื้อหาแล้วย้าย → เนื้อหาหาย)
+      const old = retryQueue.splice(i, 1)[0];
+      const a = old.specFn && old.specFn(), b = specFn && specFn();
+      if (a && b && a.t === 'update' && b.t === 'update') {
+        const merged = Object.assign({}, b, { patch: Object.assign({}, a.patch, b.patch) });
+        op = opFromSpec(merged); specFn = () => merged;
+        const e = outbox.get(oid); if (e) { e.specFn = specFn; schedulePersist(); }
+      }
+      outboxDone(old.oid);
+    }
+    retryQueue.push({ key, op, oid, specFn });
     setSync('error');
     return false;
   }
@@ -290,7 +366,7 @@ function flushRetryQueue() {
     const list = retryQueue.splice(0);
     const failed = [];
     for (const it of list) {   // ล้มอีก → เก็บไว้ตามลำดับเดิม ลองรอบหน้า (ตัวที่พึ่งตัวก่อนหน้าก็จะล้มตามแล้วผ่านรอบถัดไป)
-      try { const { error } = await it.op(); if (error && !isDuplicate(error)) throw error; }
+      try { const { error } = await it.op(); if (error && !isDuplicate(error)) throw error; outboxDone(it.oid); }
       catch (e) { failed.push(it); }
     }
     retryQueue.unshift(...failed);
@@ -308,6 +384,7 @@ function queueUpdate(table, id, patch) {
   pendingPatches.set(key, { table, id, patch: Object.assign(cur ? cur.patch : {}, patch) });
   clearTimeout(patchTimer);
   patchTimer = setTimeout(flushPendingWrites, 500);
+  schedulePersist();
   setSync('saving');
 }
 
@@ -316,10 +393,11 @@ async function flushPendingWrites() {
   if (!isOnline()) { await localAutosave(true); return; }
   const list = [...pendingPatches.values()];
   pendingPatches.clear();
-  for (const { table, id, patch } of list) {
+  // สั่งทุกคำสั่งทันที (เข้าคิวเรียงลำดับเอง) — ไม่รอทีละตัว ไม่งั้นตัวที่ยังไม่ได้สั่งไม่อยู่ใน outbox ถ้าแอพถูกปิดกลางทาง
+  await Promise.all(list.map(({ table, id, patch }) => {
     patch.updated_by = currentUser && currentUser.id;
-    await dbWrite(() => sb.from(table).update(patch).eq('id', id), table + ':' + id);
-  }
+    return dbWrite(() => sb.from(table).update(patch).eq('id', id), table + ':' + id, () => ({ t: 'update', table, id, patch }));
+  }));
   runDeferredRefresh();
 }
 
@@ -698,6 +776,7 @@ async function uploadPhoto(p) {
       throw error;
     }
     driveBackoff = 0;
+    lastDriveError = '';
     bgPending.delete(bgKey(p));
     if (p.dataUrl === src && p.origDataUrl === origSrc) dropPending(p);   // ถูกแก้ระหว่างอัป → เก็บตัวใหม่ไว้จนกว่าจะอัปเสร็จ
     const oldId = p.driveId, oldOwner = p.uploadedBy, oldOrig = p.origDriveId;
@@ -708,6 +787,8 @@ async function uploadPhoto(p) {
     // realtime อาจสลับ object ใน map ระหว่างอัปโหลด → ให้ตัวปัจจุบันได้ค่าใหม่ด้วย
     const cur = job && job.id === jobId ? photos.get(pkey(p.itemId, p.slot)) : null;
     if (cur && cur !== p && cur.dataUrl === src) Object.assign(cur, { id: p.id, driveId: newId, origDriveId: p.origDriveId, uploadedBy: currentUser.id, pending: false });
+    // อัปเสร็จพอดีระหว่างเปิดงานนี้ (ดึงงานไปก่อนแถวรูปถึง server) → ใส่เข้างานที่เปิดอยู่ ไม่งั้นรูปไม่ขึ้นจอจนกว่าจะเปิดใหม่
+    else if (!cur && job && job.id === jobId && (!p.itemId || items.has(p.itemId))) photos.set(pkey(p.itemId, p.slot), p);
     if (job && job.id === jobId) notifyPhoto(p);
   } catch (e) {
     console.error('[upload]', e);
@@ -719,7 +800,10 @@ async function uploadPhoto(p) {
       lastDriveError = 'Google Drive ให้รอสักครู่ — จะอัปต่อเอง';
       setTimeout(flushPendingUploads, driveBackoff + 100);
     }
-    else if (e.status !== 401) { lastDriveError = e.message; toast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่'); }
+    else if (e.status !== 401) {
+      lastDriveError = e.message; toast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่');
+      setTimeout(flushPendingUploads, 3000);   // เช่น ออกจากแอพระหว่างอัป (iPad ตัดการเชื่อมต่อ) → ลองใหม่เองเร็ว ๆ ไม่ต้องกดเอง
+    }
   }
   p.uploading = false;
   if ((p.dataUrl !== src || p.origDataUrl !== origSrc) && !p.pending) { p.pending = true; return uploadPhoto(p); }   // ถูกแก้ระหว่างอัปโหลด → อัปรอบใหม่
@@ -765,14 +849,18 @@ function updateDriveBanner() {
     b.querySelector('[data-b]').onclick = connectDrive;
     document.body.appendChild(b);
   }
+  const token = hasDriveToken();
+  const busy = token && !lastDriveError;   // กำลังอัป/โหลดตามปกติ → ไม่ต้องมีปุ่ม (ปุ่ม "ลองอีกครั้ง" ทำให้เข้าใจว่าพัง)
   const parts = [];
-  if (pending) parts.push(`รูป ${pending} รูปรออัปโหลด`);
-  if (needLoad) parts.push(`รูป ${needLoad} รูปยังไม่ได้โหลด`);
+  if (pending) parts.push(busy ? `กำลังอัปโหลดรูป ${pending} รูป…` : `รูป ${pending} รูปรออัปโหลด`);
+  if (needLoad) parts.push(busy ? `กำลังโหลดรูป ${needLoad} รูป…` : `รูป ${needLoad} รูปยังไม่ได้โหลด`);
   let text = parts.join(' · ');
-  if (!hasDriveToken()) text += ' — ต้องเชื่อมต่อ Google Drive';
+  if (!token) text += ' — ต้องเชื่อมต่อ Google Drive';
   else if (lastDriveError) text += ' — ' + lastDriveError;
   b.querySelector('[data-t]').textContent = text;
-  b.querySelector('[data-b]').textContent = hasDriveToken() ? 'ลองอีกครั้ง' : 'เชื่อมต่อ Drive';
+  const btn = b.querySelector('[data-b]');
+  btn.textContent = token ? 'ลองอีกครั้ง' : 'เชื่อมต่อ Drive';
+  btn.style.display = busy ? 'none' : '';
   b.style.display = 'flex';
 }
 
@@ -1182,6 +1270,7 @@ async function onSignedIn(session) {
   renderChip();
   setSync('saved');
   processDriveCleanup();
+  await restoreOutbox();
   await restorePending();
   const last = lsGet(lastJobKey());
   if (last) { try { await openJob(last); } catch (e) { lsSet(lastJobKey(), null); } }
@@ -1552,7 +1641,7 @@ async function useApp(app, appTitle, opts = {}) {
   setSync(syncStatus);
   updateDriveBanner();
   if (isOnline() && !currentUser) { render(); if (!cfg.noLoginRedirect) toLogin(); return; }
-  if (isOnline()) await restorePending();
+  if (isOnline()) { await restoreOutbox(); await restorePending(); }
   const key = isOnline() ? lastJobKey() : lastJobKey() + '_offline';
   const last = lsGet(key);
   if (last) {
@@ -1598,16 +1687,20 @@ function insertItemRows(list) {
   const jobId = job.id;
   const fs = list.map(it => { const f = { ver: 0, sentVer: -1, done: false }; inflight.set(it.id, f); return [it, f]; });
   // op ถูกเรียกซ้ำได้จากคิวลองใหม่ — อ่านค่าล่าสุดตอนส่งเสมอ, แม่ก่อนลูก, ข้ามแถวที่ถูกลบไปแล้ว
-  const op = async () => {
+  const rowsNow = mark => {
     const live = fs.filter(([it]) => items.has(it.id));
-    if (!live.length) return { error: null };
     const ids = new Set(live.map(([it]) => it.id)), done = new Set(), rows = [];
     let guard = live.length + 1;
     while (rows.length < live.length && guard--) live.forEach(([it, f]) => {
       if (done.has(it.id) || (it.parentId && ids.has(it.parentId) && !done.has(it.parentId))) return;
-      done.add(it.id); f.sentVer = f.ver;
-      rows.push({ id: it.id, job_id: jobId, parent_id: it.parentId, kind: it.kind, sort_order: it.sort, data: it.data, updated_by: currentUser.id });
+      done.add(it.id); if (mark) f.sentVer = f.ver;
+      rows.push({ id: it.id, job_id: jobId, parent_id: it.parentId, kind: it.kind, sort_order: it.sort, data: it.data, updated_by: currentUser && currentUser.id });
     });
+    return { live, rows };
+  };
+  const op = async () => {
+    const { live, rows } = rowsNow(true);
+    if (!live.length) return { error: null };
     const r = await sb.from('qc_items').insert(rows);
     if (!r.error || isDuplicate(r.error)) {
       live.forEach(([it, f]) => {
@@ -1618,7 +1711,7 @@ function insertItemRows(list) {
     }
     return r;
   };
-  dbWrite(op, 'qc_items:new:' + list[0].id);
+  dbWrite(op, 'qc_items:new:' + list[0].id, () => { const { rows } = rowsNow(false); return rows.length ? { t: 'insert', rows: JSON.parse(JSON.stringify(rows)) } : null; });
 }
 /* รอจนรายการถูกสร้างบน server แล้ว (ใช้ก่อนผูกรูปกับรายการ) — คืน false ถ้ารอนานเกิน */
 async function waitInserted(id, ms = 60000) {
@@ -1677,7 +1770,7 @@ const api = {
     it.data = clone(data || {});
     if (!isOnline()) { localAutosave(); return; }
     const f = inflight.get(id);
-    if (f && !f.done) { f.ver++; return; }
+    if (f && !f.done) { f.ver++; schedulePersist(); return; }
     queueUpdate('qc_items', id, { data: it.data });
   },
   moveItem(id, { parentId, after, before, sort } = {}) {
@@ -1687,7 +1780,7 @@ const api = {
     it.sort = sort != null ? sort : nextSort(it.parentId, { after, before });
     if (!isOnline()) { localAutosave(); return; }
     const f = inflight.get(id);
-    if (f && !f.done) { f.ver++; return; }
+    if (f && !f.done) { f.ver++; schedulePersist(); return; }
     queueUpdate('qc_items', id, { parent_id: it.parentId, sort_order: it.sort });
   },
   async removeItem(id) {
@@ -1698,9 +1791,10 @@ const api = {
     photos.forEach((p, k) => { if (p.itemId && gone.has(p.itemId)) { if (p.driveId) files.push([p.driveId, p.uploadedBy]); if (p.origDriveId) files.push([p.origDriveId, p.uploadedBy]); photos.delete(k); } });
     gone.forEach(i => { items.delete(i); inflight.delete(i); pendingPatches.delete('qc_items:' + i); });
     // คำสั่งสร้าง/แก้ของแถวที่ถูกลบที่ยังค้างในคิวลองใหม่ → ทิ้ง (ไม่งั้นแถวฟื้นหลังลบ)
-    retryQueue = retryQueue.filter(r => ![...gone].some(i => r.key === 'qc_items:new:' + i || r.key === 'qc_items:' + i));
+    retryQueue = retryQueue.filter(r => { const drop = [...gone].some(i => r.key === 'qc_items:new:' + i || r.key === 'qc_items:' + i); if (drop) outboxDone(r.oid); return !drop; });
+    schedulePersist();
     if (!isOnline()) { localAutosave(); updateDriveBanner(); return; }
-    await dbWrite(() => sb.from('qc_items').delete().eq('id', id), 'qc_items:del:' + id);
+    await dbWrite(() => sb.from('qc_items').delete().eq('id', id), 'qc_items:del:' + id, () => ({ t: 'delete', table: 'qc_items', id }));
     for (const [fid, owner] of files) await driveDelete(fid, owner, false);
     updateDriveBanner();
   },
@@ -1745,12 +1839,12 @@ const api = {
     if (!isOnline()) { localAutosave(); return; }
     if (p.pending) { p.pending = false; dropPending(p); }
     updateDriveBanner();
-    if (p.id) await dbWrite(() => sb.from('qc_photos').delete().eq('id', p.id), 'qc_photos:del:' + p.id);
-    else if (job) await dbWrite(() => {
-      let q = sb.from('qc_photos').delete().eq('job_id', job.id).eq('slot', slot);
+    if (p.id) await dbWrite(() => sb.from('qc_photos').delete().eq('id', p.id), 'qc_photos:del:' + p.id, () => ({ t: 'delete', table: 'qc_photos', id: p.id }));
+    else if (job) { const jid = job.id; await dbWrite(() => {
+      let q = sb.from('qc_photos').delete().eq('job_id', jid).eq('slot', slot);
       q = itemId ? q.eq('item_id', itemId) : q.is('item_id', null);
       return q;
-    }, 'qc_photos:del:' + k);
+    }, 'qc_photos:del:' + k, () => ({ t: 'delphoto', jobId: jid, itemId: itemId || null, slot })); }
     if (p.driveId) await driveDelete(p.driveId, p.uploadedBy, false);
     if (p.origDriveId) await driveDelete(p.origDriveId, p.uploadedBy, false);
   },
@@ -1801,6 +1895,9 @@ function init(options) {
   sb = cfg.client || global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
   photoCache = localforage.createInstance({ name: 'avatar_team_photo_cache' });
   pendingStore = localforage.createInstance({ name: 'avatar_team_pending_photos' });
+  outboxStore = localforage.createInstance({ name: 'avatar_team_outbox' });
+  beat(); setInterval(beat, 5000);
+  window.addEventListener('pagehide', () => lsSet(TAB_BEAT + TAB, null));   // ปิดแท็บปกติ → คิวที่เหลือส่งต่อได้ทันทีเมื่อเปิดใหม่
   restoreDriveToken();
   renderChip();
   setSync('saved');
@@ -1812,8 +1909,8 @@ function init(options) {
   setInterval(() => { if (refreshDeferred) runDeferredRefresh(); }, 1500);   // กันพลาด: บางเครื่องไม่ยิง focusout
   setInterval(() => { flushRetryQueue(); if (allPending().some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
   // ปิด/ซ่อนแอพ → ส่งค่าที่ค้างในคิวทันที
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingWrites(); });
-  window.addEventListener('pagehide', () => { flushPendingWrites(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { flushPendingWrites(); persistOutbox(); } });
+  window.addEventListener('pagehide', () => { flushPendingWrites(); persistOutbox(); });
   // ยังมีรูปรออัปโหลด → เบราว์เซอร์ถามก่อนปิด/รีโหลด (ปิดไปก็ไม่หาย: รูปเก็บใน avatar_team_pending_photos เปิดแอพใหม่จะอัปต่อ)
   window.addEventListener('beforeunload', e => { if (isOnline() && allPending().length) { e.preventDefault(); e.returnValue = ''; } });
 
@@ -1839,6 +1936,6 @@ function init(options) {
   return api;
 }
 
-global.AvatarTeam = { init, version: VERSION, _debug: () => ({ job, items, photos, pendingPatches, retryQueue, inflight, writesInFlight, refreshDeferred }) };
+global.AvatarTeam = { init, version: VERSION, _debug: () => ({ job, items, photos, pendingPatches, retryQueue, inflight, writesInFlight, refreshDeferred, bgPending, outbox }) };
 
 })(window);

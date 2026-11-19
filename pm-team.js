@@ -139,7 +139,8 @@ function scheduleSync() {
 function syncNow() {
   clearTimeout(syncTimer);
   if (syncing) { dirty = true; return syncing; }
-  if (applying || inPrintMode() || !team) return Promise.resolve(false);
+  if (applying) { touchedWhileApplying = true; return Promise.resolve(false); }   // ขอส่งระหว่างเอาของลงจอ → ส่งของบนจอหลังลงเสร็จ (ไม่ทิ้ง)
+  if (inPrintMode() || !team) return Promise.resolve(false);
   syncing = (async () => {
     dirty = false;
     // อ่านค่าในฟอร์มลง attribute (syncDOMValues) แก้ DOM เอง → อย่านับเป็นการแก้ของผู้ใช้ (แบบเดียวกับ buildDraftObject เดิม)
@@ -299,10 +300,12 @@ function patchPhotos(el, curImgs, want) {
     else if (!d && curImgs[k]) clearPhoto(p);
   });
 }
+/* บล็อกบนจอที่ยังไม่มี id ในระบบ = เพิ่มแล้วยังไม่ได้ส่ง (เช่น เพิ่มตอนกำลังเอาของจากเครื่องอื่นลงจอ) */
+const unsentOnScreen = () => [...W().querySelectorAll(SUB_BLOCK_SELECTOR)].some(b => !b.dataset.tid);
 function onRender() {
   const j = team.job, jid = j ? j.id : null;
-  // งานเดิม + มีการแก้บนจอที่ยังไม่ส่ง → ส่งก่อน แล้วค่อยดึงของล่าสุด
-  if (jid && jid === pulledJob && (dirty || syncing)) {
+  // งานเดิม + มีการแก้บนจอที่ยังไม่ส่ง → ส่งก่อน แล้วค่อยดึงของล่าสุด (ไม่งั้นประกอบหน้าใหม่แล้วบล็อกที่เพิ่งเพิ่มหาย)
+  if (jid && jid === pulledJob && (dirty || syncing || unsentOnScreen())) {
     syncNow().then(() => setTimeout(() => team.refresh(), 300));
     return;
   }
@@ -373,7 +376,7 @@ function rebaseFromScreen() {
   } finally { setTimeout(() => { suppressDirty = false; }, 0); }
 }
 function afterApply() {
-  const touched = touchedWhileApplying;
+  const touched = touchedWhileApplying || (!!team && !!team.job && unsentOnScreen());
   touchedWhileApplying = false;
   if (!touched) rebaseFromScreen();   // แตะระหว่างโหลด → ฐานคงเป็นของที่ดึงมา แล้วส่งของบนจอ (รวมสิ่งที่ผู้ใช้เพิ่งแก้)
   const renamed = dedupeBlocks();
