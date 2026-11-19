@@ -1674,6 +1674,8 @@ async function useApp(app, appTitle, opts = {}) {
   updateDriveBanner();
   if (isOnline() && !currentUser) { render(); if (!cfg.noLoginRedirect) toLogin(); return; }
   if (isOnline()) { await restoreOutbox(); await restorePending(); }
+  // opts.noOpen = แอพมีหน้ารายการงานของตัวเอง (เช่น ของขาดแบ่งเดือน/JOB) → ไม่เปิดงานล่าสุดเอง ไม่ขึ้นป๊อบอัพ
+  if (opts.noOpen) { render(); return; }
   const key = isOnline() ? lastJobKey() : lastJobKey() + '_offline';
   const last = lsGet(key);
   if (last) {
@@ -1682,6 +1684,22 @@ async function useApp(app, appTitle, opts = {}) {
   }
   if (!job) render();
   await showJobList(true);
+}
+
+/* สำหรับแอพที่ทำหน้ารายการงานเอง: งานทั้งหมดของแอพนี้ (ออนไลน์ = ทีม · ออฟไลน์ = ในเครื่อง) */
+async function listJobs() {
+  if (!isOnline()) {
+    return (await getLocalJobs()).map(m => ({ id: m.id, name: m.name || '', customer: m.customer || '', meta: (m.model && m.model.job && m.model.job.meta) || {}, updated_at: new Date(m.updatedAt || 0).toISOString(), local: true }));
+  }
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('qc_jobs').select('id, name, customer, meta, updated_at')
+      .eq('app', cfg.app).order('updated_at', { ascending: false }).range(from, from + 999);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
 }
 
 let renderDepth = 0;
@@ -1893,6 +1911,37 @@ const api = {
   refresh: () => scheduleRemoteRefresh(),   // ดึงงานล่าสุดจากระบบใหม่
   openList: () => showJobList(true),
   newJob: startNewJob,
+  // หน้ารายการงานของแอพเอง (ดู listJobs / useApp noOpen)
+  listJobs,
+  async open(id) {
+    if (job && job.id === id) return true;
+    if (!(await canLeave())) return false;
+    ensureDriveTokenFromGesture();
+    if (isOnline()) await openJob(id); else { await flushPendingWrites(); await openLocalJob(id); }
+    return true;
+  },
+  /* ออกจากงานที่เปิดอยู่ (หน้าว่าง) — งานใหม่จะถูกสร้างเองเมื่อเริ่มกรอก (ไม่สร้างงานเปล่าทิ้งไว้) */
+  async leave() {
+    if (!(await canLeave())) return false;
+    await flushPendingWrites();
+    if (job) leaveJob();
+    return true;
+  },
+  async deleteJob(id, label) {
+    const ok = await confirmDialog({
+      title: isOnline() ? 'ลบงานออกจากระบบทีม' : 'ลบงานออกจากเครื่องนี้',
+      message: `ต้องการลบ "<b>${esc(label || 'ไม่ระบุชื่องาน')}</b>" ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">${isOnline() ? 'ทุกคนในทีมจะไม่เห็นงานนี้อีก · รูปใน Google Drive จะถูกย้ายไปถังขยะ (กู้คืนได้ 30 วัน)' : 'การลบนี้ย้อนกลับไม่ได้'}</span>`,
+      confirmText: 'ลบ', cancelText: 'ยกเลิก', danger: true
+    });
+    if (!ok) return false;
+    try {
+      if (isOnline()) await deleteTeamJob(id);
+      else await setLocalJobs((await getLocalJobs()).filter(x => x.id !== id));
+      if (job && job.id === id) leaveJob();
+      toast('ลบงานแล้ว');
+      return true;
+    } catch (e) { console.error(e); toast('ลบไม่สำเร็จ'); return false; }
+  },
   flush: flushPendingWrites,
   /* พักการวาดหน้าใหม่จาก realtime (เช่น ระหว่างสร้าง PDF / ลากจัดเรียง) — เรียก resume() เมื่อเสร็จ */
   suspend() { suspendDepth++; },
