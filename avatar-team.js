@@ -397,14 +397,14 @@ function localAutosave(immediate) {
   localSaveTimer = setTimeout(run, 400);
 }
 
-async function openLocalJob(id) {
+async function openLocalJob(id, opts = {}) {
   const m = (await getLocalJobs()).find(x => x.id === id);
   if (!m) throw new Error('not found');
   inflight.clear();
   loadModel(m.model);
   job.id = m.id;
   lsSet(lastJobKey() + '_offline', id);
-  render();
+  if (!opts.keepScreen) render();
   updateDriveBanner();
 }
 
@@ -642,15 +642,18 @@ async function uploadPhoto(p) {
   updateDriveBanner();
 }
 
+/* คิวอัปโหลด: ครั้งละ 3 รูป (แอพที่ใส่รูปทีละมาก ๆ เช่น Thermoscan ไม่ยิงพร้อมกันเป็นร้อย) — รูปที่เพิ่มระหว่างทางก็ถูกหยิบต่อ */
 let uploadsRunning = false;
 async function flushPendingUploads() {
   if (uploadsRunning || !hasDriveToken() || !isOnline()) return;
   uploadsRunning = true;
+  const tried = new Set();   // รอบนี้ลองแล้ว (ล้ม) → ไม่วนซ้ำไม่รู้จบ รอรอบหน้า
+  const next = () => { for (const p of photos.values()) if (p.pending && !p.uploading && p.dataUrl && !tried.has(p)) return p; return null; };
   try {
-    for (const p of [...photos.values()]) {
-      if (p.pending && !p.uploading) await uploadPhoto(p);
-      if (!hasDriveToken()) return;
-    }
+    await Promise.all([0, 1, 2].map(async () => {
+      let p;
+      while (hasDriveToken() && isOnline() && (p = next())) { tried.add(p); await uploadPhoto(p); if (p.pending) continue; tried.delete(p); }
+    }));
   } finally { uploadsRunning = false; updateDriveBanner(); }
 }
 
@@ -855,12 +858,12 @@ async function remoteRefresh() {
 }
 const inflightUnsent = () => [...inflight.values()].some(f => !f.done);
 
-async function openJob(id) {
+async function openJob(id, opts = {}) {
   await flushPendingWrites();
   const row = await fetchJobTree(id);
   inflight.clear();
   applyRemote(rowsToModel(row), true);
-  render();
+  if (!opts.keepScreen) render();
   subscribeJob(id);
   lsSet(lastJobKey(), id);
   updateDriveBanner();
@@ -904,14 +907,15 @@ async function deleteTeamJob(id) {
 
 /* ยังไม่ได้เปิดงาน (เช่นปิดป๊อบอัพรายการไป) → สร้างงานใหม่ให้เลย จะได้ทำงานต่อได้ทันที */
 let ensuring = null;
-function ensureJob() {
+/* opts.keepScreen = ไม่วาดหน้าจอใหม่หลังสร้างงาน (แอพจะส่งของที่อยู่บนจอขึ้นงานใหม่เอง — ใช้กับ reconcile) */
+function ensureJob(opts = {}) {
   if (job) return Promise.resolve(true);
   if (ensuring) return ensuring;
   ensuring = (async () => {
     try {
-      if (isOnline()) { if (!currentUser) return false; await openJob(await createJob({})); }
-      else await openLocalJob(await createLocalJob({}));
-      await runSeed();
+      if (isOnline()) { if (!currentUser) return false; await openJob(await createJob({}), opts); }
+      else await openLocalJob(await createLocalJob({}), opts);
+      if (!opts.keepScreen) await runSeed();
       return true;
     } catch (e) {
       console.error(e);
@@ -1059,8 +1063,10 @@ async function showJobList(force) {
         `<div class="at-hist-list">${local.map(localItem).join('')}</div>` : '')
     : sectionTitle(`งานในเครื่องนี้ (${local.length})`) +
       `<div class="at-hist-list">${local.length ? local.map(localItem).join('') : empty('ยังไม่มีงานในเครื่องนี้')}</div>`;
-  const rescanHtml = cfg.legacyLocal
-    ? `<button class="at-btn" data-rescan style="width:100%;justify-content:center;margin-top:12px;font-size:12.5px;color:#64748b;">🔍 ค้นหางานเก่าจากเวอร์ชันก่อนในเครื่องนี้</button>` : '';
+  const rescanHtml = (cfg.legacyLocal
+    ? `<button class="at-btn" data-rescan style="width:100%;justify-content:center;margin-top:12px;font-size:12.5px;color:#64748b;">🔍 ค้นหางานเก่าจากเวอร์ชันก่อนในเครื่องนี้</button>` : '')
+    + ((cfg.listExtras || []).length
+      ? `<div style="display:flex;gap:8px;margin-top:8px;">${cfg.listExtras.map((x, i) => `<button class="at-btn" data-extra="${i}" style="flex:1;justify-content:center;font-size:12.5px;color:#64748b;">${esc(x.label)}</button>`).join('')}</div>` : '');
 
   const bg = buildModalOverlay(`
     <div class="at-modal-head"><span>${online ? 'รายการงาน (ทีม)' : 'งานในเครื่องนี้ (ออฟไลน์)'}</span><span class="at-close" data-close>×</span></div>
@@ -1093,6 +1099,7 @@ async function showJobList(force) {
     if (!(await canLeave())) return;
     if (online) await enterOfflineMode(); else await switchToOnline();
   };
+  bg.querySelectorAll('[data-extra]').forEach(b => b.onclick = () => { close(); try { cfg.listExtras[+b.dataset.extra].onClick(); } catch (e) { console.error(e); } });
   const rescan = bg.querySelector('[data-rescan]');
   if (rescan) rescan.onclick = async () => {
     close();
@@ -1160,6 +1167,118 @@ async function showJobList(force) {
     try { await pushModelToTeam(m.model); toast('ส่งขึ้นทีมแล้ว — กำลังอัปโหลดรูป'); }
     catch (e) { console.error(e); toast('ส่งขึ้นทีมไม่สำเร็จ'); showJobList(true); }
   });
+}
+
+/* ========================================================================
+   MIRROR — สำหรับแอพที่มีข้อมูลเป็นต้นไม้ของ object อยู่แล้ว (เช่น Thermoscan)
+   แอพแก้ object ของตัวเองตามเดิม แล้วเรียก team.reconcile(roots) → เทียบกับแถวในระบบ ส่งเฉพาะที่เปลี่ยน
+   team.pull() → สร้าง object จากแถวในระบบ (ใช้ตอนเปิดงาน / มีคนอื่นแก้)
+   schema = { roots: { buildings:'building' }, children: { building:{ cabinets:'cabinet' }, ... } }
+   - ฟิลด์ที่เป็นรูป ('data:image...') → qc_photos ช่องชื่อเดียวกับฟิลด์
+   - ฟิลด์ขึ้นต้นด้วย _ / File / ฟังก์ชัน → ไม่เก็บ · obj._tid = id ของแถว
+   - รูปที่ยังโหลดจาก Drive ไม่เสร็จ = LOADING (เทียบแล้วข้าม ไม่ลบรูปบนระบบ)
+   ======================================================================== */
+const LOADING = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function stableStr(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+  if (Array.isArray(v)) return '[' + v.map(stableStr).join(',') + ']';
+  return '{' + Object.keys(v).filter(k => v[k] !== undefined && typeof v[k] !== 'function').sort().map(k => JSON.stringify(k) + ':' + stableStr(v[k])).join(',') + '}';
+}
+const isPlain = v => v === null || typeof v !== 'object' || Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype;
+function splitObj(obj, childKeys) {
+  const data = {}, imgs = {};
+  Object.keys(obj).forEach(k => {
+    if (k[0] === '_' || childKeys.includes(k)) return;
+    const v = obj[k];
+    if (typeof v === 'string' && v.startsWith('data:image')) { imgs[k] = v; return; }
+    if (v === undefined || typeof v === 'function' || !isPlain(v)) return;
+    data[k] = v;
+  });
+  return { data: JSON.parse(JSON.stringify(data)), imgs };
+}
+let mirrorSchema = null;
+/* กันข้อมูลหาย: reconcile ได้เฉพาะเมื่อหน้าจอโหลดจากงานนี้แล้ว (pull) — ไม่งั้นของว่างบนจอจะถูกตีความว่า "ลบทุกอย่าง" */
+let mirrorJobId = null;
+function mirrorKinds(schema) {
+  const k = new Set(Object.values(schema.roots));
+  Object.values(schema.children || {}).forEach(m => Object.values(m).forEach(x => k.add(x)));
+  Object.keys(schema.children || {}).forEach(x => k.add(x));
+  return k;
+}
+async function reconcile(roots, schema) {
+  schema = schema || mirrorSchema;
+  if (!job) {
+    if (!(await ensureJob({ keepScreen: true }))) return false;
+    mirrorJobId = job.id;   // งานใหม่ที่เพิ่งสร้างจากของบนจอ — ว่างอยู่ ปลอดภัยที่จะส่งของบนจอขึ้นไป
+  }
+  if (mirrorJobId !== job.id) { console.warn('[team] reconcile ข้าม: หน้าจอยังไม่ได้โหลดจากงานนี้'); return false; }
+  const specs = [], seen = new Set(), photoOps = [];
+  const walk = (parentId, arr, kind) => {
+    const cm = (schema.children || {})[kind] || {}, ck = Object.keys(cm);
+    (arr || []).forEach((obj, i) => {
+      if (!obj || typeof obj !== 'object' || seen.has(obj._tid)) return;
+      const { data, imgs } = splitObj(obj, ck);
+      const it = obj._tid && items.get(obj._tid);
+      if (!it) {
+        obj._tid = uuid();
+        specs.push({ id: obj._tid, parentId, kind, sort: i, data });
+      } else {
+        if ((it.parentId || null) !== (parentId || null) || it.sort !== i) api.moveItem(it.id, { parentId, sort: i });
+        if (stableStr(data) !== stableStr(it.data)) api.setItemData(it.id, data);
+      }
+      const id = obj._tid;
+      seen.add(id);
+      Object.entries(imgs).forEach(([slot, v]) => { if (v !== LOADING) photoOps.push([id, slot, v]); });
+      if (it) photosOf(id).forEach(p => { if (!(p.slot in imgs)) photoOps.push([id, p.slot, null]); });
+      ck.forEach(k => walk(id, obj[k], cm[k]));
+    });
+  };
+  Object.entries(schema.roots).forEach(([k, kind]) => walk(null, roots[k], kind));
+  if (specs.length) await api.addItems(specs);
+  photoOps.forEach(([id, slot, v]) => {
+    const p = api.photo(id, slot);
+    if (v == null) { if (p) api.removePhoto(id, slot); }
+    else if (!p || p.dataUrl !== v) api.setPhoto(id, slot, { dataUrl: v });
+  });
+  const kinds = mirrorKinds(schema);
+  [...items.values()].filter(it => kinds.has(it.kind) && !seen.has(it.id) && (!it.parentId || seen.has(it.parentId)))
+    .forEach(it => api.removeItem(it.id));
+  return true;
+}
+const photosOf = itemId => [...photos.values()].filter(p => (p.itemId || null) === (itemId || null));
+function pull(schema) {
+  schema = schema || mirrorSchema;
+  const index = new Map();
+  const build = it => {
+    const o = clone(it.data || {});
+    o._tid = it.id;
+    photosOf(it.id).forEach(p => { o[p.slot] = p.dataUrl || LOADING; });
+    const cm = (schema.children || {})[it.kind] || {};
+    Object.entries(cm).forEach(([k, kind]) => { o[k] = children(it.id, kind).map(build); });
+    index.set(it.id, o);
+    return o;
+  };
+  const roots = {};
+  Object.entries(schema.roots).forEach(([k, kind]) => { roots[k] = children(null, kind).map(build); });
+  mirrorJobId = job ? job.id : null;
+  return { roots, index };
+}
+/* ต้นไม้ของ object (เช่น ประวัติในเครื่องเวอร์ชันก่อน) → โมเดลสำหรับ "ส่งขึ้นทีม" / นำเข้า — ไม่แตะงานที่เปิดอยู่ */
+function modelFromRoots(roots, schema, jobFields, jobPhotos) {
+  const out = { job: Object.assign({ name: '', customer: '', meta: {} }, jobFields || {}), items: [], photos: [] };
+  (jobPhotos || []).forEach(p => { if (p && p.dataUrl) out.photos.push({ itemId: null, slot: p.slot, dataUrl: p.dataUrl }); });
+  const walk = (parentId, arr, kind) => {
+    const cm = (schema.children || {})[kind] || {}, ck = Object.keys(cm);
+    (arr || []).forEach((obj, i) => {
+      if (!obj || typeof obj !== 'object') return;
+      const { data, imgs } = splitObj(obj, ck), id = uuid();
+      out.items.push({ id, parentId, kind, sort: i, data });
+      Object.entries(imgs).forEach(([slot, v]) => { if (v !== LOADING) out.photos.push({ itemId: id, slot, dataUrl: v }); });
+      ck.forEach(k => walk(id, obj[k], cm[k]));
+    });
+  };
+  Object.entries(schema.roots).forEach(([k, kind]) => walk(null, roots[k], kind));
+  return out;
 }
 
 /* ========================================================================
@@ -1272,6 +1391,16 @@ const api = {
     if (f && !f.done) { f.ver++; return; }   // ยังสร้างไม่เสร็จ → ค่าจะตามไปกับคำสั่งสร้าง/ตามด้วย update
     queueUpdate('qc_items', id, { data: it.data });
   },
+  /* แทนข้อมูลทั้งก้อน (ฟิลด์ที่หายไปก็หายจากระบบด้วย) */
+  setItemData(id, data) {
+    const it = items.get(id);
+    if (!it) return;
+    it.data = clone(data || {});
+    if (!isOnline()) { localAutosave(); return; }
+    const f = inflight.get(id);
+    if (f && !f.done) { f.ver++; return; }
+    queueUpdate('qc_items', id, { data: it.data });
+  },
   moveItem(id, { parentId, after, before, sort } = {}) {
     const it = items.get(id);
     if (!it) return;
@@ -1321,8 +1450,10 @@ const api = {
     p.edit = edit === undefined ? p.edit : (edit || null);
     if (!isOnline()) { localAutosave(); return p; }
     p.pending = true;
-    uploadPhoto(p);
+    if (p.uploading) { updateDriveBanner(); return p; }   // กำลังอัปรูปเดิมอยู่ → uploadPhoto จะอัปรอบใหม่ให้เองเมื่อเสร็จ
     updateDriveBanner();
+    if (uploadsRunning) return p;   // คิวที่ทำงานอยู่จะหยิบไปเอง
+    flushPendingUploads();
     return p;
   },
   async removePhoto(itemId, slot) {
@@ -1343,6 +1474,12 @@ const api = {
   },
   loadOriginal,
   ensurePhotosLoaded,
+  // สะท้อนต้นไม้ของ object ของแอพ (ดู MIRROR)
+  LOADING,
+  setSchema(schema) { mirrorSchema = schema; },
+  reconcile, pull,
+  modelFromRoots: (roots, jobFields, jobPhotos, schema) => modelFromRoots(roots, schema || mirrorSchema, jobFields, jobPhotos),
+  stableStr,
   // ขั้นตอน
   ensureJob,
   openList: () => showJobList(true),
@@ -1388,7 +1525,7 @@ function init(options) {
   window.addEventListener('focus', onAppResume);
   document.addEventListener('focusout', () => setTimeout(runDeferredRefresh, 300));
   setInterval(() => { if (refreshDeferred) runDeferredRefresh(); }, 1500);   // กันพลาด: บางเครื่องไม่ยิง focusout
-  setInterval(flushRetryQueue, 15000);
+  setInterval(() => { flushRetryQueue(); if ([...photos.values()].some(p => p.pending && !p.uploading)) flushPendingUploads(); }, 15000);   // รูปที่อัปล้ม → ลองใหม่เอง
   // ปิด/ซ่อนแอพ → ส่งค่าที่ค้างในคิวทันที
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingWrites(); });
   window.addEventListener('pagehide', () => { flushPendingWrites(); });

@@ -14,6 +14,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+<!-- ระบบทีมแบบ MoM (Supabase + รูปบน Google Drive) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="avatar-team.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
@@ -474,8 +478,9 @@ img{max-width:100%;display:block}
     <button class="btn-help" id="btnHelp" title="วิธีใช้" aria-label="วิธีใช้">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     </button>
-    <button id="btnHistory">ประวัติงาน</button>
-    <button id="btnSave">บันทึก</button>
+    <span id="teamSync"></span>
+    <button id="btnHistory">งาน</button>
+    <span id="teamChip"></span>
   </div>
 </div>
 
@@ -1376,6 +1381,7 @@ document.getElementById('btnProcess').addEventListener('click', async ()=>{
   const ok = await showAIConfirmModal();
   if(!ok) return;
   state.processing=true;
+  team.suspend();
   // Open the animated popup (replaces the old inline status card)
   const providerLabel = AI_PRICING[state.provider]?.label || '';
   openProcessModal(providerLabel);
@@ -1393,6 +1399,8 @@ document.getElementById('btnProcess').addEventListener('click', async ()=>{
     toast('ผิดพลาด: '+err.message, 'error');
   }finally{
     state.processing=false;
+    team.resume();
+    saveDraft();
   }
 });
 
@@ -2688,6 +2696,11 @@ document.getElementById('btnExport').addEventListener('click', async ()=>{
 });
 
 async function exportPDF(){
+  if(!(await team.ensurePhotosLoaded(t=>{ if(t) toast(t); }))) return;
+  team.suspend();
+  try{ await exportPDFNow(); } finally { team.resume(); }
+}
+async function exportPDFNow(){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const A4_W=210, A4_H=297;
@@ -2751,8 +2764,6 @@ async function exportPDF(){
     pdf.save(filename);
     toast('สร้าง PDF สำเร็จ', 'success');
     document.getElementById('exportStatus').style.display='none';
-    // Auto-snapshot to history on successful export
-    try{ await saveCurrentToHistory(true); }catch(e){ console.warn('auto-snapshot failed', e); }
   } finally {
     // Restore stage to its original panel + revert style overrides
     stage.classList.remove('export-mode');
@@ -2772,8 +2783,7 @@ function setExportProgress(pct, label){
 /* ====================================================================
    History + draft autosave (MoM-style)
 ===================================================================== */
-document.getElementById('btnHistory').addEventListener('click', ()=>showStartupModal(true));
-document.getElementById('btnSave').addEventListener('click', ()=>saveCurrentToHistory(false));
+document.getElementById('btnHistory').addEventListener('click', ()=>team.openList());
 document.getElementById('btnHelp').addEventListener('click', ()=>{ dismissHelpHint(); showHelpModal(); });
 
 /* ====================================================================
@@ -3120,11 +3130,7 @@ function stripKeysFromState(s){
 }
 async function saveDraft(){
   isDirty = true;
-  if(_draftTimer) clearTimeout(_draftTimer);
-  _draftTimer = setTimeout(async ()=>{
-    try{ await localforage.setItem(STORAGE_KEY, stripKeysFromState(state)); }
-    catch(e){ console.warn('saveDraft failed', e); }
-  }, 250);
+  teamSyncUp();
 }
 async function loadDraft(){
   try{
@@ -3320,7 +3326,8 @@ function showHistoryFullModal(list, snap){
 }
 
 /* ---------- Import / Export JSON (project portability) ---------- */
-function exportStateAsJson(){
+async function exportStateAsJson(){
+  if(!(await team.ensurePhotosLoaded(t=>{ if(t) toast(t); }))) return;
   if(!draftHasContent()){
     toast('ไม่มีข้อมูลให้ส่งออก','error');
     return;
@@ -3366,14 +3373,11 @@ async function importStateFromJson(){
         const totalPts  = incoming.buildings.reduce((s,b)=>s+(b.cabinets||[]).reduce((ss,c)=>ss+(c.points?.length||0),0),0);
         const ok = await confirmDialog({
           title:'นำเข้าไฟล์ JSON',
-          message:`<b>${escapeHtml(incoming.meta?.projectName||'งานไม่มีชื่อ')}</b><br>${incoming.buildings.length} อาคาร · ${totalCabs} ตู้ · ${totalPts} จุดวัด<br><br>จะ<b>แทนที่</b>งานปัจจุบัน — งานที่เปิดอยู่ตอนนี้จะถูกทับ`,
-          confirmText:'นำเข้า', cancelText:'ยกเลิก', danger:true
+          message:`<b>${escapeHtml(incoming.meta?.projectName||'งานไม่มีชื่อ')}</b><br>${incoming.buildings.length} อาคาร · ${totalCabs} ตู้ · ${totalPts} จุดวัด<br><br>จะสร้างเป็น<b>งานใหม่</b> (งานที่เปิดอยู่ไม่ถูกทับ)`,
+          confirmText:'นำเข้า', cancelText:'ยกเลิก'
         });
         if(!ok){ resolve(false); return; }
-        // Reuse the same load path as opening from history — preserves API
-        // keys, resets dirty flag, and re-renders UI.
-        if(!incoming._histId) incoming._histId = null;
-        loadStateIntoApp(deepClone(incoming));
+        await team.importModel(legacyStateToModel(incoming), incoming.meta?.projectName||'');
         toast(`นำเข้าเสร็จ: ${totalCabs} ตู้`,'success');
         goTab('review');
         resolve(true);
@@ -3490,18 +3494,151 @@ window.addEventListener('beforeunload', ()=>{
 });
 
 /* ====================================================================
+   TEAM — เก็บข้อมูลแบบ Minute of Meeting (avatar-team.js)
+   qc_items: อาคาร (building) → ตู้ (cabinet) → รูปจากมือถือ (cphoto) + จุดวัด (point)
+             ไฟล์ภาพความร้อนที่ยังไม่จับคู่ (tfile) · 1 รายการ = 1 แถว → หลายเครื่องแก้คนละจุดไม่ทับกัน
+   qc_photos: ฟิลด์รูปของแต่ละรายการ (normalPhoto / flukeScreenPhoto / thermalDataUrl / ...) + โลโก้ (ระดับงาน)
+   qc_jobs:  ชื่อโครงการ + meta (วันที่ตรวจ / ผู้ตรวจ / palette)
+   โค้ดเดิมแก้ state ตามเดิม แล้ว saveDraft() → team.reconcile เทียบกับระบบ ส่งเฉพาะที่เปลี่ยน
+   API key อยู่ในเครื่องเท่านั้น ไม่ขึ้นระบบ
+===================================================================== */
+const TEAM_SCHEMA = {
+  roots: { buildings:'building', tfiles:'tfile' },
+  children: { building:{ cabinets:'cabinet' }, cabinet:{ photos:'cphoto', points:'point' } }
+};
+let teamApplying = false, teamIndex = new Map(), teamSyncTimer = null, teamPulledJob = null;
+const todayISO = ()=>{ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const metaOf = m => ({ inspectionDate:(m&&m.inspectionDate)||'', inspector:(m&&m.inspector)||'', palette:(m&&m.palette)||'Ironbow', logoName:(m&&m.logoName)||'' });
+function teamRoots(st){
+  st = st || state;
+  const tfiles = Object.entries(st.thermalFiles||{}).filter(([,v])=>v && typeof v==='object').map(([k,v])=>{ v.key=k; return v; });
+  return { buildings: st.buildings||[], tfiles };
+}
+/* state แบบเดิม (ประวัติในเครื่อง / ไฟล์ JSON) → โมเดลของระบบทีม */
+function legacyStateToModel(st){
+  const m = st.meta||{};
+  const tf = Object.entries(st.thermalFiles||{}).filter(([,v])=>v && typeof v==='object').map(([k,v])=>Object.assign({}, v, { key:k }));
+  return team.modelFromRoots({ buildings: st.buildings||[], tfiles: tf },
+    { name: m.projectName||'', meta: { inspectionDate:m.inspectionDate||'', inspector:m.inspector||'', palette:m.palette||'Ironbow', logoName: m.logo ? (m.logo.name||'') : '' } },
+    m.logo && m.logo.dataUrl ? [{ slot:'logo', dataUrl:m.logo.dataUrl }] : []);
+}
+/* ส่งการแก้ขึ้นระบบทีม (รวมการแก้ 0.3 วิ) */
+function teamSyncUp(){
+  if(teamApplying) return;
+  clearTimeout(teamSyncTimer);
+  teamSyncTimer = setTimeout(async ()=>{
+    if(teamApplying) return;
+    if(!(await team.reconcile(teamRoots()))) return;
+    const j = team.job; if(!j) return;
+    const metaNow = { inspectionDate: state.meta.inspectionDate||'', inspector: state.meta.inspector||'', palette: state.meta.palette||'Ironbow', logoName: state.meta.logo ? (state.meta.logo.name||'') : '' };
+    if((j.name||'') !== (state.meta.projectName||'') || team.stableStr(metaOf(j.meta)) !== team.stableStr(metaNow))
+      team.updateJob({ name: state.meta.projectName||'', meta: metaNow });
+    const lp = team.photo(null,'logo'), lv = state.meta.logo && state.meta.logo.dataUrl;
+    if(lv && lv!==team.LOADING && (!lp || lp.dataUrl!==lv)) team.setPhoto(null,'logo',{ dataUrl:lv });
+    else if(!lv && lp) team.removePhoto(null,'logo');
+  }, 300);
+}
+/* เอาของจากระบบทีมลงหน้าจอ (เปิดงาน / มีคนอื่นแก้) — ไม่แตะ API key / ผู้ให้บริการ AI */
+function teamPull(){
+  if(state.processing) return;
+  clearTimeout(teamSyncTimer);
+  teamApplying = true;
+  try{
+    const j = team.job;
+    const { roots, index } = team.pull();
+    teamIndex = index;
+    const m = metaOf(j && j.meta);
+    state.meta = { projectName: j ? (j.name||'') : '', inspectionDate: m.inspectionDate, inspector: m.inspector, palette: m.palette, logo: null };
+    const lp = j && team.photo(null,'logo');
+    if(lp) state.meta.logo = { dataUrl: lp.dataUrl || team.LOADING, name: m.logoName };
+    state.buildings = roots.buildings;
+    state.thermalFiles = {};
+    roots.tfiles.forEach(t=>{ if(t.key) state.thermalFiles[t.key]=t; });
+    if(teamPulledJob !== (j && j.id)){   // เปลี่ยนงาน → ซ่อนสรุปการอัปโหลดของงานก่อน
+      teamPulledJob = j && j.id;
+      document.getElementById('mobileSummary').style.display='none';
+      document.getElementById('thermalSummary').style.display='none';
+    }
+    applyMetaToUI();
+    updateProcessButton();
+    rerenderActive();
+    isDirty = false;
+  } finally { teamApplying = false; }
+}
+function rerenderActive(){
+  document.querySelectorAll('.panel.active').forEach(p=>{
+    if(p.dataset.panel==='review') renderReview();
+    if(p.dataset.panel==='preview') renderPreview();
+  });
+}
+/* รูปโหลดจาก Drive เสร็จ → ใส่กลับเข้า object แล้ววาดใหม่ (ไม่วาดระหว่างพิมพ์) */
+let teamRerenderTimer = null;
+function onTeamPhoto(p){
+  if(!p.itemId && p.slot==='logo'){
+    if(state.meta.logo && p.dataUrl){ state.meta.logo.dataUrl = p.dataUrl; applyMetaToUI(); }
+    return;
+  }
+  const o = teamIndex.get(p.itemId);
+  if(o && p.dataUrl && (o[p.slot]===team.LOADING || !o[p.slot])) o[p.slot] = p.dataUrl;
+  clearTimeout(teamRerenderTimer);
+  teamRerenderTimer = setTimeout(()=>{
+    const a = document.activeElement;
+    if(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type!=='file'){ onTeamPhoto.later = true; return; }
+    rerenderActive();
+  }, 250);
+}
+document.addEventListener('focusout', ()=>{ if(onTeamPhoto.later){ onTeamPhoto.later=false; setTimeout(rerenderActive, 300); } });
+
+/* ---- งานจากเวอร์ชันก่อน (ร่าง + ประวัติ 5 ช่องในเครื่อง) → รายการงานออฟไลน์ ส่งขึ้นทีมได้ ---- */
+async function legacyLocalJobs(){
+  const out = [];
+  let hist = [], draft = null;
+  try{ hist = (await localforage.getItem(HISTORY_KEY)) || []; }catch(_){}
+  try{ draft = await localforage.getItem(STORAGE_KEY); }catch(_){}
+  const draftId = draft && draft._histId;
+  const hasContent = st=> st && (((st.meta||{}).projectName||'').trim() || (st.buildings||[]).length);
+  hist.forEach(h=>{
+    if(!h || !h.state) return;
+    const st = (draftId && h.id===draftId) ? draft : h.state;   // ร่าง = เวอร์ชันล่าสุดของช่องนั้น
+    out.push({ legacyId:'hist:'+h.id, name: h.title || (st.meta||{}).projectName || '', updatedAt: Date.parse(h.savedAt) || Date.now(), model: legacyStateToModel(st) });
+  });
+  if(draft && !(draftId && hist.some(h=>h.id===draftId)) && hasContent(draft))
+    out.push({ legacyId:'draft', name: (draft.meta||{}).projectName || 'งานที่ค้างไว้', updatedAt: Date.now(), model: legacyStateToModel(draft) });
+  return out;
+}
+
+const team = AvatarTeam.init({
+  app:'thermoscan', appTitle:'Thermoscan Report',
+  indicator:'teamSync', chip:'teamChip',
+  render: teamPull,
+  onPhoto: onTeamPhoto,
+  seed: async t=>{ await t.updateJob({ meta:{ inspectionDate: todayISO(), inspector:'', palette:'Ironbow', logoName:'' } }); },
+  photoName: p=>{
+    const it = p.itemId && team.item(p.itemId);
+    if(!it) return p.slot==='logo' ? 'logo' : p.slot;
+    const cab = it.kind==='cabinet' ? it : it.parentId && team.item(it.parentId);
+    const label = { normalPhoto:'Identification', flukeScreenPhoto:'Fluke', thermalDataUrl:'Thermal', equipmentLabelPhoto:'Label', dataUrl:'' }[p.slot];
+    const who = it.kind==='point' ? (it.data.equipment || it.data.flukeFilename || '') : it.kind==='tfile' ? (it.data.name || it.data.key || '') : (it.data.name || '');
+    return [cab && cab!==it ? cab.data.name : '', who, label].filter(Boolean).join('_') || 'photo';
+  },
+  jobLabel: r=> (r.meta && r.meta.inspectionDate) || '',
+  legacyLocal: legacyLocalJobs,
+  listExtras: [
+    { label:'📥 นำเข้าไฟล์ JSON', onClick: ()=>importStateFromJson() },
+    { label:'📤 ส่งออกไฟล์ JSON', onClick: ()=>exportStateAsJson() }
+  ]
+});
+team.setSchema(TEAM_SCHEMA);
+
+/* ====================================================================
    Init
 ===================================================================== */
 (async function init(){
   document.getElementById('inspectionDate').valueAsDate = new Date();
   state.meta.inspectionDate = document.getElementById('inspectionDate').value;
   await loadApiKeys();
-  // Restore live draft (if any) → user's last session survives a crash/reload
-  const hadDraft = await loadDraft();
-  if(hadDraft){ applyMetaToUI(); updateProcessButton(); }
   isDirty = false;
-  // Startup chooser: only auto-popup if there's saved work or a non-empty draft
-  await showStartupModal(false);
+  // งานล่าสุด / รายการงาน เปิดโดยระบบทีม (avatar-team.js)
   // First-time eye-catcher pointing at the Help button (auto-dismisses once
   // the user opens help or clicks ✕). 1.5s delay lets any startup popups settle.
   setTimeout(setupHelpHint, 1500);
