@@ -260,6 +260,7 @@
         </div>
 
         <div id="app-missing-item" class="app-container hidden max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="missingListView" class="hidden mb-10"></div>
             <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
                 <div class="border-b pb-4 mb-6 flex items-start justify-between gap-3 flex-wrap">
                     <div>
@@ -268,7 +269,7 @@
                     </div>
                     <div class="flex items-center gap-2 no-print">
                         <span id="missingSync"></span>
-                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 งาน</button>
+                        <button type="button" onclick="missingShowList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">☰ รายการ</button>
                     </div>
                 </div>
                 <div id="missingDocBar" class="hidden mb-5 text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
@@ -351,6 +352,7 @@
 
             <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="missingNextCabinet()" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-md flex items-center justify-center">+ ตู้ถัดไป (JOB เดิม)</button>
                     <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
                     <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
                 <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
@@ -428,6 +430,7 @@
                     <div class="flex items-center gap-2 no-print">
                         <span id="claimSync"></span>
                         <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 งาน</button>
+                        <button type="button" onclick="claimNewJob()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1">+ งานใหม่</button>
                     </div>
                 </div>
                 <div id="claimDocBar" class="hidden mb-5 text-xs bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
@@ -2170,6 +2173,10 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                     if (!j || teamFormKey !== key) return;
                     const name = CLOUD_FORMS[key].nameFrom(), cust = teamCustomer(key);
                     if ((j.name || '') !== name || (j.customer || '') !== cust) await team.updateJob({ name, customer: cust });
+                    if (key === 'missing-item') {
+                        const sum = missingSummary();
+                        if (team.stableStr(sum) !== team.stableStr((j.meta || {}).sum || null)) await team.updateJob({ meta: { sum } });
+                    }
                     teamBaseline = snap;
                     teamPulledJob = j.id;
                 } catch (e) { console.error('[team poll]', e); }
@@ -2228,6 +2235,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         function teamRender() {
             const key = teamFormKey;
             if (!key) return;
+            if (key === 'missing-item' && missingListOpen() && team.job && team.job.id !== missingListJobId) missingShowForm();
             const jid = team.job ? team.job.id : null;
             // งานเดิม + ยังมีการแก้บนจอที่ยังไม่ได้ส่ง (เช่น เพิ่งติ๊ก/เลือก) → ส่งก่อน แล้วค่อยดึงของล่าสุด (ไม่ให้ของในระบบทับ)
             if (jid && jid === teamPulledJob && teamReadyKey === key && teamSnapshot(key) !== teamBaseline) {
@@ -2236,6 +2244,10 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 return;
             }
             teamPullForm();
+            if (key === 'missing-item' && team.job && !(team.job.meta || {}).sum && team.job.id === teamPulledJob) {
+                const jid = team.job.id;
+                setTimeout(() => { if (team.job && team.job.id === jid && !(team.job.meta || {}).sum) team.updateJob({ meta: { sum: missingSummary() } }); }, 0);
+            }
         }
         function teamOnPhoto(p) {
             const o = teamIdx.get(p.itemId);
@@ -2268,10 +2280,12 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             if (!window.team) return;
             if (teamFormKey !== key) { teamReadyKey = null; teamBaseline = null; }
             teamFormKey = key;
+            if (key === 'missing-item') { missingViews('list'); renderMissingList(false); }
             team.useApp(key, CLOUD_FORMS[key].title, {
                 indicator: key === 'missing-item' ? 'missingSync' : 'claimSync',
-                legacyDocs: { app: key, toModel: legacyDocModel }
-            });
+                legacyDocs: { app: key, toModel: legacyDocModel },
+                noOpen: key === 'missing-item'
+            }).then(() => { if (key === 'missing-item' && currentAppId === key && missingListOpen()) missingShowList(); });
         }
 
         const team = window.AvatarTeam ? AvatarTeam.init({
@@ -2299,6 +2313,164 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 bar.classList.toggle('hidden', !show);
                 if (show) document.getElementById(nameId).textContent = j.name || 'ไม่ระบุชื่องาน';
             });
+        }
+
+        /* ===== ของขาด: หน้ารายการ แบ่งเดือน → JOB (ชื่อโครงการ / SO) → ตู้ — แบบบันทึกตรวจรับตู้ของ QA ===== */
+        let missingListJob = null, missingListQ = '', missingListJobId = null, missingRecs = null, missingJobGroups = [];
+        const missingListOpen = () => !document.getElementById('missingListView').classList.contains('hidden');
+        function missingSummary() {
+            const n = [...document.querySelectorAll('#missingItemsContainer .item-row .item-name')].filter(e => e.value.trim()).length;
+            return { p: val('projectName'), c: val('cabinetId'), d: val('inspectionDate'), i: val('inspectorName'), n };
+        }
+        function missingViews(which) {
+            document.getElementById('missingListView').classList.toggle('hidden', which !== 'list');
+            document.getElementById('missingFormView').classList.toggle('hidden', which !== 'form');
+            document.getElementById('missingReportContainer').classList.add('hidden');
+            window.scrollTo(0, 0);
+        }
+        function missingShowForm() { missingViews('form'); updateCloudDocBars(); }
+        async function missingShowList() {
+            if (window.team && team.job) { teamPoll(); try { await team.flush(); } catch (_) {} }
+            missingListJobId = window.team && team.job ? team.job.id : null;
+            missingViews('list');
+            await renderMissingList(true);
+        }
+        const mEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function missingRec(r) {
+            const s = r.meta && r.meta.sum, f = (r.meta && r.meta.fields) || {}, parts = (r.name || '').split(' — ');
+            return {
+                id: r.id, local: !!r.local, u: r.updated_at || '',
+                p: String(s ? s.p : (f.projectName || r.customer || parts[0] || '')).trim(),
+                c: String(s ? s.c : (f.cabinetId || parts.slice(1).join(' — ') || '')).trim(),
+                d: String(s ? s.d : (f.inspectionDate || '')), i: String(s ? s.i : (f.inspectorName || '')), n: s ? s.n : null
+            };
+        }
+        const mYm = r => /^\d{4}-\d{2}/.test(r.d) ? r.d.slice(0, 7) : r.u.slice(0, 7);
+        const mMonthLabel = ym => { const [y, mo] = (ym || '').split('-').map(Number); return y ? new Date(y, mo - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }) : 'ไม่ระบุวันที่'; };
+        const mDate = d => { if (!/^\d{4}-\d{2}-\d{2}/.test(d || '')) return ''; const x = new Date(d + 'T00:00:00'); return x.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }); };
+        const CHEV = '<svg class="w-5 h-5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>';
+        async function renderMissingList(fetchRows) {
+            const box = document.getElementById('missingListView');
+            const head = `
+                <div class="border-b pb-4 mb-4 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
+                        <p class="text-gray-500 mt-1">Missing Item Form</p>
+                    </div>
+                    <div class="flex items-center gap-2 no-print">
+                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-500 px-3 py-2 rounded-lg text-sm font-bold">⋯ เพิ่มเติม</button>
+                        <button type="button" onclick="missingNew('')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ บันทึกใหม่</button>
+                    </div>
+                </div>`;
+            const wrap = inner => `<div class="bg-white rounded-xl shadow-lg p-4 sm:p-8">${head}${inner}</div>`;
+            if (fetchRows || !missingRecs) {
+                if (!missingRecs) box.innerHTML = wrap('<div class="text-center text-gray-400 py-10">กำลังโหลด...</div>');
+                if (!window.team) { missingRecs = []; }
+                else {
+                    try { missingRecs = (await team.listJobs()).map(missingRec); }
+                    catch (e) {
+                        console.error('[missing list]', e);
+                        box.innerHTML = wrap('<div class="text-center text-gray-500 py-10">โหลดรายการไม่สำเร็จ<br><button type="button" onclick="renderMissingList(true)" class="mt-3 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-bold">ลองอีกครั้ง</button></div>');
+                        return;
+                    }
+                }
+            }
+            const q = missingListQ.trim().toLowerCase();
+            const recs = missingRecs.filter(r => !q || [r.p, r.c, r.i].join(' ').toLowerCase().includes(q));
+            // JOB = ชื่อโครงการ / SO (ไม่สนตัวพิมพ์เล็กใหญ่/ช่องว่าง) · เดือนของ JOB = เดือนตรวจล่าสุดของ JOB นั้น
+            const groups = new Map();
+            recs.forEach(r => {
+                const k = r.p.replace(/\s+/g, ' ').toLowerCase();
+                if (!groups.has(k)) groups.set(k, { key: k, p: r.p, items: [] });
+                groups.get(k).items.push(r);
+            });
+            const gs = [...groups.values()].map(g => ({ ...g,
+                ym: g.items.reduce((m, r) => mYm(r) > m ? mYm(r) : m, ''),
+                last: g.items.reduce((m, r) => r.u > m ? r.u : m, '') }))
+                .sort((a, b) => b.ym.localeCompare(a.ym) || b.last.localeCompare(a.last));
+            gs.forEach(g => g.items.sort((a, b) => (a.c || '').localeCompare(b.c || '', 'th', { numeric: true })));
+            missingJobGroups = gs;
+            // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
+            const search = `<input data-mq value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">`;
+
+            // ----- หน้าในของ JOB: รายการตู้ -----
+            const open = missingListJob !== null ? gs.find(g => g.key === missingListJob) : null;
+            if (missingListJob !== null && !open) missingListJob = null;
+            if (open) {
+                const row = r => `
+                    <div onclick="missingOpenRec('${r.id}')" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-gray-800 truncate">${mEsc(r.c) || '<span class="text-gray-400">ไม่มีชื่อตู้</span>'}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">${[mDate(r.d), mEsc(r.i), r.n != null ? `ขาด ${r.n} รายการ` : '', r.local ? 'ในเครื่องนี้' : ''].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <button type="button" onclick="event.stopPropagation();missingDelete('${r.id}')" title="ลบ" class="text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.87 12.14A2 2 0 0116.14 21H7.86a2 2 0 01-1.99-1.86L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                        ${CHEV}
+                    </div>`;
+                box.innerHTML = wrap(`
+                    <div class="flex items-center gap-2 mb-4">
+                        <button type="button" onclick="missingListJob=null;renderMissingList(false)" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold">← ทุก JOB</button>
+                        <span class="flex-1"></span>
+                        <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ เพิ่มตู้ใน JOB นี้</button>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-3 mb-3 px-1">
+                        <div class="text-lg font-bold text-blue-700 truncate">${mEsc(open.p) || 'ไม่ระบุโครงการ'}</div>
+                        <div class="text-sm text-gray-500 shrink-0">${open.items.length} ตู้</div>
+                    </div>
+                    ${open.items.map(row).join('')}`);
+                return;
+            }
+
+            // ----- หน้ารวม: เดือน → JOB -----
+            let body = '', cur = null;
+            gs.forEach((g, i) => {
+                if (g.ym !== cur) {
+                    cur = g.ym;
+                    body += `<div class="flex items-center justify-between mt-5 mb-2 px-1"><span class="text-sm font-bold text-gray-500">${mMonthLabel(g.ym)}</span><span class="text-xs text-gray-400">${gs.filter(x => x.ym === g.ym).length} JOB</span></div>`;
+                }
+                const miss = g.items.reduce((t, r) => t + (r.n || 0), 0);
+                const lastD = g.items.reduce((m, r) => (r.d || '') > m ? r.d : m, '');
+                body += `
+                    <div onclick="missingListJob=missingJobGroups[${i}].key;renderMissingList(false)" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer shadow-sm">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-gray-800 truncate">${mEsc(g.p) || '<span class="text-gray-400">ไม่ระบุโครงการ</span>'}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">${[miss ? `ขาดรวม ${miss} รายการ` : '', lastD ? 'ตรวจล่าสุด ' + mDate(lastD) : ''].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <span class="shrink-0 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg px-2.5 py-1 text-sm font-bold">${g.items.length} ตู้</span>
+                        ${CHEV}
+                    </div>`;
+            });
+            box.innerHTML = wrap(search + (body || `<div class="text-center text-gray-400 py-10">${q ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการ'}</div>`));
+            const qi = box.querySelector('[data-mq]');
+            qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = box.querySelector('[data-mq]'); n.focus(); n.setSelectionRange(pos, pos); };
+        }
+        async function missingOpenRec(id) {
+            if (!window.team) return;
+            missingListJobId = team.job ? team.job.id : null;
+            try { if (await team.open(id)) missingShowForm(); }
+            catch (e) { console.error(e); team.toast('เปิดงานไม่สำเร็จ'); }
+        }
+        /* บันทึกใหม่ (ว่าง หรือ JOB เดิม) — ยังไม่สร้างงานจนกว่าจะเริ่มกรอก (ไม่มีใบเปล่าค้างในรายการ) */
+        async function missingNew(project) {
+            if (window.team && !(await team.leave())) return;
+            missingShowForm();
+            document.getElementById('inspectionDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('projectName').value = project || '';
+            if (window.team) teamBaseline = teamSnapshot('missing-item');
+            document.getElementById(project ? 'cabinetId' : 'projectName').focus();
+        }
+        function missingNextCabinet() { missingNew(val('projectName')); }
+        async function missingDelete(id) {
+            const r = (missingRecs || []).find(x => x.id === id);
+            if (await team.deleteJob(id, r ? [r.p, r.c].filter(Boolean).join(' — ') : '')) renderMissingList(true);
+        }
+        /* เคลม: เริ่มใบใหม่ (ใบเดิมบันทึกแล้ว เปิดกลับได้จากปุ่ม "งาน") */
+        async function claimNewJob() {
+            if (window.team && !(await team.leave())) return;
+            document.getElementById('claimInspectionDate').value = new Date().toISOString().split('T')[0];
+            if (window.team) { teamBaseline = teamSnapshot('claim-item'); team.toast('เริ่มงานใหม่'); }
+            window.scrollTo(0, 0);
         }
         function cloudOpenList() { if (window.team) team.openList(); }
         // กด "สร้างรายงาน" → บันทึกทันทีอยู่แล้ว แค่เร่งส่งของล่าสุด
