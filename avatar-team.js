@@ -42,7 +42,7 @@ const VERSION = 1;
 const SUPABASE_URL         = 'https://axzikauvpsbzpwxyjjlj.supabase.co';
 const SUPABASE_ANON_KEY    = 'sb_publishable_3_9pZH5Geg767TI9a6AARA_j4_VYUe1';
 const GOOGLE_CLIENT_ID     = '817132088438-k3mr42mv2nj6fgnh4cruv30p83980k84.apps.googleusercontent.com';
-const DRIVE_ROOT_FOLDER_ID = '1NTny5sIco7pQLEKEjgAuTd5uNhVfTuG4';
+const DRIVE_ROOT_FOLDER_ID = '1XqINnLbpcNcoroabsjQBIiMAYIg5uktU';   // โฟลเดอร์ที่บริษัทแชร์ (ตั้ง 19/11/2569) — รูปของ MoM / ระบบเดิมยังอยู่ที่โฟลเดอร์เก่า 1NTny5…
 const DRIVE_SCOPE          = 'https://www.googleapis.com/auth/drive';
 
 /* ---- keys ที่ใช้ร่วมกับ MoM / avatar-cloud (ล็อกอิน + สิทธิ์ Drive ใช้ต่อกันได้ทุกแอพ) ---- */
