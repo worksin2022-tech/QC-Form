@@ -605,18 +605,53 @@ function photoFileName(p, original) {
 /* ========================================================================
    PHOTOS — อัปโหลดทีละรูป / โหลดจาก Drive (เหมือน MoM)
    ======================================================================== */
+/* รูปที่ยังอัปไม่เสร็จของงานที่ "ไม่ได้เปิดอยู่" (เปลี่ยนงาน / ส่งงานอื่นขึ้นทีมต่อ) — อัปต่อเบื้องหลัง ไม่ทิ้ง */
+const bgPending = new Map();   // jobId|itemId|slot → photo
+const bgKey = p => p.jobId + '|' + pkey(p.itemId, p.slot);
+function parkPending() {        // ก่อนเปลี่ยนงาน: เก็บรูปที่ยังค้างของงานเดิมไว้อัปต่อ
+  if (!job) return;
+  photos.forEach(p => { if (p.pending && p.dataUrl) { p.jobId = p.jobId || job.id; bgPending.set(bgKey(p), p); } });
+}
+function adoptPending() {       // เปิดงาน: รูปที่ค้างของงานนี้กลับมาอยู่บนจอ (ยังรออัป)
+  if (!job) return;
+  bgPending.forEach((p, k) => {
+    if (p.jobId !== job.id) return;
+    if (p.itemId && !items.has(p.itemId)) return;
+    photos.set(pkey(p.itemId, p.slot), p);
+    bgPending.delete(k);
+  });
+}
+const allPending = () => [...photos.values()].filter(p => p.pending && p.dataUrl).concat([...bgPending.values()]);
+const folderCache = new Map();  // jobId → drive folder id (งานที่ไม่ได้เปิดอยู่)
+async function folderFor(jobId) {
+  if (job && job.id === jobId) return ensureJobFolder();
+  if (folderCache.has(jobId)) return folderCache.get(jobId);
+  const { data } = await sb.from('qc_jobs').select('name, drive_folder_id').eq('id', jobId).single();
+  if (!data) throw codedErr('gone', 'งานนี้ถูกลบแล้ว');
+  let fid = data.drive_folder_id;
+  if (!fid) {
+    fid = await driveCreateFolder(`${(data.name || '').trim() || cfg.appTitle} [${jobId.slice(0, 8)}]`, DRIVE_ROOT_FOLDER_ID);
+    await sb.from('qc_jobs').update({ drive_folder_id: fid, drive_folder_owner: currentUser.id }).eq('id', jobId);
+  }
+  folderCache.set(jobId, fid);
+  return fid;
+}
+const codedErr = (code, msg) => Object.assign(new Error(msg), { code });
+/* Google Drive ตอบว่ายิงถี่เกิน → พักแล้วลองใหม่เอง (ไม่นับเป็นล้ม) */
+let driveBackoff = 0, drivePausedUntil = 0;
+const isRateLimit = e => e && (e.status === 429 || (e.status === 403 && /rate|quota|limit/i.test(e.message || '')) || e.status === 500 || e.status === 502 || e.status === 503);
 async function uploadPhoto(p) {
-  if (!isOnline() || !p || !p.dataUrl || p.uploading || !job) return;
+  if (!isOnline() || !p || !p.dataUrl || p.uploading) return;
+  if (!p.jobId) { if (!job) return; p.jobId = job.id; }
   p.pending = true;
   if (!hasDriveToken()) { updateDriveBanner(); return; }   // รอผู้ใช้กด "เชื่อมต่อ Drive"
   p.uploading = true;
   updateDriveBanner();
   // แก้รูป = อัปเป็นไฟล์ใหม่เสมอ ไม่ทับไฟล์เดิม → id เปลี่ยน ทุกเครื่องจึงรู้ว่าต้องโหลดรูปใหม่
-  const src = p.dataUrl, origSrc = p.origDataUrl, jobId = job.id;
+  const src = p.dataUrl, origSrc = p.origDataUrl, jobId = p.jobId;
   try {
-    if (!(await waitInserted(p.itemId))) throw new Error('รายการของรูปนี้ยังบันทึกไม่เสร็จ');
-    if (!job || job.id !== jobId) { p.uploading = false; return; }
-    const folderId = await ensureJobFolder();
+    if (job && job.id === jobId && !(await waitInserted(p.itemId))) throw new Error('รายการของรูปนี้ยังบันทึกไม่เสร็จ');
+    const folderId = await folderFor(jobId);
     let origId = p.origDriveId;
     if (origSrc && !origId) {
       origId = await driveUpload(await (await fetch(origSrc)).blob(), photoFileName(p, true), folderId);
@@ -625,19 +660,33 @@ async function uploadPhoto(p) {
     const newId = await driveUpload(await (await fetch(src)).blob(), photoFileName(p, false), folderId);
     const row = { job_id: jobId, item_id: p.itemId, slot: p.slot, drive_file_id: newId, original_drive_file_id: origSrc ? origId : null, edit: p.edit || null, uploaded_by: currentUser.id };
     const { data, error } = await sb.from('qc_photos').upsert(row, { onConflict: 'job_id,item_id,slot' }).select('id').single();
-    if (error) { driveDelete(newId, currentUser.id, false); throw error; }
+    if (error) {
+      driveDelete(newId, currentUser.id, false);
+      if (error.code === '23503') throw codedErr('gone', 'รายการของรูปนี้ถูกลบแล้ว');   // งาน/รายการถูกลบ → ทิ้งรูปนี้
+      throw error;
+    }
+    driveBackoff = 0;
+    bgPending.delete(bgKey(p));
     const oldId = p.driveId, oldOwner = p.uploadedBy, oldOrig = p.origDriveId;
     Object.assign(p, { id: data.id, driveId: newId, origDriveId: origSrc ? origId : null, uploadedBy: currentUser.id, pending: false });
     photoCache.setItem(newId, src);
     if (oldId && oldId !== newId) driveDelete(oldId, oldOwner, false);
     if (oldOrig && oldOrig !== p.origDriveId) driveDelete(oldOrig, oldOwner, false);
     // realtime อาจสลับ object ใน map ระหว่างอัปโหลด → ให้ตัวปัจจุบันได้ค่าใหม่ด้วย
-    const cur = photos.get(pkey(p.itemId, p.slot));
+    const cur = job && job.id === jobId ? photos.get(pkey(p.itemId, p.slot)) : null;
     if (cur && cur !== p && cur.dataUrl === src) Object.assign(cur, { id: p.id, driveId: newId, origDriveId: p.origDriveId, uploadedBy: currentUser.id, pending: false });
-    notifyPhoto(p);
+    if (job && job.id === jobId) notifyPhoto(p);
   } catch (e) {
     console.error('[upload]', e);
-    if (e.status !== 401) { lastDriveError = e.message; toast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่'); }
+    if (e.code === 'gone') { p.pending = false; bgPending.delete(bgKey(p)); }
+    else if (isRateLimit(e)) {
+      // Drive ให้รอ — พักทั้งคิวแล้วลองใหม่เอง (เพิ่มเวลารอทีละเท่า สูงสุด 1 นาที)
+      driveBackoff = Math.min(60000, (driveBackoff || 2000) * 2);
+      drivePausedUntil = Date.now() + driveBackoff;
+      lastDriveError = 'Google Drive ให้รอสักครู่ — จะอัปต่อเอง';
+      setTimeout(flushPendingUploads, driveBackoff + 100);
+    }
+    else if (e.status !== 401) { lastDriveError = e.message; toast('อัปโหลดรูปไม่สำเร็จ — จะลองใหม่'); }
   }
   p.uploading = false;
   if ((p.dataUrl !== src || p.origDataUrl !== origSrc) && !p.pending) { p.pending = true; return uploadPhoto(p); }   // ถูกแก้ระหว่างอัปโหลด → อัปรอบใหม่
@@ -650,18 +699,30 @@ async function flushPendingUploads() {
   if (uploadsRunning || !hasDriveToken() || !isOnline()) return;
   uploadsRunning = true;
   const tried = new Set();   // รอบนี้ลองแล้ว (ล้ม) → ไม่วนซ้ำไม่รู้จบ รอรอบหน้า
-  const next = () => { for (const p of photos.values()) if (p.pending && !p.uploading && p.dataUrl && !tried.has(p)) return p; return null; };
+  // งานที่เปิดอยู่ก่อน แล้วค่อยรูปค้างของงานอื่น
+  const next = () => {
+    for (const p of photos.values()) if (p.pending && !p.uploading && p.dataUrl && !tried.has(p)) return p;
+    for (const p of bgPending.values()) if (p.pending && !p.uploading && p.dataUrl && !tried.has(p)) return p;
+    return null;
+  };
   try {
     await Promise.all([0, 1, 2].map(async () => {
       let p;
-      while (hasDriveToken() && isOnline() && (p = next())) { tried.add(p); await uploadPhoto(p); if (p.pending) continue; tried.delete(p); }
+      while (hasDriveToken() && isOnline() && Date.now() >= drivePausedUntil && (p = next())) { tried.add(p); await uploadPhoto(p); if (p.pending) continue; tried.delete(p); }
     }));
-  } finally { uploadsRunning = false; updateDriveBanner(); }
+  } finally {
+    uploadsRunning = false;
+    updateDriveBanner();
+    if (!allPending().length) finishResumes();
+  }
 }
 
 function updateDriveBanner() {
   let pending = 0, needLoad = 0;
-  if (isOnline()) photos.forEach(p => { if (p.pending && !p.uploading) pending++; if (p.driveId && !p.dataUrl && !p.pending) needLoad++; });
+  if (isOnline()) {
+    photos.forEach(p => { if (p.pending) pending++; if (p.driveId && !p.dataUrl && !p.pending) needLoad++; });
+    pending += bgPending.size;
+  }
   let b = document.getElementById('atDriveBanner');
   if (!pending && !needLoad) { if (b) b.style.display = 'none'; lastDriveError = ''; return; }
   if (!b) {
@@ -750,9 +811,25 @@ async function ensurePhotosLoaded(onBusy) {
 /* ========================================================================
    JOBS — โหลด/สร้าง/เปิดงาน + realtime ให้ทั้งทีมเห็นพร้อมกัน (เหมือน MoM)
    ======================================================================== */
+/* Supabase ตอบไม่เกิน 1000 แถวต่อคำขอ (รวมแถวที่ฝังมากับ select) → งานใหญ่ (Thermoscan 1000+ รายการ / รูป 1500)
+   ต้องดึงทีละหน้า ไม่งั้นรายการ/รูปเกิน 1000 จะหายจากจอ (ข้อมูลในระบบยังอยู่ครบ) */
+const PAGE = 1000;
+async function fetchAllRows(table, jobId, columns) {
+  const out = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb.from(table).select(columns || '*').eq('job_id', jobId).order('id').range(from, from + PAGE - 1);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
 async function fetchJobTree(id) {
-  const { data, error } = await sb.from('qc_jobs').select('*, qc_items(*), qc_photos(*)').eq('id', id).single();
+  const { data, error } = await sb.from('qc_jobs').select('*').eq('id', id).single();
   if (error) throw error;
+  const [its, phs] = await Promise.all([fetchAllRows('qc_items', id), fetchAllRows('qc_photos', id)]);
+  data.qc_items = its;
+  data.qc_photos = phs;
   return data;
 }
 
@@ -867,17 +944,22 @@ const inflightUnsent = () => [...inflight.values()].some(f => !f.done);
 async function openJob(id, opts = {}) {
   await flushPendingWrites();
   const row = await fetchJobTree(id);
+  parkPending();
   inflight.clear();
   applyRemote(rowsToModel(row), true);
+  adoptPending();
   if (!opts.keepScreen) render();
   subscribeJob(id);
   lsSet(lastJobKey(), id);
   updateDriveBanner();
   loadJobPhotos();
+  if (!opts.noResume) resumePush(id).catch(e => console.warn('[resume push]', e));
+  if (allPending().length) flushPendingUploads();
 }
 
 function leaveJob(keepLast) {
   if (rtChannel) { sb.removeChannel(rtChannel); rtChannel = null; }
+  parkPending();
   job = null; items = new Map(); photos = new Map();
   inflight.clear();
   render();
@@ -901,8 +983,8 @@ async function createJob(meta, extra) {
 
 /* ลบงานทีม: เก็บรายการไฟล์ Drive ไว้ก่อน (cascade จะลบแถว qc_photos ทิ้ง) → ลบ DB → ทิ้งไฟล์/โฟลเดอร์ใน Drive */
 async function deleteTeamJob(id) {
-  const { data: m } = await sb.from('qc_jobs')
-    .select('drive_folder_id, drive_folder_owner, qc_photos(drive_file_id, original_drive_file_id, uploaded_by)').eq('id', id).single();
+  const { data: m } = await sb.from('qc_jobs').select('drive_folder_id, drive_folder_owner').eq('id', id).single();
+  if (m) m.qc_photos = await fetchAllRows('qc_photos', id, 'drive_file_id, original_drive_file_id, uploaded_by').catch(() => []);
   const { error } = await sb.from('qc_jobs').delete().eq('id', id);
   if (error) throw error;
   if (!m) return;
@@ -957,10 +1039,13 @@ async function startNewJob() {
 }
 
 /* สร้างงานใหม่ในทีมจากก้อนข้อมูล (งานออฟไลน์ / ไฟล์ JSON) → รูปเข้าคิวอัปโหลด → คืน id */
+const pushMapKey = jobId => 'avatar_team_pushmap_' + jobId;
 async function pushModelToTeam(src, extra) {
   const m = normalizeModel(src);
   const id = await createJob({ name: m.job.name, customer: m.job.customer, meta: m.job.meta }, extra);
   const idMap = new Map(m.items.map(i => [i.id, uuid()]));
+  // จำไว้ในเครื่อง: งานทีม id นี้มาจากงานในเครื่องตัวไหน (รูปต้นฉบับอยู่ที่นั่น) — ปิดแอพกลางทาง เปิดงานนี้ใหม่ = อัปต่อ
+  if (extra && extra.localId) await localforage.setItem(pushMapKey(id), { app: cfg.app, localId: extra.localId, idMap: [...idMap] }).catch(() => {});
   const rows = m.items.map(i => ({
     id: idMap.get(i.id), job_id: id, parent_id: i.parentId ? (idMap.get(i.parentId) || null) : null,
     kind: i.kind, sort_order: i.sort, data: i.data, updated_by: currentUser.id
@@ -984,13 +1069,13 @@ async function pushModelToTeam(src, extra) {
     const { error } = await sb.from('qc_photos').insert(linked.slice(i, i + 200));
     if (error) throw error;
   }
-  await openJob(id);
+  await openJob(id, { noResume: true });   // รูปของงานนี้กำลังจะเข้าคิวด้านล่าง — ไม่ต้องให้ resume ใส่ซ้ำ
   m.photos.forEach(p => {
     const itemId = p.itemId ? idMap.get(p.itemId) : null;
     if (p.itemId && !itemId) return;
     if (!p.dataUrl) return;
     photos.set(pkey(itemId, p.slot), {
-      id: null, itemId, slot: String(p.slot), driveId: null, origDriveId: null, edit: p.edit || null, uploadedBy: null,
+      id: null, jobId: id, itemId, slot: String(p.slot), driveId: null, origDriveId: null, edit: p.edit || null, uploadedBy: null,
       dataUrl: p.dataUrl, origDataUrl: p.origDataUrl || null, pending: true, uploading: false
     });
   });
@@ -998,6 +1083,40 @@ async function pushModelToTeam(src, extra) {
   updateDriveBanner();
   flushPendingUploads();
   return id;
+}
+
+/* เปิดงานทีมที่ส่งขึ้นจากเครื่องนี้ แต่รูปยังขึ้นไม่ครบ (ปิดแอพ / เน็ตหลุด กลางทาง) → อัปรูปที่ขาดจากสำเนาในเครื่องต่อ */
+const resumingJobs = new Set();
+async function resumePush(jobId) {
+  if (!isOnline() || resumingJobs.has(jobId)) return;
+  const map = await localforage.getItem(pushMapKey(jobId)).catch(() => null);
+  if (!map || map.app !== cfg.app) return;
+  resumingJobs.add(jobId);
+  try {
+    const local = (await getLocalJobs()).find(x => x.id === map.localId);
+    if (!local) { await localforage.removeItem(pushMapKey(jobId)); return; }
+    const idMap = new Map(map.idMap);
+    const m = normalizeModel(local.model);
+    let added = 0, incomplete = 0;
+    m.photos.forEach(p => {
+      if (!p.dataUrl || !job || job.id !== jobId) return;
+      const itemId = p.itemId ? idMap.get(p.itemId) : null;
+      if (p.itemId && (!itemId || !items.has(itemId))) return;   // รายการถูกลบไปแล้ว — ไม่ต้องอัป
+      const k = pkey(itemId, String(p.slot)), cur = photos.get(k);
+      if (cur && cur.driveId) return;                  // ขึ้นแล้ว
+      incomplete++;
+      if (cur && cur.pending) return;                  // อยู่ในคิวแล้ว
+      photos.set(k, { id: null, jobId, itemId, slot: String(p.slot), driveId: null, origDriveId: null, edit: p.edit || null, uploadedBy: null,
+        dataUrl: p.dataUrl, origDataUrl: p.origDataUrl || null, pending: true, uploading: false });
+      added++;
+    });
+    if (added) { toast(`กำลังอัปรูปที่ยังขาด ${added} รูป จากสำเนาในเครื่อง`, 4000); render(); updateDriveBanner(); flushPendingUploads(); }
+    if (!incomplete) await localforage.removeItem(pushMapKey(jobId));   // ทุกรูปขึ้นระบบครบแล้วจริง ๆ
+  } finally { resumingJobs.delete(jobId); }
+}
+function finishResumes() {
+  // คิวว่าง = งานที่เปิดอยู่ไม่มีรูปค้าง → ถ้าส่งมาจากเครื่องนี้ ลองเช็คอีกรอบว่าครบ (ครบแล้วลบที่จำไว้)
+  if (job && isOnline()) resumePush(job.id).catch(() => {});
 }
 
 /* ย้ายงานจากระบบเดิม (ตาราง documents) — ของเดิมไม่ลบไม่แก้ · รูปใช้ไฟล์เดิมบน Drive · โฟลเดอร์งานเดิมใช้ต่อ
@@ -1230,7 +1349,7 @@ async function showJobList(force) {
     ensureDriveTokenFromGesture();
     close();
     if (!(await canLeave())) return;
-    try { await pushModelToTeam(m.model); toast('ส่งขึ้นทีมแล้ว — กำลังอัปโหลดรูป'); }
+    try { await pushModelToTeam(m.model, { localId: m.id }); toast('ส่งขึ้นทีมแล้ว — กำลังอัปโหลดรูป'); }
     catch (e) { console.error(e); toast('ส่งขึ้นทีมไม่สำเร็จ'); showJobList(true); }
   });
 }
@@ -1655,6 +1774,8 @@ function init(options) {
   // ปิด/ซ่อนแอพ → ส่งค่าที่ค้างในคิวทันที
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingWrites(); });
   window.addEventListener('pagehide', () => { flushPendingWrites(); });
+  // ยังมีรูปรออัปโหลด → เบราว์เซอร์ถามก่อนปิด/รีโหลด (ปิดไปก็ไม่หาย: สำเนาในเครื่องยังอยู่ เปิดงานนี้ใหม่จะอัปต่อ)
+  window.addEventListener('beforeunload', e => { if (isOnline() && allPending().length) { e.preventDefault(); e.returnValue = ''; } });
 
   (async () => {
     sb.auth.onAuthStateChange((event, session) => {
