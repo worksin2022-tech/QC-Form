@@ -725,7 +725,7 @@ function renderChip() {
   chip.innerHTML = (pic ? `<img src="${esc(pic)}" referrerpolicy="no-referrer" alt="">` : initial) + `<span>${esc(name)}</span>`;
   const img = chip.querySelector('img');
   if (img) img.onerror = () => { img.outerHTML = initial; };   // รูป Google โหลดไม่ได้ → ใช้ตัวอักษรแรกแทน
-  chip.title = cfg.chipCompact ? `${name}${currentUser.email && currentUser.email !== name ? ' (' + currentUser.email + ')' : ''}\nแตะเพื่อออกจากระบบ` : 'ออกจากระบบ';
+  chip.title = cfg.chipCompact ? `${name}${currentUser.email && currentUser.email !== name ? ' (' + currentUser.email + ')' : ''}\n${cfg.onAccount ? 'แตะเพื่อดูบัญชี / ลายเซ็น' : 'แตะเพื่อออกจากระบบ'}` : (cfg.onAccount ? 'บัญชี / ลายเซ็น' : 'ออกจากระบบ');
 }
 
 function modal(title, bodyHtml, footHtml, opts = {}) {
@@ -992,6 +992,8 @@ async function accountAction() {
     }) && await canSwitch()) await switchToOnline();
     return;
   }
+  // หน้าที่มีเมนูบัญชีของตัวเอง (index: ลายเซ็นประจำบัญชี + ออกจากระบบ)
+  if (cfg.onAccount) { cfg.onAccount(); return; }
   if (await confirmDialog({
     title: 'ออกจากระบบ',
     message: `ออกจากระบบบัญชี <b>${esc(currentUser ? currentUser.email : '')}</b> ใช่ไหม?`,
@@ -1095,6 +1097,8 @@ const AvatarCloud = {
   startNew,
   bindNewDoc,                 // ผูกงานใหม่โดยไม่ล้างฟอร์มที่กรอกไว้
   signOutOrLogin: accountAction,
+  /* ออกจากระบบ (จากเมนูบัญชีของแอพ) — ถามผ่าน beforeSwitch ของแอพก่อน */
+  async signOut() { if (await canSwitch()) { await sb.auth.signOut(); return true; } return false; },
 
   /* หน้าที่มีหลายฟอร์ม (index.html): เรียกหลังสลับฟอร์ม เพื่อผูกกับชุดเอกสารของฟอร์มนั้น */
   async useApp() {

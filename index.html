@@ -1207,6 +1207,7 @@
             currentAppId = appId;
             // ผูกกับชุดเอกสารของฟอร์มที่เพิ่งเปิด (Missing Item / Equipment Claim มีประวัติแยกกัน)
             if (CLOUD_FORMS[appId]) teamUseForm(appId);
+            else if (SIG_SLOT_OF[appId]) sigAutoFill(SIG_SLOT_OF[appId]);   // Trip Unit: ช่อง Quality Control ว่าง → ลายเซ็นของฉัน
             updateCloudDocBars();
 
             // Menu state updating
@@ -1809,6 +1810,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
 
         function openSignatureModal(targetId) {
             activeSignatureTarget = targetId;
+            document.getElementById('useMySigBtn').classList.toggle('hidden', !(mySig && SIG_SLOTS[targetId]));
             const modal = document.getElementById('signatureModal');
             modal.classList.remove('hidden');
             initModalSignaturePad('modalSignaturePad');
@@ -2041,7 +2043,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         function clearDraftData() {
             if (CLOUD_FORMS[currentAppId] && window.team) {
                 team.confirmDialog({ title: 'เริ่มงานใหม่', message: 'ล้างฟอร์มเพื่อเริ่มงานใหม่ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">งานที่กรอกไว้ถูกบันทึกแล้ว เปิดกลับได้จากปุ่ม "งาน"</span>', confirmText: 'เริ่มงานใหม่' })
-                    .then(ok => { if (ok) team.newJob(); });
+                    .then(ok => { if (!ok) return; if (currentAppId === 'missing-item') missingNew(''); else claimNewJob(); });
                 return;
             }
             if(confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ล้างข้อมูลทั้งหมด" ในฟอร์มนี้ เพื่อเริ่มงานใหม่?')) {
@@ -2107,6 +2109,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             await AvatarCloud.init({
                 app: 'hub', appTitle: 'Quality Control Forms',
                 chipContainer: 'acChipHost',
+                onAccount: openAcct,        // กดรูปโปรไฟล์ → เมนูบัญชี (ลายเซ็นประจำบัญชี + ออกจากระบบ)
                 chipCompact: window.matchMedia('(max-width: 639px)').matches,   // จอมือถือ: เหลือแค่รูปโปรไฟล์
                 silentStart: true,          // ไม่เปิดรายการงานเองตอนเข้า
                 loginHub: true,             // ล็อกอินจุดเดียวของทุกแอพ — ต้องล็อกอิน (หรือเลือกออฟไลน์) ก่อนใช้ แล้วส่งกลับแอพที่มาจาก ?next=
@@ -2115,6 +2118,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 root: () => null, getState: async () => ({}), applyState: async () => {},
                 onToast: m => alert(m)
             });
+            loadMySig();
         }
 
         // ช่องในฟอร์ม 1 ช่อง = 1 แถว (field) → 2 คนแก้คนละช่องพร้อมกันไม่ทับกัน (แบบคอมเมนต์ของ MoM)
@@ -2244,6 +2248,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                 return;
             }
             teamPullForm();
+            if (!team.job && sigAutoFill(SIG_SLOT_OF[key])) teamBaseline = teamSnapshot(key);   // ใบใหม่: ลายเซ็นของฉัน (ไม่นับเป็นการแก้ → ไม่สร้างงานเปล่า)
             if (key === 'missing-item' && team.job && !(team.job.meta || {}).sum && team.job.id === teamPulledJob) {
                 const jid = team.job.id;
                 setTimeout(() => { if (team.job && team.job.id === jid && !(team.job.meta || {}).sum) team.updateJob({ meta: { sum: missingSummary() } }); }, 0);
@@ -2351,18 +2356,18 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         const CHEV = '<svg class="w-5 h-5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>';
         async function renderMissingList(fetchRows) {
             const box = document.getElementById('missingListView');
-            const head = `
+            // หัวหน้า: ปุ่ม "+ บันทึกใหม่" เฉพาะหน้ารวม (ในหน้า JOB ใช้ "+ เพิ่มตู้ใน JOB นี้")
+            const head = withNew => `
                 <div class="border-b pb-4 mb-4 flex items-start justify-between gap-3 flex-wrap">
                     <div>
                         <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
                         <p class="text-gray-500 mt-1">Missing Item Form</p>
                     </div>
-                    <div class="flex items-center gap-2 no-print">
-                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-500 px-3 py-2 rounded-lg text-sm font-bold">⋯ เพิ่มเติม</button>
+                    ${withNew ? `<div class="flex items-center gap-2 no-print">
                         <button type="button" onclick="missingNew('')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ บันทึกใหม่</button>
-                    </div>
+                    </div>` : ''}
                 </div>`;
-            const wrap = inner => `<div class="bg-white rounded-xl shadow-lg p-4 sm:p-8">${head}${inner}</div>`;
+            const wrap = (inner, withNew = true) => `<div class="bg-white rounded-xl shadow-lg p-4 sm:p-8">${head(withNew)}${inner}</div>`;
             if (fetchRows || !missingRecs) {
                 if (!missingRecs) box.innerHTML = wrap('<div class="text-center text-gray-400 py-10">กำลังโหลด...</div>');
                 if (!window.team) { missingRecs = []; }
@@ -2418,7 +2423,7 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
                         <div class="text-lg font-bold text-blue-700 truncate">${mEsc(open.p) || 'ไม่ระบุโครงการ'}</div>
                         <div class="text-sm text-gray-500 shrink-0">${open.items.length} ตู้</div>
                     </div>
-                    ${open.items.map(row).join('')}`);
+                    ${open.items.map(row).join('')}`, false);
                 return;
             }
 
@@ -2471,6 +2476,141 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             document.getElementById('claimInspectionDate').value = new Date().toISOString().split('T')[0];
             if (window.team) { teamBaseline = teamSnapshot('claim-item'); team.toast('เริ่มงานใหม่'); }
             window.scrollTo(0, 0);
+        }
+
+        /* ===== ลายเซ็นประจำบัญชี (ตาราง qc_signatures — แต่ละบัญชีเห็นเฉพาะของตัวเอง) =====
+           อัปโหลดที่เมนูบัญชีที่เดียว · ใบใหม่ใส่ให้อัตโนมัติเฉพาะช่องผู้ตรวจที่ยังว่าง · งานเดิม/งานของคนอื่นไม่แตะ (มีปุ่ม "ใช้ลายเซ็นของฉัน") */
+        const SIG_SLOTS = { missing_inspector: 'inspectorName', claim_inspector: 'claimInspectorName', tf_signTest: 'tf_signTestName', ts_signTest: 'ts_signTestName' };
+        const SIG_SLOT_OF = { 'missing-item': 'missing_inspector', 'claim-item': 'claim_inspector', 'trip-fac': 'tf_signTest', 'trip-site': 'ts_signTest' };
+        let mySig = null, mySigUid = null;
+        const sigUid = () => (window.AvatarCloud && AvatarCloud.signedIn() && AvatarCloud.user) ? AvatarCloud.user.id : null;
+        const sigCacheKey = uid => 'avatar_qc_sig_' + uid;
+        async function loadMySig() {
+            const uid = sigUid();
+            if (!uid) { mySig = null; mySigUid = null; return; }
+            if (mySigUid !== uid) { mySig = null; mySigUid = uid; try { const c = JSON.parse(localStorage.getItem(sigCacheKey(uid)) || 'null'); if (c && c.img) mySig = c; } catch (_) {} }
+            sigAfterLoad();
+            const { data, error } = await AvatarCloud.client.from('qc_signatures').select('name, img').eq('user_id', uid).maybeSingle();
+            if (error) { console.warn('[qc_signatures]', error.message); return; }
+            if (sigUid() !== uid) return;
+            mySig = data && data.img ? { name: data.name || '', img: data.img } : null;
+            try { mySig ? localStorage.setItem(sigCacheKey(uid), JSON.stringify(mySig)) : localStorage.removeItem(sigCacheKey(uid)); } catch (_) {}
+            sigAfterLoad();
+        }
+        /* โหลดลายเซ็นเสร็จทีหลัง → ฟอร์มใหม่ที่เปิดค้างอยู่ (ยังไม่มีงาน) ได้ลายเซ็นด้วย */
+        function sigAfterLoad() {
+            const slot = SIG_SLOT_OF[currentAppId];
+            if (!slot || !mySig) return;
+            if (CLOUD_FORMS[currentAppId]) {
+                if (!window.team || team.job || teamFormKey !== currentAppId || teamReadyKey !== currentAppId) return;
+                if (currentAppId === 'missing-item' && missingListOpen()) return;
+                const changed = teamSnapshot(currentAppId) !== teamBaseline;
+                if (sigAutoFill(slot) && !changed) teamBaseline = teamSnapshot(currentAppId);
+            } else sigAutoFill(slot);
+        }
+        function sigSet(slot, img) {
+            signaturesData[slot] = img;
+            const im = document.getElementById(slot + '_preview');
+            if (im) { if (img) { im.src = img; im.classList.remove('hidden'); } else { im.removeAttribute('src'); im.classList.add('hidden'); } }
+        }
+        /* ใส่ลายเซ็นของฉันในช่องผู้ตรวจที่ยังว่าง (ไม่ทับของเดิม) — คืน true ถ้าใส่ */
+        function sigAutoFill(slot) {
+            if (!slot || !mySig || !mySig.img || signaturesData[slot]) return false;
+            sigSet(slot, mySig.img);
+            const n = document.getElementById(SIG_SLOTS[slot]);
+            if (n && !n.value.trim() && mySig.name) n.value = mySig.name;
+            return true;
+        }
+        function useMySig() {
+            const slot = activeSignatureTarget;
+            if (!mySig || !SIG_SLOTS[slot]) return;
+            sigSet(slot, mySig.img);
+            const n = document.getElementById(SIG_SLOTS[slot]);
+            if (n && mySig.name) { n.value = mySig.name; n.dispatchEvent(new Event('input', { bubbles: true })); }
+            closeSignatureModal();
+        }
+        // รูปลายเซ็น: ย่อ, ทำพื้นขาว/เทาอ่อนให้โปร่งใส (รูปถ่าย/สแกนบนกระดาษขาว), ตัดขอบว่าง — แบบเดียวกับ QA
+        function sigFromFile(file) {
+            return new Promise((ok, bad) => {
+                const url = URL.createObjectURL(file), im = new Image();
+                im.onerror = () => { URL.revokeObjectURL(url); bad(new Error('read')); };
+                im.onload = () => {
+                    URL.revokeObjectURL(url);
+                    const k = Math.min(1, 900 / Math.max(im.width, im.height)), w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k));
+                    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                    const ctx = cv.getContext('2d'); ctx.drawImage(im, 0, 0, w, h);
+                    const id = ctx.getImageData(0, 0, w, h), px = id.data;
+                    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+                    for (let i = 0; i < px.length; i += 4) {
+                        const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+                        if (lum >= 215) px[i + 3] = 0;
+                        else if (lum > 170) px[i + 3] = Math.round(px[i + 3] * (215 - lum) / 45);
+                        if (px[i + 3] > 24) { const p = i / 4, x = p % w, y = (p - x) / w; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+                    }
+                    if (x1 < 0) return bad(new Error('empty'));
+                    ctx.putImageData(id, 0, 0);
+                    const pad = 8, cx = Math.max(0, x0 - pad), cy = Math.max(0, y0 - pad), cw = Math.min(w, x1 + pad + 1) - cx, ch = Math.min(h, y1 + pad + 1) - cy;
+                    const out = document.createElement('canvas'); out.width = cw; out.height = ch;
+                    out.getContext('2d').drawImage(cv, cx, cy, cw, ch, 0, 0, cw, ch);
+                    ok(out.toDataURL('image/png'));
+                };
+                im.src = url;
+            });
+        }
+        async function saveMySig(sig) {
+            const uid = sigUid();
+            if (!uid) return false;
+            const { error } = await AvatarCloud.client.from('qc_signatures').upsert({ user_id: uid, name: sig.name || '', img: sig.img, updated_at: new Date().toISOString() });
+            if (error) { console.error('[qc_signatures]', error); sigToast('บันทึกลายเซ็นไม่สำเร็จ'); return false; }
+            mySig = { name: sig.name || '', img: sig.img }; mySigUid = uid;
+            try { localStorage.setItem(sigCacheKey(uid), JSON.stringify(mySig)); } catch (_) {}
+            sigAfterLoad();
+            return true;
+        }
+        const sigToast = m => (window.team ? team.toast(m) : alert(m));
+        const aEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function openAcct() { document.getElementById('acctBox').innerHTML = ''; renderAcct(); document.getElementById('acctModal').classList.remove('hidden'); loadMySig().then(renderAcct); }
+        function closeAcct() { document.getElementById('acctModal').classList.add('hidden'); }
+        function renderAcct() {
+            const u = window.AvatarCloud && AvatarCloud.user;
+            if (!u) return;
+            const m = u.user_metadata || {}, pic = m.avatar_url || m.picture || '';
+            const typed = document.getElementById('acctSigName');   // วาดใหม่ (โหลดลายเซ็นเสร็จ) ระหว่างพิมพ์ชื่อ → ไม่ล้างที่พิมพ์
+            const nameVal = typed ? typed.value : (mySig ? mySig.name : (m.full_name || m.name || ''));
+            document.getElementById('acctBox').innerHTML = `
+                <div class="flex items-center gap-3">
+                    ${pic ? `<img src="${aEsc(pic)}" referrerpolicy="no-referrer" class="w-11 h-11 rounded-full bg-gray-100" alt="">` : ''}
+                    <div class="min-w-0"><div class="font-bold text-gray-800 truncate">${aEsc(m.full_name || m.name || '')}</div><div class="text-xs text-gray-500 truncate">${aEsc(u.email)}</div></div>
+                </div>
+                <div class="text-sm font-bold text-gray-500 mt-5 mb-2">ลายเซ็นประจำบัญชี</div>
+                <div class="h-28 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden">
+                    ${mySig ? `<img src="${mySig.img}" class="max-h-24 max-w-[90%] object-contain" alt="">` : '<span class="text-sm text-gray-400">ยังไม่มีลายเซ็น</span>'}
+                </div>
+                <label class="block text-sm font-bold text-gray-500 mt-4 mb-1">ชื่อที่แสดงใต้ลายเซ็น</label>
+                <input id="acctSigName" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value="${aEsc(nameVal)}">
+                <div class="flex gap-2 mt-3">
+                    <label class="flex-1 text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold cursor-pointer">${mySig ? 'เปลี่ยนรูปลายเซ็น' : 'อัปโหลดรูปลายเซ็น'}<input type="file" accept="image/*" class="hidden" onchange="acctUpload(this)"></label>
+                    ${mySig ? '<button type="button" onclick="acctSaveName()" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold">บันทึกชื่อ</button>' : ''}
+                </div>
+                <div class="flex gap-2 mt-5 pt-4 border-t">
+                    <button type="button" onclick="closeAcct()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold">ปิด</button>
+                    <button type="button" onclick="acctSignOut()" class="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-bold">ออกจากระบบ</button>
+                </div>`;
+        }
+        async function acctUpload(input) {
+            const f = input.files && input.files[0]; input.value = '';
+            if (!f) return;
+            let img;
+            try { img = await sigFromFile(f); }
+            catch (e) { sigToast(e.message === 'empty' ? 'ไม่พบลายเซ็นในรูป (รูปสว่างเกินไป)' : 'เปิดรูปไม่ได้'); return; }
+            if (await saveMySig({ name: (document.getElementById('acctSigName') || {}).value || '', img })) { sigToast('บันทึกลายเซ็นแล้ว'); renderAcct(); }
+        }
+        async function acctSaveName() {
+            if (mySig && await saveMySig({ name: document.getElementById('acctSigName').value, img: mySig.img })) { sigToast('บันทึกชื่อแล้ว'); renderAcct(); }
+        }
+        async function acctSignOut() {
+            closeAcct();
+            if (await AvatarCloud.signOut()) { mySig = null; mySigUid = null; }
         }
         function cloudOpenList() { if (window.team) team.openList(); }
         // กด "สร้างรายงาน" → บันทึกทันทีอยู่แล้ว แค่เร่งส่งของล่าสุด
@@ -2653,12 +2793,16 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
         }        
     </script>
 
+    <div id="acctModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm" onclick="if(event.target===this)closeAcct()">
+        <div id="acctBox" class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md"></div>
+    </div>
     <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
             <h3 class="text-xl font-bold mb-4 text-gray-800">เซ็นลายเซ็นของคุณ</h3>
             <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 touch-none overflow-hidden relative w-full flex justify-center">
                 <canvas id="modalSignaturePad" width="340" height="160" class="cursor-crosshair bg-white"></canvas>
             </div>
+            <button type="button" id="useMySigBtn" onclick="useMySig()" class="hidden w-full mb-3 py-3 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 font-bold transition">ใช้ลายเซ็นของฉัน</button>
             <div class="flex gap-3 w-full">
                 <button type="button" onclick="clearModalSignature()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition">ล้าง (Clear)</button>
                 <button type="button" onclick="closeSignatureModal()" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก</button>
