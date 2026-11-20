@@ -1632,10 +1632,10 @@
           <div style="margin-top:22px;border:1px solid var(--line);border-radius:10px;padding:18px 24px 16px 24px;background:linear-gradient(180deg,#fafbfc 0%,white 100%);">
             <div style="font-size:14px;font-weight:700;color:var(--orange-2);letter-spacing:.3px;font-family:'Inter',sans-serif;margin-bottom:26px;">Best Regards,</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:18px;">
-              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Quality Control</div></div>
-              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
-              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
-              <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+              <div class="cover-sign-slot" data-sign="qc" onclick="openCoverSign('qc')" style="text-align:center;cursor:pointer;"><div class="cover-sign-area" style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Quality Control</div></div>
+              <div class="cover-sign-slot" data-sign="w1" onclick="openCoverSign('w1')" style="text-align:center;cursor:pointer;"><div class="cover-sign-area" style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+              <div class="cover-sign-slot" data-sign="w2" onclick="openCoverSign('w2')" style="text-align:center;cursor:pointer;"><div class="cover-sign-area" style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
+              <div class="cover-sign-slot" data-sign="w3" onclick="openCoverSign('w3')" style="text-align:center;cursor:pointer;"><div class="cover-sign-area" style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',sans-serif;">Witnessed</div></div>
             </div>
           </div>
 
@@ -1876,7 +1876,7 @@ const isOnline = ()=> appMode === 'online';
 
 function emptyState(){
   return {
-    meeting: { id:null, name:'', customer:'', date:'', rev:'01', location:'', docType:'Minute of Meeting', driveFolderId:null },
+    meeting: { id:null, name:'', customer:'', date:'', rev:'01', location:'', docType:'Minute of Meeting', driveFolderId:null, coverSigns:{} },
     categories: []
   };
 }
@@ -1893,7 +1893,7 @@ function uuid(){
 async function ensureMeeting(){
   if(state.meeting.id) return true;
   try{
-    const id = isOnline() ? await createMeeting({}) : await createLocalMeeting({});
+    const id = isOnline() ? await createMeeting(newMeetingMeta()) : await createLocalMeeting(newMeetingMeta());
     if(isOnline()) await openMeeting(id); else await openLocalMeeting(id);
     return true;
   }catch(e){
@@ -2908,6 +2908,7 @@ async function createLocalMeeting(meta){
   s.meeting.name = meta.name || ''; s.meeting.customer = meta.customer || ''; s.meeting.location = meta.location || '';
   s.meeting.date = meta.date || todayThai(); s.meeting.rev = meta.rev || '01';
   s.meeting.docType = DOC_TYPES.includes(meta.docType) ? meta.docType : 'Minute of Meeting';
+  s.meeting.coverSigns = meta.coverSigns || {};
   const list = await getLocalMeetings();
   list.push({ id: s.meeting.id, name: s.meeting.name, customer: s.meeting.customer, docType: s.meeting.docType, updatedAt: Date.now(), state: s });
   await setLocalMeetings(list);
@@ -2959,6 +2960,118 @@ function applyMetaToUI(){
   const lbl = document.getElementById('docTypeLabel');
   if(lbl) lbl.textContent = dt;
   applyCoverTitle();
+  renderCoverSigns();
+}
+
+
+/* ========================================================================
+   ลายเซ็นหน้าปก (Best Regards: Quality Control / Witnessed ×3) — meetings.cover_signs
+   ลายเซ็นประจำบัญชี = ตาราง qc_signatures (อัปโหลดที่โปรไฟล์หน้า index) · งานใหม่ใส่ช่อง Quality Control ให้อัตโนมัติ
+   ======================================================================== */
+const SIGN_BOX = { w: 480, h: 150 };   // กรอบตายตัว 3.2:1 → แสดงสูง 44px กว้าง ~141px ไม่บิดทั้งบนจอและใน PDF
+let mySig = null, mySigBoxed = null;
+const mySigCacheKey = uid => 'avatar_qc_sig_' + uid;
+/* จัดรูปลายเซ็นลงกรอบตายตัว (contain, พื้นโปร่งใส) */
+function boxSign(src){
+  return new Promise((ok, bad)=>{
+    const im = new Image();
+    im.onload = ()=>{
+      const c = document.createElement('canvas'); c.width = SIGN_BOX.w; c.height = SIGN_BOX.h;
+      const r = Math.min(SIGN_BOX.w / im.naturalWidth, SIGN_BOX.h / im.naturalHeight);
+      const w = im.naturalWidth * r, h = im.naturalHeight * r;
+      c.getContext('2d').drawImage(im, (SIGN_BOX.w - w) / 2, SIGN_BOX.h - h, w, h);   // ชิดล่าง (วางบนเส้น)
+      ok(c.toDataURL('image/png'));
+    };
+    im.onerror = bad;
+    im.src = src;
+  });
+}
+async function loadMySig(){
+  if(!currentUser) return;
+  const uid = currentUser.id;
+  const use = async sig => { mySig = sig; mySigBoxed = sig && sig.img ? await boxSign(sig.img).catch(()=> null) : null; };
+  try{ const c = JSON.parse(lsGet(mySigCacheKey(uid)) || 'null'); if(c && c.img) await use(c); }catch(_){}
+  const { data, error } = await sb.from('qc_signatures').select('name, img').eq('user_id', uid).maybeSingle();
+  if(error){ console.warn('[qc_signatures]', error.message); return; }
+  if(!currentUser || currentUser.id !== uid) return;
+  await use(data && data.img ? { name: data.name || '', img: data.img } : null);
+  lsSet(mySigCacheKey(uid), mySig ? JSON.stringify(mySig) : null);
+}
+/* งานใหม่ → ช่อง Quality Control เป็นลายเซ็นของฉัน */
+function newMeetingMeta(){ return { coverSigns: mySigBoxed ? { qc: mySigBoxed } : {} }; }
+function coverSignImg(k){
+  const v = (state.meeting.coverSigns || {})[k];
+  return v ? `<img src="${v}" alt="" style="height:44px;width:${Math.round(44 * SIGN_BOX.w / SIGN_BOX.h)}px;display:block;">` : '';
+}
+function renderCoverSigns(){
+  document.querySelectorAll('.cover-sign-slot').forEach(el=>{
+    const area = el.querySelector('.cover-sign-area');
+    if(area) area.innerHTML = coverSignImg(el.dataset.sign);
+  });
+}
+async function setCoverSign(k, img){
+  if(!(await ensureMeeting())) return;   // ยังไม่มีงาน → สร้างก่อน (งานใหม่มีลายเซ็น QC ของฉันอยู่แล้ว) แล้วค่อยอ่านของเดิม
+  const signs = Object.assign({}, state.meeting.coverSigns || {});
+  if(img) signs[k] = img; else delete signs[k];
+  state.meeting.coverSigns = signs;
+  renderCoverSigns();
+  if(isOnline()) queueUpdate('meetings', state.meeting.id, { cover_signs: signs });
+  else localAutosave();
+}
+/* หน้าต่างเซ็น: วาดด้วยนิ้ว / ล้าง / (ช่อง QC) ใช้ลายเซ็นของฉัน */
+function openCoverSign(k){
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg open no-print';
+  bg.style.zIndex = 420;
+  const label = k === 'qc' ? 'Quality Control' : 'Witnessed';
+  bg.innerHTML = `
+    <div class="modal-box" style="width:min(94vw,440px);">
+      <div class="modal-head"><span>${label}</span><span class="close-btn" data-x>×</span></div>
+      <div style="padding:16px;">
+        <div style="border:2px dashed #cbd5e1;border-radius:12px;background:#fff;touch-action:none;overflow:hidden;">
+          <canvas data-pad style="display:block;width:100%;height:170px;"></canvas>
+        </div>
+        ${k === 'qc' && mySigBoxed ? '<button type="button" class="top-btn" data-mine style="width:100%;justify-content:center;margin-top:12px;">ใช้ลายเซ็นของฉัน</button>' : ''}
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button type="button" class="top-btn" data-clear style="flex:1;justify-content:center;">ล้าง</button>
+          <button type="button" class="top-btn primary" data-save style="flex:2;justify-content:center;">บันทึก</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  const close = ()=> bg.remove();
+  bg.querySelector('[data-x]').onclick = close;
+  bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
+  const cv = bg.querySelector('[data-pad]'), ratio = Math.max(window.devicePixelRatio || 1, 2);
+  cv.width = cv.clientWidth * ratio; cv.height = cv.clientHeight * ratio;
+  const ctx = cv.getContext('2d');
+  ctx.scale(ratio, ratio); ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1e3a8a';
+  let drawing = false, dirty = false, cleared = false;
+  const cur = (state.meeting.coverSigns || {})[k];
+  if(cur){ const im = new Image(); im.onload = ()=>{ const w = cv.clientWidth, h = cv.clientHeight, r = Math.min(w / im.width, h / im.height); ctx.drawImage(im, (w - im.width * r) / 2, (h - im.height * r) / 2, im.width * r, im.height * r); }; im.src = cur; }
+  const pos = e=>{ const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.onpointerdown = e=>{ if(cur && !dirty && !cleared){ ctx.clearRect(0, 0, cv.width, cv.height); cleared = true; } drawing = true; cv.setPointerCapture(e.pointerId); const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + .1, y + .1); ctx.stroke(); dirty = true; };
+  cv.onpointermove = e=>{ if(!drawing) return; const [x, y] = pos(e); ctx.lineTo(x, y); ctx.stroke(); };
+  cv.onpointerup = cv.onpointercancel = ()=>{ drawing = false; };
+  bg.querySelector('[data-clear]').onclick = ()=>{ ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); dirty = false; cleared = true; };
+  const mine = bg.querySelector('[data-mine]');
+  if(mine) mine.onclick = async ()=>{ close(); await setCoverSign(k, mySigBoxed); };
+  bg.querySelector('[data-save]').onclick = async ()=>{
+    close();
+    if(dirty) await setCoverSign(k, await boxSign(trimSign(cv)));
+    else if(cleared) await setCoverSign(k, null);
+  };
+}
+/* ตัดขอบว่างของลายเซ็นที่วาด */
+function trimSign(cv){
+  const ctx = cv.getContext('2d'), { width: w, height: h } = cv, px = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){ if(px[(y * w + x) * 4 + 3] > 10){ if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; } }
+  if(x1 < 0) return cv.toDataURL('image/png');
+  const pad = 6, cx = Math.max(0, x0 - pad), cy = Math.max(0, y0 - pad), cw = Math.min(w, x1 + pad + 1) - cx, ch = Math.min(h, y1 + pad + 1) - cy;
+  const out = document.createElement('canvas'); out.width = cw; out.height = ch;
+  out.getContext('2d').drawImage(cv, cx, cy, cw, ch, 0, 0, cw, ch);
+  return out.toDataURL('image/png');
 }
 
 /* ========================================================================
@@ -3080,6 +3193,7 @@ async function onSignedIn(session){
   showLogin(false);
   renderUserChip();
   processDriveCleanup();
+  loadMySig();
   await restoreOutbox();
   await flushRetryQueue();   // ของค้างจากรอบก่อน (เช่น เปิดแอพตอนไม่มีเน็ต) → ส่งก่อนเปิดงาน
   const last = lsGet(LAST_MEETING_KEY);
@@ -3476,7 +3590,8 @@ function rowsToState(row){
   return {
     meeting: {
       id: row.id, name: row.name, customer: row.customer, date: row.meeting_date, rev: row.rev,
-      location: row.location, docType: row.doc_type, driveFolderId: row.drive_folder_id, driveFolderOwner: row.drive_folder_owner
+      location: row.location, docType: row.doc_type, driveFolderId: row.drive_folder_id, driveFolderOwner: row.drive_folder_owner,
+      coverSigns: row.cover_signs || {}
     },
     categories: (row.categories || []).sort(bySort).map(c=>({
       id: c.id, name: c.name,
@@ -3651,6 +3766,7 @@ async function createMeeting(meta){
     name: meta.name || '', customer: meta.customer || '', location: meta.location || '',
     meeting_date: meta.date || todayThai(), rev: meta.rev || '01',
     doc_type: DOC_TYPES.includes(meta.docType) ? meta.docType : 'Minute of Meeting',
+    cover_signs: meta.coverSigns || {},
     created_by: currentUser.id, updated_by: currentUser.id
   });
   if(error) throw error;
@@ -3674,7 +3790,7 @@ async function deleteTeamMeeting(id){
 async function startNewProject(){
   await flushPendingWrites();
   let id;
-  try{ id = isOnline() ? await createMeeting({}) : await createLocalMeeting({}); }
+  try{ id = isOnline() ? await createMeeting(newMeetingMeta()) : await createLocalMeeting(newMeetingMeta()); }
   catch(e){ console.error(e); showToast('สร้างงานไม่สำเร็จ'); return; }
   if(isOnline()) await openMeeting(id); else await openLocalMeeting(id);
   await addCategory('MDB PANEL');
@@ -4386,10 +4502,10 @@ function buildCoverPageForPdf(widthPx, heightPx) {
       <div style="margin-top:22px;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px 16px 24px;background:linear-gradient(180deg,#fafbfc 0%,white 100%);">
         <div style="font-size:14px;font-weight:700;color:#ff8a00;letter-spacing:.3px;font-family:'Inter',Arial,sans-serif;margin-bottom:26px;">Best Regards,</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:18px;">
-          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Quality Control</div></div>
-          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
-          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
-          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;"></div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">${coverSignImg('qc')}</div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Quality Control</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">${coverSignImg('w1')}</div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">${coverSignImg('w2')}</div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
+          <div style="text-align:center;"><div style="height:46px;border-bottom:1px solid #94a3b8;margin-bottom:9px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">${coverSignImg('w3')}</div><div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.5px;font-family:'Inter',Arial,sans-serif;">Witnessed</div></div>
         </div>
       </div>
 
