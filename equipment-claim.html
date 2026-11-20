@@ -108,6 +108,11 @@
         .ts-report-table th, .ts-report-table td {
             border: 1px solid #1f2937; padding: 2px 4px;
         }
+        /* ช่องกรอก (ธีมกรมท่า + ส้ม — ชุดเดียวกับ missing-item.html) */
+        .mi-input { width: 100%; height: 3rem; padding: 0 1rem; border-radius: .75rem; background: #f8fafc; border: 1px solid #e2e8f0; outline: none; transition: background .15s, border-color .15s, box-shadow .15s; }
+        .mi-input:focus { background: #fff; border-color: #fb923c; box-shadow: 0 0 0 4px #ffedd5; }
+        .mi-textarea { height: auto; min-height: 7rem; padding: .75rem 1rem; resize: vertical; }
+        .mi-input.mi-full { border-color: #f43f5e; box-shadow: 0 0 0 4px #ffe4e6; }
     </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
@@ -115,12 +120,13 @@
     <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 gap-2">
-                <a href="index.html" class="flex items-center min-w-0 hover:text-red-400 transition">
-                    <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 flex-shrink-0 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
-                    <span class="font-bold text-base sm:text-xl truncate">Equipment Claim</span>
-                </a>
-                <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <a href="index.html" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition">หน้าแรก</a>
+                <div class="flex items-center gap-3 min-w-0">
+                    <a href="index.html" title="หน้าแรก" class="w-10 h-10 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/15 flex items-center justify-center transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg>
+                    </a>
+                    <span class="font-bold text-lg sm:text-xl truncate">ตรวจสอบอุปกรณ์<span class="text-orange-400">ก่อนเคลม</span></span>
+                </div>
+                <div class="flex items-center flex-shrink-0">
                     <span id="acChipHost" class="flex items-center no-print"></span>
                 </div>
             </div>
@@ -130,91 +136,98 @@
     <div class="flex-grow w-full">
 
         <div id="app-claim-item" class="app-container max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
-            <div id="claimFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
-                <div class="border-b pb-4 mb-6 flex justify-between items-start sm:items-center">
-                    <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-red-700">ตรวจสอบอุปกรณ์ก่อนเคลม</h1>
-                        <p class="text-gray-500 mt-1">Equipment Inspection Form</p>
+            <div id="claimFormView" class="mb-10">
+                <div class="flex items-center gap-2 mb-4 no-print">
+                    <button type="button" onclick="cloudOpenList()" class="shrink-0 inline-flex items-center gap-1.5 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 px-3.5 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 7v5l3 2"/></svg>งาน</button>
+                    <div id="claimDocBar" class="hidden min-w-0 flex-1 flex items-center gap-2 text-sm text-slate-500 px-1">
+                        <span class="shrink-0 hidden sm:inline">กำลังแก้:</span><span id="claimDocName" class="font-bold text-slate-800 truncate"></span>
                     </div>
-                    <div class="flex items-center gap-2 no-print">
-                        <span id="claimSync"></span>
-                        <button type="button" onclick="cloudOpenList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🕘 งาน</button>
-                        <button type="button" onclick="claimNewJob()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1">+ งานใหม่</button>
-                    </div>
-                </div>
-                <div id="claimDocBar" class="hidden mb-5 text-xs bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
-                    <span>กำลังแก้งาน:</span><span id="claimDocName" class="font-bold text-red-700 truncate"></span>
+                    <span class="flex-1"></span>
+                    <span id="claimSync" class="shrink-0"></span>
+                    <button type="button" onclick="claimNewJob()" class="shrink-0 inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-md shadow-orange-500/30 transition"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M12 5v14M5 12h14"/></svg>งานใหม่</button>
                 </div>
 
-                <form id="claimInspectionForm" onsubmit="generateClaimReport(event)">
-                    <div class="mb-8">
-                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">1. ข้อมูลเอกสาร (Document Info)</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 px-3">
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขที่เอกสาร</label><input type="text" id="claimDocNo" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น EQ-2023-001"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label><input type="date" id="claimInspectionDate" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
+                <form id="claimInspectionForm" onsubmit="generateClaimReport(event)" class="space-y-4">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">1</span>
+                            <h2 class="text-lg font-bold text-slate-900">ข้อมูลเอกสาร</h2>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                            <div><label class="block text-sm font-semibold text-slate-600 mb-1.5">เลขที่เอกสาร</label><input type="text" id="claimDocNo" class="mi-input" placeholder="เช่น EQ-2023-001"></div>
+                            <div><label class="block text-sm font-semibold text-slate-600 mb-1.5">วันที่ตรวจสอบ <span class="text-rose-500">*</span></label><input type="date" id="claimInspectionDate" required class="mi-input"></div>
+                            <div><label class="block text-sm font-semibold text-slate-600 mb-1.5">ตรวจสอบโดย <span class="text-rose-500">*</span></label><input type="text" id="claimInspectorName" required class="mi-input" placeholder="ชื่อผู้ตรวจสอบ"></div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ตรวจสอบโดย <span class="text-red-500">*</span></label>
-                                <input type="text" id="claimInspectorName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 mb-2" placeholder="ชื่อผู้ตรวจสอบ">
-                                <div class="flex items-center gap-3">
-                                    <button type="button" onclick="openSignatureModal('claim_inspector')" class="bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg font-bold flex justify-center items-center text-sm transition-colors shadow-sm whitespace-nowrap">
-                                        คลิกเพื่อเซ็นชื่อ
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">ลายเซ็นผู้ตรวจสอบ</label>
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <button type="button" onclick="openSignatureModal('claim_inspector')" class="inline-flex items-center gap-2 h-12 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 text-white font-bold shadow-sm transition">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                        เซ็นชื่อ
                                     </button>
-                                    <img id="claim_inspector_preview" src="" class="h-10 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                    <img id="claim_inspector_preview" src="" class="h-12 object-contain hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3">
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="mb-8">
-                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-gray-50 py-1">2. รายละเอียดอุปกรณ์ (Equipment Details)</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-3">
-                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">ชื่ออุปกรณ์ <span class="text-red-500">*</span></label><input type="text" id="claimEqName" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น Circuit Breaker"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">ยี่ห้อ/รุ่น <span class="text-red-500">*</span></label><input type="text" id="claimEqBrand" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="เช่น Schneider / NSX100N"></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">จำนวน <span class="text-red-500">*</span></label><input type="number" id="claimEqQty" min="1" value="1" required class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500"></div>
-                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">หมายเลขซีเรียล</label><input type="text" id="claimEqSerial" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="ระบุ S/N (ถ้ามี)"></div>
-                            <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดเพิ่มเติม</label><input type="text" id="claimEqDesc" class="w-full h-11 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="พิกัดกระแส, แรงดัน หรืออื่นๆ"></div>
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">2</span>
+                            <h2 class="text-lg font-bold text-slate-900">รายละเอียดอุปกรณ์</h2>
                         </div>
-                    </div>
-
-                    <div class="mb-8">
-                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-red-500 pl-3 mb-4 bg-red-50 py-1">3. ปัญหาที่พบ (Found Issues)</h2>
-                        <div class="px-3"><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดปัญหา <span class="text-red-500">*</span></label><textarea id="claimIssueDesc" rows="4" required class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="อธิบายลักษณะอาการเสีย..."></textarea></div>
-                    </div>
-
-                    <div class="mb-10">
-                        <div class="flex items-center gap-3 mb-4 bg-gray-50 py-1 border-l-4 border-red-500 pl-3">
-                            <h2 class="text-lg font-semibold text-gray-700">4. ภาพประกอบ (Images)</h2>
-                            <span id="claimImgLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-100 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 3 รูป</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-6 gap-4 sm:gap-5">
+                            <div class="sm:col-span-6"><label class="block text-sm font-semibold text-slate-600 mb-1.5">ชื่ออุปกรณ์ <span class="text-rose-500">*</span></label><input type="text" id="claimEqName" required class="mi-input" placeholder="เช่น Circuit Breaker"></div>
+                            <div class="sm:col-span-4"><label class="block text-sm font-semibold text-slate-600 mb-1.5">ยี่ห้อ/รุ่น <span class="text-rose-500">*</span></label><input type="text" id="claimEqBrand" required class="mi-input" placeholder="เช่น Schneider / NSX100N"></div>
+                            <div class="sm:col-span-2"><label class="block text-sm font-semibold text-slate-600 mb-1.5">จำนวน <span class="text-rose-500">*</span></label><input type="number" id="claimEqQty" min="1" value="1" required class="mi-input text-center"></div>
+                            <div class="sm:col-span-6"><label class="block text-sm font-semibold text-slate-600 mb-1.5">หมายเลขซีเรียล</label><input type="text" id="claimEqSerial" class="mi-input" placeholder="ระบุ S/N (ถ้ามี)"></div>
+                            <div class="sm:col-span-6"><label class="block text-sm font-semibold text-slate-600 mb-1.5">รายละเอียดเพิ่มเติม</label><input type="text" id="claimEqDesc" class="mi-input" placeholder="พิกัดกระแส, แรงดัน หรืออื่นๆ"></div>
                         </div>
-                        <div class="px-3">
-                            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 cursor-pointer relative" onclick="document.getElementById('claimImageUpload').click()">
-                                <div id="claimLoadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 hidden flex flex-col items-center justify-center rounded-xl z-10">
-                                    <svg class="animate-spin h-8 w-8 text-red-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    <span class="text-sm font-medium text-red-700">กำลังบีบอัดรูปภาพ...</span>
+                    </section>
+
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">3</span>
+                            <h2 class="text-lg font-bold text-slate-900">ปัญหาที่พบ</h2>
+                        </div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5">รายละเอียดปัญหา <span class="text-rose-500">*</span></label>
+                        <textarea id="claimIssueDesc" rows="4" required class="mi-input mi-textarea" placeholder="อธิบายลักษณะอาการเสีย..."></textarea>
+                        <div id="claimIssueRoom" class="mt-2 text-xs font-semibold text-slate-400 text-right"></div>
+                    </section>
+
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">4</span>
+                            <h2 class="text-lg font-bold text-slate-900">ภาพประกอบ</h2>
+                            <span id="claimImgLimitWarning" class="text-xs text-rose-600 hidden font-bold bg-rose-50 px-2 py-1 rounded-lg">สูงสุด 3 รูป</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div id="claimImagePreviewContainer" class="contents"></div>
+                            <div class="relative aspect-square rounded-2xl border-2 border-dashed border-slate-300 hover:border-orange-400 hover:bg-orange-50/50 text-slate-400 hover:text-orange-500 flex flex-col items-center justify-center cursor-pointer transition" onclick="document.getElementById('claimImageUpload').click()">
+                                <div id="claimLoadingOverlay" class="absolute inset-0 bg-white/90 hidden flex flex-col items-center justify-center rounded-2xl z-10">
+                                    <div class="w-8 h-8 border-[3px] border-orange-100 border-t-orange-500 rounded-full animate-spin mb-2"></div>
+                                    <span class="text-xs font-semibold text-slate-500">กำลังบีบอัดรูป...</span>
                                 </div>
-                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                                <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ</p>
+                                <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span class="mt-2 text-sm font-bold">ถ่าย / เลือกรูป</span>
                                 <input type="file" id="claimImageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, claimUploadedImages, 3, 'claimImgLimitWarning', 'claimLoadingOverlay', renderClaimImagePreviews, 'EquipmentClaim')">
                             </div>
-                            <div id="claimImagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="border-t pt-6">
-                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> สร้างรายงาน (Generate Report)
-                        </button>
-                    </div>
+                    <button type="submit" class="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[.99] text-white font-bold text-lg shadow-lg shadow-orange-500/30 flex justify-center items-center gap-2 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        สร้างรายงาน
+                    </button>
                 </form>
             </div>
 
             <div id="claimReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
-                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
-                    <button onclick="editClaimForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-               <button onclick="downloadDirectPDF()" class="bg-[#f4902a] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-    ดาวน์โหลด PDF
-</button>
+                <div class="mb-6 flex flex-wrap gap-2.5 justify-center no-print">
+                    <button onclick="editClaimForm()" class="inline-flex items-center gap-1 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 pl-2.5 pr-4 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg>กลับไปแก้ไข</button>
+                    <button onclick="downloadDirectPDF()" class="no-print inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-md shadow-orange-500/30 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        ดาวน์โหลด PDF
+                    </button>
                 </div>
 
                 <div id="claimAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
@@ -480,10 +493,13 @@
             container.innerHTML = '';
             claimUploadedImages.forEach(img => {
                 const div = document.createElement('div');
-                div.className = 'relative group aspect-square rounded-lg border overflow-hidden shadow-sm';
-                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeClaimImage(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 shadow-sm">❌</button>`;
+                div.className = 'relative aspect-square rounded-2xl overflow-hidden ring-1 ring-slate-200 bg-slate-100';
+                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeClaimImage(${img.id})" title="ลบรูป" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-rose-600 shadow flex items-center justify-center transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M6 6l12 12M18 6L6 18"/></svg></button>`;
                 container.appendChild(div);
             });
+            claimRoomUpdate(false);
+            if (claimUploadedImages.length > claimImgCount && claimRoomLast.over > 0 && window.team && !teamApplying) team.toast('รูปที่เพิ่มทำให้เกินหน้ากระดาษ — ตัดข้อความปัญหาที่พบลง หรือลบรูป');
+            claimImgCount = claimUploadedImages.length;
         }
 
         function removeClaimImage(id) {
@@ -493,7 +509,27 @@
         }
 
         function generateClaimReport(event) {
-            event.preventDefault(); 
+            event.preventDefault();
+            if (claimRoomUpdate(false).over > 0) {   // ข้อความยาวเกินหน้า A4 → ไม่สร้าง (ไม่ย่อตัวอักษร)
+                if (window.team) team.toast('ปัญหาที่พบยาวเกินหน้ากระดาษ — ตัดข้อความลง หรือลบรูป');
+                const ta = document.getElementById('claimIssueDesc'); ta.scrollIntoView({ block: 'center' }); ta.focus();
+                return;
+            }
+            fillClaimReport();
+            document.getElementById('claimFormView').classList.add('hidden');
+            document.getElementById('claimReportContainer').classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            // ตั้งชื่อไฟล์ PDF: Equipment Claim_ยี่ห้อ_เลขที่เอกสาร
+            const eqBrand = document.getElementById('claimEqBrand').value || 'Brand';
+            const docNo = document.getElementById('claimDocNo').value || 'DocNo';
+            document.title = `Equipment Claim_${eqBrand}_${docNo}`;
+
+            autoSaveReport('claim-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
+        }
+
+        /* ค่าในฟอร์ม → หน้ารายงาน (ใช้ทั้งตอนสร้างรายงาน และตอนวัดพื้นที่ว่างบน A4) */
+        function fillClaimReport() {
             const eqName = document.getElementById('claimEqName').value;
             
             document.getElementById('rClaimDocNo').textContent = document.getElementById('claimDocNo').value || '-';
@@ -524,18 +560,62 @@
             } else {
                 claimSignImg.classList.add('hidden');
             }
-            // -----------------------------------
-            document.getElementById('claimFormView').classList.add('hidden');
-            document.getElementById('claimReportContainer').classList.remove('hidden');
-            window.scrollTo(0, 0);
-            
-            // ตั้งชื่อไฟล์ PDF: Equipment Claim_ยี่ห้อ_เลขที่เอกสาร
-            const eqBrand = document.getElementById('claimEqBrand').value || 'Brand';
-            const docNo = document.getElementById('claimDocNo').value || 'DocNo';
-            document.title = `Equipment Claim_${eqBrand}_${docNo}`;
-
-            autoSaveReport('claim-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
         }
+
+        /* ===== ปัญหาที่พบ: จำกัดตามพื้นที่ที่เหลือจริงบนหน้า A4 (รายงานเคลม 1 หน้า ไม่ย่อตัวอักษร) =====
+           วัดโดยใส่ค่าลงรายงาน → โคลนเป็นหน้า A4 กว้าง 794px แบบสูงตามเนื้อหา → เทียบกับ 1123px */
+        let claimRoomLast = { free: 0, lines: 0, over: 0 }, claimImgCount = 0, claimIssuePrev = '';
+        function claimRoom() {
+            fillClaimReport();
+            const page = a4Page(document.getElementById('claimReportView'));
+            page.style.height = 'auto'; page.style.minHeight = '0'; page.style.overflow = 'visible';
+            const box = document.createElement('div');
+            box.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_PX.w}px;visibility:hidden;`;
+            box.appendChild(page); document.body.appendChild(box);
+            const h = page.scrollHeight;
+            const p = page.querySelector('p.whitespace-pre-wrap');
+            const lh = (p && parseFloat(getComputedStyle(p).lineHeight)) || 23;
+            box.remove();
+            const free = A4_PX.h - h;
+            return { free, lines: Math.max(0, Math.floor(free / lh)), over: free < 0 ? -free : 0 };
+        }
+        function claimRoomShow(r) {
+            const el = document.getElementById('claimIssueRoom');
+            if (!el) return;
+            if (r.over > 0) { el.className = 'mt-2 text-xs font-bold text-rose-600 text-right'; el.textContent = 'เกินหน้ากระดาษ — ตัดข้อความลง หรือลบรูป'; }
+            else if (r.lines < 1) { el.className = 'mt-2 text-xs font-bold text-orange-600 text-right'; el.textContent = 'เต็มหน้ากระดาษแล้ว'; }
+            else { el.className = 'mt-2 text-xs font-semibold text-slate-400 text-right'; el.textContent = `เหลือที่ประมาณ ${r.lines} บรรทัด`; }
+        }
+        /* fromTyping: เพิ่งพิมพ์/วางในช่องปัญหา → ส่วนที่ทำให้เกินหน้าจะไม่ถูกรับ (ตัดเฉพาะที่เพิ่งเพิ่ม ไม่แตะข้อความเดิม) */
+        function claimRoomUpdate(fromTyping) {
+            const ta = document.getElementById('claimIssueDesc');
+            let r = claimRoom();
+            if (fromTyping && r.over > 0 && ta.value.length > claimIssuePrev.length) {
+                const v = ta.value, prev = claimIssuePrev;
+                ta.value = prev;
+                const prevFits = claimRoom().over === 0;
+                if (prevFits && v.startsWith(prev)) {   // พิมพ์/วางต่อท้าย → รับเท่าที่ยังพอดีหน้า
+                    let lo = prev.length, hi = v.length;
+                    while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); ta.value = v.slice(0, mid); if (claimRoom().over > 0) hi = mid - 1; else lo = mid; }
+                    ta.value = v.slice(0, lo);
+                }
+                ta.setSelectionRange(ta.value.length, ta.value.length);
+                ta.classList.add('mi-full'); setTimeout(() => ta.classList.remove('mi-full'), 600);
+                r = claimRoom();
+            }
+            claimIssuePrev = ta.value;
+            claimRoomLast = r;
+            claimRoomShow(r);
+            return r;
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const ta = document.getElementById('claimIssueDesc');
+            ta.addEventListener('beforeinput', () => { claimIssuePrev = ta.value; });
+            ta.addEventListener('input', () => claimRoomUpdate(true));
+            // ช่องอื่น (เช่น รายละเอียดอุปกรณ์ยาว ๆ) ก็กินที่บนหน้า → อัปเดตตัวบอกพื้นที่
+            document.getElementById('claimInspectionForm').addEventListener('input', e => { if (e.target !== ta) claimRoomUpdate(false); });
+            claimRoomUpdate(false);
+        });
 
         function editClaimForm() {
             document.getElementById('claimReportContainer').classList.add('hidden');
@@ -1098,10 +1178,8 @@
         </div>
     </div>
 
-    <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="เริ่มงานใหม่">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
+    <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-slate-900 hover:bg-slate-700 text-white w-14 h-14 rounded-2xl shadow-xl shadow-slate-900/30 flex items-center justify-center z-50 transition hover:scale-105 print:hidden" title="เริ่มใบใหม่">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
     </button>
 
     <script>
