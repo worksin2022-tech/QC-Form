@@ -115,12 +115,13 @@
     <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 gap-2">
-                <a href="index.html" class="flex items-center min-w-0 hover:text-blue-400 transition">
-                    <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 flex-shrink-0 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
-                    <span class="font-bold text-base sm:text-xl truncate">Missing Item</span>
-                </a>
-                <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <a href="index.html" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition">หน้าแรก</a>
+                <div class="flex items-center gap-3 min-w-0">
+                    <a href="index.html" title="หน้าแรก" class="w-10 h-10 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/15 flex items-center justify-center transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg>
+                    </a>
+                    <span class="font-bold text-lg sm:text-xl truncate">บันทึกรายการ<span class="text-orange-400">ของขาด</span></span>
+                </div>
+                <div class="flex items-center flex-shrink-0">
                     <span id="acChipHost" class="flex items-center no-print"></span>
                 </div>
             </div>
@@ -978,6 +979,7 @@
             document.getElementById('missingListView').classList.toggle('hidden', which !== 'list');
             document.getElementById('missingFormView').classList.toggle('hidden', which !== 'form');
             document.getElementById('missingReportContainer').classList.add('hidden');
+            document.getElementById('fabNewForm').classList.toggle('hidden', which !== 'form');
             window.scrollTo(0, 0);
         }
         function missingShowForm() { missingViews('form'); updateCloudDocBars(); }
@@ -1000,100 +1002,170 @@
         const mYm = r => /^\d{4}-\d{2}/.test(r.d) ? r.d.slice(0, 7) : r.u.slice(0, 7);
         const mMonthLabel = ym => { const [y, mo] = (ym || '').split('-').map(Number); return y ? new Date(y, mo - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }) : 'ไม่ระบุวันที่'; };
         const mDate = d => { if (!/^\d{4}-\d{2}-\d{2}/.test(d || '')) return ''; const x = new Date(d + 'T00:00:00'); return x.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }); };
-        const CHEV = '<svg class="w-5 h-5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>';
+        const CHEV = '<svg class="w-5 h-5 text-slate-300 group-hover:text-orange-500 group-hover:translate-x-0.5 shrink-0 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>';
+        const MI = {   // ไอคอนของหน้ารายการ
+            search: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M20 20l-3.5-3.5"/></svg>',
+            cal: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M16 3v4M8 3v4M3 10h18"/></svg>',
+            user: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M4 21a8 8 0 0116 0"/></svg>',
+            cab: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M9 8h6M9 12h6M15 17h.01"/></svg>',
+            trash: '<svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.87 12.14A2 2 0 0116.14 21H7.86a2 2 0 01-1.99-1.86L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>',
+            back: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg>',
+            plus: '<svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M12 5v14M5 12h14"/></svg>',
+            check: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>',
+            empty: '<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>'
+        };
+        const AVA = ['bg-sky-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500', 'bg-rose-500', 'bg-indigo-500'];
+        const avaColor = s => AVA[[...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % AVA.length];
+        const initial = s => { const t = String(s || '').replace(/^(นาย|นางสาว|นาง|น\.ส\.|Mr\.?|Mrs\.?|Ms\.?)\s*/i, '').trim(); return [...t][0] || '?'; };
+        /* วงกลมชื่อย่อผู้ตรวจ (สูงสุด 3 + จำนวนที่เหลือ) */
+        const avatars = names => {
+            const u = [...new Set(names.filter(Boolean))];
+            if (!u.length) return '';
+            return `<div class="flex -space-x-2" title="${mEsc(u.join(', '))}">${u.slice(0, 3).map(n => `<span class="w-7 h-7 rounded-full ${avaColor(n)} text-white text-xs font-bold flex items-center justify-center ring-2 ring-white">${mEsc(initial(n))}</span>`).join('')}${u.length > 3 ? `<span class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold flex items-center justify-center ring-2 ring-white">+${u.length - 3}</span>` : ''}</div>`;
+        };
+        /* สถานะของขาด: แดง = ยังขาด · เขียว = ครบ · null = ไม่รู้ (งานเก่ายังไม่มีสรุป) */
+        /* ลงข้อมูลเฉพาะตู้ที่มีของขาด → ไม่มีสถานะ "ไม่ขาด" · แดง = มีของขาด · เทา = งานเก่ายังไม่มีสรุป */
+        const tone = n => n > 0 ? { bar: 'bg-orange-500', soft: 'bg-rose-50 text-rose-600' } : { bar: 'bg-slate-200', soft: 'bg-slate-50 text-slate-400' };
+        const missBox = (n, small) => !(n > 0) ? '' :
+            `<div class="shrink-0 text-center rounded-xl ${tone(n).soft} ${small ? 'px-2.5 py-1' : 'px-3 py-1.5'}"><div class="${small ? 'text-lg' : 'text-xl'} font-extrabold leading-none">${n}</div><div class="text-[10px] font-bold mt-0.5">ขาด</div></div>`;
         async function renderMissingList(fetchRows) {
             const box = document.getElementById('missingListView');
-            // หัวหน้า: ปุ่ม "+ บันทึกใหม่" เฉพาะหน้ารวม (ในหน้า JOB ใช้ "+ เพิ่มตู้ใน JOB นี้")
-            const head = withNew => `
-                <div class="border-b pb-4 mb-4 flex items-start justify-between gap-3 flex-wrap">
-                    <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
-                        <p class="text-gray-500 mt-1">Missing Item Form</p>
-                    </div>
-                    ${withNew ? `<div class="flex items-center gap-2 no-print">
-                        <button type="button" onclick="missingNew('')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ บันทึกใหม่</button>
-                    </div>` : ''}
-                </div>`;
-            const wrap = (inner, withNew = true) => `<div class="bg-white rounded-xl shadow-lg p-4 sm:p-8">${head(withNew)}${inner}</div>`;
+            const note = (html, cls = 'text-slate-400') => `<div class="text-center ${cls} py-16 bg-white rounded-3xl ring-1 ring-slate-200/70 mt-5">${html}</div>`;
             if (fetchRows || !missingRecs) {
-                if (!missingRecs) box.innerHTML = wrap('<div class="text-center text-gray-400 py-10">กำลังโหลด...</div>');
+                if (!missingRecs) box.innerHTML = note('<div class="inline-block w-8 h-8 border-[3px] border-orange-100 border-t-orange-500 rounded-full animate-spin"></div><div class="mt-3 text-sm font-medium">กำลังโหลด...</div>');
                 if (!window.team) { missingRecs = []; }
                 else {
                     try { missingRecs = (await team.listJobs()).map(missingRec); }
                     catch (e) {
                         console.error('[missing list]', e);
-                        box.innerHTML = wrap('<div class="text-center text-gray-500 py-10">โหลดรายการไม่สำเร็จ<br><button type="button" onclick="renderMissingList(true)" class="mt-3 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-bold">ลองอีกครั้ง</button></div>');
+                        box.innerHTML = note('โหลดรายการไม่สำเร็จ<br><button type="button" onclick="renderMissingList(true)" class="mt-4 bg-slate-900 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold">ลองอีกครั้ง</button>', 'text-slate-500');
                         return;
                     }
                 }
             }
-            const q = missingListQ.trim().toLowerCase();
-            const recs = missingRecs.filter(r => !q || [r.p, r.c, r.i].join(' ').toLowerCase().includes(q));
             // JOB = ชื่อโครงการ / SO (ไม่สนตัวพิมพ์เล็กใหญ่/ช่องว่าง) · เดือนของ JOB = เดือนตรวจล่าสุดของ JOB นั้น
-            const groups = new Map();
-            recs.forEach(r => {
-                const k = r.p.replace(/\s+/g, ' ').toLowerCase();
-                if (!groups.has(k)) groups.set(k, { key: k, p: r.p, items: [] });
-                groups.get(k).items.push(r);
-            });
-            const gs = [...groups.values()].map(g => ({ ...g,
-                ym: g.items.reduce((m, r) => mYm(r) > m ? mYm(r) : m, ''),
-                last: g.items.reduce((m, r) => r.u > m ? r.u : m, '') }))
-                .sort((a, b) => b.ym.localeCompare(a.ym) || b.last.localeCompare(a.last));
+            const groupBy = list => {
+                const m = new Map();
+                list.forEach(r => {
+                    const k = r.p.replace(/\s+/g, ' ').toLowerCase();
+                    if (!m.has(k)) m.set(k, { key: k, p: r.p, items: [] });
+                    m.get(k).items.push(r);
+                });
+                return [...m.values()].map(g => ({ ...g,
+                    ym: g.items.reduce((x, r) => mYm(r) > x ? mYm(r) : x, ''),
+                    last: g.items.reduce((x, r) => r.u > x ? r.u : x, ''),
+                    lastD: g.items.reduce((x, r) => (r.d || '') > x ? r.d : x, ''),
+                    miss: g.items.some(r => r.n != null) ? g.items.reduce((t, r) => t + (r.n || 0), 0) : null }));
+            };
+            const q = missingListQ.trim().toLowerCase();
+            const searched = groupBy(missingRecs.filter(r => !q || [r.p, r.c, r.i].join(' ').toLowerCase().includes(q)));
+            const gs = searched.sort((a, b) => b.ym.localeCompare(a.ym) || b.last.localeCompare(a.last));
             gs.forEach(g => g.items.sort((a, b) => (a.c || '').localeCompare(b.c || '', 'th', { numeric: true })));
             missingJobGroups = gs;
-            // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
-            const search = `<input data-mq value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">`;
 
             // ----- หน้าในของ JOB: รายการตู้ -----
-            const open = missingListJob !== null ? gs.find(g => g.key === missingListJob) : null;
+            const open = missingListJob !== null ? gs.find(g => g.key === missingListJob) || groupBy(missingRecs).find(g => g.key === missingListJob) : null;
             if (missingListJob !== null && !open) missingListJob = null;
             if (open) {
-                const row = r => `
-                    <div onclick="missingOpenRec('${r.id}')" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer">
-                        <div class="flex-1 min-w-0">
-                            <div class="font-bold text-gray-800 truncate">${mEsc(r.c) || '<span class="text-gray-400">ไม่มีชื่อตู้</span>'}</div>
-                            <div class="text-xs text-gray-500 mt-0.5">${[mDate(r.d), mEsc(r.i), r.n != null ? `ขาด ${r.n} รายการ` : '', r.local ? 'ในเครื่องนี้' : ''].filter(Boolean).join(' · ')}</div>
+                if (!gs.includes(open)) { missingJobGroups = [open, ...gs]; open.items.sort((a, b) => (a.c || '').localeCompare(b.c || '', 'th', { numeric: true })); }
+                const card = r => `
+                    <div onclick="missingOpenRec('${r.id}')" class="group relative flex flex-col bg-white rounded-2xl ring-1 ring-slate-200/80 hover:ring-orange-300 hover:shadow-lg hover:-translate-y-0.5 p-4 pl-5 cursor-pointer transition overflow-hidden">
+                        <span class="absolute left-0 inset-y-0 w-1.5 ${tone(r.n).bar}"></span>
+                        <div class="flex items-start gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[11px] font-bold text-slate-400 tracking-wide">ตู้</div>
+                                <div class="text-lg font-bold text-slate-900 truncate leading-snug">${mEsc(r.c) || '<span class="text-slate-400 font-medium">ไม่มีชื่อตู้</span>'}</div>
+                            </div>
+                            ${missBox(r.n, true)}
                         </div>
-                        <button type="button" onclick="event.stopPropagation();missingDelete('${r.id}')" title="ลบ" class="text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 shrink-0">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.87 12.14A2 2 0 0116.14 21H7.86a2 2 0 01-1.99-1.86L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
-                        ${CHEV}
+                        <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                            ${mDate(r.d) ? `<span class="inline-flex items-center gap-1">${MI.cal}${mDate(r.d)}</span>` : ''}
+                            ${r.i ? `<span class="inline-flex items-center gap-1 min-w-0"><span class="shrink-0">${MI.user}</span><span class="truncate">${mEsc(r.i)}</span></span>` : ''}
+                            ${r.local ? '<span class="text-amber-600 font-semibold">ในเครื่องนี้</span>' : ''}
+                            <span class="flex-1"></span>
+                            <button type="button" onclick="event.stopPropagation();missingDelete('${r.id}')" title="ลบ" class="-my-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-1.5 transition">${MI.trash}</button>
+                        </div>
                     </div>`;
-                box.innerHTML = wrap(`
-                    <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="missingListJob=null;renderMissingList(false)" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold">← ทุก JOB</button>
-                        <span class="flex-1"></span>
-                        <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ เพิ่มตู้ใน JOB นี้</button>
+                box.innerHTML = `
+                    <button type="button" onclick="missingListJob=null;renderMissingList(false)" class="inline-flex items-center gap-1 text-slate-500 hover:text-orange-600 font-bold text-sm mb-3 transition">${MI.back}ทุก JOB</button>
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#26324a] via-[#1c2638] to-[#121a28] text-white p-5 sm:p-7 shadow-xl shadow-slate-900/25">
+                        <div class="absolute -right-10 -top-12 w-48 h-48 rounded-full bg-orange-500/15"></div>
+                        <div class="absolute right-16 -bottom-16 w-40 h-40 rounded-full bg-orange-400/10"></div>
+                        <div class="relative">
+                            <div class="text-xs font-bold text-slate-300 tracking-wider">JOB</div>
+                            <div class="text-2xl sm:text-3xl font-extrabold break-words leading-tight mt-0.5">${mEsc(open.p) || 'ไม่ระบุโครงการ'}</div>
+                            <div class="flex flex-wrap items-end justify-between gap-4 mt-5">
+                                <div class="flex gap-2.5">
+                                    <div class="bg-white/15 rounded-2xl px-4 py-2.5"><div class="text-2xl font-extrabold leading-none">${open.items.length}</div><div class="text-[11px] text-slate-300 font-semibold mt-1">ตู้</div></div>
+                                    ${open.miss != null ? `<div class="bg-white/15 rounded-2xl px-4 py-2.5"><div class="text-2xl font-extrabold leading-none">${open.miss}</div><div class="text-[11px] text-slate-300 font-semibold mt-1">รายการที่ขาด</div></div>` : ''}
+                                </div>
+                                <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="no-print inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}เพิ่มตู้ใน JOB นี้</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-baseline justify-between gap-3 mb-3 px-1">
-                        <div class="text-lg font-bold text-blue-700 truncate">${mEsc(open.p) || 'ไม่ระบุโครงการ'}</div>
-                        <div class="text-sm text-gray-500 shrink-0">${open.items.length} ตู้</div>
+                    <div class="flex items-center gap-2 mt-6 mb-3 px-1 text-sm">
+                        <span class="font-bold text-slate-800">รายการตู้</span>
                     </div>
-                    ${open.items.map(row).join('')}`, false);
+                    <div class="grid sm:grid-cols-2 gap-3">${open.items.map(card).join('')}</div>`;
                 return;
             }
 
-            // ----- หน้ารวม: เดือน → JOB -----
+            // ----- หน้ารวม: สรุป → ค้นหา/กรอง → เดือน → JOB -----
+            const all = groupBy(missingRecs);
+            const sumMiss = all.reduce((t, g) => t + (g.miss || 0), 0);
+            const stat = (n, label) => `<div class="bg-white/15 backdrop-blur rounded-2xl px-3 sm:px-4 py-3"><div class="text-2xl sm:text-3xl font-extrabold leading-none">${n}</div><div class="text-[11px] sm:text-xs text-slate-300 font-semibold mt-1.5">${label}</div></div>`;
+            const hero = `
+                <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#26324a] via-[#1c2638] to-[#121a28] text-white p-5 sm:p-7 pb-12 sm:pb-14 shadow-xl shadow-slate-900/25">
+                    <div class="absolute -right-10 -top-12 w-48 h-48 rounded-full bg-orange-500/15"></div>
+                    <div class="absolute right-24 -bottom-20 w-44 h-44 rounded-full bg-orange-400/10"></div>
+                    <div class="relative flex flex-wrap items-center justify-between gap-4">
+                        <div class="grid grid-cols-3 gap-2.5 flex-1 min-w-[260px] max-w-md">
+                            ${stat(all.length, 'JOB')}${stat(missingRecs.length, 'ตู้ที่ตรวจ')}${stat(sumMiss, 'รายการที่ขาด')}
+                        </div>
+                        <button type="button" onclick="missingNew('')" class="no-print inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}บันทึกใหม่</button>
+                    </div>
+                </div>`;
+            // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
+            const search = `
+                <div class="relative -mt-6 mx-3 sm:mx-6">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">${MI.search}</span>
+                    <input data-mq value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-12 pl-12 pr-4 bg-white rounded-2xl shadow-lg shadow-slate-900/10 ring-1 ring-slate-200 focus:ring-2 focus:ring-orange-400 outline-none transition">
+                </div>`;
+
             let body = '', cur = null;
             gs.forEach((g, i) => {
                 if (g.ym !== cur) {
+                    if (cur !== null) body += '</div>';
                     cur = g.ym;
-                    body += `<div class="flex items-center justify-between mt-5 mb-2 px-1"><span class="text-sm font-bold text-gray-500">${mMonthLabel(g.ym)}</span><span class="text-xs text-gray-400">${gs.filter(x => x.ym === g.ym).length} JOB</span></div>`;
+                    body += `
+                    <div class="flex items-center gap-2.5 mt-7 mb-3 px-1">
+                        <span class="text-base font-bold text-slate-800">${mMonthLabel(g.ym)}</span>
+                        <span class="text-xs font-semibold text-slate-500 bg-white ring-1 ring-slate-200 rounded-full px-2.5 py-0.5">${gs.filter(x => x.ym === g.ym).length} JOB</span>
+                        <span class="flex-1 h-px bg-slate-200"></span>
+                    </div>
+                    <div class="grid gap-3">`;
                 }
-                const miss = g.items.reduce((t, r) => t + (r.n || 0), 0);
-                const lastD = g.items.reduce((m, r) => (r.d || '') > m ? r.d : m, '');
                 body += `
-                    <div onclick="missingListJob=missingJobGroups[${i}].key;renderMissingList(false)" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer shadow-sm">
+                    <div onclick="missingListJob=missingJobGroups[${i}].key;renderMissingList(false)" class="group relative flex items-center gap-4 bg-white rounded-2xl ring-1 ring-slate-200/80 hover:ring-orange-300 hover:shadow-lg hover:-translate-y-0.5 py-4 pl-5 pr-3 cursor-pointer transition overflow-hidden">
+                        <span class="absolute left-0 inset-y-0 w-1.5 ${tone(g.miss).bar}"></span>
                         <div class="flex-1 min-w-0">
-                            <div class="font-bold text-gray-800 truncate">${mEsc(g.p) || '<span class="text-gray-400">ไม่ระบุโครงการ</span>'}</div>
-                            <div class="text-xs text-gray-500 mt-0.5">${[miss ? `ขาดรวม ${miss} รายการ` : '', lastD ? 'ตรวจล่าสุด ' + mDate(lastD) : ''].filter(Boolean).join(' · ')}</div>
+                            <div class="font-bold text-slate-900 text-[17px] truncate">${mEsc(g.p) || '<span class="text-slate-400 font-medium">ไม่ระบุโครงการ</span>'}</div>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-1">
+                                <span class="inline-flex items-center gap-1 font-semibold text-slate-600">${MI.cab}${g.items.length} ตู้</span>
+                                ${g.miss > 0 ? `<span class="text-rose-600 font-semibold">ขาดรวม ${g.miss} รายการ</span>` : ''}
+                                ${g.lastD ? `<span class="inline-flex items-center gap-1">${MI.cal}${mDate(g.lastD)}</span>` : ''}
+                            </div>
                         </div>
-                        <span class="shrink-0 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg px-2.5 py-1 text-sm font-bold">${g.items.length} ตู้</span>
+                        <div class="hidden sm:block">${avatars(g.items.map(r => r.i))}</div>
+                        ${missBox(g.miss)}
                         ${CHEV}
                     </div>`;
             });
-            box.innerHTML = wrap(search + (body || `<div class="text-center text-gray-400 py-10">${q ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการ'}</div>`));
+            if (cur !== null) body += '</div>';
+            const empty = q
+                ? note('ไม่พบรายการที่ค้นหา')
+                : note(`<div class="w-16 h-16 mx-auto rounded-3xl bg-orange-50 text-orange-500 flex items-center justify-center mb-4">${MI.empty}</div><div class="font-bold text-slate-700 text-lg">ยังไม่มีรายการ</div>`);
+            box.innerHTML = hero + search + (body || empty);
             const qi = box.querySelector('[data-mq]');
             qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = box.querySelector('[data-mq]'); n.focus(); n.setSelectionRange(pos, pos); };
         }
@@ -1320,7 +1392,7 @@
         </div>
     </div>
 
-    <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="เริ่มงานใหม่">
+    <button id="fabNewForm" onclick="clearDraftData()" class="hidden fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="เริ่มงานใหม่">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
