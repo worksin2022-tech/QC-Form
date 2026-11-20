@@ -2,6 +2,10 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <script>
+        // ลิงก์บอท Trip Unit เดิม (index.html#ts=...) → หน้า Trip Unit แยก (คง hash ไว้)
+        if (/[#&]ts=/.test(location.hash)) location.replace('trip-unit.html' + location.hash);
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quality Control Forms</title>
 
@@ -177,7 +181,7 @@
                     </div>
                 </div>
 
-                <div onclick="switchApp('trip-site')" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
+                <div onclick="window.location.href='trip-unit.html'" class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-gray-100 overflow-hidden">
                     <div class="h-2 bg-green-500 w-full"></div>
                     <div class="p-6">
                         <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">

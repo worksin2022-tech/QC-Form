@@ -36,6 +36,7 @@
 
   // เบราว์เซอร์ที่ปิด storage (เช่น private mode บางแบบ) ล็อกอินไม่ได้อยู่แล้ว → ไม่ล็อกคนออก
   if (!storageWorks()) return;
+  if (global.AVATAR_GATE_SKIP) return;   // หน้าที่เปิดได้โดยไม่ล็อกอินในบางกรณี (trip-unit.html: ลิงก์จากบอท #ts=)
   if (!session() && !offline()) {
     document.documentElement.style.visibility = 'hidden';   // ไม่ให้เห็นหน้าแอพแวบก่อนเด้งไปล็อกอิน
     toLogin();
