@@ -4081,7 +4081,7 @@ async function exportPDF() {
     // บังคับขนาด Container เป็น px ตายตัว (A4 ที่ 96 DPI = 794x1123)
     const RENDER_W_PX = 794;
     const RENDER_H_PX = 1123;
-    const SCALE = 3; // ความคมชัด x3 (ภาพคมขึ้น เห็นรายละเอียดมากขึ้น)
+    const SCALE = 4; // ≈384 dpi แบบ QA บันทึกตรวจรับตู้ · 3176×4492px = 14.3 ล้านพิกเซล ต่ำกว่าเพดาน canvas ของ iOS (16.7 ล้าน)
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
@@ -4122,7 +4122,7 @@ async function exportPDF() {
         windowHeight: RENDER_H_PX
       });
       return {
-        imgData: canvas.toDataURL('image/jpeg', 0.95),
+        imgData: canvas.toDataURL('image/png'),   // PNG = ไม่เสียรายละเอียด (ตัวหนังสือคมกว่า JPEG)
         width: canvas.width,
         height: canvas.height
       };
@@ -4133,7 +4133,7 @@ async function exportPDF() {
       if(!isFirstPage) pdf.addPage();
       const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
       const pdfHeight = (result.height * pdfWidth) / result.width; 
-      pdf.addImage(result.imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.addImage(result.imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     };
 
     // === PAGE 1: COVER ===
