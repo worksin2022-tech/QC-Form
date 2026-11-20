@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <script src="avatar-gate.js"></script>   <!-- ล็อกอินจุดเดียวที่ index.html -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missing Item Report</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="icon-96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="QC Forms">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1f2937">
+    <link rel="manifest" href="manifest.json">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>   <!-- PDF แบบ MoM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- ระบบทีมออนไลน์ (Supabase + Google Drive) -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="avatar-cloud.js"></script>
+    <script src="avatar-team.js"></script>   <!-- ระบบทีมแบบ MoM -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* GLOBAL PRINT STYLES */
+        @media print {
+            @page {
+            size: A4 portrait; /* บังคับเป็นกระดาษ A4 แนวตั้งเสมอ */
+            margin: 0mm; /* ลบขอบกระดาษทิ้ง */
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important; /* บังคับพิมพ์สีพื้นหลัง */
+            print-color-adjust: exact !important;
+        }
+        /* บังคับให้หน้าพรีวิว A4 กลายเป็นหน้ากระดาษเต็มแผ่นตอนปริ้น */
+        .w-\[210mm\] {
+            width: 100% !important;
+            max-width: 210mm !important;
+            margin: 0 !important;
+            padding-top: 10mm !important; /* ขอบบนกระดาษตอนปริ้น */
+            padding-bottom: 10mm !important; /* ขอบล่างกระดาษตอนปริ้น */
+            box-shadow: none !important; /* เอาเงาพื้นหลังออกตอนปริ้น */
+        }
+        button {
+            display: none !important; /* ซ่อนปุ่มต่างๆ ตอนปริ้นแบบเด็ดขาด */
+        }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .app-container.hidden { display: none !important; }
+            .page-break-avoid { page-break-inside: avoid; break-inside: avoid; }
+            .print-border { border: 1px solid #1f2937 !important; }
+            .print-padding { padding: 0.5cm 1.5cm 1cm !important; }
+
+            /* 1. Missing Item Print Size */
+            #missingReportView {
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
+                padding: 0 !important; margin: 0 !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 2. Equipment Claim Print Size */
+            #claimReportView {
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
+                padding: 0 !important; margin: 0 !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 3. Trip Unit Factory Print Size */
+            #tf_reportView {
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
+                padding: 3mm 5mm 5mm 5mm !important; margin: 0 auto !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+
+            /* 4. Trip Unit Trading Print Size */
+            #ts_reportView {
+                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
+                padding: 5mm !important; margin: 0 auto !important;
+                box-sizing: border-box !important; box-shadow: none !important;
+                overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+            }
+        }
+
+        @media screen {
+            .print-only { display: none !important; }
+        }
+        
+        .custom-file-upload { display: inline-block; cursor: pointer; }
+        
+        /* สไตล์ตาราง Trip Unit */
+        .ts-report-table th, .ts-report-table td {
+            border: 1px solid #1f2937; padding: 2px 4px;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-gray-800 text-white shadow-md no-print sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2">
+                <a href="index.html" class="flex items-center min-w-0 hover:text-blue-400 transition">
+                    <img src="Logo Avatar เล็ก.png" alt="Logo" class="w-10 h-10 flex-shrink-0 object-contain mr-3 bg-white p-1 rounded-full shadow-sm">
+                    <span class="font-bold text-base sm:text-xl truncate">Missing Item</span>
+                </a>
+                <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <a href="index.html" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium transition">หน้าแรก</a>
+                    <span id="acChipHost" class="flex items-center no-print"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex-grow w-full">
+
+        <div id="app-missing-item" class="app-container max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
+            <div id="missingListView" class="hidden mb-10"></div>
+            <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
+                <div class="border-b pb-4 mb-6 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
+                        <p class="text-gray-500 mt-1">Missing Item Form</p>
+                    </div>
+                    <div class="flex items-center gap-2 no-print">
+                        <span id="missingSync"></span>
+                        <button type="button" onclick="missingShowList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">☰ รายการ</button>
+                    </div>
+                </div>
+                <div id="missingDocBar" class="hidden mb-5 text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
+                    <span>กำลังแก้งาน:</span><span id="missingDocName" class="font-bold text-blue-700 truncate"></span>
+                </div>
+
+                <form id="missingInspectionForm" onsubmit="generateMissingReport(event)">
+                    <div class="mb-8">
+                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3 mb-4">1. ข้อมูลทั่วไป</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อโครงการ / SO <span class="text-red-500">*</span></label>
+                                <input type="text" id="projectName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ระบุชื่อโครงการ หรือ SO">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อตู้ <span class="text-red-500">*</span></label>
+                                <input type="text" id="cabinetId" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="เช่น MDB-01, DB-02">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label>
+                                <input type="date" id="inspectionDate" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ตรวจสอบ <span class="text-red-500">*</span></label>
+                                <input type="text" id="inspectorName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
+                            </div>
+                            
+                            <div class="sm:col-span-2 mt-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ลายเซ็นผู้ตรวจสอบ (ถ้ามี)</label>
+                                <div class="flex items-center gap-4">
+                                    <button type="button" onclick="openSignatureModal('missing_inspector')" class="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold flex items-center transition-colors shadow-sm">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                        คลิกเพื่อเซ็นชื่อ
+                                    </button>
+                                    <img id="missing_inspector_preview" src="" class="h-12 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">2. รายการอุปกรณ์ที่ขาด</h2>
+                                <span id="itemLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 10 รายการ</span>
+                            </div>
+                            <button type="button" onclick="addMissingItem()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium py-2 px-4 rounded-lg flex items-center transition-colors">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> เพิ่มรายการ
+                            </button>
+                        </div>
+                        <div id="missingItemsContainer" class="space-y-4"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="flex items-center gap-3 mb-4">
+                            <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">3. รูปภาพประกอบ</h2>
+                            <span id="imgLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 3 รูป</span>
+                        </div>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative" onclick="document.getElementById('imageUpload').click()">
+                             <div id="loadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 hidden flex flex-col items-center justify-center rounded-xl z-10">
+                                <svg class="animate-spin h-8 w-8 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span class="text-sm font-medium text-blue-700">กำลังบีบอัดรูปภาพ...</span>
+                            </div>
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ หรือถ่ายภาพ</p>
+                            <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews, 'MissingItem')">
+                        </div>
+                        <div id="imagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
+                    </div>
+
+                    <div class="border-t pt-6">
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            สร้างรายงาน (Generate Report)
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
+                    <button onclick="missingNextCabinet()" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-md flex items-center justify-center">+ ตู้ถัดไป (JOB เดิม)</button>
+                    <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
+                <button onclick="downloadDirectPDF()" class="bg-[#f4902a] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+    ดาวน์โหลด PDF
+</button>
+                </div>
+
+                <div id="missingAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
+
+                <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[297mm] overflow-hidden report-print-view">
+                    <div class="relative w-full pt-0 pb-2">
+                        <div class="w-full flex h-[14px]">
+                            <div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div>
+                        </div>
+                        <div class="flex justify-between items-center mt-5 w-full">
+                            <div class="pl-8 h-[75px] z-10 flex-shrink-0"><img src="Logo Avatar เล็ก.png" class="h-full object-contain"></div>
+                            <div class="flex items-stretch h-[80px] w-[55%] max-w-[420px]">
+                                <div class="w-2 bg-[#f4902a] rounded-full mr-2.5 my-1 shadow-sm"></div>
+                                <div class="bg-[#333333] flex-grow rounded-l-[2.5rem] flex flex-col justify-center pl-8 pr-4 shadow-md">
+                                    <div class="text-white font-bold text-[22px] tracking-wide">เอกสารบันทึกการตรวจสอบ</div>
+                                    <div class="text-white text-[14.5px] tracking-wide mt-0.5">รายการอุปกรณ์ที่ขาด (Missing Item Report)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 mx-6 sm:mx-10 grid grid-cols-2 gap-4 mb-2 text-sm sm:text-base">
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ชื่อโครงการ / SO:</span> <span id="repProjectName" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ชื่อตู้:</span> <span id="repCabinetId" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">วันที่ตรวจสอบ:</span> <span id="repInspectionDate" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                        <div class="flex flex-col sm:flex-row items-start"><span class="font-bold w-36 flex-shrink-0">ผู้ตรวจสอบ:</span> <span id="repInspectorName" class="border-b border-dotted border-gray-400 flex-grow pb-1 min-w-0 break-words leading-snug"></span></div>
+                    </div>
+
+                    <div class="px-6 sm:px-10 pt-2 pb-8 flex-grow print-padding flex flex-col">
+                        <div class="mb-6 mt-2">
+                            <h3 class="font-bold text-base mb-2">ตารางรายการอุปกรณ์ที่ต้องดำเนินการเพิ่มเติม</h3>
+                            <table class="w-full border-collapse border border-gray-800 text-xs sm:text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100"><th class="border border-gray-800 px-2 py-1.5 text-center w-12">ลำดับ</th><th class="border border-gray-800 px-2 py-1.5 text-left">รายการ/ชื่ออุปกรณ์</th><th class="border border-gray-800 px-2 py-1.5 text-center w-24">จำนวน</th><th class="border border-gray-800 px-2 py-1.5 text-left w-1/3">หมายเหตุ</th></tr>
+                                </thead>
+                                <tbody id="repMissingItemsBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="mb-6 page-break-avoid" id="repImagesSection">
+                            <h3 class="font-bold text-base mb-4 border-b border-gray-800 pb-1">รูปภาพประกอบการตรวจสอบ</h3>
+                            <div id="repImagesGrid" class="grid grid-cols-3 gap-4 mt-4"></div>
+                        </div>
+                        <div class="mt-auto mb-4 grid grid-cols-2 gap-8 text-center page-break-avoid items-end">
+                            <div>
+                                <img id="repSignImage_missing" src="" class="mx-auto h-12 object-contain hidden mb-1 z-10 relative">
+                                <div class="border-b border-gray-800 w-3/4 mx-auto mb-2 relative"></div>
+                                <p class="text-sm">(<span id="repSignInspectorName" class="inline-block min-w-[100px]"></span>)</p>
+                                <p class="text-sm font-bold mt-1">ผู้ตรวจสอบ</p>
+                            </div>
+                            <div><div class="border-b border-gray-800 w-3/4 mx-auto mb-2"></div><p class="text-sm">(<span class="inline-block min-w-[100px] text-transparent">_</span>)</p><p class="text-sm font-bold mt-1">ผู้รับทราบ</p></div>
+                        </div>
+                    </div>
+
+                    <div class="w-full mt-auto h-[45px] relative page-break-avoid overflow-hidden">
+                        <div class="absolute left-0 bottom-0 w-[30%] h-full bg-[#333333]"></div>
+                        <div class="absolute right-0 bottom-0 w-[75%] h-full bg-[#f4902a] rounded-tl-[2rem] flex items-center justify-end pr-10"><span class="text-white font-medium text-lg tracking-widest">www.avatar-electric.com</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. หน้านี้มีฟอร์มเดียว (ของขาด) — แยกจาก index.html
+        // ==========================================
+        const currentAppId = 'missing-item';
+        /* ชุดทดสอบ/โค้ดเดิมเรียก switchApp('missing-item') = เข้าหน้ารายการ */
+        function switchApp(appId) {
+            if (appId !== 'missing-item') { location.href = 'index.html'; return; }
+            teamUseForm('missing-item');
+            updateCloudDocBars();
+        }
+
+        function formatDateThai(dateString) {
+            if(!dateString) return '-';
+            const d = new Date(dateString);
+            const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+        }
+
+        function formatDateGlobal(dateString) {
+            if(!dateString) return '';
+            const d = new Date(dateString);
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+
+        // ==========================================
+        // บันทึกภาพต้นฉบับลงเครื่อง/แกลลอรี่ (skill: avatar-photo-save-original)
+        // แทรกรูปลงฟอร์มให้เสร็จก่อนเสมอ → ถ้าเป็น "รูปเพิ่งถ่าย" ค่อยเสนอเซฟต้นฉบับ
+        // ==========================================
+
+        /* เดาว่ารูปมาจากกล้อง: ไฟล์ที่เพิ่งถ่ายจะมี lastModified ≈ ตอนนี้
+           ส่วนรูปจากคลังจะติดเวลาที่ถ่ายจริง (เก่ากว่า) — ใช้เกณฑ์ 2 นาที */
+        function isFreshCapture(file) {
+            return file && typeof file.lastModified === 'number' &&
+                   (Date.now() - file.lastModified) < 2 * 60 * 1000;
+        }
+
+        /* ตั้งชื่อไฟล์ต้นฉบับให้สื่อความหมาย: <prefix>_<วันเวลา>.<นามสกุล> */
+        function suggestPhotoFilename(file, prefix) {
+            const d = new Date(), p = n => String(n).padStart(2, '0');
+            const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+            let ext = 'jpg';
+            if (file && file.name && file.name.includes('.')) ext = file.name.split('.').pop().toLowerCase();
+            else if (file && file.type && file.type.includes('/')) ext = file.type.split('/')[1];
+            return `${prefix || 'Photo'}_${stamp}.${ext}`;
+        }
+
+        /* คืน File เดิมแต่ตั้งชื่อใหม่ (กัน share/ดาวน์โหลดได้ชื่อ image.jpg โล้นๆ) */
+        function makeNamedFile(file, prefix) {
+            try { return new File([file], suggestPhotoFilename(file, prefix), { type: file.type || 'image/jpeg' }); }
+            catch (e) { return file; }
+        }
+
+        /* ดาวน์โหลดไฟล์ต้นฉบับ (desktop / ไม่มีทางอื่น) */
+        function downloadOriginalFile(file) {
+            try {
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url; a.download = file.name || 'photo.jpg';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 4000);
+            } catch (e) { console.error(e); }
+        }
+
+        /* เสนอบันทึกภาพต้นฉบับลงเครื่อง (เรียกหลังแทรกรูปเสร็จแล้วเท่านั้น)
+           คืน Promise ที่ resolve เมื่อปิด modal — ใช้ต่อคิวหลายรูปได้ */
+        function offerSaveOriginal(file, prefix) {
+            return new Promise(resolve => {
+                const named = makeNamedFile(file, prefix);
+                let canWebShare = false;
+                try { canWebShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [named] })); } catch (e) {}
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                              (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)); // iPadOS รายงานตัวเป็น Mac
+                const url = URL.createObjectURL(file);
+
+                const hint = canWebShare
+                    ? 'กด “บันทึกลงเครื่อง” แล้วเลือก “บันทึกรูปภาพ / Save Image” เพื่อเก็บลงคลังรูป'
+                    : (isIOS
+                        ? '<b style="color:#c2410c;">แตะค้างที่รูปด้านบน</b> แล้วเลือก <b>“บันทึกลงในรูปภาพ”</b><br>เพื่อเก็บต้นฉบับลงคลังรูป<br><span style="font-size:11.5px;color:#94a3b8;">(เปิดผ่าน http — Safari ไม่ให้ปุ่มเว็บเซฟลงคลังรูปโดยตรง)</span>'
+                        : 'ต้องการดาวน์โหลดไฟล์ภาพต้นฉบับเก็บไว้ไหม?');
+                const actionBtn = canWebShare
+                    ? '<button id="osShare" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm">บันทึกลงเครื่อง</button>'
+                    : (isIOS ? '' : '<button id="osDl" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm">ดาวน์โหลด</button>');
+                const closeLabel = (isIOS && !canWebShare) ? 'ปิด' : 'ไม่บันทึก';
+
+                const bg = document.createElement('div');
+                bg.className = 'fixed inset-0 bg-gray-900 bg-opacity-70 z-[120] flex items-center justify-center no-print backdrop-blur-sm p-4';
+                bg.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b font-bold text-gray-800">บันทึกภาพต้นฉบับ</div>
+                        <div class="px-5 py-4 text-center">
+                            <img src="${url}" alt="ภาพต้นฉบับ" class="mx-auto rounded-lg border border-gray-200" style="max-width:100%;max-height:320px;">
+                            <p class="text-sm text-gray-600 leading-relaxed mt-3">${hint}</p>
+                        </div>
+                        <div class="px-5 py-3 border-t flex justify-end gap-3">
+                            <button id="osClose" class="px-5 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50">${closeLabel}</button>
+                            ${actionBtn}
+                        </div>
+                    </div>`;
+                document.body.appendChild(bg);
+
+                const close = () => { bg.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); resolve(); };
+                // ไม่ปิดเมื่อแตะฉากหลัง — กันเผลอปิดระหว่างพยายามแตะค้างที่รูป
+                bg.querySelector('#osClose').onclick = close;
+                const shareBtn = bg.querySelector('#osShare');
+                if (shareBtn) shareBtn.onclick = async () => {
+                    try { await navigator.share({ files: [named] }); }
+                    catch (e) { if (e && e.name !== 'AbortError') downloadOriginalFile(named); }
+                    close();
+                };
+                const dlBtn = bg.querySelector('#osDl');
+                if (dlBtn) dlBtn.onclick = () => { downloadOriginalFile(named); close(); };
+            });
+        }
+
+        /* เสนอเซฟทีละรูป (กัน modal ซ้อนกันเวลาเลือกหลายรูป) */
+        function offerSaveOriginalQueue(files, prefix) {
+            let i = 0;
+            const next = () => { if (i >= files.length) return; offerSaveOriginal(files[i++], prefix).then(next); };
+            next();
+        }
+
+        // Shared Image Compression Helper
+        function sharedHandleImageSelection(event, targetArray, maxLimit, warningId, loadingId, renderCallback, galleryPrefix) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            let filesToProcess = Array.from(files);
+
+            if (targetArray.length + filesToProcess.length > maxLimit) {
+                document.getElementById(warningId).classList.remove('hidden');
+                filesToProcess = filesToProcess.slice(0, maxLimit - targetArray.length);
+            } else {
+                document.getElementById(warningId).classList.add('hidden');
+            }
+
+            const loadingOverlay = document.getElementById(loadingId);
+            loadingOverlay.classList.remove('hidden');
+            let processedCount = 0;
+            const freshOriginals = []; // ต้นฉบับของรูปที่ "เพิ่งถ่าย" — เสนอเซฟหลังแทรกรูปเสร็จ
+
+            for (let i = 0; i < filesToProcess.length; i++) {
+                const file = filesToProcess[i];
+                if (!file.type.match('image.*')) { processedCount++; continue; }
+
+                // เก็บต้นฉบับไว้ก่อน ถ้าเป็นรูปเพิ่งถ่ายจากกล้อง (ยังไม่เสนอเซฟตอนนี้)
+                if (galleryPrefix && isFreshCapture(file)) freshOriginals.push(file);
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+                        let width = img.width; let height = img.height;
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        targetArray.push({ id: Date.now() + i, data: canvas.toDataURL('image/jpeg', 0.7) });
+                        processedCount++;
+                        if(processedCount === filesToProcess.length) {
+                             // แทรกรูปลงฟอร์มเสร็จสมบูรณ์ก่อน แล้วค่อยเสนอเซฟต้นฉบับ
+                             renderCallback();
+                             loadingOverlay.classList.add('hidden');
+                             if (freshOriginals.length) offerSaveOriginalQueue(freshOriginals, galleryPrefix);
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        }
+
+        // INIT
+        document.addEventListener('DOMContentLoaded', () => {
+            const el = document.getElementById('inspectionDate');
+            if (el) el.value = new Date().toISOString().split('T')[0];
+            addMissingItem(); // Add 1 row default
+        });
+
+        // ==========================================
+        // 2. MISSING ITEM LOGIC
+        // ==========================================
+        let missingItemCount = 0;
+        let missingUploadedImages = [];
+
+        function addMissingItem() {
+            const currentRows = document.querySelectorAll('#missingItemsContainer .item-row').length;
+            if (currentRows >= 10) { document.getElementById('itemLimitWarning').classList.remove('hidden'); return; }
+            document.getElementById('itemLimitWarning').classList.add('hidden');
+            missingItemCount++;
+            
+            const container = document.getElementById('missingItemsContainer');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'item-row bg-gray-50 p-4 rounded-lg border border-gray-200 relative transition-all';
+            rowDiv.id = `mi-row-${missingItemCount}`;
+            rowDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-2 sm:hidden">
+                    <span class="font-semibold text-sm text-gray-500">รายการที่ ${missingItemCount}</span>
+                    ${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="text-red-500 hover:text-red-700 text-sm">ลบ</button>` : ''}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                    <div class="sm:col-span-5"><label class="block text-xs text-gray-500 sm:hidden mb-1">ชื่ออุปกรณ์</label><input type="text" class="item-name w-full px-3 py-2 border rounded text-sm" placeholder="ระบุชื่ออุปกรณ์ที่ขาด" required></div>
+                    <div class="sm:col-span-2"><label class="block text-xs text-gray-500 sm:hidden mb-1">จำนวน</label><input type="number" min="1" class="item-qty w-full px-3 py-2 border rounded text-sm" value="1" required></div>
+                    <div class="sm:col-span-4"><label class="block text-xs text-gray-500 sm:hidden mb-1">หมายเหตุ</label><input type="text" class="item-remark w-full px-3 py-2 border rounded text-sm" placeholder="หมายเหตุ (ถ้ามี)"></div>
+                    <div class="sm:col-span-1 hidden sm:flex justify-end mt-1">${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบรายการ">❌</button>` : ''}</div>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        function removeMissingItem(id) {
+            const row = document.getElementById(`mi-row-${id}`);
+            if (row) row.remove();
+            if (document.querySelectorAll('#missingItemsContainer .item-row').length < 10) { document.getElementById('itemLimitWarning').classList.add('hidden'); }
+        }
+
+        function renderMissingImagePreviews() {
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '';
+            missingUploadedImages.forEach(img => {
+                const div = document.createElement('div');
+                div.className = 'relative group aspect-square rounded-lg border overflow-hidden';
+                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeMissingImage(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 shadow-sm">❌</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function removeMissingImage(id) {
+            missingUploadedImages = missingUploadedImages.filter(img => img.id !== id);
+            renderMissingImagePreviews();
+            if (missingUploadedImages.length < 3) document.getElementById('imgLimitWarning').classList.add('hidden');
+        }
+
+        function generateMissingReport(event) {
+            event.preventDefault(); 
+            const projectName = document.getElementById('projectName').value;
+            const cabinetId = document.getElementById('cabinetId').value;
+            
+            document.getElementById('repProjectName').textContent = projectName;
+            document.getElementById('repCabinetId').textContent = cabinetId;
+            document.getElementById('repInspectionDate').textContent = formatDateThai(document.getElementById('inspectionDate').value);
+            document.getElementById('repInspectorName').textContent = document.getElementById('inspectorName').value;
+            document.getElementById('repSignInspectorName').textContent = document.getElementById('inspectorName').value;
+
+            const tbody = document.getElementById('repMissingItemsBody'); tbody.innerHTML = ''; 
+            let hasItems = false;
+            document.querySelectorAll('#missingItemsContainer .item-row').forEach((row, index) => {
+                const name = row.querySelector('.item-name').value;
+                if (name.trim() !== '') {
+                    hasItems = true;
+                    tbody.innerHTML += `<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}"><td class="border border-gray-800 px-2 py-1.5 text-center">${index + 1}</td><td class="border border-gray-800 px-2 py-1.5">${name}</td><td class="border border-gray-800 px-2 py-1.5 text-center">${row.querySelector('.item-qty').value}</td><td class="border border-gray-800 px-2 py-1.5">${row.querySelector('.item-remark').value || '-'}</td></tr>`;
+                }
+            });
+            if (!hasItems) tbody.innerHTML = `<tr><td colspan="4" class="border border-gray-800 px-2 py-3 text-center text-gray-500">ไม่มีรายการระบุ</td></tr>`;
+
+            const imgSection = document.getElementById('repImagesSection');
+            const imgGrid = document.getElementById('repImagesGrid'); imgGrid.innerHTML = '';
+            if (missingUploadedImages.length > 0) {
+                imgSection.style.display = 'block';
+                missingUploadedImages.forEach((img, index) => {
+                    imgGrid.innerHTML += `<div class="border print-border p-2 rounded page-break-avoid bg-white"><img src="${img.data}" class="w-full h-36 object-cover rounded mb-1"><p class="text-xs text-center text-gray-500">ภาพที่ ${index + 1}</p></div>`;
+                });
+            } else { imgSection.style.display = 'none'; }
+
+            document.getElementById('missingFormView').classList.add('hidden');
+            document.getElementById('missingReportContainer').classList.remove('hidden');
+            
+            // ดึงภาพลายเซ็นจาก Popup ไปแสดงใน PDF (ถ้ามีการเซ็น)
+            const missingSignImg = document.getElementById('repSignImage_missing');
+            if (missingSignImg) {
+                if (signaturesData['missing_inspector']) {
+                    missingSignImg.src = signaturesData['missing_inspector'];
+                    missingSignImg.classList.remove('hidden');
+                } else {
+                    missingSignImg.classList.add('hidden'); // ซ่อนถ้าไม่ได้เซ็น
+                }
+            }
+
+            window.scrollTo(0, 0);
+            
+            // ตั้งชื่อไฟล์ PDF: Missing Item_ชื่อโปรเจค_ชื่อตู้
+            document.title = `Missing Item_${projectName}_${cabinetId}`;
+
+            autoSaveReport('missing-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
+        }
+
+        function editMissingForm() {
+            document.getElementById('missingReportContainer').classList.add('hidden');
+            document.getElementById('missingFormView').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // ==========================================
+        // 6. SIGNATURE MODAL POPUP LOGIC (ระบบเซ็นชื่อส่วนกลาง)
+        // ==========================================
+        let isDrawing = false;
+        let activeSignatureTarget = null;
+        let signaturesData = {}; // เก็บข้อมูลลายเซ็นแยกตามฟอร์ม
+
+        function openSignatureModal(targetId) {
+            activeSignatureTarget = targetId;
+            document.getElementById('useMySigBtn').classList.toggle('hidden', !(mySig && SIG_SLOTS[targetId]));
+            const modal = document.getElementById('signatureModal');
+            modal.classList.remove('hidden');
+            initModalSignaturePad('modalSignaturePad');
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signatureModal').classList.add('hidden');
+        }
+
+        function clearModalSignature() {
+            const canvas = document.getElementById('modalSignaturePad');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signaturesData[activeSignatureTarget] = null;
+            const previewImg = document.getElementById(activeSignatureTarget + '_preview');
+            if(previewImg) previewImg.classList.add('hidden');
+        }
+
+        function saveModalSignature() {
+            const canvas = document.getElementById('modalSignaturePad');
+            // เช็คว่ามีการวาดหรือไม่ (อย่างง่าย)
+            signaturesData[activeSignatureTarget] = canvas.toDataURL('image/png');
+            
+            // โชว์รูปพรีวิวเล็กๆ ข้างปุ่มกด
+            const previewImg = document.getElementById(activeSignatureTarget + '_preview');
+            if(previewImg) {
+                previewImg.src = signaturesData[activeSignatureTarget];
+                previewImg.classList.remove('hidden');
+            }
+            closeSignatureModal();
+        }
+
+      function initModalSignaturePad(canvasId) {
+            let canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            // 1. ถอด Event เก่าออกก่อน
+            const newCanvas = canvas.cloneNode(true);
+            canvas.replaceWith(newCanvas);
+            canvas = document.getElementById(canvasId); 
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 2. ★ ปรับความคมชัดของกระดาษสำหรับ iPad (HDPI) ★
+            const ratio = Math.max(window.devicePixelRatio || 1, 3); // อัดความคมชัดขึ้น 3 เท่า
+            
+            // ล็อคขนาดกรอบแสดงผลหน้าเว็บให้เท่าเดิม
+            canvas.style.width = '340px';
+            canvas.style.height = '160px';
+            
+            // ขยายเม็ดพิกเซลภายในกระดาษให้หนาแน่นขึ้น
+            canvas.width = 340 * ratio;
+            canvas.height = 160 * ratio;
+            
+            // สั่งให้ปากกาวาดสเกลตามกระดาษที่ขยาย
+            ctx.scale(ratio, ratio);
+            
+            // 3. ★ ปรับสไตล์หัวปากกาให้นุ่มและลบเหลี่ยมมุม ★
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round'; // ตัวนี้สำคัญมาก ทำให้เวลาตวัดเส้นโค้งแล้วเนียนกริบ
+            ctx.strokeStyle = '#000000'; // (ถ้าอยากให้เหมือนปากกาน้ำเงิน เปลี่ยนเป็น '#000080' ได้ครับ)
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+                const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            function startPosition(e) {
+                if(e.cancelable) e.preventDefault();
+                isDrawing = true;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            }
+
+            function endPosition() { 
+                isDrawing = false; 
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                if(e.cancelable) e.preventDefault();
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            // 4. ผูกการทำงานเข้ากับหน้าจอ
+            canvas.addEventListener('mousedown', startPosition);
+            canvas.addEventListener('mouseup', endPosition);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseleave', endPosition);
+
+            canvas.addEventListener('touchstart', startPosition, {passive: false});
+            canvas.addEventListener('touchend', endPosition);
+            canvas.addEventListener('touchmove', draw, {passive: false});
+        }
+
+        /* ปุ่มลอย "ล้างข้อมูล" = เริ่มใบใหม่ (ใบเดิมบันทึกแล้ว เปิดกลับได้จากรายการ) */
+        function clearDraftData() {
+            if (!window.team) return;
+            team.confirmDialog({ title: 'เริ่มงานใหม่', message: 'ล้างฟอร์มเพื่อเริ่มงานใหม่ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">งานที่กรอกไว้ถูกบันทึกแล้ว เปิดกลับได้จากปุ่ม "☰ รายการ"</span>', confirmText: 'เริ่มงานใหม่' })
+                .then(ok => { if (ok) missingNew(''); });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initTeamCloud();
+            switchApp('missing-item');
+        });
+
+        // ==========================================
+        // 🌟 ระบบทีมแบบ MoM — Missing Item (avatar-team.js)
+        //    งาน = qc_jobs (ช่องในฟอร์มอยู่ใน meta.fields) · รายการของขาด / รูปแนบ / ลายเซ็น = qc_items + qc_photos
+        //    บันทึกทันที: ทุก 1.2 วิ เทียบฟอร์มที่เปิดอยู่กับครั้งก่อน เปลี่ยน → ส่งเฉพาะที่เปลี่ยน
+        //    avatar-cloud.js เหลือหน้าที่แค่หน้าล็อกอินของทุกแอพ (loginHub) · งานเดิมในตาราง documents → ย้ายเข้าระบบใหม่จากรายการงาน
+        // ==========================================
+        const CLOUD_FORMS = {
+            'missing-item': { title: 'Missing Item', scope: 'app-missing-item', signPrefix: 'missing_',
+                              nameFrom: f => [fv(f, 'projectName'), fv(f, 'cabinetId')].filter(Boolean).join(' — ') }
+        };
+        const val = id => (document.getElementById(id)?.value || '').trim();
+        const fv = (f, id) => (f ? String(f[id] == null ? '' : f[id]).trim() : val(id));   // จากค่าที่ส่งมา (ถ้ามี) หรือจากฟอร์มบนจอ
+        const activeForm = () => CLOUD_FORMS[currentAppId] || CLOUD_FORMS['missing-item'];
+        const activeFormKey = () => (CLOUD_FORMS[currentAppId] ? currentAppId : 'missing-item');
+
+        function collectFormFields(scopeId) {
+            const out = {};
+            document.querySelectorAll(`#${scopeId} input, #${scopeId} textarea, #${scopeId} select`).forEach(el => {
+                if (!el.id || el.type === 'file' || el.type === 'button' || el.type === 'submit') return;
+                out[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+            });
+            return out;
+        }
+        function applyFormFields(fields) {
+            Object.entries(fields || {}).forEach(([id, v]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = v; else el.value = v;
+            });
+        }
+        function pickSignatures(prefix) {
+            const out = {};
+            Object.entries(signaturesData || {}).forEach(([k, v]) => { if (k.startsWith(prefix)) out[k] = v; });
+            return out;
+        }
+        function applySignatures(sigs) {
+            Object.entries(sigs || {}).forEach(([k, v]) => {
+                signaturesData[k] = v;
+                const img = document.getElementById(k + '_preview');
+                if (img && v) { img.src = v; img.classList.remove('hidden'); }
+            });
+        }
+
+        async function initTeamCloud() {
+            if (!window.AvatarCloud) return;
+            await AvatarCloud.init({
+                app: 'missing-item', appTitle: 'Missing Item',
+                chipContainer: 'acChipHost',   // แตะ = ออกจากระบบ (อัปโหลดลายเซ็นที่เมนูบัญชีบนหน้าแรก)
+                chipCompact: window.matchMedia('(max-width: 639px)').matches,   // จอมือถือ: เหลือแค่รูปโปรไฟล์
+                silentStart: true,          // ไม่เปิดรายการงานเองตอนเข้า
+                noDocs: true,               // งานของฟอร์มอยู่ใน avatar-team.js แล้ว — ชั้นนี้ไม่เปิดงาน documents
+                offlineManagedByApp: true,
+                root: () => null, getState: async () => ({}), applyState: async () => {},
+                onToast: m => alert(m)
+            });
+            loadMySig();
+        }
+
+        // ช่องในฟอร์ม 1 ช่อง = 1 แถว (field) → 2 คนแก้คนละช่องพร้อมกันไม่ทับกัน (แบบคอมเมนต์ของ MoM)
+        const TEAM_SCHEMA = { roots: { fields: 'field', images: 'image', sigs: 'sig', items: 'mitem' }, children: {} };
+        const FORM_IMAGES = { 'missing-item': () => missingUploadedImages };
+        let teamFormKey = null, teamReadyKey = null, teamApplying = false, teamPolling = false, teamBaseline = null, teamPulledJob;
+        let teamIdx = new Map(), teamSigObjs = new Map();
+        let teamFieldObjs = new Map();   // id ช่อง → object (ใช้ซ้ำ → รู้ว่าเป็นแถวไหนในระบบ)
+        const teamRowObj = new WeakMap();
+        const teamFormEl = key => document.getElementById('missingInspectionForm');
+        const teamCustomer = key => val('projectName');
+
+        /* ฟอร์มบนจอ → ต้นไม้ object สำหรับ team.reconcile (object เดิมของแต่ละแถว/รูป/ลายเซ็น ใช้ซ้ำ → รู้ว่าเป็นแถวไหนในระบบ) */
+        function formRoots(key) {
+            const f = CLOUD_FORMS[key];
+            const images = FORM_IMAGES[key]();
+            const sigs = Object.keys(signaturesData || {}).filter(k => k.startsWith(f.signPrefix)).map(k => {
+                let o = teamSigObjs.get(k);
+                if (!o) { o = { key: k }; teamSigObjs.set(k, o); }
+                o.img = signaturesData[k] || (o.img === team.LOADING ? team.LOADING : null);   // ยังโหลดจาก Drive ไม่เสร็จ ≠ ลบ
+                return o;
+            }).filter(o => o.img || o._tid);
+            const items = key === 'missing-item' ? [...document.querySelectorAll('#missingItemsContainer .item-row')].map(row => {
+                let o = teamRowObj.get(row);
+                if (!o) { o = {}; teamRowObj.set(row, o); }
+                o.name = row.querySelector('.item-name').value;
+                o.qty = row.querySelector('.item-qty').value;
+                o.remark = row.querySelector('.item-remark').value;
+                return o;
+            }) : [];
+            const fields = Object.entries(collectFormFields(f.scope)).map(([k, v]) => {
+                let o = teamFieldObjs.get(k);
+                if (!o) { o = { key: k }; teamFieldObjs.set(k, o); }
+                o.value = v;
+                return o;
+            });
+            return { fields, images, sigs, items };
+        }
+        function teamSnapshot(key) {
+            const r = formRoots(key);
+            return team.stableStr({ f: collectFormFields(CLOUD_FORMS[key].scope),
+                i: r.images.map(x => [x.id, (x.data || '').length]), s: r.sigs.map(o => [o.key, (o.img || '').length]),
+                m: r.items.map(o => [o.name, o.qty, o.remark]) });
+        }
+
+        /* ส่งการแก้ขึ้นระบบทีม (เรียกทุก 1.2 วิ / ตอนกดสร้างรายงาน) */
+        function teamPoll() {
+            if (!window.team || !teamFormKey || teamReadyKey !== teamFormKey || currentAppId !== teamFormKey || teamApplying || teamPolling) return;
+            const key = teamFormKey, snap = teamSnapshot(key);
+            if (snap === teamBaseline) return;
+            teamPolling = true;
+            (async () => {
+                try {
+                    if (!(await team.reconcile(formRoots(key)))) return;
+                    const j = team.job;
+                    if (!j || teamFormKey !== key) return;
+                    const name = CLOUD_FORMS[key].nameFrom(), cust = teamCustomer(key);
+                    if ((j.name || '') !== name || (j.customer || '') !== cust) await team.updateJob({ name, customer: cust });
+                    if (key === 'missing-item') {
+                        const sum = missingSummary();
+                        if (team.stableStr(sum) !== team.stableStr((j.meta || {}).sum || null)) await team.updateJob({ meta: { sum } });
+                    }
+                    teamBaseline = snap;
+                    teamPulledJob = j.id;
+                } catch (e) { console.error('[team poll]', e); }
+                finally { teamPolling = false; updateCloudDocBars(); }
+            })();
+        }
+        setInterval(teamPoll, 1200);
+
+        /* ของจากระบบทีม → ฟอร์มบนจอ */
+        function teamPullForm() {
+            const key = teamFormKey;
+            if (!key) return;
+            teamApplying = true;
+            try {
+                const f = CLOUD_FORMS[key], j = team.job;
+                const { roots, index } = team.pull();
+                teamIdx = index;
+                teamFormEl(key).reset();
+                // งานที่สร้างก่อนแยกช่องเป็นแถว เก็บช่องไว้ใน meta.fields → ใช้เป็นค่าตั้งต้น แล้วแถวช่องจะถูกสร้างตอนแก้ครั้งถัดไป
+                if (j && j.meta && j.meta.fields && !roots.fields.length) applyFormFields(j.meta.fields);
+                const fvals = {};
+                roots.fields.forEach(o => { fvals[o.key] = o.value; });
+                applyFormFields(fvals);
+                teamFieldObjs = new Map(roots.fields.map(o => [o.key, o]));
+                Object.keys(signaturesData || {}).forEach(k => {
+                    if (!k.startsWith(f.signPrefix)) return;
+                    signaturesData[k] = null;
+                    const im = document.getElementById(k + '_preview');
+                    if (im) { im.removeAttribute('src'); im.classList.add('hidden'); }
+                });
+                teamSigObjs = new Map();
+                roots.sigs.forEach(o => { teamSigObjs.set(o.key, o); if (o.img && o.img !== team.LOADING) applySignatures({ [o.key]: o.img }); });
+                missingUploadedImages = roots.images; renderMissingImagePreviews();
+                if (key === 'missing-item') {
+                    const c = document.getElementById('missingItemsContainer');
+                    c.innerHTML = ''; missingItemCount = 0;
+                    (roots.items.length ? roots.items : [null]).forEach(o => {
+                        addMissingItem();
+                        const rows = c.querySelectorAll('.item-row'), row = rows[rows.length - 1];
+                        if (!o) return;
+                        row.querySelector('.item-name').value = o.name || '';
+                        row.querySelector('.item-qty').value = o.qty || '1';
+                        row.querySelector('.item-remark').value = o.remark || '';
+                        teamRowObj.set(row, o);
+                    });
+                }
+                teamPulledJob = j ? j.id : null;
+            } finally {
+                teamApplying = false;
+                teamReadyKey = key;
+                teamBaseline = teamSnapshot(key);
+                updateCloudDocBars();
+            }
+        }
+        function teamRender() {
+            const key = teamFormKey;
+            if (!key) return;
+            if (key === 'missing-item' && missingListOpen() && team.job && team.job.id !== missingListJobId) missingShowForm();
+            const jid = team.job ? team.job.id : null;
+            // งานเดิม + ยังมีการแก้บนจอที่ยังไม่ได้ส่ง (เช่น เพิ่งติ๊ก/เลือก) → ส่งก่อน แล้วค่อยดึงของล่าสุด (ไม่ให้ของในระบบทับ)
+            if (jid && jid === teamPulledJob && teamReadyKey === key && teamSnapshot(key) !== teamBaseline) {
+                teamPoll();
+                setTimeout(() => team.refresh(), 1500);
+                return;
+            }
+            teamPullForm();
+            if (!team.job && sigAutoFill(SIG_SLOT_OF[key])) teamBaseline = teamSnapshot(key);   // ใบใหม่: ลายเซ็นของฉัน (ไม่นับเป็นการแก้ → ไม่สร้างงานเปล่า)
+            if (key === 'missing-item' && team.job && !(team.job.meta || {}).sum && team.job.id === teamPulledJob) {
+                const jid = team.job.id;
+                setTimeout(() => { if (team.job && team.job.id === jid && !(team.job.meta || {}).sum) team.updateJob({ meta: { sum: missingSummary() } }); }, 0);
+            }
+        }
+        function teamOnPhoto(p) {
+            const o = teamIdx.get(p.itemId);
+            if (!o || !p.dataUrl) return;
+            if (o[p.slot] === team.LOADING) o[p.slot] = p.dataUrl;
+            if (o.key && p.slot === 'img') { if (teamSigObjs.get(o.key) === o) applySignatures({ [o.key]: p.dataUrl }); }
+            else if (teamFormKey === 'missing-item') renderMissingImagePreviews();
+        }
+        /* งานในตาราง documents (ระบบเดิม) → โมเดลระบบใหม่ — รูปใช้ไฟล์เดิมบน Drive ไม่อัปซ้ำ */
+        function legacyDocModel(doc) {
+            const st = doc.state || {}, items = [], photos = [];
+            (st.images || []).forEach((x, i) => {
+                const id = team.uuid();
+                items.push({ id, kind: 'image', sort: i, data: { id: Date.now() + i } });
+                if (typeof x === 'string') photos.push({ itemId: id, slot: 'data', dataUrl: x });
+                else if (x && x.drive) photos.push({ itemId: id, slot: 'data', driveId: x.drive });
+            });
+            Object.entries(st.signatures || {}).forEach(([k, v], i) => {
+                if (!v || typeof v !== 'string') return;
+                const id = team.uuid();
+                items.push({ id, kind: 'sig', sort: i, data: { key: k } });
+                photos.push({ itemId: id, slot: 'img', dataUrl: v });
+            });
+            (st.items || []).forEach((o, i) => items.push({ id: team.uuid(), kind: 'mitem', sort: i, data: { name: o.name || '', qty: o.qty || '1', remark: o.remark || '' } }));
+            Object.entries(st.fields || {}).forEach(([k, v], i) => items.push({ id: team.uuid(), kind: 'field', sort: i, data: { key: k, value: v } }));
+            return { job: { name: doc.name || '', customer: doc.customer || '', meta: {} }, items, photos };
+        }
+        function teamUseForm(key) {
+            if (!window.team) return;
+            if (teamFormKey !== key) { teamReadyKey = null; teamBaseline = null; }
+            teamFormKey = key;
+            if (key === 'missing-item') { missingViews('list'); renderMissingList(false); }
+            team.useApp(key, CLOUD_FORMS[key].title, {
+                indicator: 'missingSync',
+                legacyDocs: { app: key, toModel: legacyDocModel },
+                noOpen: key === 'missing-item'
+            }).then(() => { if (key === 'missing-item' && currentAppId === key && missingListOpen()) missingShowList(); });
+        }
+
+        const team = window.AvatarTeam ? AvatarTeam.init({
+            app: 'missing-item', appTitle: 'Missing Item',
+            client: window.AvatarCloud ? AvatarCloud.client : undefined,
+            autoStart: false,            // ยังไม่เปิดงานจนกว่าจะเข้าฟอร์ม (teamUseForm)
+            indicator: 'missingSync',
+            render: teamRender,
+            onPhoto: teamOnPhoto,
+            photoName: p => {
+                const it = p.itemId && team.item(p.itemId), title = CLOUD_FORMS[teamFormKey] ? CLOUD_FORMS[teamFormKey].title : '';
+                if (it && it.kind === 'sig') return title + '_ลายเซ็น_' + (it.data.key || '');
+                return [title, (team.job && team.job.name) || '', 'รูป'].filter(Boolean).join('_');
+            }
+        }) : null;
+        if (team) { window.team = team; team.setSchema(TEAM_SCHEMA); }
+
+        function updateCloudDocBars() {
+            const j = window.team ? team.job : null;
+            [['missing-item', 'missingDocBar', 'missingDocName']].forEach(([key, barId, nameId]) => {
+                const bar = document.getElementById(barId);
+                if (!bar) return;
+                const show = !!j && currentAppId === key && teamFormKey === key;
+                bar.classList.toggle('hidden', !show);
+                if (show) document.getElementById(nameId).textContent = j.name || 'ไม่ระบุชื่องาน';
+            });
+        }
+
+        /* ===== ของขาด: หน้ารายการ แบ่งเดือน → JOB (ชื่อโครงการ / SO) → ตู้ — แบบบันทึกตรวจรับตู้ของ QA ===== */
+        let missingListJob = null, missingListQ = '', missingListJobId = null, missingRecs = null, missingJobGroups = [];
+        const missingListOpen = () => !document.getElementById('missingListView').classList.contains('hidden');
+        function missingSummary() {
+            const n = [...document.querySelectorAll('#missingItemsContainer .item-row .item-name')].filter(e => e.value.trim()).length;
+            return { p: val('projectName'), c: val('cabinetId'), d: val('inspectionDate'), i: val('inspectorName'), n };
+        }
+        function missingViews(which) {
+            document.getElementById('missingListView').classList.toggle('hidden', which !== 'list');
+            document.getElementById('missingFormView').classList.toggle('hidden', which !== 'form');
+            document.getElementById('missingReportContainer').classList.add('hidden');
+            window.scrollTo(0, 0);
+        }
+        function missingShowForm() { missingViews('form'); updateCloudDocBars(); }
+        async function missingShowList() {
+            if (window.team && team.job) { teamPoll(); try { await team.flush(); } catch (_) {} }
+            missingListJobId = window.team && team.job ? team.job.id : null;
+            missingViews('list');
+            await renderMissingList(true);
+        }
+        const mEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function missingRec(r) {
+            const s = r.meta && r.meta.sum, f = (r.meta && r.meta.fields) || {}, parts = (r.name || '').split(' — ');
+            return {
+                id: r.id, local: !!r.local, u: r.updated_at || '',
+                p: String(s ? s.p : (f.projectName || r.customer || parts[0] || '')).trim(),
+                c: String(s ? s.c : (f.cabinetId || parts.slice(1).join(' — ') || '')).trim(),
+                d: String(s ? s.d : (f.inspectionDate || '')), i: String(s ? s.i : (f.inspectorName || '')), n: s ? s.n : null
+            };
+        }
+        const mYm = r => /^\d{4}-\d{2}/.test(r.d) ? r.d.slice(0, 7) : r.u.slice(0, 7);
+        const mMonthLabel = ym => { const [y, mo] = (ym || '').split('-').map(Number); return y ? new Date(y, mo - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }) : 'ไม่ระบุวันที่'; };
+        const mDate = d => { if (!/^\d{4}-\d{2}-\d{2}/.test(d || '')) return ''; const x = new Date(d + 'T00:00:00'); return x.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }); };
+        const CHEV = '<svg class="w-5 h-5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>';
+        async function renderMissingList(fetchRows) {
+            const box = document.getElementById('missingListView');
+            // หัวหน้า: ปุ่ม "+ บันทึกใหม่" เฉพาะหน้ารวม (ในหน้า JOB ใช้ "+ เพิ่มตู้ใน JOB นี้")
+            const head = withNew => `
+                <div class="border-b pb-4 mb-4 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
+                        <p class="text-gray-500 mt-1">Missing Item Form</p>
+                    </div>
+                    ${withNew ? `<div class="flex items-center gap-2 no-print">
+                        <button type="button" onclick="missingNew('')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ บันทึกใหม่</button>
+                    </div>` : ''}
+                </div>`;
+            const wrap = (inner, withNew = true) => `<div class="bg-white rounded-xl shadow-lg p-4 sm:p-8">${head(withNew)}${inner}</div>`;
+            if (fetchRows || !missingRecs) {
+                if (!missingRecs) box.innerHTML = wrap('<div class="text-center text-gray-400 py-10">กำลังโหลด...</div>');
+                if (!window.team) { missingRecs = []; }
+                else {
+                    try { missingRecs = (await team.listJobs()).map(missingRec); }
+                    catch (e) {
+                        console.error('[missing list]', e);
+                        box.innerHTML = wrap('<div class="text-center text-gray-500 py-10">โหลดรายการไม่สำเร็จ<br><button type="button" onclick="renderMissingList(true)" class="mt-3 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-bold">ลองอีกครั้ง</button></div>');
+                        return;
+                    }
+                }
+            }
+            const q = missingListQ.trim().toLowerCase();
+            const recs = missingRecs.filter(r => !q || [r.p, r.c, r.i].join(' ').toLowerCase().includes(q));
+            // JOB = ชื่อโครงการ / SO (ไม่สนตัวพิมพ์เล็กใหญ่/ช่องว่าง) · เดือนของ JOB = เดือนตรวจล่าสุดของ JOB นั้น
+            const groups = new Map();
+            recs.forEach(r => {
+                const k = r.p.replace(/\s+/g, ' ').toLowerCase();
+                if (!groups.has(k)) groups.set(k, { key: k, p: r.p, items: [] });
+                groups.get(k).items.push(r);
+            });
+            const gs = [...groups.values()].map(g => ({ ...g,
+                ym: g.items.reduce((m, r) => mYm(r) > m ? mYm(r) : m, ''),
+                last: g.items.reduce((m, r) => r.u > m ? r.u : m, '') }))
+                .sort((a, b) => b.ym.localeCompare(a.ym) || b.last.localeCompare(a.last));
+            gs.forEach(g => g.items.sort((a, b) => (a.c || '').localeCompare(b.c || '', 'th', { numeric: true })));
+            missingJobGroups = gs;
+            // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
+            const search = `<input data-mq value="${mEsc(missingListQ)}" placeholder="ค้นหาโครงการ / SO / ชื่อตู้ / ผู้ตรวจ" class="w-full h-11 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">`;
+
+            // ----- หน้าในของ JOB: รายการตู้ -----
+            const open = missingListJob !== null ? gs.find(g => g.key === missingListJob) : null;
+            if (missingListJob !== null && !open) missingListJob = null;
+            if (open) {
+                const row = r => `
+                    <div onclick="missingOpenRec('${r.id}')" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-gray-800 truncate">${mEsc(r.c) || '<span class="text-gray-400">ไม่มีชื่อตู้</span>'}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">${[mDate(r.d), mEsc(r.i), r.n != null ? `ขาด ${r.n} รายการ` : '', r.local ? 'ในเครื่องนี้' : ''].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <button type="button" onclick="event.stopPropagation();missingDelete('${r.id}')" title="ลบ" class="text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.87 12.14A2 2 0 0116.14 21H7.86a2 2 0 01-1.99-1.86L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                        ${CHEV}
+                    </div>`;
+                box.innerHTML = wrap(`
+                    <div class="flex items-center gap-2 mb-4">
+                        <button type="button" onclick="missingListJob=null;renderMissingList(false)" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold">← ทุก JOB</button>
+                        <span class="flex-1"></span>
+                        <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">+ เพิ่มตู้ใน JOB นี้</button>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-3 mb-3 px-1">
+                        <div class="text-lg font-bold text-blue-700 truncate">${mEsc(open.p) || 'ไม่ระบุโครงการ'}</div>
+                        <div class="text-sm text-gray-500 shrink-0">${open.items.length} ตู้</div>
+                    </div>
+                    ${open.items.map(row).join('')}`, false);
+                return;
+            }
+
+            // ----- หน้ารวม: เดือน → JOB -----
+            let body = '', cur = null;
+            gs.forEach((g, i) => {
+                if (g.ym !== cur) {
+                    cur = g.ym;
+                    body += `<div class="flex items-center justify-between mt-5 mb-2 px-1"><span class="text-sm font-bold text-gray-500">${mMonthLabel(g.ym)}</span><span class="text-xs text-gray-400">${gs.filter(x => x.ym === g.ym).length} JOB</span></div>`;
+                }
+                const miss = g.items.reduce((t, r) => t + (r.n || 0), 0);
+                const lastD = g.items.reduce((m, r) => (r.d || '') > m ? r.d : m, '');
+                body += `
+                    <div onclick="missingListJob=missingJobGroups[${i}].key;renderMissingList(false)" class="flex items-center gap-3 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl px-4 py-3 mb-2 cursor-pointer shadow-sm">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-gray-800 truncate">${mEsc(g.p) || '<span class="text-gray-400">ไม่ระบุโครงการ</span>'}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">${[miss ? `ขาดรวม ${miss} รายการ` : '', lastD ? 'ตรวจล่าสุด ' + mDate(lastD) : ''].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <span class="shrink-0 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg px-2.5 py-1 text-sm font-bold">${g.items.length} ตู้</span>
+                        ${CHEV}
+                    </div>`;
+            });
+            box.innerHTML = wrap(search + (body || `<div class="text-center text-gray-400 py-10">${q ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการ'}</div>`));
+            const qi = box.querySelector('[data-mq]');
+            qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = box.querySelector('[data-mq]'); n.focus(); n.setSelectionRange(pos, pos); };
+        }
+        async function missingOpenRec(id) {
+            if (!window.team) return;
+            missingListJobId = team.job ? team.job.id : null;
+            try { if (await team.open(id)) missingShowForm(); }
+            catch (e) { console.error(e); team.toast('เปิดงานไม่สำเร็จ'); }
+        }
+        /* บันทึกใหม่ (ว่าง หรือ JOB เดิม) — ยังไม่สร้างงานจนกว่าจะเริ่มกรอก (ไม่มีใบเปล่าค้างในรายการ) */
+        async function missingNew(project) {
+            if (window.team && !(await team.leave())) return;
+            missingShowForm();
+            document.getElementById('inspectionDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('projectName').value = project || '';
+            if (window.team) teamBaseline = teamSnapshot('missing-item');
+            document.getElementById(project ? 'cabinetId' : 'projectName').focus();
+        }
+        function missingNextCabinet() { missingNew(val('projectName')); }
+        async function missingDelete(id) {
+            const r = (missingRecs || []).find(x => x.id === id);
+            if (await team.deleteJob(id, r ? [r.p, r.c].filter(Boolean).join(' — ') : '')) renderMissingList(true);
+        }
+
+        /* ===== ลายเซ็นประจำบัญชี (ตาราง qc_signatures — แต่ละบัญชีเห็นเฉพาะของตัวเอง) =====
+           อัปโหลดที่เมนูบัญชีบนหน้าแรกที่เดียว · ใบใหม่ใส่ให้อัตโนมัติเฉพาะช่องผู้ตรวจที่ยังว่าง · งานเดิม/งานของคนอื่นไม่แตะ (มีปุ่ม "ใช้ลายเซ็นของฉัน") */
+        const SIG_SLOTS = { missing_inspector: 'inspectorName' };
+        const SIG_SLOT_OF = { 'missing-item': 'missing_inspector' };
+        let mySig = null, mySigUid = null;
+        const sigUid = () => (window.AvatarCloud && AvatarCloud.signedIn() && AvatarCloud.user) ? AvatarCloud.user.id : null;
+        const sigCacheKey = uid => 'avatar_qc_sig_' + uid;
+        async function loadMySig() {
+            const uid = sigUid();
+            if (!uid) { mySig = null; mySigUid = null; return; }
+            if (mySigUid !== uid) { mySig = null; mySigUid = uid; try { const c = JSON.parse(localStorage.getItem(sigCacheKey(uid)) || 'null'); if (c && c.img) mySig = c; } catch (_) {} }
+            sigAfterLoad();
+            const { data, error } = await AvatarCloud.client.from('qc_signatures').select('name, img').eq('user_id', uid).maybeSingle();
+            if (error) { console.warn('[qc_signatures]', error.message); return; }
+            if (sigUid() !== uid) return;
+            mySig = data && data.img ? { name: data.name || '', img: data.img } : null;
+            try { mySig ? localStorage.setItem(sigCacheKey(uid), JSON.stringify(mySig)) : localStorage.removeItem(sigCacheKey(uid)); } catch (_) {}
+            sigAfterLoad();
+        }
+        /* โหลดลายเซ็นเสร็จทีหลัง → ฟอร์มใหม่ที่เปิดค้างอยู่ (ยังไม่มีงาน) ได้ลายเซ็นด้วย */
+        function sigAfterLoad() {
+            const slot = SIG_SLOT_OF[currentAppId];
+            if (!slot || !mySig) return;
+            if (CLOUD_FORMS[currentAppId]) {
+                if (!window.team || team.job || teamFormKey !== currentAppId || teamReadyKey !== currentAppId) return;
+                if (currentAppId === 'missing-item' && missingListOpen()) return;
+                const changed = teamSnapshot(currentAppId) !== teamBaseline;
+                if (sigAutoFill(slot) && !changed) teamBaseline = teamSnapshot(currentAppId);
+            } else sigAutoFill(slot);
+        }
+        function sigSet(slot, img) {
+            signaturesData[slot] = img;
+            const im = document.getElementById(slot + '_preview');
+            if (im) { if (img) { im.src = img; im.classList.remove('hidden'); } else { im.removeAttribute('src'); im.classList.add('hidden'); } }
+        }
+        /* ใส่ลายเซ็นของฉันในช่องผู้ตรวจที่ยังว่าง (ไม่ทับของเดิม) — คืน true ถ้าใส่ */
+        function sigAutoFill(slot) {
+            if (!slot || !mySig || !mySig.img || signaturesData[slot]) return false;
+            sigSet(slot, mySig.img);
+            const n = document.getElementById(SIG_SLOTS[slot]);
+            if (n && !n.value.trim() && mySig.name) n.value = mySig.name;
+            return true;
+        }
+        function useMySig() {
+            const slot = activeSignatureTarget;
+            if (!mySig || !SIG_SLOTS[slot]) return;
+            sigSet(slot, mySig.img);
+            const n = document.getElementById(SIG_SLOTS[slot]);
+            if (n && mySig.name) { n.value = mySig.name; n.dispatchEvent(new Event('input', { bubbles: true })); }
+            closeSignatureModal();
+        }
+        function cloudOpenList() { if (window.team) team.openList(); }
+        // กด "สร้างรายงาน" → บันทึกทันทีอยู่แล้ว แค่เร่งส่งของล่าสุด
+        function autoSaveReport() { teamPoll(); }
+
+        // ==========================================
+        // ดาวน์โหลด PDF — แบบ exportPDF ของ minute-of-meeting.html
+        // ==========================================
+        /* ===== PDF ของขาด — แบบ exportPDF ของ minute-of-meeting.html ===== */
+        const A4_PX = { w: 794, h: 1123 };   // A4 ที่ 96 dpi
+        const PDF_SCALE = 4;                 // ≈384 dpi แบบ QA บันทึกตรวจรับตู้ · 3176×4492px = 14.3 ล้านพิกเซล ต่ำกว่าเพดาน canvas ของ iOS (16.7 ล้าน)
+        /* โคลนหน้ารายงานเป็นกระดาษ A4 ขนาดตายตัว (ไม่ขึ้นกับความกว้างจอ) ไม่มีเงา/ปุ่ม/id ซ้ำ */
+        function a4Page(view) {
+            const c = view.cloneNode(true);
+            c.removeAttribute('id');
+            c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+            c.querySelectorAll('.no-print, button').forEach(e => e.remove());
+            c.classList.remove('shadow-lg', 'mx-auto', 'w-full', 'max-w-[210mm]', 'h-[297mm]');
+            c.style.cssText += `;width:${A4_PX.w}px;height:${A4_PX.h}px;max-width:none;max-height:none;margin:0;box-shadow:none;`;
+            return c;
+        }
+        /* html2canvas ไม่รองรับ object-fit (cover/contain) → รูปถูกยืด · วาดรูปลง canvas ขนาดเท่ากรอบไว้ก่อน */
+        function fitImgToDataUrl(src, boxW, boxH, scale, mode) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const tw = Math.max(1, Math.round(boxW * scale)), th = Math.max(1, Math.round(boxH * scale));
+                        const cv = document.createElement('canvas'); cv.width = tw; cv.height = th;
+                        const ctx = cv.getContext('2d');
+                        const iw = img.naturalWidth, ih = img.naturalHeight;
+                        const r = mode === 'cover' ? Math.max(tw / iw, th / ih) : Math.min(tw / iw, th / ih);
+                        const dw = iw * r, dh = ih * r;
+                        ctx.drawImage(img, 0, 0, iw, ih, (tw - dw) / 2, (th - dh) / 2, dw, dh);
+                        resolve(cv.toDataURL('image/png'));   // png = พื้นโปร่งใสของโลโก้/ลายเซ็นยังโปร่งใส
+                    } catch (e) { reject(e); }
+                };
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+        async function fitImagesForPdf(root, scale) {
+            for (const im of [...root.querySelectorAll('img')]) {
+                const cs = getComputedStyle(im);
+                if (cs.display === 'none' || !im.getAttribute('src')) continue;
+                const mode = cs.objectFit === 'cover' ? 'cover' : cs.objectFit === 'contain' ? 'contain' : null;
+                const w = im.clientWidth, h = im.clientHeight;
+                if (!mode || !w || !h) continue;
+                try {
+                    im.src = await fitImgToDataUrl(im.src, w, h, scale, mode);
+                    im.style.width = w + 'px'; im.style.height = h + 'px'; im.style.objectFit = 'fill';
+                } catch (_) { /* ใช้รูปเดิม */ }
+            }
+        }
+        const pdfDelay = ms => new Promise(r => setTimeout(r, ms));
+        const pdfToast = m => { if (window.team) team.toast(m); };
+        const pdfEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function showPdfProgress(msg) {
+            let el = document.getElementById('pdfProgress');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'pdfProgress';
+                el.className = 'no-print';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(11,18,32,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:white;';
+                document.body.appendChild(el);
+            }
+            el.innerHTML = `
+                <div style="width:50px;height:50px;border:4px solid rgba(255,255,255,.2);border-top-color:#f5a623;border-radius:50%;animation:pdfspin 1s linear infinite;"></div>
+                <div style="font-size:14px;font-weight:600;font-family:'Sarabun',sans-serif;text-align:center;padding:0 20px;">${pdfEsc(msg)}</div>
+                <style>@keyframes pdfspin{to{transform:rotate(360deg);}}</style>`;
+            el.style.display = 'flex';
+        }
+        function hidePdfProgress() { const el = document.getElementById('pdfProgress'); if (el) el.style.display = 'none'; }
+        /* iPad/iOS: ปุ่มเปิด share sheet (ต้องเป็นการกดใหม่ของผู้ใช้) → "บันทึกลงไฟล์" ได้ชื่อไฟล์ตรง */
+        function showPdfSaveButton(file, filename) {
+            showPdfProgress('');
+            const el = document.getElementById('pdfProgress');
+            el.innerHTML = `
+                <div style="background:white;color:#0b1220;border-radius:16px;padding:24px 22px;max-width:360px;width:88vw;text-align:center;font-family:'Sarabun',sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.5);">
+                    <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style="font-weight:800;font-size:16px;margin-bottom:6px;">สร้าง PDF เสร็จแล้ว</div>
+                    <div style="font-size:12px;color:#64748b;word-break:break-all;margin-bottom:18px;">${pdfEsc(filename)}</div>
+                    <button type="button" id="pdfShareBtn" style="width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#0f2744,#1f3a5f);color:white;font-weight:700;font-size:15px;font-family:'Sarabun',sans-serif;cursor:pointer;">บันทึก / แชร์ PDF</button>
+                    <button type="button" id="pdfShareCancel" style="width:100%;padding:11px;margin-top:8px;border:none;border-radius:10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:14px;font-family:'Sarabun',sans-serif;cursor:pointer;">ปิด</button>
+                </div>`;
+            el.style.display = 'flex';
+            document.getElementById('pdfShareBtn').onclick = async () => {
+                try { await navigator.share({ files: [file], title: filename }); hidePdfProgress(); pdfToast('บันทึก PDF แล้ว'); }
+                catch (e) { /* ยกเลิก / แชร์ไม่สำเร็จ — ค้างไว้ให้กดใหม่หรือปิดเอง */ }
+            };
+            document.getElementById('pdfShareCancel').onclick = () => hidePdfProgress();
+        }
+        async function exportA4Pdf(view, title) {
+            const filename = (String(title || 'Report').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || 'Report') + '.pdf';
+            const titleNoExt = filename.replace(/\.pdf$/i, '');
+            showPdfProgress('กำลังสร้าง PDF...');
+            const box = document.createElement('div');
+            box.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_PX.w}px;height:${A4_PX.h}px;background:white;z-index:-1;overflow:hidden;`;
+            try {
+                const page = a4Page(view);
+                box.appendChild(page);
+                document.body.appendChild(box);
+                await pdfDelay(150);                       // ให้จัดหน้า/รูปเสร็จก่อน
+                await fitImagesForPdf(page, PDF_SCALE);
+                const canvas = await html2canvas(page, {
+                    scale: PDF_SCALE, useCORS: true, backgroundColor: '#ffffff',
+                    width: A4_PX.w, height: A4_PX.h, windowWidth: A4_PX.w, windowHeight: A4_PX.h
+                });
+                box.remove();
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                const pw = pdf.internal.pageSize.getWidth();
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pw, (canvas.height * pw) / canvas.width, undefined, 'FAST');   // PNG = ไม่เสียรายละเอียด (ตัวหนังสือคมกว่า JPEG) แบบ QA ตรวจรับตู้
+                try { pdf.setProperties({ title: titleNoExt }); } catch (_) {}
+                showPdfProgress('กำลังบันทึก...');
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                let file = null;
+                try { file = new File([pdf.output('blob')], filename, { type: 'application/pdf' }); } catch (_) {}
+                if (isIOS && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    showPdfSaveButton(file, filename);
+                } else if (isIOS) {
+                    const prev = document.title; document.title = titleNoExt;   // ไม่มี Web Share: iOS ตั้งชื่อไฟล์จาก document.title
+                    pdf.save(filename); setTimeout(() => { document.title = prev; }, 2500);
+                    hidePdfProgress(); pdfToast('สร้าง PDF เรียบร้อย');
+                } else {
+                    pdf.save(filename); hidePdfProgress(); pdfToast('สร้าง PDF เรียบร้อย');
+                }
+            } catch (err) {
+                console.error('[pdf]', err);
+                box.remove(); hidePdfProgress(); alert('สร้าง PDF ไม่สำเร็จ: ' + (err && err.message || err));
+            }
+        }
+        function downloadDirectPDF() { exportA4Pdf(document.getElementById('missingReportView'), document.title); }
+    </script>
+
+    <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">เซ็นลายเซ็นของคุณ</h3>
+            <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 touch-none overflow-hidden relative w-full flex justify-center">
+                <canvas id="modalSignaturePad" width="340" height="160" class="cursor-crosshair bg-white"></canvas>
+            </div>
+            <button type="button" id="useMySigBtn" onclick="useMySig()" class="hidden w-full mb-3 py-3 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 font-bold transition">ใช้ลายเซ็นของฉัน</button>
+            <div class="flex gap-3 w-full">
+                <button type="button" onclick="clearModalSignature()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition">ล้าง (Clear)</button>
+                <button type="button" onclick="closeSignatureModal()" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก</button>
+                <button type="button" onclick="saveModalSignature()" class="flex-[1.5] py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-md transition">บันทึก (Save)</button>
+            </div>
+        </div>
+    </div>
+
+    <button onclick="clearDraftData()" class="fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="เริ่มงานใหม่">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+    </button>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    reg.addEventListener('updatefound', () => {
+                        const nw = reg.installing;
+                        nw.addEventListener('statechange', () => {
+                            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                                if (confirm('มีเวอร์ชันใหม่พร้อมใช้งาน — โหลดใหม่เลยไหม?')) {
+                                    nw.postMessage('SKIP_WAITING');
+                                }
+                            }
+                        });
+                    });
+                    setInterval(() => reg.update(), 60 * 60 * 1000);
+                });
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+    </script>
+
+</body>
+</html>
