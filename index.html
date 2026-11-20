@@ -68,7 +68,7 @@
 
             /* 1. Missing Item Print Size */
             #missingReportView {
-                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
                 padding: 0 !important; margin: 0 !important;
                 box-sizing: border-box !important; box-shadow: none !important;
                 overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
@@ -76,8 +76,8 @@
 
             /* 2. Equipment Claim Print Size */
             #claimReportView {
-                width: 210mm !important; height: 285mm !important; max-height: 285mm !important;
-                padding: 5mm 0 0 0 !important; margin: 0 !important;
+                width: 210mm !important; height: 297mm !important; max-height: 297mm !important;
+                padding: 0 !important; margin: 0 !important;
                 box-sizing: border-box !important; box-shadow: none !important;
                 overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important;
             }
@@ -363,7 +363,7 @@
 
                 <div id="missingAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
 
-                <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[285mm] overflow-hidden report-print-view">
+                <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[297mm] overflow-hidden report-print-view">
                     <div class="relative w-full pt-0 pb-2">
                         <div class="w-full flex h-[14px]">
                             <div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div>
@@ -511,7 +511,7 @@
 
                 <div id="claimAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
 
-                <div id="claimReportView" class="bg-white shadow-lg mx-auto flex flex-col relative overflow-hidden pt-[5mm] w-full max-w-[210mm] h-[285mm] report-print-view">
+                <div id="claimReportView" class="bg-white shadow-lg mx-auto flex flex-col relative overflow-hidden w-full max-w-[210mm] h-[297mm] report-print-view">
                     <div class="relative w-full pt-0 pb-2 shrink-0">
                         <div class="w-full flex h-[14px]"><div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div></div>
                         <div class="flex justify-between items-center mt-5 w-full">
@@ -2618,6 +2618,18 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
      // ==========================================
         // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================
+        /* กระดาษ A4 ที่ 96 dpi (210×297mm) — สูงต่ำกว่า 1123 นิดหนึ่ง กันเศษปัดแล้วล้นเป็นหน้าที่ 2 */
+        const A4_PX = { w: 794, h: 1122 };
+        /* โคลนหน้ารายงานเป็นกระดาษ A4 ขนาดตายตัว (ไม่ใช่ตามความกว้างจอ) ไม่มีเงา/ปุ่ม/id ซ้ำ */
+        function a4Page(view) {
+            const c = view.cloneNode(true);
+            c.removeAttribute('id');
+            c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+            c.querySelectorAll('.no-print, button').forEach(e => e.remove());
+            c.classList.remove('shadow-lg', 'mx-auto', 'w-full', 'max-w-[210mm]', 'h-[297mm]');
+            c.style.cssText += `;width:${A4_PX.w}px;height:${A4_PX.h}px;max-width:none;max-height:none;margin:0;box-shadow:none;`;
+            return c;
+        }
         function downloadDirectPDF() {
             let activeReport = null;
             let filename = 'QC_Report.pdf';
@@ -2664,16 +2676,23 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             const noPrintElements = activeReport.querySelectorAll('.no-print, button');
             noPrintElements.forEach(el => el.style.display = 'none');
 
+            // ของขาด / เคลม: เรนเดอร์จากกระดาษ A4 ขนาดตายตัว → เต็มหน้าเหมือนกันทุกเครื่อง (ไม่ขึ้นกับความกว้างจอ)
+            const a4 = (activeReport.id === 'missingReportView' || activeReport.id === 'claimReportView');
             const opt = {
                 margin:       0,
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  a4 ? { scale: 3, useCORS: true, scrollY: 0, scrollX: 0, width: A4_PX.w, height: A4_PX.h, windowWidth: A4_PX.w }
+                                 : { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: [] }
             };
+            const source = a4 ? a4Page(activeReport) : activeReport;
 
             // ใช้ .toPdf().get('pdf') เพื่อเจาะทะลุเข้าไปสั่ง Save ด้วยระบบของ jsPDF โดยตรง
-            html2pdf().set(opt).from(activeReport).toPdf().get('pdf').then(function(pdf) {
+            html2pdf().set(opt).from(source).toPdf().get('pdf').then(function(pdf) {
+                // หน้าเกินจากเศษปัดพิกเซล (ถ้ามี) → ลบทิ้ง ให้เหลือหน้าเดียว
+                if (a4) while (pdf.internal.getNumberOfPages() > 1) pdf.deletePage(pdf.internal.getNumberOfPages());
                 pdf.save(filename); // บังคับเซฟด้วยชื่อตัวแปรที่ประกอบมา
                 
                 // คืนค่าปุ่มต่างๆ กลับมาแสดง
