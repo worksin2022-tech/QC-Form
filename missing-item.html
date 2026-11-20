@@ -108,6 +108,13 @@
         .ts-report-table th, .ts-report-table td {
             border: 1px solid #1f2937; padding: 2px 4px;
         }
+        /* ช่องกรอกฟอร์มของขาด (ธีมกรมท่า + ส้ม) */
+        .mi-input { width: 100%; height: 3rem; padding: 0 1rem; border-radius: .75rem; background: #f8fafc; border: 1px solid #e2e8f0; outline: none; transition: background .15s, border-color .15s, box-shadow .15s; }
+        .mi-input:focus { background: #fff; border-color: #fb923c; box-shadow: 0 0 0 4px #ffedd5; }
+        .mi-input-sm { height: 2.75rem; background: #fff; }
+        #missingItemsContainer { counter-reset: mi; }
+        #missingItemsContainer .item-row { counter-increment: mi; }
+        .mi-no::before { content: counter(mi); }
     </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
@@ -132,103 +139,104 @@
 
         <div id="app-missing-item" class="app-container max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-full">
             <div id="missingListView" class="hidden mb-10"></div>
-            <div id="missingFormView" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 mb-10 transition-all duration-300">
-                <div class="border-b pb-4 mb-6 flex items-start justify-between gap-3 flex-wrap">
-                    <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700">บันทึกรายการของขาด</h1>
-                        <p class="text-gray-500 mt-1">Missing Item Form</p>
+            <div id="missingFormView" class="mb-10">
+                <div class="flex items-center gap-2 mb-4 no-print">
+                    <button type="button" onclick="missingShowList()" class="shrink-0 inline-flex items-center gap-1 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 pl-2.5 pr-3.5 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg>กลับรายการ</button>
+                    <div id="missingDocBar" class="hidden min-w-0 flex-1 flex items-center gap-2 text-sm text-slate-500 px-1">
+                        <span class="shrink-0 hidden sm:inline">กำลังแก้:</span><span id="missingDocName" class="font-bold text-slate-800 truncate"></span>
                     </div>
-                    <div class="flex items-center gap-2 no-print">
-                        <span id="missingSync"></span>
-                        <button type="button" onclick="missingShowList()" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">☰ รายการ</button>
-                    </div>
-                </div>
-                <div id="missingDocBar" class="hidden mb-5 text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-600 flex items-center gap-2">
-                    <span>กำลังแก้งาน:</span><span id="missingDocName" class="font-bold text-blue-700 truncate"></span>
+                    <span class="flex-1"></span>
+                    <span id="missingSync" class="shrink-0"></span>
                 </div>
 
-                <form id="missingInspectionForm" onsubmit="generateMissingReport(event)">
-                    <div class="mb-8">
-                        <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3 mb-4">1. ข้อมูลทั่วไป</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <form id="missingInspectionForm" onsubmit="generateMissingReport(event)" class="space-y-4">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">1</span>
+                            <h2 class="text-lg font-bold text-slate-900">ข้อมูลทั่วไป</h2>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อโครงการ / SO <span class="text-red-500">*</span></label>
-                                <input type="text" id="projectName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ระบุชื่อโครงการ หรือ SO">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">ชื่อโครงการ / SO <span class="text-rose-500">*</span></label>
+                                <input type="text" id="projectName" required class="mi-input" placeholder="ระบุชื่อโครงการ หรือ SO">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อตู้ <span class="text-red-500">*</span></label>
-                                <input type="text" id="cabinetId" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="เช่น MDB-01, DB-02">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">ชื่อตู้ <span class="text-rose-500">*</span></label>
+                                <input type="text" id="cabinetId" required class="mi-input" placeholder="เช่น MDB-01, DB-02">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจสอบ <span class="text-red-500">*</span></label>
-                                <input type="date" id="inspectionDate" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">วันที่ตรวจสอบ <span class="text-rose-500">*</span></label>
+                                <input type="date" id="inspectionDate" required class="mi-input">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ตรวจสอบ <span class="text-red-500">*</span></label>
-                                <input type="text" id="inspectorName" required class="w-full h-11 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">ชื่อผู้ตรวจสอบ <span class="text-rose-500">*</span></label>
+                                <input type="text" id="inspectorName" required class="mi-input" placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ">
                             </div>
-                            
-                            <div class="sm:col-span-2 mt-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">ลายเซ็นผู้ตรวจสอบ (ถ้ามี)</label>
-                                <div class="flex items-center gap-4">
-                                    <button type="button" onclick="openSignatureModal('missing_inspector')" class="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold flex items-center transition-colors shadow-sm">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                        คลิกเพื่อเซ็นชื่อ
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5">ลายเซ็นผู้ตรวจสอบ</label>
+                                <div class="flex items-center gap-4 flex-wrap">
+                                    <button type="button" onclick="openSignatureModal('missing_inspector')" class="inline-flex items-center gap-2 h-12 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 text-white font-bold shadow-sm transition">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                        เซ็นชื่อ
                                     </button>
-                                    <img id="missing_inspector_preview" src="" class="h-12 object-contain hidden border border-gray-200 rounded bg-white px-2 shadow-sm">
+                                    <img id="missing_inspector_preview" src="" class="h-14 object-contain hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3">
                                 </div>
                             </div>
-
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="mb-8">
-                        <div class="flex justify-between items-center mb-4">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
                             <div class="flex items-center gap-3">
-                                <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">2. รายการอุปกรณ์ที่ขาด</h2>
-                                <span id="itemLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 10 รายการ</span>
+                                <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">2</span>
+                                <h2 class="text-lg font-bold text-slate-900">รายการอุปกรณ์ที่ขาด</h2>
+                                <span id="itemLimitWarning" class="text-xs text-rose-600 hidden font-bold bg-rose-50 px-2 py-1 rounded-lg">สูงสุด 10 รายการ</span>
                             </div>
-                            <button type="button" onclick="addMissingItem()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium py-2 px-4 rounded-lg flex items-center transition-colors">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> เพิ่มรายการ
+                            <button type="button" onclick="addMissingItem()" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 text-sm font-bold transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M12 5v14M5 12h14"></path></svg>เพิ่มรายการ
                             </button>
                         </div>
-                        <div id="missingItemsContainer" class="space-y-4"></div>
-                    </div>
-
-                    <div class="mb-10">
-                        <div class="flex items-center gap-3 mb-4">
-                            <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3">3. รูปภาพประกอบ</h2>
-                            <span id="imgLimitWarning" class="text-xs text-red-500 hidden font-medium bg-red-50 px-2 py-1 rounded">⚠️ จำกัดสูงสุด 3 รูป</span>
+                        <div class="hidden sm:grid grid-cols-12 gap-3 px-3 pb-2 text-xs font-bold text-slate-400">
+                            <div class="col-span-6 pl-10">ชื่ออุปกรณ์</div><div class="col-span-2">จำนวน</div><div class="col-span-3">หมายเหตุ</div>
                         </div>
-                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative" onclick="document.getElementById('imageUpload').click()">
-                             <div id="loadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 hidden flex flex-col items-center justify-center rounded-xl z-10">
-                                <svg class="animate-spin h-8 w-8 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span class="text-sm font-medium text-blue-700">กำลังบีบอัดรูปภาพ...</span>
+                        <div id="missingItemsContainer" class="space-y-2.5"></div>
+                    </section>
+
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">3</span>
+                            <h2 class="text-lg font-bold text-slate-900">รูปภาพประกอบ</h2>
+                            <span id="imgLimitWarning" class="text-xs text-rose-600 hidden font-bold bg-rose-50 px-2 py-1 rounded-lg">สูงสุด 3 รูป</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div id="imagePreviewContainer" class="contents"></div>
+                            <div class="relative aspect-square rounded-2xl border-2 border-dashed border-slate-300 hover:border-orange-400 hover:bg-orange-50/50 text-slate-400 hover:text-orange-500 flex flex-col items-center justify-center cursor-pointer transition" onclick="document.getElementById('imageUpload').click()">
+                                <div id="loadingOverlay" class="absolute inset-0 bg-white/90 hidden flex flex-col items-center justify-center rounded-2xl z-10">
+                                    <div class="w-8 h-8 border-[3px] border-orange-100 border-t-orange-500 rounded-full animate-spin mb-2"></div>
+                                    <span class="text-xs font-semibold text-slate-500">กำลังบีบอัดรูป...</span>
+                                </div>
+                                <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span class="mt-2 text-sm font-bold">ถ่าย / เลือกรูป</span>
+                                <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews, 'MissingItem')">
                             </div>
-                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                            <p class="mt-2 text-sm text-gray-600">คลิกเพื่ออัปโหลดรูปภาพ หรือถ่ายภาพ</p>
-                            <input type="file" id="imageUpload" class="hidden" multiple accept="image/*" onchange="sharedHandleImageSelection(event, missingUploadedImages, 3, 'imgLimitWarning', 'loadingOverlay', renderMissingImagePreviews, 'MissingItem')">
                         </div>
-                        <div id="imagePreviewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4"></div>
-                    </div>
+                    </section>
 
-                    <div class="border-t pt-6">
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-transform transform hover:-translate-y-0.5 flex justify-center items-center text-lg">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            สร้างรายงาน (Generate Report)
-                        </button>
-                    </div>
+                    <button type="submit" class="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[.99] text-white font-bold text-lg shadow-lg shadow-orange-500/30 flex justify-center items-center gap-2 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        สร้างรายงาน
+                    </button>
                 </form>
             </div>
 
             <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
-                <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
-                    <button onclick="missingNextCabinet()" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-md flex items-center justify-center">+ ตู้ถัดไป (JOB เดิม)</button>
-                    <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-                <button onclick="downloadDirectPDF()" class="bg-[#f4902a] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-    ดาวน์โหลด PDF
-</button>
+                <div class="mb-6 flex flex-wrap gap-2.5 justify-center no-print">
+                    <button onclick="editMissingForm()" class="inline-flex items-center gap-1 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 pl-2.5 pr-4 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg>กลับไปแก้ไข</button>
+                    <button onclick="missingNextCabinet()" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-sm transition">+ ตู้ถัดไป (JOB เดิม)</button>
+                    <button onclick="downloadDirectPDF()" class="no-print inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-md shadow-orange-500/30 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        ดาวน์โหลด PDF
+                    </button>
                 </div>
 
                 <div id="missingAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
@@ -492,19 +500,18 @@
             
             const container = document.getElementById('missingItemsContainer');
             const rowDiv = document.createElement('div');
-            rowDiv.className = 'item-row bg-gray-50 p-4 rounded-lg border border-gray-200 relative transition-all';
+            rowDiv.className = 'item-row group grid grid-cols-12 gap-2 sm:gap-3 items-center bg-slate-50 hover:bg-orange-50/40 ring-1 ring-slate-200/80 rounded-2xl p-2.5 sm:p-3 transition';
             rowDiv.id = `mi-row-${missingItemCount}`;
+            const del = missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" title="ลบรายการ" class="w-10 h-10 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.87 12.14A2 2 0 0116.14 21H7.86a2 2 0 01-1.99-1.86L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>` : '';
             rowDiv.innerHTML = `
-                <div class="flex justify-between items-center mb-2 sm:hidden">
-                    <span class="font-semibold text-sm text-gray-500">รายการที่ ${missingItemCount}</span>
-                    ${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="text-red-500 hover:text-red-700 text-sm">ลบ</button>` : ''}
+                <div class="col-span-12 sm:col-span-6 flex items-center gap-2.5">
+                    <span class="mi-no w-8 h-8 shrink-0 rounded-full bg-white ring-1 ring-slate-200 text-slate-500 text-sm font-bold flex items-center justify-center"></span>
+                    <input type="text" class="item-name mi-input mi-input-sm flex-1 min-w-0" placeholder="ชื่ออุปกรณ์ที่ขาด" required>
+                    <span class="sm:hidden">${del}</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
-                    <div class="sm:col-span-5"><label class="block text-xs text-gray-500 sm:hidden mb-1">ชื่ออุปกรณ์</label><input type="text" class="item-name w-full px-3 py-2 border rounded text-sm" placeholder="ระบุชื่ออุปกรณ์ที่ขาด" required></div>
-                    <div class="sm:col-span-2"><label class="block text-xs text-gray-500 sm:hidden mb-1">จำนวน</label><input type="number" min="1" class="item-qty w-full px-3 py-2 border rounded text-sm" value="1" required></div>
-                    <div class="sm:col-span-4"><label class="block text-xs text-gray-500 sm:hidden mb-1">หมายเหตุ</label><input type="text" class="item-remark w-full px-3 py-2 border rounded text-sm" placeholder="หมายเหตุ (ถ้ามี)"></div>
-                    <div class="sm:col-span-1 hidden sm:flex justify-end mt-1">${missingItemCount > 1 ? `<button type="button" onclick="removeMissingItem(${missingItemCount})" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบรายการ">❌</button>` : ''}</div>
-                </div>
+                <div class="col-span-4 sm:col-span-2 pl-10 sm:pl-0"><input type="number" min="1" class="item-qty mi-input mi-input-sm text-center" value="1" required title="จำนวน"></div>
+                <div class="col-span-8 sm:col-span-3"><input type="text" class="item-remark mi-input mi-input-sm" placeholder="หมายเหตุ"></div>
+                <div class="hidden sm:flex sm:col-span-1 justify-end">${del}</div>
             `;
             container.appendChild(rowDiv);
         }
@@ -520,8 +527,8 @@
             container.innerHTML = '';
             missingUploadedImages.forEach(img => {
                 const div = document.createElement('div');
-                div.className = 'relative group aspect-square rounded-lg border overflow-hidden';
-                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeMissingImage(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 shadow-sm">❌</button>`;
+                div.className = 'relative aspect-square rounded-2xl overflow-hidden ring-1 ring-slate-200 bg-slate-100';
+                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeMissingImage(${img.id})" title="ลบรูป" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-rose-600 shadow flex items-center justify-center transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M6 6l12 12M18 6L6 18"/></svg></button>`;
                 container.appendChild(div);
             });
         }
@@ -705,7 +712,7 @@
         /* ปุ่มลอย "ล้างข้อมูล" = เริ่มใบใหม่ (ใบเดิมบันทึกแล้ว เปิดกลับได้จากรายการ) */
         function clearDraftData() {
             if (!window.team) return;
-            team.confirmDialog({ title: 'เริ่มงานใหม่', message: 'ล้างฟอร์มเพื่อเริ่มงานใหม่ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">งานที่กรอกไว้ถูกบันทึกแล้ว เปิดกลับได้จากปุ่ม "☰ รายการ"</span>', confirmText: 'เริ่มงานใหม่' })
+            team.confirmDialog({ title: 'เริ่มงานใหม่', message: 'ล้างฟอร์มเพื่อเริ่มงานใหม่ใช่ไหม?<br><span style="color:#94a3b8;font-size:12px;">งานที่กรอกไว้ถูกบันทึกแล้ว เปิดกลับได้จากปุ่ม "กลับรายการ"</span>', confirmText: 'เริ่มงานใหม่' })
                 .then(ok => { if (ok) missingNew(''); });
         }
 
@@ -1392,10 +1399,8 @@
         </div>
     </div>
 
-    <button id="fabNewForm" onclick="clearDraftData()" class="hidden fixed bottom-6 right-6 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center justify-center z-50 transition-transform hover:scale-110 print:hidden" title="เริ่มงานใหม่">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
+    <button id="fabNewForm" onclick="clearDraftData()" class="hidden fixed bottom-6 right-6 bg-slate-900 hover:bg-slate-700 text-white w-14 h-14 rounded-2xl shadow-xl shadow-slate-900/30 flex items-center justify-center z-50 transition hover:scale-105 print:hidden" title="เริ่มใบใหม่">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
     </button>
 
     <script>
