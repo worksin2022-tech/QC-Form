@@ -21,6 +21,8 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>   <!-- ของขาด/เคลม: PDF แบบ MoM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- ระบบทีมออนไลน์ (Supabase + Google Drive) -->
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
@@ -354,7 +356,6 @@
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="missingNextCabinet()" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-md flex items-center justify-center">+ ตู้ถัดไป (JOB เดิม)</button>
                     <button onclick="editMissingForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
                 <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -502,7 +503,6 @@
             <div id="claimReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
                 <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-center no-print">
                     <button onclick="editClaimForm()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg> กลับไปแก้ไข</button>
-                    <button onclick="window.print()" class="px-6 py-2 bg-[#f4902a] text-white font-semibold rounded-lg hover:bg-orange-500 shadow-md flex items-center justify-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> พิมพ์เป็น PDF</button>
                <button onclick="downloadDirectPDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2 no-print">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     ดาวน์โหลด PDF
@@ -2618,9 +2618,10 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
      // ==========================================
         // ฟังก์ชันดาวน์โหลด PDF ทันที (Direct PDF) - บังคับชื่อไฟล์ 100%
         // ==========================================
-        /* กระดาษ A4 ที่ 96 dpi (210×297mm) — สูงต่ำกว่า 1123 นิดหนึ่ง กันเศษปัดแล้วล้นเป็นหน้าที่ 2 */
-        const A4_PX = { w: 794, h: 1122 };
-        /* โคลนหน้ารายงานเป็นกระดาษ A4 ขนาดตายตัว (ไม่ใช่ตามความกว้างจอ) ไม่มีเงา/ปุ่ม/id ซ้ำ */
+        /* ===== PDF ของขาด / เคลม — แบบ exportPDF ของ minute-of-meeting.html ===== */
+        const A4_PX = { w: 794, h: 1123 };   // A4 ที่ 96 dpi
+        const PDF_SCALE = 4;                 // ≈384 dpi แบบ QA บันทึกตรวจรับตู้ · 3176×4492px = 14.3 ล้านพิกเซล ต่ำกว่าเพดาน canvas ของ iOS (16.7 ล้าน)
+        /* โคลนหน้ารายงานเป็นกระดาษ A4 ขนาดตายตัว (ไม่ขึ้นกับความกว้างจอ) ไม่มีเงา/ปุ่ม/id ซ้ำ */
         function a4Page(view) {
             const c = view.cloneNode(true);
             c.removeAttribute('id');
@@ -2630,7 +2631,123 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             c.style.cssText += `;width:${A4_PX.w}px;height:${A4_PX.h}px;max-width:none;max-height:none;margin:0;box-shadow:none;`;
             return c;
         }
+        /* html2canvas ไม่รองรับ object-fit (cover/contain) → รูปถูกยืด · วาดรูปลง canvas ขนาดเท่ากรอบไว้ก่อน */
+        function fitImgToDataUrl(src, boxW, boxH, scale, mode) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const tw = Math.max(1, Math.round(boxW * scale)), th = Math.max(1, Math.round(boxH * scale));
+                        const cv = document.createElement('canvas'); cv.width = tw; cv.height = th;
+                        const ctx = cv.getContext('2d');
+                        const iw = img.naturalWidth, ih = img.naturalHeight;
+                        const r = mode === 'cover' ? Math.max(tw / iw, th / ih) : Math.min(tw / iw, th / ih);
+                        const dw = iw * r, dh = ih * r;
+                        ctx.drawImage(img, 0, 0, iw, ih, (tw - dw) / 2, (th - dh) / 2, dw, dh);
+                        resolve(cv.toDataURL('image/png'));   // png = พื้นโปร่งใสของโลโก้/ลายเซ็นยังโปร่งใส
+                    } catch (e) { reject(e); }
+                };
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+        async function fitImagesForPdf(root, scale) {
+            for (const im of [...root.querySelectorAll('img')]) {
+                const cs = getComputedStyle(im);
+                if (cs.display === 'none' || !im.getAttribute('src')) continue;
+                const mode = cs.objectFit === 'cover' ? 'cover' : cs.objectFit === 'contain' ? 'contain' : null;
+                const w = im.clientWidth, h = im.clientHeight;
+                if (!mode || !w || !h) continue;
+                try {
+                    im.src = await fitImgToDataUrl(im.src, w, h, scale, mode);
+                    im.style.width = w + 'px'; im.style.height = h + 'px'; im.style.objectFit = 'fill';
+                } catch (_) { /* ใช้รูปเดิม */ }
+            }
+        }
+        const pdfDelay = ms => new Promise(r => setTimeout(r, ms));
+        const pdfToast = m => { if (window.team) team.toast(m); };
+        const pdfEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function showPdfProgress(msg) {
+            let el = document.getElementById('pdfProgress');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'pdfProgress';
+                el.className = 'no-print';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(11,18,32,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:white;';
+                document.body.appendChild(el);
+            }
+            el.innerHTML = `
+                <div style="width:50px;height:50px;border:4px solid rgba(255,255,255,.2);border-top-color:#f5a623;border-radius:50%;animation:pdfspin 1s linear infinite;"></div>
+                <div style="font-size:14px;font-weight:600;font-family:'Sarabun',sans-serif;text-align:center;padding:0 20px;">${pdfEsc(msg)}</div>
+                <style>@keyframes pdfspin{to{transform:rotate(360deg);}}</style>`;
+            el.style.display = 'flex';
+        }
+        function hidePdfProgress() { const el = document.getElementById('pdfProgress'); if (el) el.style.display = 'none'; }
+        /* iPad/iOS: ปุ่มเปิด share sheet (ต้องเป็นการกดใหม่ของผู้ใช้) → "บันทึกลงไฟล์" ได้ชื่อไฟล์ตรง */
+        function showPdfSaveButton(file, filename) {
+            showPdfProgress('');
+            const el = document.getElementById('pdfProgress');
+            el.innerHTML = `
+                <div style="background:white;color:#0b1220;border-radius:16px;padding:24px 22px;max-width:360px;width:88vw;text-align:center;font-family:'Sarabun',sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.5);">
+                    <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style="font-weight:800;font-size:16px;margin-bottom:6px;">สร้าง PDF เสร็จแล้ว</div>
+                    <div style="font-size:12px;color:#64748b;word-break:break-all;margin-bottom:18px;">${pdfEsc(filename)}</div>
+                    <button type="button" id="pdfShareBtn" style="width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#0f2744,#1f3a5f);color:white;font-weight:700;font-size:15px;font-family:'Sarabun',sans-serif;cursor:pointer;">บันทึก / แชร์ PDF</button>
+                    <button type="button" id="pdfShareCancel" style="width:100%;padding:11px;margin-top:8px;border:none;border-radius:10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:14px;font-family:'Sarabun',sans-serif;cursor:pointer;">ปิด</button>
+                </div>`;
+            el.style.display = 'flex';
+            document.getElementById('pdfShareBtn').onclick = async () => {
+                try { await navigator.share({ files: [file], title: filename }); hidePdfProgress(); pdfToast('บันทึก PDF แล้ว'); }
+                catch (e) { /* ยกเลิก / แชร์ไม่สำเร็จ — ค้างไว้ให้กดใหม่หรือปิดเอง */ }
+            };
+            document.getElementById('pdfShareCancel').onclick = () => hidePdfProgress();
+        }
+        async function exportA4Pdf(view, title) {
+            const filename = (String(title || 'Report').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || 'Report') + '.pdf';
+            const titleNoExt = filename.replace(/\.pdf$/i, '');
+            showPdfProgress('กำลังสร้าง PDF...');
+            const box = document.createElement('div');
+            box.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_PX.w}px;height:${A4_PX.h}px;background:white;z-index:-1;overflow:hidden;`;
+            try {
+                const page = a4Page(view);
+                box.appendChild(page);
+                document.body.appendChild(box);
+                await pdfDelay(150);                       // ให้จัดหน้า/รูปเสร็จก่อน
+                await fitImagesForPdf(page, PDF_SCALE);
+                const canvas = await html2canvas(page, {
+                    scale: PDF_SCALE, useCORS: true, backgroundColor: '#ffffff',
+                    width: A4_PX.w, height: A4_PX.h, windowWidth: A4_PX.w, windowHeight: A4_PX.h
+                });
+                box.remove();
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                const pw = pdf.internal.pageSize.getWidth();
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pw, (canvas.height * pw) / canvas.width, undefined, 'FAST');   // PNG = ไม่เสียรายละเอียด (ตัวหนังสือคมกว่า JPEG) แบบ QA ตรวจรับตู้
+                try { pdf.setProperties({ title: titleNoExt }); } catch (_) {}
+                showPdfProgress('กำลังบันทึก...');
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                let file = null;
+                try { file = new File([pdf.output('blob')], filename, { type: 'application/pdf' }); } catch (_) {}
+                if (isIOS && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    showPdfSaveButton(file, filename);
+                } else if (isIOS) {
+                    const prev = document.title; document.title = titleNoExt;   // ไม่มี Web Share: iOS ตั้งชื่อไฟล์จาก document.title
+                    pdf.save(filename); setTimeout(() => { document.title = prev; }, 2500);
+                    hidePdfProgress(); pdfToast('สร้าง PDF เรียบร้อย');
+                } else {
+                    pdf.save(filename); hidePdfProgress(); pdfToast('สร้าง PDF เรียบร้อย');
+                }
+            } catch (err) {
+                console.error('[pdf]', err);
+                box.remove(); hidePdfProgress(); alert('สร้าง PDF ไม่สำเร็จ: ' + (err && err.message || err));
+            }
+        }
         function downloadDirectPDF() {
+            // ของขาด / เคลม → แบบ MoM (ชื่อไฟล์เดียวกับตอนพิมพ์)
+            if (!document.getElementById('missingReportContainer').classList.contains('hidden')) { exportA4Pdf(document.getElementById('missingReportView'), document.title); return; }
+            if (!document.getElementById('claimReportContainer').classList.contains('hidden')) { exportA4Pdf(document.getElementById('claimReportView'), document.title); return; }
             let activeReport = null;
             let filename = 'QC_Report.pdf';
 
@@ -2676,23 +2793,16 @@ document.getElementById('tf_rSignUserDate').textContent = formatDateGlobal(docum
             const noPrintElements = activeReport.querySelectorAll('.no-print, button');
             noPrintElements.forEach(el => el.style.display = 'none');
 
-            // ของขาด / เคลม: เรนเดอร์จากกระดาษ A4 ขนาดตายตัว → เต็มหน้าเหมือนกันทุกเครื่อง (ไม่ขึ้นกับความกว้างจอ)
-            const a4 = (activeReport.id === 'missingReportView' || activeReport.id === 'claimReportView');
             const opt = {
                 margin:       0,
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  a4 ? { scale: 3, useCORS: true, scrollY: 0, scrollX: 0, width: A4_PX.w, height: A4_PX.h, windowWidth: A4_PX.w }
-                                 : { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: [] }
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-            const source = a4 ? a4Page(activeReport) : activeReport;
 
             // ใช้ .toPdf().get('pdf') เพื่อเจาะทะลุเข้าไปสั่ง Save ด้วยระบบของ jsPDF โดยตรง
-            html2pdf().set(opt).from(source).toPdf().get('pdf').then(function(pdf) {
-                // หน้าเกินจากเศษปัดพิกเซล (ถ้ามี) → ลบทิ้ง ให้เหลือหน้าเดียว
-                if (a4) while (pdf.internal.getNumberOfPages() > 1) pdf.deletePage(pdf.internal.getNumberOfPages());
+            html2pdf().set(opt).from(activeReport).toPdf().get('pdf').then(function(pdf) {
                 pdf.save(filename); // บังคับเซฟด้วยชื่อตัวแปรที่ประกอบมา
                 
                 // คืนค่าปุ่มต่างๆ กลับมาแสดง
