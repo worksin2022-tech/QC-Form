@@ -14,7 +14,7 @@
     <!-- ระบบทีมออนไลน์ (Supabase + Google Drive) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="avatar-cloud.js"></script>
+    <script src="avatar-team.js"></script>   <!-- ระบบทีมแบบ MoM (แทน avatar-cloud.js) -->
     <!-- SortableJS (สำหรับการลากวางสลับตำแหน่ง) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Fabric.js (ระบบวาดและจัดการรูปทรงอัจฉริยะ) -->
@@ -11826,6 +11826,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         </div>
     </div>
 
+<script src="pm-team.js"></script>   <!-- ต่อ pmform เข้า avatar-team.js (แทนร่าง/ประวัติ/avatar-cloud เดิม) -->
 </body>
 </html>
 
