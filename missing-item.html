@@ -115,6 +115,34 @@
         #missingItemsContainer { counter-reset: mi; }
         #missingItemsContainer .item-row { counter-increment: mi; }
         .mi-no::before { content: counter(mi); }
+        /* หน้ารายงาน A4 บนจอ: ย่อทั้งแผ่นตามความกว้างจอ (fitA4) — ตอนพิมพ์ไม่ย่อ */
+        .a4-fit { width: 100%; max-width: 794px; margin: 0 auto; overflow: hidden; }
+        .a4-inner { width: 794px; transform-origin: top left; }
+        @media print { .a4-fit { height: auto !important; max-width: none; overflow: visible; } .a4-inner { transform: none !important; width: auto; } }
+        /* มือถือ: ไม่มีปุ่มลอย (ทับเนื้อหา) · กดช่องกรอกแล้วไม่ซูม (ตัวอักษร ≥16px) */
+        @media (max-width: 639px) { #fabNewForm { display: none !important; } }
+        /* มือถือ: ปุ่มหลักอยู่แถบล่างจอ (กดง่ายด้วยนิ้วโป้ง) */
+        @media (max-width: 639px) {
+            .mbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0 !important; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; box-shadow: 0 -6px 20px rgba(15,23,42,.06); display: flex !important; flex-wrap: nowrap !important; gap: 8px; }
+            .mbar > * { flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap; padding-left: 10px !important; padding-right: 10px !important; }
+            .mbar-pad { padding-bottom: 96px !important; }
+            #atToast { bottom: calc(96px + env(safe-area-inset-bottom)) !important; }   /* ข้อความแจ้งเตือนไม่ทับแถบปุ่มล่าง */
+        }
+        /* แถบปุ่มล่างของฟอร์ม (แบบแอพบันทึกตรวจรับตู้) — ทุกขนาดจอ */
+        .fbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; box-shadow: 0 -6px 20px rgba(15,23,42,.06); }
+        .fbar-in { max-width: 56rem; margin: 0 auto; display: flex; gap: 8px; }
+        .fbar-in > button { height: 3.25rem; border-radius: 1rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; white-space: nowrap; min-width: 0; transition: background .15s, transform .1s; }
+        .fbar-in > button:active { transform: scale(.98); }
+        .fb-main { flex: 1.5 1 0; background: #1f2937; color: #fff; box-shadow: 0 6px 16px rgba(15,23,42,.25); }
+        .fb-main:hover { background: #111827; }
+        .fb-btn { flex: 1 1 0; background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+        .fb-btn:hover { border-color: #fdba74; color: #ea580c; }
+        .fb-del { flex: 0 0 auto; background: #fff; color: #e11d48; border: 1px solid #fecdd3; padding: 0 16px !important; }
+        .fb-del:hover { background: #fff1f2; }
+        #fabNewForm { display: none !important; }   /* ปุ่มลอยเดิม → ใช้แถบล่างแทน */
+        @media (max-width: 639px) { .fbar-in > button { font-size: 14px; gap: 6px; padding: 0 8px; } .fb-lbl-long { display: none; } }
+        @media (min-width: 640px) { .fb-lbl-short { display: none; } }
+        #atToast { bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
     </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
@@ -150,7 +178,7 @@
                 </div>
 
                 <form id="missingInspectionForm" onsubmit="generateMissingReport(event)" class="space-y-4">
-                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-4 sm:p-7">
                         <div class="flex items-center gap-3 mb-5">
                             <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">1</span>
                             <h2 class="text-lg font-bold text-slate-900">ข้อมูลทั่วไป</h2>
@@ -185,7 +213,7 @@
                         </div>
                     </section>
 
-                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-4 sm:p-7">
                         <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
                             <div class="flex items-center gap-3">
                                 <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">2</span>
@@ -202,7 +230,7 @@
                         <div id="missingItemsContainer" class="space-y-2.5"></div>
                     </section>
 
-                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-5 sm:p-7">
+                    <section class="bg-white rounded-3xl ring-1 ring-slate-200/80 shadow-sm p-4 sm:p-7">
                         <div class="flex items-center gap-3 mb-5">
                             <span class="w-8 h-8 rounded-xl bg-orange-500 text-white font-extrabold flex items-center justify-center shadow-md shadow-orange-500/30">3</span>
                             <h2 class="text-lg font-bold text-slate-900">รูปภาพประกอบ</h2>
@@ -222,26 +250,30 @@
                         </div>
                     </section>
 
-                    <button type="submit" class="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[.99] text-white font-bold text-lg shadow-lg shadow-orange-500/30 flex justify-center items-center gap-2 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        สร้างรายงาน
-                    </button>
+                    <div class="fbar no-print"><div class="fbar-in">
+                        <button type="button" onclick="missingExportPdf()" class="fb-main"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-6a2 2 0 012-2h14a2 2 0 012 2v6a1 1 0 01-1 1h-2M6 14h12v7H6z"/></svg><span class="fb-lbl-long">Export PDF</span><span class="fb-lbl-short">PDF</span></button>
+                        <button type="submit" class="fb-btn"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span class="fb-lbl-long">ดูรายงาน</span><span class="fb-lbl-short">รายงาน</span></button>
+                        <button type="button" onclick="missingNextCabinet()" class="fb-btn"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>ตู้ถัดไป</button>
+                        <button type="button" onclick="missingDeleteCurrent()" class="fb-del">ลบ</button>
+                    </div></div>
+                    <div class="h-20"></div>
                 </form>
             </div>
 
-            <div id="missingReportContainer" class="hidden pb-10 print:pb-0 print:m-0">
-                <div class="mb-6 flex flex-wrap gap-2.5 justify-center no-print">
-                    <button onclick="editMissingForm()" class="inline-flex items-center gap-1 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 pl-2.5 pr-4 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg>กลับไปแก้ไข</button>
-                    <button onclick="missingNextCabinet()" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-sm transition">+ ตู้ถัดไป (JOB เดิม)</button>
+            <div id="missingReportContainer" class="hidden pb-10 mbar-pad print:pb-0 print:m-0">
+                <div class="mbar mb-6 flex flex-wrap gap-2.5 justify-center no-print">
+                    <button onclick="editMissingForm()" class="inline-flex items-center gap-1 bg-white ring-1 ring-slate-200 text-slate-700 hover:text-orange-600 hover:ring-orange-300 pl-2.5 pr-4 h-11 rounded-xl text-sm font-bold shadow-sm transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M15 19l-7-7 7-7"/></svg><span class="sm:hidden">แก้ไข</span><span class="hidden sm:inline">กลับไปแก้ไข</span></button>
+                    <button onclick="missingNextCabinet()" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-sm transition"><span class="sm:hidden">+ ตู้ถัดไป</span><span class="hidden sm:inline">+ ตู้ถัดไป (JOB เดิม)</span></button>
                     <button onclick="downloadDirectPDF()" class="no-print inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 h-11 rounded-xl text-sm font-bold shadow-md shadow-orange-500/30 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        ดาวน์โหลด PDF
+                        <span class="sm:hidden">PDF</span><span class="hidden sm:inline">ดาวน์โหลด PDF</span>
                     </button>
                 </div>
 
                 <div id="missingAutoSave" class="hidden no-print max-w-[210mm] mx-auto mb-4 px-4 py-2.5 rounded-lg border text-sm flex flex-wrap items-center gap-2"></div>
 
-                <div id="missingReportView" class="bg-white shadow-lg mx-auto flex flex-col relative w-full max-w-[210mm] h-[297mm] overflow-hidden report-print-view">
+                <div class="a4-fit"><div class="a4-inner">   <!-- หน้า A4 ขนาดตายตัว 794×1123 ย่อทั้งแผ่นให้พอดีจอ (มือถือไม่บีบเพี้ยน · สัดส่วนเหมือน PDF) -->
+                <div id="missingReportView" class="bg-white shadow-lg flex flex-col relative w-[794px] h-[1123px] overflow-hidden report-print-view">
                     <div class="relative w-full pt-0 pb-2">
                         <div class="w-full flex h-[14px]">
                             <div class="w-[25%] h-full bg-[#f4902a]"></div><div class="w-[75%] h-full bg-[#333333]"></div>
@@ -295,6 +327,7 @@
                         <div class="absolute right-0 bottom-0 w-[75%] h-full bg-[#f4902a] rounded-tl-[2rem] flex items-center justify-end pr-10"><span class="text-white font-medium text-lg tracking-widest">www.avatar-electric.com</span></div>
                     </div>
                 </div>
+                </div></div>
             </div>
         </div>
 
@@ -509,8 +542,8 @@
                     <input type="text" class="item-name mi-input mi-input-sm flex-1 min-w-0" placeholder="ชื่ออุปกรณ์ที่ขาด" required>
                     <span class="sm:hidden">${del}</span>
                 </div>
-                <div class="col-span-4 sm:col-span-2 pl-10 sm:pl-0"><input type="number" min="1" class="item-qty mi-input mi-input-sm text-center" value="1" required title="จำนวน"></div>
-                <div class="col-span-8 sm:col-span-3"><input type="text" class="item-remark mi-input mi-input-sm" placeholder="หมายเหตุ"></div>
+                <div class="col-span-5 sm:col-span-2 flex items-center gap-1.5 pl-1 sm:pl-0"><span class="sm:hidden text-xs font-semibold text-slate-400 shrink-0">จำนวน</span><input type="number" min="1" class="item-qty mi-input mi-input-sm text-center min-w-0" value="1" required title="จำนวน"></div>
+                <div class="col-span-7 sm:col-span-3"><input type="text" class="item-remark mi-input mi-input-sm" placeholder="หมายเหตุ"></div>
                 <div class="hidden sm:flex sm:col-span-1 justify-end">${del}</div>
             `;
             container.appendChild(rowDiv);
@@ -592,6 +625,23 @@
             autoSaveReport('missing-item');   // บันทึกขึ้นระบบทีม (รูปขึ้น Google Drive) อัตโนมัติ
         }
 
+        /* แถบล่าง: Export PDF จากหน้าฟอร์มเลย (ไม่ต้องเปิดหน้ารายงานก่อน) */
+        async function missingExportPdf() {
+            const form = document.getElementById('missingInspectionForm');
+            if (!form.reportValidity()) return;
+            const y = window.scrollY;
+            generateMissingReport({ preventDefault() {} });   // ใส่ค่าลงรายงาน + ตั้งชื่อไฟล์ + บันทึก
+            editMissingForm(); window.scrollTo(0, y);          // อยู่หน้าฟอร์มต่อ
+            await exportA4Pdf(document.getElementById('missingReportView'), document.title);
+        }
+        /* แถบล่าง: ลบตู้ที่เปิดอยู่ (ยืนยันก่อน) → กลับหน้ารายการ · ใบใหม่ที่ยังไม่บันทึก = ล้างฟอร์ม */
+        async function missingDeleteCurrent() {
+            if (!window.team) return;
+            if (!team.job) { missingNew(''); return; }
+            const id = team.job.id, label = [val('projectName'), val('cabinetId')].filter(Boolean).join(' — ');
+            if (await team.deleteJob(id, label)) { missingListJobId = null; missingViews('list'); renderMissingList(true); }
+        }
+
         function editMissingForm() {
             document.getElementById('missingReportContainer').classList.add('hidden');
             document.getElementById('missingFormView').classList.remove('hidden');
@@ -655,11 +705,12 @@
             const ratio = Math.max(window.devicePixelRatio || 1, 3); // อัดความคมชัดขึ้น 3 เท่า
             
             // ล็อคขนาดกรอบแสดงผลหน้าเว็บให้เท่าเดิม
-            canvas.style.width = '340px';
+            const cssW = Math.max(240, Math.min(340, (canvas.parentElement.clientWidth || 340) - 4));   // จอแคบ: ไม่ล้นกรอบ
+            canvas.style.width = cssW + 'px';
             canvas.style.height = '160px';
             
             // ขยายเม็ดพิกเซลภายในกระดาษให้หนาแน่นขึ้น
-            canvas.width = 340 * ratio;
+            canvas.width = cssW * ratio;
             canvas.height = 160 * ratio;
             
             // สั่งให้ปากกาวาดสเกลตามกระดาษที่ขยาย
@@ -1106,14 +1157,15 @@
                                     <div class="bg-white/15 rounded-2xl px-4 py-2.5"><div class="text-2xl font-extrabold leading-none">${open.items.length}</div><div class="text-[11px] text-slate-300 font-semibold mt-1">ตู้</div></div>
                                     ${open.miss != null ? `<div class="bg-white/15 rounded-2xl px-4 py-2.5"><div class="text-2xl font-extrabold leading-none">${open.miss}</div><div class="text-[11px] text-slate-300 font-semibold mt-1">รายการที่ขาด</div></div>` : ''}
                                 </div>
-                                <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="no-print inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}เพิ่มตู้ใน JOB นี้</button>
+                                <button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="no-print hidden sm:inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}เพิ่มตู้ใน JOB นี้</button>
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 mt-6 mb-3 px-1 text-sm">
                         <span class="font-bold text-slate-800">รายการตู้</span>
                     </div>
-                    <div class="grid sm:grid-cols-2 gap-3">${open.items.map(card).join('')}</div>`;
+                    <div class="grid sm:grid-cols-2 gap-3">${open.items.map(card).join('')}</div>
+                    <div class="h-24 sm:hidden"></div><div class="mbar sm:hidden no-print"><button type="button" onclick="missingNew(missingJobGroups.find(g => g.key === missingListJob).p)" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white h-12 rounded-2xl font-bold shadow-lg shadow-orange-500/30 transition">${MI.plus}เพิ่มตู้ใน JOB นี้</button></div>`;
                 return;
             }
 
@@ -1129,7 +1181,7 @@
                         <div class="grid grid-cols-3 gap-2.5 flex-1 min-w-[260px] max-w-md">
                             ${stat(all.length, 'JOB')}${stat(missingRecs.length, 'ตู้ที่ตรวจ')}${stat(sumMiss, 'รายการที่ขาด')}
                         </div>
-                        <button type="button" onclick="missingNew('')" class="no-print inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}บันทึกใหม่</button>
+                        <button type="button" onclick="missingNew('')" class="no-print hidden sm:inline-flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 active:scale-[.98] h-12 px-5 rounded-2xl font-bold shadow-lg shadow-orange-900/30 transition">${MI.plus}บันทึกใหม่</button>
                     </div>
                 </div>`;
             // ช่องค้นหาไม่มี id — collectFormFields เก็บทุกช่องที่มี id ใน #app-missing-item ไปเป็นช่องของฟอร์ม (จะสร้างงานเปล่าเอง)
@@ -1172,7 +1224,7 @@
             const empty = q
                 ? note('ไม่พบรายการที่ค้นหา')
                 : note(`<div class="w-16 h-16 mx-auto rounded-3xl bg-orange-50 text-orange-500 flex items-center justify-center mb-4">${MI.empty}</div><div class="font-bold text-slate-700 text-lg">ยังไม่มีรายการ</div>`);
-            box.innerHTML = hero + search + (body || empty);
+            box.innerHTML = hero + search + (body || empty) + `<div class="h-24 sm:hidden"></div><div class="mbar sm:hidden no-print"><button type="button" onclick="missingNew('')" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white h-12 rounded-2xl font-bold shadow-lg shadow-orange-500/30 transition">${MI.plus}บันทึกใหม่</button></div>`;
             const qi = box.querySelector('[data-mq]');
             qi.oninput = () => { missingListQ = qi.value; const pos = qi.selectionStart; renderMissingList(false); const n = box.querySelector('[data-mq]'); n.focus(); n.setSelectionRange(pos, pos); };
         }
@@ -1259,6 +1311,18 @@
         const A4_PX = { w: 794, h: 1123 };   // A4 ที่ 96 dpi
         const PDF_SCALE = 4;                 // ≈384 dpi แบบ QA บันทึกตรวจรับตู้ · 3176×4492px = 14.3 ล้านพิกเซล ต่ำกว่าเพดาน canvas ของ iOS (16.7 ล้าน)
         /* โคลนหน้ารายงานเป็นกระดาษ A4 ขนาดตายตัว (ไม่ขึ้นกับความกว้างจอ) ไม่มีเงา/ปุ่ม/id ซ้ำ */
+        /* ===== หน้ารายงานบนจอ = A4 ตายตัว ย่อให้พอดีความกว้าง (เดิมยืดตามจอ → มือถือบีบเพี้ยน) ===== */
+        function fitA4() {
+            document.querySelectorAll('.a4-fit').forEach(box => {
+                const w = box.clientWidth; if (!w) return;
+                const s = Math.min(1, w / 794), inner = box.firstElementChild;
+                inner.style.transform = s < 1 ? `scale(${s})` : '';
+                box.style.height = Math.ceil(1123 * s) + 'px';
+            });
+        }
+        window.addEventListener('resize', fitA4);
+        if (window.ResizeObserver) document.addEventListener('DOMContentLoaded', () => { const ro = new ResizeObserver(fitA4); document.querySelectorAll('.a4-fit').forEach(b => ro.observe(b)); });
+
         function a4Page(view) {
             const c = view.cloneNode(true);
             c.removeAttribute('id');
@@ -1385,16 +1449,16 @@
     </script>
 
     <div id="signatureModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden flex items-center justify-center no-print backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
+        <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-[95%] max-w-md flex flex-col items-center transform transition-all">
             <h3 class="text-xl font-bold mb-4 text-gray-800">เซ็นลายเซ็นของคุณ</h3>
             <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 touch-none overflow-hidden relative w-full flex justify-center">
                 <canvas id="modalSignaturePad" width="340" height="160" class="cursor-crosshair bg-white"></canvas>
             </div>
-            <button type="button" id="useMySigBtn" onclick="useMySig()" class="hidden w-full mb-3 py-3 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 font-bold transition">ใช้ลายเซ็นของฉัน</button>
+            <button type="button" id="useMySigBtn" onclick="useMySig()" class="hidden w-full mb-3 py-3 bg-orange-50 border-2 border-orange-200 text-orange-700 rounded-xl hover:bg-orange-100 font-bold transition">ใช้ลายเซ็นของฉัน</button>
             <div class="flex gap-3 w-full">
                 <button type="button" onclick="clearModalSignature()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition">ล้าง (Clear)</button>
                 <button type="button" onclick="closeSignatureModal()" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold transition">ยกเลิก</button>
-                <button type="button" onclick="saveModalSignature()" class="flex-[1.5] py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-md transition">บันทึก (Save)</button>
+                <button type="button" onclick="saveModalSignature()" class="flex-[1.5] py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold shadow-md transition">บันทึก (Save)</button>
             </div>
         </div>
     </div>
