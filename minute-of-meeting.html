@@ -1247,6 +1247,8 @@
   .pe-tool{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#475569;}
   .pe-tool:hover{background:#f8fafc;}
   .pe-tool.active{background:var(--orange);color:white;border-color:transparent;}
+  .pe-tool-t{font:inherit;font-weight:800;font-size:17px;}
+  #peText{flex:1 1 100%;height:42px;border:1px solid var(--orange);border-radius:9px;padding:0 12px;font:inherit;font-size:16px;outline:0;}
   .pe-sep{width:1px;height:26px;background:var(--line);margin:0 2px;}
   .pe-colors{display:flex;gap:7px;align-items:center;}
   .pe-sw{width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;}
@@ -1780,7 +1782,7 @@
     </div>
     <div class="pe-modes">
       <button class="pe-mode active" id="peModeCrop">Crop / ซูม</button>
-      <button class="pe-mode" id="peModeDraw">วาด</button>
+      <button class="pe-mode" id="peModeDraw">วาด / ข้อความ</button>
     </div>
     <div class="pe-stage">
       <canvas id="peCanvas" width="480" height="360"></canvas>
@@ -1807,6 +1809,7 @@
       <button class="pe-tool" data-tool="circle" title="วงกลม">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg>
       </button>
+      <button class="pe-tool pe-tool-t" data-tool="text" title="กล่องข้อความ">T</button>
       <span class="pe-sep"></span>
       <span class="pe-colors">
         <button class="pe-sw active" data-color="#ef4444" style="background:#ef4444"></button>
@@ -1819,6 +1822,7 @@
       <button class="pe-tool" id="peDelete" title="ลบรูปทรงที่เลือก">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
       </button>
+      <input id="peText" placeholder="พิมพ์ข้อความ…" style="display:none" autocomplete="off">
     </div>
 
     <div class="pe-foot">
@@ -4746,7 +4750,7 @@ function closeDrawerIfMobile(){
 }
 
 /* ========================================================================
-   PHOTO EDITOR — crop/zoom + draw (arrow / rect / circle), movable & resizable.
+   PHOTO EDITOR — crop/zoom + draw (arrow / rect / circle / กล่องข้อความ), movable & resizable.
    Stores photo.original + photo.edit{crop, annotations} so edits are re-openable;
    photo.dataUrl holds the flattened result used on screen and in the PDF.
    ======================================================================== */
@@ -4761,6 +4765,9 @@ const PhotoEditor = (function(){
   let mode='crop', tool='select', color=COLORS[0];
   let crop={zoom:1, ox:0, oy:0}, baseScale=1;
   let anns=[], selected=-1, drag=null;
+  // กล่องข้อความ {type:'text', x1,y1 (มุมบนซ้าย), fs (ขนาดตัวอักษร = สัดส่วนความสูงรูป), text, color} — แบบเดียวกับ photo-editor.js
+  let txtEl=null, txtSel=-1;
+  const FONT = px => `700 ${px}px Sarabun, sans-serif`;
 
   function init(){
     modal = document.getElementById('photoEditorModal');
@@ -4777,6 +4784,8 @@ const PhotoEditor = (function(){
     document.getElementById('peCancel').onclick = close;
     document.getElementById('peSave').onclick = save;
     document.getElementById('peDelete').onclick = deleteSelected;
+    txtEl = document.getElementById('peText');
+    txtEl.oninput = ()=>{ if(selected>=0 && anns[selected].type==='text'){ anns[selected].text = txtEl.value; draw(); } };
 
     zoomSlider.addEventListener('input', ()=>{
       zoomAround(FRAME_W/2, FRAME_H/2, parseFloat(zoomSlider.value));
@@ -4807,7 +4816,7 @@ const PhotoEditor = (function(){
     anns = (photo.edit && Array.isArray(photo.edit.annotations))
       ? JSON.parse(JSON.stringify(photo.edit.annotations)) : [];
     const savedCrop = photo.edit && photo.edit.crop;
-    color = COLORS[0]; tool='select'; selected=-1; drag=null;
+    color = COLORS[0]; tool='select'; selected=-1; drag=null; txtSel=-1; txtEl.style.display='none';
     modal.querySelectorAll('.pe-sw').forEach(x=> x.classList.toggle('active', x.dataset.color===color));
     img = new Image();
     img.onload = ()=>{
@@ -4823,7 +4832,7 @@ const PhotoEditor = (function(){
     modal.classList.add('open');
   }
 
-  function close(){ modal.classList.remove('open'); target=null; img=null; anns=[]; selected=-1; drag=null; }
+  function close(){ modal.classList.remove('open'); target=null; img=null; anns=[]; selected=-1; drag=null; txtSel=-1; if(txtEl){ txtEl.style.display='none'; txtEl.blur(); } }
 
   function setMode(m){
     mode=m;
@@ -4864,14 +4873,30 @@ const PhotoEditor = (function(){
     return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
   }
 
+  function syncText(){
+    if(selected===txtSel) return;
+    if(txtSel>=0 && anns[txtSel] && anns[txtSel].type==='text' && !anns[txtSel].text.trim()){   // เลิกเลือกกล่องว่าง → ลบทิ้ง
+      anns.splice(txtSel,1); if(selected>txtSel) selected--;
+    }
+    txtSel = selected;
+    const isT = selected>=0 && anns[selected] && anns[selected].type==='text';
+    txtEl.style.display = isT ? '' : 'none';
+    if(isT) txtEl.value = anns[selected].text;
+  }
+  function tbox(c,a,W,H){
+    const px=a.fs*H; c.font=FONT(px);
+    const w=c.measureText(a.text||'พิมพ์ข้อความ').width, pad=px*0.35;
+    return { x:a.x1*W, y:a.y1*H, w:w+pad*2, h:px*1.5, px, pad };
+  }
   function draw(){
+    syncText();
     ctx.clearRect(0,0,FRAME_W,FRAME_H);
     ctx.fillStyle='#fff'; ctx.fillRect(0,0,FRAME_W,FRAME_H);
     if(img){
       const s = baseScale*crop.zoom;
       ctx.drawImage(img, crop.ox, crop.oy, img.naturalWidth*s, img.naturalHeight*s);
     }
-    anns.forEach(a=> drawShape(ctx, a, FRAME_W, FRAME_H, 3));
+    anns.forEach(a=> drawShape(ctx, a, FRAME_W, FRAME_H, 3, true));
     if(mode==='draw' && selected>=0){
       const pts = handlePoints(anns[selected]);
       ctx.save(); ctx.fillStyle='#fff'; ctx.strokeStyle='#0f2744'; ctx.lineWidth=2;
@@ -4880,11 +4905,16 @@ const PhotoEditor = (function(){
     }
   }
 
-  function drawShape(c,a,W,H,lw){
+  function drawShape(c,a,W,H,lw,editing){
     const x1=a.x1*W,y1=a.y1*H,x2=a.x2*W,y2=a.y2*H;
     c.save();
     c.strokeStyle=a.color; c.fillStyle=a.color; c.lineWidth=lw; c.lineJoin='round'; c.lineCap='round';
-    if(a.type==='rect'){
+    if(a.type==='text'){
+      const b=tbox(c,a,W,H);
+      c.fillStyle='rgba(255,255,255,.92)'; c.fillRect(b.x,b.y,b.w,b.h); c.strokeRect(b.x,b.y,b.w,b.h);
+      c.fillStyle=a.text?a.color:'#a1a1aa'; c.textBaseline='middle'; c.font=FONT(b.px);
+      if(a.text||editing) c.fillText(a.text||'พิมพ์ข้อความ', b.x+b.pad, b.y+b.h/2+b.px*0.04);
+    } else if(a.type==='rect'){
       c.strokeRect(Math.min(x1,x2),Math.min(y1,y2),Math.abs(x2-x1),Math.abs(y2-y1));
     } else if(a.type==='circle'){
       const cx=(x1+x2)/2, cy=(y1+y2)/2;
@@ -4901,6 +4931,7 @@ const PhotoEditor = (function(){
   }
 
   function handlePoints(a){
+    if(a.type==='text'){ const b=tbox(ctx,a,FRAME_W,FRAME_H); return [{x:b.x+b.w, y:b.y+b.h, h:'fs'}]; }
     const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
     if(a.type==='arrow') return [{x:x1,y:y1,h:'p1'},{x:x2,y:y2,h:'p2'}];
     return [{x:x1,y:y1,h:'p1'},{x:x2,y:y1,h:'x2y1'},{x:x2,y:y2,h:'p2'},{x:x1,y:y2,h:'x1y2'}];
@@ -4914,6 +4945,7 @@ const PhotoEditor = (function(){
     return null;
   }
   function bodyHit(a,cx,cy){
+    if(a.type==='text'){ const b=tbox(ctx,a,FRAME_W,FRAME_H); return cx>=b.x-4&&cx<=b.x+b.w+4&&cy>=b.y-4&&cy<=b.y+b.h+4; }
     const x1=a.x1*FRAME_W,y1=a.y1*FRAME_H,x2=a.x2*FRAME_W,y2=a.y2*FRAME_H;
     if(a.type==='arrow') return distToSeg(cx,cy,x1,y1,x2,y2)<=8;
     if(a.type==='rect'){
@@ -4938,6 +4970,11 @@ const PhotoEditor = (function(){
         else { const a=anns[selected]; drag={kind:'move',sx:x,sy:y,ox1:a.x1,oy1:a.y1,ox2:a.x2,oy2:a.y2}; }
       } else selected=-1;
       draw();
+    } else if(tool==='text'){
+      anns.push({type:'text', x1:clamp01(x/FRAME_W), y1:clamp01(y/FRAME_H), fs:0.08, text:'', color});
+      selected=anns.length-1; setTool('select');
+      const a=anns[selected]; drag={kind:'move',sx:x,sy:y,ox1:a.x1,oy1:a.y1};
+      draw(); txtEl.focus();
     } else {
       const nx=x/FRAME_W, ny=y/FRAME_H;
       anns.push({type:tool, x1:nx, y1:ny, x2:nx, y2:ny, color});
@@ -4953,7 +4990,10 @@ const PhotoEditor = (function(){
     const a=anns[selected]; if(!a) return;
     if(drag.kind==='move'){
       const dx=(x-drag.sx)/FRAME_W, dy=(y-drag.sy)/FRAME_H;
-      a.x1=drag.ox1+dx; a.y1=drag.oy1+dy; a.x2=drag.ox2+dx; a.y2=drag.oy2+dy;
+      a.x1=drag.ox1+dx; a.y1=drag.oy1+dy;
+      if(a.type!=='text'){ a.x2=drag.ox2+dx; a.y2=drag.oy2+dy; }
+    } else if(drag.handle==='fs'){
+      a.fs=Math.max(0.03, Math.min(0.2, (y/FRAME_H - a.y1)/1.5));
     } else {
       const nx=clamp01(x/FRAME_W), ny=clamp01(y/FRAME_H), h=drag.handle;
       if(h==='p1'){ a.x1=nx; a.y1=ny; }
@@ -4975,16 +5015,17 @@ const PhotoEditor = (function(){
     if(drag.kind==='pan') canvas.style.cursor = mode==='crop'?'grab':'default';
     drag=null; draw();
   }
-  function deleteSelected(){ if(selected>=0){ anns.splice(selected,1); selected=-1; draw(); } }
+  function deleteSelected(){ if(selected>=0){ anns.splice(selected,1); selected=-1; txtSel=-1; draw(); } }
 
   function save(){
     if(!target || !img) return;
+    anns = anns.filter(a=> a.type!=='text' || a.text.trim());
     const out=document.createElement('canvas'); out.width=OUT_W; out.height=OUT_H;
     const o=out.getContext('2d');
     o.fillStyle='#fff'; o.fillRect(0,0,OUT_W,OUT_H);
     const sx=OUT_W/FRAME_W, sy=OUT_H/FRAME_H, s=baseScale*crop.zoom;
     o.drawImage(img, crop.ox*sx, crop.oy*sy, img.naturalWidth*s*sx, img.naturalHeight*s*sy);
-    anns.forEach(a=> drawShape(o, a, OUT_W, OUT_H, 3*sx));
+    anns.forEach(a=> drawShape(o, a, OUT_W, OUT_H, 3*sx, false));
     const { cmt, which, sidx } = target;   // เก็บไว้ก่อน close() จะล้าง target
     const photo = currentPhoto(cmt.id, which, sidx) || target.photo;   // ตัวที่อยู่ใน state ตอนนี้ (อาจถูกรีเฟรชระหว่างแก้)
     photo.original = img.src;
