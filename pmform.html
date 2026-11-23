@@ -18,7 +18,34 @@
     <!-- SortableJS (สำหรับการลากวางสลับตำแหน่ง) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Fabric.js (ระบบวาดและจัดการรูปทรงอัจฉริยะ) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="photo-editor.js"></script>   <!-- แก้ไขรูป: Crop/ซูม + วาด + ข้อความ (แทน cropModal / fabric เดิม) -->
+    <style>
+        #pe{z-index:100000}
+        /* ปุ่มแก้ไขรูปปุ่มเดียว (ดินสอ) — ร่างเก่ามีปุ่ม Crop + "วาด" ฝังใน HTML → ซ่อน Crop / แทนเนื้อในปุ่มวาดด้วยดินสอ */
+        .photo-box .crop-photo-btn{display:none!important}
+        .photo-box .edit-photo-btn{width:34px!important;height:34px!important;padding:0!important;border-radius:50%!important;background:rgba(15,39,68,.8)!important;font-size:0!important;right:8px!important;bottom:8px!important}
+        .photo-box .edit-photo-btn > *{display:none!important}
+        .photo-box .edit-photo-btn::before{content:"";width:16px;height:16px;background:#fff;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center/contain no-repeat}
+        .photo-box .edit-photo-btn:hover{background:rgba(15,39,68,.95)!important}
+        @media (hover:none){.photo-box .edit-photo-btn:not(.hidden){opacity:1!important}}
+        .pe-orig{display:none!important}
+        /* ✍️ ลายเซ็นผู้จัดทำ: ยังไม่เซ็น+ไม่มีชื่อ → ไม่พิมพ์ทั้งช่อง · มีลายเซ็นแต่ไม่มีชื่อ → ไม่พิมพ์คำว่า "ชื่อผู้จัดทำ" */
+        .a4-wrapper.preparing-pdf #coverSignBox.sign-empty.name-empty { display: none !important; }
+        .a4-wrapper.preparing-pdf #coverSignBox.name-empty .print-text-span { visibility: hidden; }
+        /* 📱 จอแคบกว่า A4 (มือถือแนวตั้ง / iPad แนวตั้ง): ย่อหน้า A4 ทั้งหน้าให้พอดีจอ (fitA4ToScreen)
+           ใช้ zoom (ไม่ใช่ transform) → พื้นที่เลื่อนหดตาม ไม่มีที่ว่าง/เลื่อนข้าง · เฉพาะบนจอ
+           ปิดเองตอนเตรียมพิมพ์/ส่งออก Word (.preparing-pdf) เพราะต้องวัดขนาดจริง */
+        @media screen { html.pm-fit .a4-wrapper:not(.preparing-pdf) { zoom: var(--pm-fit, 1); } }
+        /* 📱 มือถือแนวตั้ง: ปุ่มด้านขวาของแถบเมนูเลื่อนซ้าย-ขวาได้ (เดิมล้นจอ กดปุ่ม Word / พิมพ์ ไม่ได้) */
+        @media (max-width: 639.98px) {
+            #topNavbar { padding: 8px; gap: 6px; }
+            #topNavbar > div:first-child { gap: 6px; flex-shrink: 0; }
+            #topNavbar > div:last-child { min-width: 0; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+            #topNavbar > div:last-child::-webkit-scrollbar { display: none; }
+            #topNavbar > div:last-child > * { flex-shrink: 0; }
+            #topNavbar > div:last-child > :first-child { margin-left: auto; }
+        }
+    </style>
     <!-- Google Fonts: Sarabun -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
@@ -764,6 +791,20 @@
 </head>
 <body class="flex h-screen overflow-hidden bg-slate-100">
 
+    <!-- ✍️ ช่องลายเซ็นผู้จัดทำรายงาน (หน้าปก มุมขวาล่าง) — ต้นแบบเดียว ใช้ทั้งงานใหม่และงานเก่า (ensureCoverSignBox) -->
+    <template id="coverSignTpl">
+        <div id="coverSignBox" class="absolute bottom-[80px] right-[80px] z-20 w-[220px] text-center sign-empty name-empty">
+            <div class="h-[70px] relative cursor-pointer group" onclick="openCoverSign()" title="เซ็นชื่อ">
+                <img id="coverSignImg" class="hidden absolute inset-0 w-full h-full object-contain object-bottom" alt="">
+                <div id="coverSignPlaceholder" class="no-print w-full h-full border-2 border-dashed border-slate-300 group-hover:border-orange-400 bg-slate-50/80 rounded-lg flex items-center justify-center text-xs font-bold text-slate-400 group-hover:text-orange-500"><i class="fa-solid fa-signature mr-1"></i>เซ็นชื่อผู้จัดทำ</div>
+            </div>
+            <div class="border-t border-slate-400 mt-1 pt-1">
+                <input type="text" id="coverSignName" class="paper-input w-full text-center text-[13px] font-bold text-slate-700 bg-transparent border-none outline-none focus:ring-0" placeholder="ชื่อผู้จัดทำ" oninput="this.setAttribute('value', this.value); updateCoverSignState()">
+                <div class="text-[11px] text-slate-500 font-semibold tracking-wide">Prepared by</div>
+            </div>
+        </div>
+    </template>
+
     <!-- 🌟 Tailwind Safelist -->
     <div class="hidden bg-slate-50 bg-slate-100 bg-slate-500 bg-slate-700 bg-slate-800 text-slate-400 text-slate-500 text-slate-600 text-slate-700 text-slate-800 border-slate-100 border-slate-200 border-slate-300 hover:bg-slate-100 hover:bg-slate-200 hover:text-slate-700 bg-orange-50 bg-orange-100 bg-orange-500 text-orange-400 text-orange-500 text-orange-600 text-orange-700 border-orange-100 border-orange-200 border-orange-300 hover:bg-orange-100 hover:bg-orange-200 hover:text-orange-700"></div>
 
@@ -1127,14 +1168,7 @@
                             </div>
                         </div>
 
-                        <!-- โลโก้ EcoXpert มุมขวาล่าง -->
-                        <div class="absolute bottom-[90px] right-[80px] z-20">
-                            <div class="w-[160px] h-[100px] rounded-lg flex items-center justify-center cursor-pointer relative group" onclick="document.getElementById('coverEcoLogoUpload').click()">
-                                <img id="coverEcoLogoImg" class="absolute inset-0 z-20 hidden w-full h-full object-contain object-right" style="border-radius: inherit;" />
-                                <div id="coverEcoLogoPlaceholder" class="text-xs font-bold text-slate-400 group-hover:text-green-500 no-print text-center px-2 py-2 border-2 border-dashed border-slate-300 group-hover:border-green-500 bg-slate-50/80 rounded-lg w-full h-full flex flex-col justify-center items-center"><i class="fa-solid fa-plus mb-1"></i>อัปโหลดโลโก้<br>EcoXpert</div>
-                                <input type="file" id="coverEcoLogoUpload" class="hidden" accept="image/*" onclick="event.stopPropagation()" onchange="previewCoverLogo(event, 'coverEcoLogoImg', 'coverEcoLogoPlaceholder')">
-                            </div>
-                        </div>
+                        <!-- ลายเซ็นผู้จัดทำรายงาน มุมขวาล่าง (แทนโลโก้ EcoXpert) — ใส่โดย ensureCoverSignBox จาก #coverSignTpl -->
 
                         <!-- กราฟิกด้านล่างสุด -->
                         <div class="absolute bottom-0 left-0 w-full h-[220px] pointer-events-none z-10">
@@ -1881,6 +1915,7 @@
 
             initDrawingCanvas();
             initTopNavbarFit();
+            initA4Fit();
 
             // 🌟 popup ตอนเปิดแอป — เลือกทำงานต่อ / เปิดงานเก่า / เริ่มงานใหม่
             //    ข้าม popup ถ้าเพิ่งกด "เริ่มงานใหม่" / "ล้างข้อมูล" (reload มาเอง)
@@ -1912,6 +1947,29 @@
             if (fits()) return;
             nav.classList.replace('nav-tight-1', 'nav-tight-2');
         }
+        // 📱 ย่อหน้า A4 (794px) ให้พอดีความกว้างพื้นที่รายงาน — จอกว้างพอ = ไม่ย่อ
+        function fitA4ToScreen() {
+            const area = document.getElementById('a4ScrollArea');
+            if (!area) return;
+            const w = area.clientWidth;
+            if (!w) return;
+            const f = Math.min(1, (w - 16) / 794);
+            const root = document.documentElement;
+            if (f < 0.999) {
+                root.style.setProperty('--pm-fit', f.toFixed(4));
+                root.classList.add('pm-fit');
+            } else {
+                root.classList.remove('pm-fit');
+                root.style.removeProperty('--pm-fit');
+            }
+        }
+        function initA4Fit() {
+            fitA4ToScreen();
+            const area = document.getElementById('a4ScrollArea');
+            if (window.ResizeObserver && area) new ResizeObserver(fitA4ToScreen).observe(area);
+            else window.addEventListener('resize', fitA4ToScreen);
+        }
+
         function initTopNavbarFit() {
             const nav = document.getElementById('topNavbar');
             if (!nav) return;
@@ -4335,6 +4393,7 @@
             });
 
             step('patchOldPhotoBoxes', patchOldPhotoBoxes);
+            step('coverSignBox', ensureCoverSignBox);   // ช่องโลโก้ EcoXpert เดิม → ช่องลายเซ็นผู้จัดทำ
             step('ensureDeleteButtons', ensureDeleteButtons);
 
             step('cover', () => {
@@ -4493,7 +4552,7 @@
                 }
 
                 // ✂️ Patch ปุ่ม Crop ให้กับ photo-box ที่ยังไม่มี
-                if (!box.querySelector('.crop-photo-btn')) {
+                if (false && !box.querySelector('.crop-photo-btn')) {   // ไม่ใช้แล้ว — รวมเป็นปุ่มดินสอปุ่มเดียว
                     const imgInp = box.querySelector('input[type="file"]');
                     if (imgInp) {
                         const parts = imgInp.id.split('_');
@@ -6551,15 +6610,8 @@
                     <i class="fa-solid fa-trash-can mr-1"></i> ลบรูป
                 </div>
                 
-                <!-- 🌟 เพิ่มปุ่มสำหรับวาดรูปลงบนรูปภาพ 🌟 -->
-                <div class="edit-photo-btn no-print hidden absolute bottom-2 right-2 bg-indigo-600 text-white rounded-lg p-2 flex items-center justify-center font-bold text-xs cursor-pointer z-20 hover:bg-indigo-700 shadow-md transition-all group-hover:opacity-100 opacity-0" onclick="event.stopPropagation(); openDrawingModal('prev_${prefix}_${i}')">
-                    <i class="fa-solid fa-paintbrush mr-1"></i> วาด
-                </div>
-
-                <!-- ✂️ ปุ่ม Crop รูปภาพ -->
-                <div class="crop-photo-btn no-print hidden" onclick="event.stopPropagation(); openCropModal('prev_${prefix}_${i}')" title="ครอบตัดรูป">
-                    <i class="fa-solid fa-crop-simple"></i>
-                </div>
+                <!-- ✏️ ปุ่มแก้ไขรูป (Crop / วาด / ข้อความ — photo-editor.js) -->
+                <div class="edit-photo-btn no-print hidden absolute bottom-2 right-2 flex items-center justify-center cursor-pointer z-20 shadow-md transition-all group-hover:opacity-100 opacity-0" title="แก้ไขรูป" onclick="event.stopPropagation(); openPhotoEditor('prev_${prefix}_${i}')"></div>
             `;
             grid.appendChild(box);
             ensurePhotoGridSortable(grid);
@@ -6672,6 +6724,7 @@
                             processNextFile();
                             return;
                         }
+                        clearPhotoEdit(imgElement);
                         imgElement.style.backgroundImage = `url('${compressedBase64}')`;
                         imgElement.classList.remove('hidden');
 
@@ -6710,6 +6763,7 @@
                 compressImage(file, (compressedBase64) => {
                     if (!compressedBase64) { showUnreadableImages([file.name]); return; }
                     const imgElement = document.getElementById(previewId);
+                    clearPhotoEdit(imgElement);
                     imgElement.style.backgroundImage = `url('${compressedBase64}')`;
                     imgElement.classList.remove('hidden');
                     
@@ -6742,6 +6796,7 @@
         function removeImg(previewId, inputId) {
             const imgElement = document.getElementById(previewId);
             forgetDrivePhoto(imgElement);
+            clearPhotoEdit(imgElement);
             imgElement.style.backgroundImage = "";
             imgElement.classList.add('hidden');
             const inputElement = document.getElementById(inputId);
@@ -7109,7 +7164,7 @@
             startOffsetY: 0
         };
 
-        function openCropModal(previewId) {
+        function openCropModalLegacy(previewId) {   // เดิม — ไม่ใช้แล้ว (ใช้ photo-editor.js)
             const imgElement = document.getElementById(previewId);
             if (!imgElement) return;
             const bgImage = imgElement.style.backgroundImage;
@@ -7397,6 +7452,199 @@
             src.src = bg.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
         }
 
+        // ✏️ แก้ไขรูป (photo-editor.js) — ปุ่มดินสอปุ่มเดียว: Crop/ซูม + วาด + ข้อความ · ผลลัพธ์ 4:3 กว้าง 1200 (เท่า compressImage)
+        //   เปิดแก้ซ้ำได้ (ย้าย/ลบเส้น/ข้อความเดิมได้ ไม่เสียความคม) — แบบเดียวกับใบเคลม:
+        //     รูปต้นฉบับ = <div class="pe-orig"> ซ่อนในกล่องรูป (ร่าง/ระบบทีมเก็บเป็นรูปอีกรูปเอง) · ค่าที่แก้ = data-pe-edit บนรูป
+        //   เปลี่ยน/ลบรูป → clearPhotoEdit ล้างทั้งคู่
+        //   openCropModal / openDrawingModal คงชื่อไว้ เพราะร่าง/งานเก่าเก็บ onclick ชื่อนี้ใน HTML
+        function photoOrigEl(el) { const box = el.closest('.photo-box') || el.parentElement; return box ? box.querySelector(':scope > .pe-orig') : null; }
+        function clearPhotoEdit(el) {
+            if (!el) return;
+            el.removeAttribute('data-pe-edit');
+            const o = photoOrigEl(el);
+            if (o) { forgetDrivePhoto(o); o.remove(); }
+        }
+        function openPhotoEditor(previewId, mode) {
+            const el = document.getElementById(previewId);
+            if (!el || !window.PhotoEditor) return;
+            const cur = dataUrlFromAttr(el, photoAttr(el)) || el.style.backgroundImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+            if (!cur || cur === 'none') return;
+            let edit = null;
+            try { edit = JSON.parse(el.getAttribute('data-pe-edit') || 'null'); } catch (_) {}
+            const origEl = photoOrigEl(el);
+            const orig = origEl ? (dataUrlFromAttr(origEl, photoAttr(origEl)) || '') : '';
+            const tm = window.pmTeam && pmTeam.team();
+            const LOADING = tm && tm.LOADING;
+            if ((LOADING && (cur === LOADING || orig === LOADING)) || (origEl && edit && !orig)) {
+                showAlert({ title: 'รอรูปโหลดให้เสร็จก่อน', message: 'แล้วกดแก้ไขอีกครั้ง', variant: 'warning' });
+                return;
+            }
+            const hasOrig = !!(orig && edit);
+            PhotoEditor.open({
+                src: hasOrig ? orig : cur, edit: hasOrig ? edit : null,
+                mode, aspect: 4 / 3, outW: 1200,
+                onSave(url, ed) {
+                    if (!hasOrig) {   // แก้ครั้งแรก → เก็บรูปปัจจุบันเป็นต้นฉบับ
+                        if (origEl) origEl.remove();
+                        const o = document.createElement('div');
+                        o.className = 'pe-orig no-print';
+                        o.style.backgroundImage = `url('${cur}')`;
+                        el.insertAdjacentElement('afterend', o);
+                    }
+                    el.setAttribute('data-pe-edit', JSON.stringify(ed));
+                    el.style.backgroundImage = `url('${url}')`;
+                    markUnsaved();   // เปลี่ยนแค่ style → observer ไม่เห็น ต้องบอกเอง
+                },
+                onError() { showAlert({ title: 'เปิดรูปไม่ได้', message: 'ลองใหม่อีกครั้ง', variant: 'danger' }); }
+            });
+        }
+
+        // ✍️ ลายเซ็นผู้จัดทำรายงาน (หน้าปก) — แตะช่อง → วาดด้วยนิ้ว / ใช้ลายเซ็นของฉัน (โปรไฟล์) / ล้าง
+        //   รูปลายเซ็น = <img id="coverSignImg"> → ร่าง/ระบบทีมเก็บเป็นรูปหนึ่งรูปเอง · ชื่อ = input (value attribute)
+        //   ลายเซ็นโปรไฟล์ = ตาราง qc_signatures (อัปโหลดที่เมนูบัญชีหน้าแรก) — แอพนี้แค่อ่าน · ไม่ใส่ให้อัตโนมัติ (กดเลือกเอง)
+        function ensureCoverSignBox() {
+            const cover = document.getElementById('coverPage');
+            if (!cover) return;
+            const eco = document.getElementById('coverEcoLogoImg');   // งานเก่า: ช่องโลโก้ EcoXpert → แทนด้วยช่องลายเซ็น
+            const ecoBlock = eco && eco.closest('#coverPage > .absolute');
+            if (ecoBlock) ecoBlock.remove();
+            if (!document.getElementById('coverSignBox')) {
+                const tpl = document.getElementById('coverSignTpl');
+                if (!tpl) return;
+                const g = cover.querySelector(':scope > .absolute.bottom-0.pointer-events-none');
+                cover.insertBefore(tpl.content.cloneNode(true), g || null);
+            }
+            updateCoverSignState();
+        }
+        function updateCoverSignState() {
+            const box = document.getElementById('coverSignBox');
+            if (!box) return;
+            const img = document.getElementById('coverSignImg'), ph = document.getElementById('coverSignPlaceholder');
+            const name = document.getElementById('coverSignName');
+            const has = !!(img && img.getAttribute('src'));
+            if (img) img.classList.toggle('hidden', !has);
+            if (ph) ph.classList.toggle('hidden', has);
+            box.classList.toggle('sign-empty', !has);
+            box.classList.toggle('name-empty', !(name && name.value.trim()));
+        }
+        function setCoverSign(img, name) {
+            const im = document.getElementById('coverSignImg');
+            if (!im) return;
+            if (img) im.setAttribute('src', img); else im.removeAttribute('src');
+            if (name != null) {
+                const n = document.getElementById('coverSignName');
+                if (n) { n.value = name; n.setAttribute('value', name); }
+            }
+            updateCoverSignState();
+            markUnsaved();   // รูปเปลี่ยน = การแก้ (observer ไม่เห็น src ของ img ต้องบอกเอง)
+        }
+
+        // ลายเซ็นโปรไฟล์ของบัญชีที่ล็อกอิน (เก็บแคชในเครื่องชื่อเดียวกับแอพอื่น → ใช้ได้แม้ออฟไลน์)
+        let myProfileSig = null;
+        function sigUserId() {
+            const tm = window.pmTeam && pmTeam.team();
+            if (tm && tm.user && tm.user.id) return tm.user.id;
+            try {
+                let s = JSON.parse(localStorage.getItem('sb-axzikauvpsbzpwxyjjlj-auth-token') || 'null');
+                if (s && s.currentSession) s = s.currentSession;
+                return (s && s.user && s.user.id) || null;
+            } catch (_) { return null; }
+        }
+        async function loadMyProfileSig() {
+            const uid = sigUserId();
+            if (!uid) { myProfileSig = null; return null; }
+            const key = 'avatar_qc_sig_' + uid;
+            try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && c.img) myProfileSig = c; } catch (_) {}
+            const tm = window.pmTeam && pmTeam.team();
+            const sb = tm && tm.client;
+            if (!sb || !navigator.onLine) return myProfileSig;
+            try {
+                const { data, error } = await sb.from('qc_signatures').select('name, img').eq('user_id', uid).maybeSingle();
+                if (error) { console.warn('[qc_signatures]', error.message); return myProfileSig; }
+                myProfileSig = data && data.img ? { name: data.name || '', img: data.img } : null;
+                try { myProfileSig ? localStorage.setItem(key, JSON.stringify(myProfileSig)) : localStorage.removeItem(key); } catch (_) {}
+            } catch (e) { console.warn('[qc_signatures]', e); }
+            return myProfileSig;
+        }
+
+        async function openCoverSign() {
+            const imgEl = document.getElementById('coverSignImg');
+            if (!imgEl) return;
+            const bg = document.createElement('div');
+            bg.className = 'fixed inset-0 z-[100000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 no-print';
+            bg.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[440px] overflow-hidden">
+                    <div class="px-4 py-3 bg-slate-800 text-white font-bold flex items-center justify-between">
+                        <span>ลายเซ็นผู้จัดทำรายงาน</span>
+                        <button type="button" data-x class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-xl leading-none">×</button>
+                    </div>
+                    <div class="p-4">
+                        <div class="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden" style="touch-action:none">
+                            <canvas data-pad style="display:block;width:100%;height:170px"></canvas>
+                        </div>
+                        <button type="button" data-mine class="hidden w-full mt-3 py-2.5 rounded-xl bg-blue-50 border-2 border-blue-200 text-blue-700 hover:bg-blue-100 font-bold"><i class="fa-solid fa-user-pen mr-1"></i>ใช้ลายเซ็นของฉัน</button>
+                        <div class="flex gap-2 mt-3">
+                            <button type="button" data-clear class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-bold">ล้าง</button>
+                            <button type="button" data-save class="flex-[2] py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow">บันทึก</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(bg);
+            const close = () => bg.remove();
+            bg.querySelector('[data-x]').onclick = close;
+            bg.addEventListener('click', e => { if (e.target === bg) close(); });
+
+            const cv = bg.querySelector('[data-pad]'), ratio = Math.max(window.devicePixelRatio || 1, 2);
+            cv.width = cv.clientWidth * ratio; cv.height = cv.clientHeight * ratio;
+            const ctx = cv.getContext('2d');
+            ctx.scale(ratio, ratio); ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1e3a8a';
+            let drawing = false, dirty = false, cleared = false;
+            const cur = imgEl.getAttribute('src');
+            if (cur) { const im = new Image(); im.onload = () => { const w = cv.clientWidth, h = cv.clientHeight, r = Math.min(w / im.width, h / im.height); ctx.drawImage(im, (w - im.width * r) / 2, (h - im.height * r) / 2, im.width * r, im.height * r); }; im.src = cur; }
+            const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+            cv.onpointerdown = e => {
+                if (cur && !dirty && !cleared) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); cleared = true; }
+                drawing = true; cv.setPointerCapture(e.pointerId);
+                const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + .1, y + .1); ctx.stroke(); dirty = true;
+            };
+            cv.onpointermove = e => { if (!drawing) return; const [x, y] = pos(e); ctx.lineTo(x, y); ctx.stroke(); };
+            cv.onpointerup = cv.onpointercancel = () => { drawing = false; };
+            bg.querySelector('[data-clear]').onclick = () => { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); dirty = false; cleared = true; };
+            bg.querySelector('[data-save]').onclick = () => {
+                close();
+                if (dirty) setCoverSign(trimSignCanvas(cv));
+                else if (cleared) setCoverSign(null);
+            };
+
+            // ปุ่ม "ใช้ลายเซ็นของฉัน" — โผล่เมื่อบัญชีนี้มีลายเซ็นในโปรไฟล์ (แคชในเครื่องขึ้นก่อน แล้วอัปเดตจากระบบ)
+            const mine = bg.querySelector('[data-mine]');
+            const showMine = sig => { mine.classList.toggle('hidden', !(sig && sig.img)); };
+            mine.onclick = () => {
+                if (!myProfileSig) return;
+                const n = document.getElementById('coverSignName');
+                close();
+                setCoverSign(myProfileSig.img, (n && n.value.trim()) || !myProfileSig.name ? null : myProfileSig.name);
+            };
+            showMine(myProfileSig);
+            loadMyProfileSig().then(sig => { if (bg.isConnected) showMine(sig); });
+        }
+        // ตัดขอบว่างของลายเซ็นที่วาด → PNG พื้นใส
+        function trimSignCanvas(cv) {
+            const ctx = cv.getContext('2d'), w = cv.width, h = cv.height, px = ctx.getImageData(0, 0, w, h).data;
+            let x0 = w, y0 = h, x1 = -1, y1 = -1;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                if (px[(y * w + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+            }
+            if (x1 < 0) return null;
+            const pad = 6, cx = Math.max(0, x0 - pad), cy = Math.max(0, y0 - pad), cw = Math.min(w, x1 + pad + 1) - cx, ch = Math.min(h, y1 + pad + 1) - cy;
+            const out = document.createElement('canvas'); out.width = cw; out.height = ch;
+            out.getContext('2d').drawImage(cv, cx, cy, cw, ch, 0, 0, cw, ch);
+            return out.toDataURL('image/png');
+        }
+
+        function openCropModal(previewId) { openPhotoEditor(previewId, 'crop'); }
+        function openDrawingModal(previewId) { openPhotoEditor(previewId); }
+
         // 🌟 🌟 ระบบกระดานวาดรูปและรูปทรง (Fabric.js Image Annotation) 🌟 🌟
         function initDrawingCanvas() {
             // ดักจับปุ่มลบรูปทรงบนคีย์บอร์ด (Delete / Backspace)
@@ -7412,7 +7660,7 @@
             });
         }
 
-        function openDrawingModal(previewId) {
+        function openDrawingModalLegacy(previewId) {   // เดิม (fabric) — ไม่ใช้แล้ว
             currentPreviewIdToEdit = previewId;
             const modal = document.getElementById('drawingModal');
             
@@ -8920,15 +9168,22 @@
             html += `<tr><td colspan=2 style='padding:0 0 22pt 0;font-size:1pt'>&nbsp;</td></tr>`;
             html += `</table>`;
 
-            // โลโก้มาตรฐาน (ซ้ายล่าง) / EcoXpert (ขวาล่าง)
+            // โลโก้มาตรฐาน (ซ้ายล่าง) / ลายเซ็นผู้จัดทำ (ขวาล่าง)
             const iso = document.getElementById('coverIsoLogoImg');
-            const eco = document.getElementById('coverEcoLogoImg');
+            const sig = document.getElementById('coverSignImg');
+            const sigName = (document.getElementById('coverSignName')?.value || '').trim();
             const isoOk = iso && !iso.classList.contains('hidden') && iso.getAttribute('src');
-            const ecoOk = eco && !eco.classList.contains('hidden') && eco.getAttribute('src');
-            if (isoOk || ecoOk) {
+            const sigOk = sig && sig.getAttribute('src');
+            if (isoOk || sigOk || sigName) {
                 html += `<table cellpadding=0 cellspacing=0 width="100%" style='border-collapse:collapse;width:100%;margin-top:30pt'><tr>`;
                 html += `<td width="50%" valign=bottom style='padding:0 0 0 60pt;vertical-align:bottom;text-align:left'><p style='margin:0;line-height:normal'>${isoOk ? wordImage(iso, ctx, 280, 80) : '&nbsp;'}</p></td>`;
-                html += `<td width="50%" valign=bottom style='padding:0 60pt 0 0;vertical-align:bottom;text-align:right'><p style='margin:0;text-align:right;line-height:normal'>${ecoOk ? wordImage(eco, ctx, 160, 100) : '&nbsp;'}</p></td>`;
+                let right = '&nbsp;';
+                if (sigOk || sigName) {
+                    right = `<p style='margin:0;text-align:center;line-height:normal'>${sigOk ? wordImage(sig, ctx, 220, 70) : '&nbsp;'}</p>`
+                        + `<p style='margin:2pt 0 0 0;text-align:center;line-height:normal;border-top:solid #94a3b8 .75pt;padding-top:2pt'><span style='${F};font-size:${wordSz(13)};font-weight:bold;color:#334155'>${sigName ? wordEsc(sigName) : '&nbsp;'}</span></p>`
+                        + `<p style='margin:0;text-align:center;line-height:normal'><span style='${F};font-size:${wordSz(11)};color:#64748b'>Prepared by</span></p>`;
+                }
+                html += `<td width="50%" valign=bottom style='padding:0 60pt 0 0;vertical-align:bottom;text-align:center'>${right}</td>`;
                 html += `</tr></table>`;
             }
             return html;
@@ -10816,6 +11071,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
             }
             // ใช้ aiCompressLow (เล็กกว่า + คุณภาพต่ำกว่า) เพื่อลดแลค
             const dataUrl = await aiCompressLow(file);
+            clearPhotoEdit(emptyImg);
             emptyImg.style.backgroundImage = `url('${dataUrl}')`;
             emptyImg.classList.remove('hidden');
             const box = emptyImg.closest('.photo-box');
@@ -11826,6 +12082,7 @@ Sections ที่ใช้ได้: ${activeCats.join(', ')}
         </div>
     </div>
 
+<script>ensureCoverSignBox();</script>
 <script src="pm-team.js"></script>   <!-- ต่อ pmform เข้า avatar-team.js (แทนร่าง/ประวัติ/avatar-cloud เดิม) -->
 </body>
 </html>

@@ -3,10 +3,13 @@
    ใช้:  PhotoEditor.open({ src, edit, onSave(dataUrl, edit) })
      src   = รูปต้นฉบับ (dataURL / URL) — เปิดแก้ซ้ำจากต้นฉบับเสมอ ไม่เสียความคม
      edit  = ค่าที่แก้ครั้งก่อน { crop, anns } (ถ้ามี)
-     onSave(dataUrl, edit) = ผลลัพธ์ JPEG 4:3 (1024×768) + ค่าที่แก้ (เก็บไว้เปิดแก้ซ้ำ) */
+     onSave(dataUrl, edit) = ผลลัพธ์ JPEG 4:3 (1024×768) + ค่าที่แก้ (เก็บไว้เปิดแก้ซ้ำ)
+   ตัวเลือก (ไม่ใส่ = ค่าเดิม): aspect = สัดส่วนกว้าง/สูง (ค่าเดิม 4/3) · outW = ความกว้างผลลัพธ์ (ค่าเดิม 1024)
+     mode = 'crop' | 'draw' หน้าแรกที่เปิด · fit = 'cover' วางรูปเต็มกรอบตอนเปิดครั้งแรก (ค่าเดิม = เห็นทั้งรูป) */
 (function (global) {
   'use strict';
-  const FW = 480, FH = 360, OUT_W = 1024, OUT_H = 768, HANDLE = 13;
+  const FW = 480, HANDLE = 13;
+  let FH = 360, OUT_W = 1024, OUT_H = 768;   // เปลี่ยนตาม aspect / outW ตอน open
   const FONT = px => `700 ${px}px Sarabun, sans-serif`;
   let built = false, root, cv, ctx, zoom, txt, img = null, cfg = null, mode = 'crop', tool = 'select', color = '#ef4444';
   let crop = { zoom: 1, ox: 0, oy: 0 }, base = 1, anns = [], sel = -1, drag = null;
@@ -94,12 +97,18 @@
     cfg = o || {};
     anns = cfg.edit && Array.isArray(cfg.edit.anns) ? JSON.parse(JSON.stringify(cfg.edit.anns)) : [];
     sel = -1; drag = null; tool = 'select';
+    const asp = cfg.aspect > 0 ? cfg.aspect : 4 / 3;
+    FH = Math.round(FW / asp); OUT_W = cfg.outW > 0 ? Math.round(cfg.outW) : 1024; OUT_H = Math.round(OUT_W / asp);
+    cv.width = FW; cv.height = FH;
     img = new Image();
     img.onload = () => {
       base = Math.min(FW / img.naturalWidth, FH / img.naturalHeight);
       if (cfg.edit && cfg.edit.crop) crop = { ...cfg.edit.crop };
-      else { crop = { zoom: 1, ox: (FW - img.naturalWidth * base) / 2, oy: (FH - img.naturalHeight * base) / 2 }; }
-      zoom.value = crop.zoom; setMode('crop'); root.classList.add('open');
+      else {
+        const z = cfg.fit === 'cover' ? Math.min(4, Math.max(FW / img.naturalWidth, FH / img.naturalHeight) / base) : 1;
+        crop = { zoom: z, ox: (FW - img.naturalWidth * base * z) / 2, oy: (FH - img.naturalHeight * base * z) / 2 };
+      }
+      zoom.value = crop.zoom; setMode(cfg.mode === 'draw' ? 'draw' : 'crop'); root.classList.add('open');
     };
     img.onerror = () => { img = null; if (cfg.onError) cfg.onError(); };
     img.src = cfg.src;

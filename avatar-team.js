@@ -1778,6 +1778,7 @@ const api = {
   // สถานะ
   get job() { return job; },
   get user() { return currentUser; },
+  get client() { return sb; },   // ใช้อ่านตารางอื่นของบัญชีเดียวกัน (เช่น qc_signatures ลายเซ็นโปรไฟล์)
   isOnline, hasDriveToken,
   // รายการ
   item: id => items.get(id) || null,
