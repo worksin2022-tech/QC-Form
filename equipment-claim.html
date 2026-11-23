@@ -26,7 +26,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="avatar-cloud.js"></script>
-    <script src="avatar-team.js"></script>   <!-- ระบบทีมแบบ MoM -->
+    <script src="avatar-team.js"></script>
+    <script src="photo-editor.js"></script>   <!-- แก้ไขรูป: Crop / วาด / ข้อความ -->   <!-- ระบบทีมแบบ MoM -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -526,13 +527,30 @@
             claimUploadedImages.forEach(img => {
                 const div = document.createElement('div');
                 div.className = 'relative aspect-square rounded-2xl overflow-hidden ring-1 ring-slate-200 bg-slate-100';
-                div.innerHTML = `<img src="${img.data}" class="w-full h-full object-cover"><button type="button" onclick="removeClaimImage(${img.id})" title="ลบรูป" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-rose-600 shadow flex items-center justify-center transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+                div.innerHTML = `<img src="${img.data}" onclick="claimEditImage(${img.id})" title="แตะเพื่อแก้ไขรูป" class="w-full h-full object-cover cursor-pointer"><span class="absolute left-2 bottom-2 inline-flex items-center gap-1 bg-slate-900/75 text-white text-xs font-bold rounded-full pl-2 pr-2.5 py-1 pointer-events-none"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>แก้ไข</span><button type="button" onclick="removeClaimImage(${img.id})" title="ลบรูป" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-rose-600 shadow flex items-center justify-center transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2.6" d="M6 6l12 12M18 6L6 18"/></svg></button>`;
                 container.appendChild(div);
             });
             claimRoomUpdate(false);
             if (claimUploadedImages.length > claimImgCount && claimRoomLast.over > 0 && window.team && !teamApplying) team.toast('รูปที่เพิ่มทำให้เกินหน้ากระดาษ — ตัดข้อความปัญหาที่พบลง หรือลบรูป');
             claimImgCount = claimUploadedImages.length;
         }
+
+        /* แตะรูป → แก้ไข (Crop / วาด / ข้อความ — photo-editor.js) · เก็บต้นฉบับ (orig) + ค่าที่แก้ (edit) ไว้ เปิดแก้ซ้ำได้ไม่เสียความคม
+           orig / edit เป็นฟิลด์ของรูปนั้น → ระบบทีมเก็บ orig เป็นรูปอีกช่อง + edit ในข้อมูลรายการ (ไม่ต้องแก้ avatar-team) */
+        function editFormImage(list, id, rerender) {
+            const im = list.find(x => x.id === id);
+            if (!im || !window.PhotoEditor) return;
+            const LOADING = window.team ? team.LOADING : null;
+            const src = im.orig || im.data;
+            const say = m => (window.team ? team.toast(m) : alert(m));
+            if (!src || src === LOADING || im.data === LOADING) { say('รอรูปโหลดให้เสร็จก่อน'); return; }
+            PhotoEditor.open({
+                src, edit: im.orig ? im.edit : null,
+                onSave(url, edit) { if (!im.orig) im.orig = im.data; im.data = url; im.edit = edit; rerender(); },
+                onError() { say('เปิดรูปไม่ได้'); }
+            });
+        }
+        function claimEditImage(id) { editFormImage(claimUploadedImages, id, renderClaimImagePreviews); }
 
         function removeClaimImage(id) {
             claimUploadedImages = claimUploadedImages.filter(img => img.id !== id);
