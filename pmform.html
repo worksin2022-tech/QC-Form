@@ -530,6 +530,9 @@
         .delete-photo-btn { position: absolute; top: 8px; right: 8px; background: #ef4444; color: white; border-radius: 8px; padding: 4px 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .photo-box:hover .delete-photo-btn { opacity: 1; }
         .delete-photo-btn:hover { background: #dc2626; transform: scale(1.05); }
+        .photo-box:has(> .photo-image.hidden) > .delete-photo-btn { font-size: 0; }
+        .photo-box:has(> .photo-image.hidden) > .delete-photo-btn > i { font-size: 12px; }
+        .photo-box:has(> .photo-image.hidden) > .delete-photo-btn::after { content: "ลบช่อง"; font-size: 12px; }
 
         .edit-photo-btn { position: absolute; bottom: 8px; right: 8px; background: #4f46e5; color: white; border-radius: 8px; padding: 4px 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 20; opacity: 0; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .photo-box:hover .edit-photo-btn { opacity: 1; }
@@ -6795,6 +6798,9 @@
 
         function removeImg(previewId, inputId) {
             const imgElement = document.getElementById(previewId);
+            // ช่องรูปว่างอยู่แล้ว → ลบทั้งช่องออก (ปุ่มขึ้นว่า "ลบช่อง")
+            const emptyBox = imgElement && imgElement.classList.contains('hidden') && imgElement.closest('.photo-box');
+            if (emptyBox) { emptyBox.remove(); markUnsaved(); return; }
             forgetDrivePhoto(imgElement);
             clearPhotoEdit(imgElement);
             imgElement.style.backgroundImage = "";
