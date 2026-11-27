@@ -303,6 +303,8 @@ function patchPhotos(el, curImgs, want) {
 /* บล็อกบนจอที่ยังไม่มี id ในระบบ = เพิ่มแล้วยังไม่ได้ส่ง (เช่น เพิ่มตอนกำลังเอาของจากเครื่องอื่นลงจอ) */
 const unsentOnScreen = () => [...W().querySelectorAll(SUB_BLOCK_SELECTOR)].some(b => !b.dataset.tid);
 function onRender() {
+  // กำลังเตรียม/พิมพ์ PDF → ห้ามวาดทับ DOM ที่เตรียมพิมพ์ไว้ ดึงใหม่หลังพิมพ์เสร็จ
+  if (inPrintMode()) { whenPrintDone(() => team.refresh()); return; }
   const j = team.job, jid = j ? j.id : null;
   // งานเดิม + มีการแก้บนจอที่ยังไม่ส่ง → ส่งก่อน แล้วค่อยดึงของล่าสุด (ไม่งั้นประกอบหน้าใหม่แล้วบล็อกที่เพิ่งเพิ่มหาย)
   if (jid && jid === pulledJob && (dirty || syncing || unsentOnScreen())) {
@@ -511,8 +513,14 @@ importData = event => {
 const wrapExport = fn => async function (...args) {
   if (team && !(await team.ensurePhotosLoaded(t => { if (t) showSaveStatus('<i class="fa-solid fa-cloud-arrow-down"></i> ' + t, false); }))) return;
   if (team) team.suspend();
-  try { return await fn.apply(this, args); } finally { if (team) team.resume(); }
+  try { return await fn.apply(this, args); } finally { if (team) whenPrintDone(() => team.resume()); }
 };
+// generateNativePDF คืนค่าทันที แต่ window.print() ยิงทีหลัง (setTimeout) — ถ้า resume ตอนนั้นเลย
+// realtime ที่ค้างอยู่ (เช่น อัปรูปขึ้น Drive เสร็จ) จะวาดบล็อกใหม่ทับ DOM ที่เตรียมพิมพ์ → กรอบรูปว่างโผล่ใน PDF
+function whenPrintDone(cb) {
+  if (!inPrintMode()) return cb();
+  const t = setInterval(() => { if (!inPrintMode()) { clearInterval(t); cb(); } }, 500);
+}
 exportData = wrapExport(exportData);
 generateNativePDF = wrapExport(generateNativePDF);
 exportToWord = wrapExport(exportToWord);

@@ -8000,6 +8000,15 @@
                 }
             });
 
+            // แถว Standard Curve (Trip Unit) ที่ไม่ได้ใส่รูป → ซ่อนทั้งแถว ไม่งั้นเหลือกรอบว่างสูง 190px ใน PDF
+            document.querySelectorAll('[id^="prev_trip_curve_"].hidden').forEach(img => {
+                const row = img.closest('tr');
+                if (!row || row.closest('.hidden')) return;
+                row.classList.add('tmp-no-print');
+                row.setAttribute('data-orig-display', row.style.display || '');
+                row.style.setProperty('display', 'none', 'important');
+            });
+
             const webFooter = document.getElementById('webFooter');
             if (webFooter) webFooter.style.display = 'none';
 
