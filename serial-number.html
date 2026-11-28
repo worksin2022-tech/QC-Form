@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serial Number</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+    <meta name="theme-color" content="#1f2937">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background: #f3f4f6; }
+        .tab-btn[aria-selected="true"] { background: #fff; color: #ea580c; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .pfx { display:inline-flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; border-radius:.5rem; font-weight:700; font-size:.8rem; }
+        .pfx-M { background:#dbeafe; color:#1d4ed8; } .pfx-D { background:#dcfce7; color:#15803d; } .pfx-C { background:#fef3c7; color:#b45309; }
+        .seg button { padding:.35rem .7rem; font-weight:700; font-size:.85rem; border:1px solid #e2e8f0; background:#fff; color:#64748b; }
+        .seg button:first-child { border-radius:.6rem 0 0 .6rem; } .seg button:last-child { border-radius:0 .6rem .6rem 0; }
+        .seg button + button { border-left:none; }
+        .seg button.on-M { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+        .seg button.on-D { background:#15803d; color:#fff; border-color:#15803d; }
+        .seg button.on-C { background:#b45309; color:#fff; border-color:#b45309; }
+        .seg button.on-all { background:#334155; color:#fff; border-color:#334155; }
+        tr.void td { color:#94a3b8; text-decoration: line-through; }
+        tr.void td.keep { text-decoration:none; }
+        .inp { width:100%; border:1px solid #e2e8f0; border-radius:.6rem; padding:.55rem .75rem; background:#fff; outline:none; }
+        .inp:focus { border-color:#fb923c; box-shadow:0 0 0 3px #ffedd5; }
+        .modal-bg { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:1rem; }
+        .flash { animation: flash 1.6s ease-out; } @keyframes flash { from { background:#fed7aa; } to { background:transparent; } }
+        #pin { position:fixed; inset:0; z-index:200; background:#f3f4f6; display:grid; place-items:center; padding:1rem; }
+        #pin input { letter-spacing:.5em; text-align:center; font-size:1.5rem; }
+        body.ro .rw { display:none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <nav class="bg-gray-800 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16 gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <a href="index.html" title="หน้าแรก" class="w-10 h-10 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/15 flex items-center justify-center transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg>
+                    </a>
+                    <span class="font-bold text-lg sm:text-xl truncate">Serial <span class="text-orange-400">Number</span></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnMe" class="h-10 px-3 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/15 font-semibold text-sm truncate max-w-[11rem]"></button>
+                    <button id="btnLock" title="ล็อก" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/15 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" stroke-width="2"/><path stroke-width="2" stroke-linecap="round" d="M8 11V7a4 4 0 018 0v4"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow w-full max-w-6xl mx-auto p-4 sm:p-6">
+        <div id="loadErr" class="hidden mb-4 rounded-xl bg-amber-50 ring-1 ring-amber-200 text-amber-800 px-4 py-3 font-semibold"></div>
+        <div id="roMsg" class="hidden mb-4 rounded-xl bg-slate-100 ring-1 ring-slate-200 text-slate-600 px-4 py-2 font-semibold text-sm">ดูอย่างเดียว</div>
+
+        <div class="flex items-center gap-2 mb-5">
+            <div class="inline-flex bg-slate-200/70 rounded-xl p-1" role="tablist">
+                <button class="rw tab-btn px-4 h-10 rounded-lg font-bold text-slate-600" data-tab="issue" aria-selected="true">ออกเลข</button>
+                <button class="tab-btn px-4 h-10 rounded-lg font-bold text-slate-600" data-tab="list" aria-selected="false">ทะเบียน</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+                <label class="text-sm text-slate-500">ปี</label>
+                <select id="yearSel" class="inp !w-28 !py-2 font-bold"></select>
+                <button id="btnStart" title="เลขเริ่มต้น" class="rw w-10 h-10 rounded-xl bg-white ring-1 ring-slate-200 text-slate-500 hover:text-orange-600 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.3 4.3a1.7 1.7 0 013.4 0 1.7 1.7 0 002.6 1.1 1.7 1.7 0 012.3 2.3 1.7 1.7 0 001.1 2.6 1.7 1.7 0 010 3.4 1.7 1.7 0 00-1.1 2.6 1.7 1.7 0 01-2.3 2.3 1.7 1.7 0 00-2.6 1.1 1.7 1.7 0 01-3.4 0 1.7 1.7 0 00-2.6-1.1 1.7 1.7 0 01-2.3-2.3 1.7 1.7 0 00-1.1-2.6 1.7 1.7 0 010-3.4 1.7 1.7 0 001.1-2.6 1.7 1.7 0 012.3-2.3 1.7 1.7 0 002.6-1.1z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== ออกเลข ===== -->
+        <section id="tab-issue">
+            <div class="grid lg:grid-cols-5 gap-5">
+                <div class="lg:col-span-3 bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-5">
+                    <div class="relative mb-4">
+                        <label class="text-sm font-semibold text-slate-600">งาน</label>
+                        <div class="relative mt-1">
+                            <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"/><path stroke-width="2" stroke-linecap="round" d="M20 20l-3.5-3.5"/></svg>
+                            <input id="jobQ" class="inp !pl-10 !h-12 text-base" placeholder="SO / ชื่องาน" autocomplete="off">
+                            <button id="jobClear" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-slate-400 hover:text-red-600">✕</button>
+                        </div>
+                        <div id="jobList" class="hidden absolute z-30 left-0 right-0 mt-1 bg-white rounded-xl ring-1 ring-slate-200 shadow-lg max-h-80 overflow-auto"></div>
+                    </div>
+                    <div class="grid sm:grid-cols-3 gap-3 mb-4">
+                        <div><label class="text-sm font-semibold text-slate-600">Job</label><input id="fJob" class="inp mt-1 uppercase" placeholder="SO26110052" autocomplete="off"></div>
+                        <div class="sm:col-span-2"><label class="text-sm font-semibold text-slate-600">Project</label><input id="fProject" class="inp mt-1" autocomplete="off"></div>
+                    </div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-slate-600">ตู้</span>
+                        <button id="btnPaste" class="text-sm font-semibold text-slate-500 hover:text-orange-600">วางหลายชื่อ</button>
+                    </div>
+                    <div id="cabRows" class="space-y-2"></div>
+                    <button id="btnAddRow" class="mt-3 w-full h-11 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 font-bold hover:border-orange-400 hover:text-orange-600">+ เพิ่มตู้</button>
+                    <div class="flex items-center gap-3 mt-5">
+                        <div id="issueSum" class="text-sm text-slate-500 flex-1"></div>
+                        <button id="btnIssue" class="h-12 px-6 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow disabled:opacity-40">กำหนดเลขซีเรียล</button>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-5 mb-5">
+                        <div class="text-sm font-semibold text-slate-600 mb-3">เลขถัดไป</div>
+                        <div id="nextBox" class="grid grid-cols-3 gap-2 text-center"></div>
+                    </div>
+                    <div id="resultCard" class="hidden bg-white rounded-2xl ring-2 ring-orange-300 shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-bold text-slate-800">เลขที่ออกให้</span>
+                            <button id="btnCopy" class="text-sm font-bold text-orange-600 hover:text-orange-700">คัดลอกทั้งหมด</button>
+                        </div>
+                        <div id="resultList" class="space-y-1.5 max-h-[60vh] overflow-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== ทะเบียน ===== -->
+        <section id="tab-list" class="hidden">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <div class="seg inline-flex" id="listPfx">
+                    <button data-p="">ทั้งหมด</button><button data-p="M">M</button><button data-p="D">D</button><button data-p="C">C</button>
+                </div>
+                <input id="listQ" class="inp !w-auto flex-1 min-w-[12rem]" placeholder="ค้นหา เลข / Job / ตู้ / Project">
+                <label class="text-sm text-slate-500 flex items-center gap-1.5"><input type="checkbox" id="listVoid"> แสดงที่ยกเลิก</label>
+                <button id="btnCsv" class="h-10 px-4 rounded-xl bg-white ring-1 ring-slate-200 font-bold text-slate-600 hover:text-orange-600">Excel (CSV)</button>
+            </div>
+            <div class="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-left">
+                        <tr><th class="px-3 py-2.5">Serial</th><th class="px-3">Job</th><th class="px-3">Project</th><th class="px-3">Cabinet</th>
+                            <th class="px-3">Delivery</th><th class="px-3">ออกโดย</th><th class="px-3 w-10"></th></tr>
+                    </thead>
+                    <tbody id="listBody"></tbody>
+                </table>
+                <div id="listEmpty" class="hidden p-8 text-center text-slate-400">ไม่มีรายการ</div>
+            </div>
+            <div id="listCount" class="text-xs text-slate-400 mt-2"></div>
+        </section>
+    </main>
+
+<script>
+/* =====================================================================
+   Serial Number — แผนกเนมเพลทออกเลขซีเรียลตู้ (ทะเบียน F-QC-02-09)
+   ข้อมูลอยู่ใน Google Sheet ผ่าน Apps Script (projects\Serial-Number\Code.gs, SETUP.md)
+   เลขถูกคำนวณใน Apps Script ภายใต้ LockService → สองคนกดพร้อมกันไม่ได้เลขซ้ำ
+   ===================================================================== */
+const API_DEFAULT = 'https://script.google.com/macros/s/AKfycbyVqWfOrNDF5oJLa4kJ7ryt5OX8O1XZdXIufEoCPUMXWOOR9OLnmhybRD3Cv6qFcepYyg/exec';   // URL ของ Web App (ลงท้าย /exec) — ดู SETUP.md
+const API_URL = new URLSearchParams(location.search).get('api') || API_DEFAULT;
+const PIN_KEY = 'serial.pin', ME_KEY = 'serial.me';
+const PFX = ['M', 'D', 'C'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtSerial = r => `${r.prefix}${String(r.number).padStart(3, '0')}`;
+const fmtFull = r => `AVT ${fmtSerial(r)}/${r.year}`;
+const fmtDate = d => d ? d.split('-').reverse().join('/') : '';
+let rows = [], starts = {}, people = [], jobs = [], selJob = null, year = new Date().getFullYear(), listPfx = '', role = null, ready = false;
+let PIN = sessionStorage.getItem(PIN_KEY) || '';
+let me = localStorage.getItem(ME_KEY) || '';
+
+/* ---------- Apps Script ---------- */
+async function api(body) {
+    if (!API_URL) throw Object.assign(new Error('ยังไม่ได้ตั้ง URL ของ Apps Script'), { code: 'CFG' });
+    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                     body: JSON.stringify({ ...body, pin: PIN }), redirect: 'follow' });
+    const j = await r.json();
+    if (!j.ok) throw Object.assign(new Error(j.error || 'ผิดพลาด'), { code: j.code });
+    return j;
+}
+
+/* ---------- PIN (แยกจาก QC Tools) — จำไว้จนปิดแท็บ, ล็อกเองเมื่อไม่ได้ใช้ 15 นาที ---------- */
+const LOCK_MS = 15 * 60 * 1000;
+let lastActive = Date.now();
+['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true, capture: true }));
+function showPin(msg = '') {
+    if ($('pin')) { $('pinErr').textContent = msg; return; }
+    const d = document.createElement('div');
+    d.id = 'pin';
+    d.innerHTML = `<form class="bg-white rounded-2xl ring-1 ring-slate-200 shadow-lg w-full max-w-xs p-7 flex flex-col items-center gap-4">
+        <img src="Logo Avatar เล็ก.png" class="w-14 h-14 rounded-2xl" alt="">
+        <div class="font-bold text-lg text-slate-800">Serial Number</div>
+        <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" class="inp h-14" placeholder="PIN">
+        <div id="pinErr" class="text-sm text-red-600 font-semibold min-h-[1.25rem]">${esc(msg)}</div>
+        <button class="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold">เข้าใช้งาน</button></form>`;
+    document.body.appendChild(d);
+    $('pinIn').focus();
+    d.querySelector('form').onsubmit = async e => {
+        e.preventDefault();
+        PIN = $('pinIn').value.trim();
+        $('pinErr').textContent = '';
+        if (await loadRows(true)) { sessionStorage.setItem(PIN_KEY, PIN); d.remove(); lastActive = Date.now(); }
+    };
+}
+function lockApp() { PIN = ''; sessionStorage.removeItem(PIN_KEY); showPin(); }
+setInterval(() => { if (!$('pin') && PIN && Date.now() - lastActive >= LOCK_MS) lockApp(); }, 30000);
+
+/* ---------- dialogs ---------- */
+function modal(html, { onMount } = {}) {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5">${html}</div>`;
+    document.body.appendChild(bg);
+    const close = () => bg.remove();
+    onMount?.(bg, close);
+    return close;
+}
+function ask(title, body, { ok = 'ตกลง', cancel = 'ยกเลิก', danger = false } = {}) {
+    return new Promise(res => {
+        modal(`<div class="font-bold text-lg text-slate-800 mb-2">${title}</div><div class="text-slate-600 mb-5">${body}</div>
+            <div class="flex justify-end gap-2"><button data-x class="h-11 px-4 rounded-xl ring-1 ring-slate-200 font-bold text-slate-600">${cancel}</button>
+            <button data-ok class="h-11 px-5 rounded-xl ${danger ? 'bg-red-600' : 'bg-orange-500'} text-white font-bold">${ok}</button></div>`,
+            { onMount: (bg, close) => {
+                bg.querySelector('[data-x]').onclick = () => { close(); res(false); };
+                bg.querySelector('[data-ok]').onclick = () => { close(); res(true); };
+            } });
+    });
+}
+const info = (title, body) => ask(title, body, { ok: 'ตกลง', cancel: 'ปิด' });
+function busy(btn, on, label) {
+    if (on) { btn.dataset.label = btn.textContent; btn.textContent = label; btn.disabled = true; }
+    else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; }
+}
+
+/* ---------- ผู้ออกเลข (ไม่มีล็อกอิน → ให้เลือกชื่อ เครื่องจำไว้) ---------- */
+function renderMe() { $('btnMe').textContent = me || 'เลือกชื่อผู้ออกเลข'; }
+function pickMe() {
+    return new Promise(res => {
+        modal(`<div class="font-bold text-lg text-slate-800 mb-3">ผู้ออกเลข</div>
+            <div class="flex flex-wrap gap-2 mb-3">${people.map(p => `<button data-n="${esc(p)}" class="h-10 px-3 rounded-xl ring-1 ${p === me ? 'ring-orange-400 bg-orange-50 text-orange-700' : 'ring-slate-200 text-slate-700'} font-semibold">${esc(p)}</button>`).join('')}</div>
+            <input class="inp" placeholder="หรือพิมพ์ชื่อ" value="${people.includes(me) ? '' : esc(me)}">
+            <div class="flex justify-end gap-2 mt-4"><button data-x class="h-11 px-4 rounded-xl ring-1 ring-slate-200 font-bold text-slate-600">ยกเลิก</button>
+            <button data-ok class="h-11 px-5 rounded-xl bg-orange-500 text-white font-bold">ตกลง</button></div>`, {
+            onMount: (bg, close) => {
+                const set = n => { n = n.trim(); if (!n) return; me = n; localStorage.setItem(ME_KEY, me); renderMe(); close(); res(me); };
+                bg.querySelectorAll('[data-n]').forEach(b => b.onclick = () => set(b.dataset.n));
+                bg.querySelector('[data-x]').onclick = () => { close(); res(''); };
+                bg.querySelector('[data-ok]').onclick = () => set(bg.querySelector('input').value);
+            }
+        });
+    });
+}
+
+/* ---------- เดาประเภทตู้จากชื่อ (ดูจากทะเบียนที่มีอยู่ + กฎพื้นฐาน) ---------- */
+const BASE_RULES = [[/\b(MCP|COM|RTU|DDC|BTU|NCU|RELAY|SERVER|RACK|FUSE|GEAR|CONTROL|ZERO|POWER SUPPLY|PLC|UTILITY)\b/, 'C'],
+                    [/\b(MDB|MCC|CAP|INTERCONNECTION|HOUSING)\b/, 'M'], [/\b(DB|SDB|EDB|ACDB|LP|MTB|BOX|CB|ISOLATOR)\b/, 'D']];
+const tokens = s => String(s || '').toUpperCase().replace(/[^A-Z]+/g, ' ').trim().split(' ').filter(t => t.length > 1 && t !== 'PANEL');
+function guessPrefix(name) {
+    const t = tokens(name);
+    if (!t.length) return 'D';
+    const score = { M: 0, D: 0, C: 0 };
+    for (const r of rows) {
+        if (r.status !== 'active' || !r.cabinet) continue;
+        const rt = tokens(r.cabinet);
+        if (rt[0] && rt[0] === t[0]) score[r.prefix] += 3;
+        else if (t.some(x => rt.includes(x))) score[r.prefix] += 1;
+    }
+    const best = PFX.reduce((a, b) => score[b] > score[a] ? b : a, 'M');
+    if (score[best] > 0) return best;
+    const up = t.join(' ');
+    for (const [re, p] of BASE_RULES) if (re.test(up)) return p;
+    return 'D';
+}
+
+/* ---------- ฟอร์มออกเลข ---------- */
+function addRow(name = '', qty = 1, pfx = null, opt = {}) {
+    const row = document.createElement('div');
+    if (opt.locked) {   // ตู้นี้มีเลขแล้ว (จาก Calendar) — แสดงเฉย ๆ ไม่ออกซ้ำ
+        const r = opt.locked;
+        row.className = 'cab-locked flex items-center gap-3 rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3 h-11';
+        row.innerHTML = `<span class="pfx pfx-${r.prefix}">${r.prefix}</span><b class="tabular-nums text-slate-800">${fmtSerial(r)}</b>
+            <span class="text-slate-500 truncate">${esc(name)}</span><span class="ml-auto text-xs text-slate-400">มีเลขแล้ว</span>`;
+        $('cabRows').appendChild(row);
+        return row;
+    }
+    row.className = 'cab-row flex items-center gap-2';
+    if (opt.cabId) row.dataset.cab = opt.cabId;
+    row.innerHTML = `<div class="seg inline-flex shrink-0">${PFX.map(p => `<button type="button" data-p="${p}">${p}</button>`).join('')}</div>
+        <input class="inp cab-name" placeholder="ชื่อตู้ เช่น MDB PANEL" value="${esc(name)}">
+        <input class="inp cab-qty !w-20 text-center" type="number" min="1" max="200" value="${qty}" title="จำนวนตู้" ${opt.cabId ? 'disabled' : ''}>
+        <button type="button" class="cab-del shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="ลบ">✕</button>`;
+    row.dataset.manual = pfx ? '1' : '';
+    const setP = p => { row.dataset.p = p; row.querySelectorAll('.seg button').forEach(b => b.className = b.dataset.p === p ? 'on-' + p : ''); updateSum(); };
+    row.querySelectorAll('.seg button').forEach(b => b.onclick = () => { row.dataset.manual = '1'; setP(b.dataset.p); });
+    const nameEl = row.querySelector('.cab-name');
+    nameEl.oninput = () => { if (!row.dataset.manual) setP(guessPrefix(nameEl.value)); else updateSum(); };
+    row.querySelector('.cab-qty').oninput = updateSum;
+    row.querySelector('.cab-del').onclick = () => { row.remove(); if (!document.querySelector('.cab-row, .cab-locked')) addRow(); updateSum(); };
+    $('cabRows').appendChild(row);
+    setP(pfx || guessPrefix(name));
+    return row;
+}
+function readItems() {
+    const items = [];
+    document.querySelectorAll('.cab-row').forEach(r => {
+        const name = r.querySelector('.cab-name').value.trim();
+        const qty = Math.max(0, Math.min(200, parseInt(r.querySelector('.cab-qty').value, 10) || 0));
+        if (!name) return;
+        for (let i = 0; i < qty; i++) items.push({ prefix: r.dataset.p, cabinet: name, cabinet_id: r.dataset.cab || '' });
+    });
+    return items;
+}
+function updateSum() {
+    const items = readItems();
+    const c = { M: 0, D: 0, C: 0 };
+    items.forEach(i => c[i.prefix]++);
+    const nLocked = document.querySelectorAll('.cab-locked').length;
+    $('issueSum').innerHTML = (!items.length && nLocked) ? '<span class="font-semibold text-emerald-700">ทุกตู้มีเลขแล้ว</span>' : items.length ? PFX.filter(p => c[p]).map(p => `<span class="pfx pfx-${p} mr-1">${p}</span>${c[p]} ตู้`).join('<span class="mx-2 text-slate-300">|</span>') : '';
+    $('btnIssue').disabled = !items.length || !$('fJob').value.trim() || !ready || role !== 'full';
+}
+function nextNumber(p) {
+    const used = rows.filter(r => r.year === year && r.prefix === p).map(r => r.number);
+    return Math.max(used.length ? Math.max(...used) + 1 : 1, starts[p] || 1);
+}
+function renderNext() {
+    $('nextBox').innerHTML = PFX.map(p => `<div class="rounded-xl bg-slate-50 py-3"><div class="pfx pfx-${p}">${p}</div>
+        <div class="text-xl font-bold text-slate-800 mt-1">${p}${String(nextNumber(p)).padStart(3, '0')}</div></div>`).join('');
+}
+
+async function issue() {
+    const job = $('fJob').value.trim().toUpperCase().replace(/\s+/g, '');
+    const project = $('fProject').value.trim();
+    const items = readItems();
+    if (!job || !items.length) return;
+    if (!me && !await pickMe()) return;
+    // ตู้เดิมของงานนี้มีเลขแล้ว? (ทำเนมเพลทใหม่ให้ตู้เดิม = ใช้เลขเดิม ไม่ต้องออกใหม่)
+    const names = new Set(items.filter(i => !i.cabinet_id).map(i => i.cabinet.toUpperCase()));
+    const dup = rows.filter(r => r.status === 'active' && r.year === year && r.job.toUpperCase() === job && names.has(r.cabinet.toUpperCase()));
+    if (dup.length) {
+        const ok = await ask('งานนี้มีเลขของตู้ชื่อนี้แล้ว', `<div class="space-y-1 mb-3">${dup.slice(0, 12).map(r =>
+            `<div><b>${fmtSerial(r)}</b> — ${esc(r.cabinet)}</div>`).join('')}${dup.length > 12 ? `<div>… อีก ${dup.length - 12}</div>` : ''}</div>`,
+            { ok: 'ออกเลขใหม่เพิ่ม', cancel: 'ยกเลิก' });
+        if (!ok) return;
+    }
+    const c = { M: 0, D: 0, C: 0 };
+    items.forEach(i => c[i.prefix]++);
+    const ok = await ask(`กำหนดเลขซีเรียล ${items.length} ตู้ ปี ${year}?`,
+        `<div class="font-semibold text-slate-800">${esc(job)}${project ? ' · ' + esc(project) : ''}</div>
+         <div class="mt-2">${PFX.filter(p => c[p]).map(p => `<span class="pfx pfx-${p} mr-1">${p}</span>${c[p]} ตู้`).join('<span class="mx-2 text-slate-300">|</span>')}</div>
+         <div class="mt-2 text-sm text-slate-400">ผู้ออกเลข: ${esc(me)}</div>`,
+        { ok: 'กำหนดเลข' });
+    if (!ok) return;
+    busy($('btnIssue'), true, 'กำลังกำหนดเลข…');
+    try {
+        const linked = selJob && normJob(selJob.so) === job ? selJob : null;
+        const res = await api({ action: 'allocate', year, job, project, items, by: me, task_id: linked ? linked.id : '' });
+        showResult(res.rows || []);
+        await loadRows();
+        if (linked) selectJob(jobs.find(j => j.id === linked.id) || linked); else clearJob();
+    } catch (e) {
+        if (e.code === 'PIN') return lockApp();
+        info('ออกเลขไม่สำเร็จ', esc(e.message || e));
+    } finally {
+        busy($('btnIssue'), false);
+        updateSum();
+    }
+}
+function showResult(list) {
+    $('resultCard').classList.remove('hidden');
+    $('resultList').innerHTML = list.map(r => `<div class="flex items-center gap-3 rounded-lg px-2 py-1.5 flash">
+        <span class="pfx pfx-${r.prefix}">${r.prefix}</span><span class="font-bold text-lg text-slate-800 tabular-nums">${fmtFull(r)}</span>
+        <span class="text-slate-500 truncate">${esc(r.cabinet)}</span></div>`).join('');
+    $('btnCopy').onclick = () => {
+        navigator.clipboard.writeText(list.map(r => `${fmtFull(r)}\t${r.cabinet}\t${r.job}`).join('\n'));
+        $('btnCopy').textContent = 'คัดลอกแล้ว ✓';
+        setTimeout(() => $('btnCopy').textContent = 'คัดลอกทั้งหมด', 1500);
+    };
+}
+function pasteMany() {
+    modal(`<div class="font-bold text-lg text-slate-800 mb-2">วางชื่อตู้ (บรรทัดละ 1 ตู้)</div>
+        <textarea class="inp h-56 font-mono text-sm" placeholder="MDB PANEL&#10;DB-1 PANEL&#10;DB-2 PANEL"></textarea>
+        <div class="flex justify-end gap-2 mt-4"><button data-x class="h-11 px-4 rounded-xl ring-1 ring-slate-200 font-bold text-slate-600">ยกเลิก</button>
+        <button data-ok class="h-11 px-5 rounded-xl bg-orange-500 text-white font-bold">เพิ่ม</button></div>`, {
+        onMount: (bg, close) => {
+            bg.querySelector('textarea').focus();
+            bg.querySelector('[data-x]').onclick = close;
+            bg.querySelector('[data-ok]').onclick = () => {
+                const lines = bg.querySelector('textarea').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                document.querySelectorAll('.cab-row').forEach(r => { if (!r.querySelector('.cab-name').value.trim()) r.remove(); });
+                lines.forEach(l => addRow(l));
+                if (!document.querySelector('.cab-row')) addRow();
+                close(); updateSum();
+            };
+        }
+    });
+}
+
+/* ---------- เลือกงานจาก QC Calendar (ปฏิทินโรงงาน ส่งมาที่แท็บ งาน ของชีต) ---------- */
+const normU = s => String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+const normJob = s => String(s || '').toUpperCase().replace(/\s+/g, '');
+/* เลขของแต่ละตู้ในงาน: ผูกด้วย id ตู้ก่อน ไม่มีค่อยจับจาก Job + ชื่อตู้ (ตู้ชื่อซ้ำกันได้คนละเลข) */
+function serialsOfJob(j) {
+    const act = rows.filter(r => r.status === 'active' && r.year === year);
+    const used = new Set(), out = new Map();
+    j.cabs.forEach(c => { const r = act.find(x => x.cabinet_id && x.cabinet_id === c.id); if (r) { out.set(c.id, r); used.add(r.id); } });
+    j.cabs.forEach(c => {
+        if (out.has(c.id)) return;
+        const r = act.find(x => !used.has(x.id) && !x.cabinet_id && j.so && normJob(x.job) === normJob(j.so) && normU(x.cabinet) === normU(c.name));
+        if (r) { out.set(c.id, r); used.add(r.id); }
+    });
+    return out;
+}
+const jobLabel = j => `${j.so || '(ไม่มี SO)'} · ${j.title}`;
+function renderJobList() {
+    const q = normU($('jobQ').value);
+    if (!q || (selJob && $('jobQ').value === jobLabel(selJob))) { $('jobList').classList.add('hidden'); return; }
+    const hit = jobs.filter(j => normU(j.so + ' ' + j.title).includes(q) || normJob(j.so).includes(normJob(q))).slice(0, 40);
+    $('jobList').innerHTML = hit.length ? hit.map(j => {
+        const n = serialsOfJob(j).size, all = j.cabs.length;
+        const badge = !all ? '<span class="text-xs text-slate-400">ไม่มีตู้</span>'
+            : n >= all ? '<span class="text-xs font-bold text-emerald-700 bg-emerald-50 rounded-md px-2 py-0.5">มีเลขครบ</span>'
+            : n ? `<span class="text-xs font-bold text-amber-700 bg-amber-50 rounded-md px-2 py-0.5">มีเลข ${n}/${all}</span>` : '';
+        return `<button type="button" data-i="${jobs.indexOf(j)}" class="w-full text-left px-4 py-2.5 hover:bg-orange-50 flex items-center gap-3 border-b border-slate-100 last:border-0">
+            <span class="min-w-0 flex-1"><span class="font-bold text-slate-800">${esc(j.so || '(ไม่มี SO)')}</span>
+            <span class="block text-sm text-slate-500 truncate">${esc(j.title)}</span></span>
+            <span class="text-sm text-slate-400 shrink-0">${all} ตู้</span>${badge}</button>`;
+    }).join('') : `<div class="px-4 py-3 text-slate-400">${jobs.length ? 'ไม่พบงาน' : 'ยังไม่มีรายการงานจาก QC Calendar'}</div>`;
+    $('jobList').classList.remove('hidden');
+    $('jobList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => selectJob(jobs[+b.dataset.i]));
+}
+function selectJob(j) {
+    selJob = j;
+    $('jobQ').value = jobLabel(j);
+    $('jobList').classList.add('hidden');
+    $('jobClear').classList.remove('hidden');
+    $('fJob').value = j.so; $('fProject').value = j.title;
+    const have = serialsOfJob(j);
+    $('cabRows').innerHTML = '';
+    j.cabs.forEach(c => addRow(c.name, 1, null, have.has(c.id) ? { locked: have.get(c.id) } : { cabId: c.id }));
+    if (!j.cabs.length) addRow();
+    updateSum();
+}
+function clearJob() {
+    selJob = null;
+    $('jobQ').value = ''; $('jobClear').classList.add('hidden'); $('jobList').classList.add('hidden');
+    $('fJob').value = ''; $('fProject').value = '';
+    $('cabRows').innerHTML = ''; addRow(); updateSum();
+}
+
+/* ---------- ทะเบียน ---------- */
+let loading = null;
+async function loadRows(fromPin = false) {
+    if (loading) return loading;
+    loading = (async () => {
+        try {
+            const res = await api({ action: 'all', year });
+            rows = res.data.rows; starts = res.data.starts || {}; people = res.data.people || []; jobs = res.data.jobs || [];
+            role = res.role; ready = true;
+            document.body.classList.toggle('ro', role !== 'full');
+            $('roMsg').classList.toggle('hidden', role === 'full');
+            if (role !== 'full') setTab('list');
+            $('loadErr').classList.add('hidden');
+            renderNext(); renderList(); updateSum();
+            return true;
+        } catch (e) {
+            if (e.code === 'PIN') { showPin(fromPin ? e.message : ''); return false; }
+            $('loadErr').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message;
+            $('loadErr').classList.remove('hidden');
+            if (fromPin && $('pin')) $('pinErr').textContent = e.message;
+            return false;
+        } finally { loading = null; }
+    })();
+    return loading;
+}
+function renderList() {
+    const q = $('listQ').value.trim().toUpperCase();
+    const showVoid = $('listVoid').checked;
+    const list = rows.filter(r => (!listPfx || r.prefix === listPfx) && (showVoid || r.status === 'active') &&
+        (!q || [fmtSerial(r), r.job, r.cabinet, r.project].some(v => String(v).toUpperCase().includes(q))))
+        .sort((a, b) => a.prefix === b.prefix ? b.number - a.number : PFX.indexOf(a.prefix) - PFX.indexOf(b.prefix));
+    const shown = list.slice(0, 500);
+    $('listBody').innerHTML = shown.map(r => `<tr class="border-t border-slate-100 hover:bg-orange-50/40 ${r.status === 'void' ? 'void' : ''}" data-id="${esc(r.id)}">
+        <td class="px-3 py-2 whitespace-nowrap"><span class="pfx pfx-${r.prefix} mr-2">${r.prefix}</span><b class="tabular-nums">${fmtSerial(r)}</b></td>
+        <td class="px-3 whitespace-nowrap">${esc(r.job)}</td><td class="px-3">${esc(r.project)}</td><td class="px-3">${esc(r.cabinet)}</td>
+        <td class="px-3 whitespace-nowrap">${fmtDate(r.delivery_date)}</td>
+        <td class="px-3 text-slate-400 whitespace-nowrap">${r.source === 'import' ? 'นำเข้า' : esc(r.by)}</td>
+        <td class="px-3 keep"><button class="rw row-edit text-slate-400 hover:text-orange-600 font-bold" title="แก้ไข">⋯</button></td></tr>`).join('');
+    $('listEmpty').classList.toggle('hidden', list.length > 0);
+    $('listCount').textContent = list.length ? `${list.length} รายการ${list.length > shown.length ? ' (แสดง 500 ล่าสุด)' : ''}` : '';
+    $('listBody').querySelectorAll('.row-edit').forEach(b => b.onclick = () => editRow(rows.find(r => r.id === b.closest('tr').dataset.id)));
+    document.querySelectorAll('#listPfx button').forEach(b => b.className = b.dataset.p === listPfx ? 'on-' + (listPfx || 'all') : '');
+}
+async function saveRow(r, fields) {
+    try { await api({ action: 'update', id: r.id, prefix: r.prefix, fields }); await loadRows(); return true; }
+    catch (e) { if (e.code === 'PIN') lockApp(); else info('บันทึกไม่สำเร็จ', esc(e.message)); return false; }
+}
+function editRow(r) {
+    if (!r) return;
+    modal(`<div class="flex items-center gap-2 mb-4"><span class="pfx pfx-${r.prefix}">${r.prefix}</span>
+            <span class="font-bold text-xl text-slate-800">${fmtFull(r)}</span>${r.status === 'void' ? '<span class="text-red-600 font-bold ml-2">ยกเลิกแล้ว</span>' : ''}</div>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-sm font-semibold text-slate-600">Job</label><input data-f="job" class="inp mt-1" value="${esc(r.job)}"></div>
+            <div><label class="text-sm font-semibold text-slate-600">Delivery</label><input data-f="delivery_date" type="date" class="inp mt-1" value="${esc(r.delivery_date)}"></div>
+            <div class="col-span-2"><label class="text-sm font-semibold text-slate-600">Project</label><input data-f="project" class="inp mt-1" value="${esc(r.project)}"></div>
+            <div class="col-span-2"><label class="text-sm font-semibold text-slate-600">Cabinet</label><input data-f="cabinet" class="inp mt-1" value="${esc(r.cabinet)}"></div>
+            <div class="col-span-2"><label class="text-sm font-semibold text-slate-600">หมายเหตุ</label><input data-f="note" class="inp mt-1" value="${esc(r.note)}"></div>
+        </div>
+        <div class="text-xs text-slate-400 mt-3">${r.source === 'import' ? 'นำเข้าจากทะเบียนเดิม' : `ออกโดย ${esc(r.by)}${r.created_at ? ' · ' + new Date(r.created_at).toLocaleString('th-TH') : ''}`}</div>
+        <div class="flex items-center gap-2 mt-5">
+            <button data-void class="h-11 px-4 rounded-xl font-bold ${r.status === 'void' ? 'text-slate-600 ring-1 ring-slate-200' : 'text-red-600 ring-1 ring-red-200 hover:bg-red-50'}">${r.status === 'void' ? 'ใช้เลขนี้ต่อ' : 'ยกเลิกเลขนี้'}</button>
+            <div class="flex-1"></div>
+            <button data-x class="h-11 px-4 rounded-xl ring-1 ring-slate-200 font-bold text-slate-600">ปิด</button>
+            <button data-ok class="h-11 px-5 rounded-xl bg-orange-500 text-white font-bold">บันทึก</button></div>`, {
+        onMount: (bg, close) => {
+            bg.querySelector('[data-x]').onclick = close;
+            bg.querySelector('[data-ok]').onclick = async e => {
+                const fields = {};
+                bg.querySelectorAll('[data-f]').forEach(i => fields[i.dataset.f] = i.value.trim());
+                busy(e.target, true, 'กำลังบันทึก…');
+                if (await saveRow(r, fields)) close(); else busy(e.target, false);
+            };
+            bg.querySelector('[data-void]').onclick = async e => {
+                const toVoid = r.status !== 'void';
+                if (toVoid && !await ask(`ยกเลิก ${fmtSerial(r)}?`, 'เลขนี้จะไม่ถูกนำกลับมาใช้อีก', { ok: 'ยกเลิกเลข', cancel: 'ไม่', danger: true })) return;
+                busy(e.target, true, 'กำลังบันทึก…');
+                if (await saveRow(r, { status: toVoid ? 'void' : 'active' })) close(); else busy(e.target, false);
+            };
+        }
+    });
+}
+function exportCsv() {
+    const list = rows.filter(r => r.status === 'active' && (!listPfx || r.prefix === listPfx)).sort((a, b) =>
+        a.prefix === b.prefix ? a.number - b.number : PFX.indexOf(a.prefix) - PFX.indexOf(b.prefix));
+    const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [['Serail number', 'Job.', 'Project', 'Cabinet Name', 'Date of Delivery'].map(cell).join(',')]
+        .concat(list.map(r => [fmtSerial(r), r.job, r.project, r.cabinet, fmtDate(r.delivery_date)].map(cell).join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }));
+    a.download = `Serial Number ${year}${listPfx ? ' ' + listPfx : ''}.csv`;
+    a.click();
+}
+function editStarts() {
+    modal(`<div class="font-bold text-lg text-slate-800 mb-4">เลขเริ่มต้นปี ${year}</div>
+        <div class="grid grid-cols-3 gap-3">${PFX.map(p => `<div><div class="pfx pfx-${p} mb-1">${p}</div>
+            <input data-p="${p}" type="number" min="1" class="inp text-center font-bold" value="${starts[p] || ''}" placeholder="${nextNumber(p)}"></div>`).join('')}</div>
+        <div class="flex justify-end gap-2 mt-5"><button data-x class="h-11 px-4 rounded-xl ring-1 ring-slate-200 font-bold text-slate-600">ยกเลิก</button>
+        <button data-ok class="h-11 px-5 rounded-xl bg-orange-500 text-white font-bold">บันทึก</button></div>`, {
+        onMount: (bg, close) => {
+            bg.querySelector('[data-x]').onclick = close;
+            bg.querySelector('[data-ok]').onclick = async e => {
+                const s = {};
+                bg.querySelectorAll('[data-p]').forEach(i => s[i.dataset.p] = parseInt(i.value, 10) || 0);
+                busy(e.target, true, 'กำลังบันทึก…');
+                try { await api({ action: 'starts', year, starts: s }); close(); loadRows(); }
+                catch (err) { busy(e.target, false); if (err.code === 'PIN') lockApp(); else info('บันทึกไม่สำเร็จ', esc(err.message)); }
+            };
+        }
+    });
+}
+
+/* ---------- เริ่ม ---------- */
+function setTab(t) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
+    $('tab-issue').classList.toggle('hidden', t !== 'issue');
+    $('tab-list').classList.toggle('hidden', t !== 'list');
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+document.querySelectorAll('#listPfx button').forEach(b => b.onclick = () => { listPfx = b.dataset.p; renderList(); });
+$('listQ').oninput = renderList;
+$('listVoid').onchange = renderList;
+$('btnCsv').onclick = exportCsv;
+$('btnAddRow').onclick = () => { addRow().querySelector('.cab-name').focus(); };
+$('btnPaste').onclick = pasteMany;
+$('btnIssue').onclick = issue;
+$('btnStart').onclick = () => ready && editStarts();
+$('btnMe').onclick = pickMe;
+$('btnLock').onclick = lockApp;
+$('fJob').oninput = updateSum;
+$('jobQ').oninput = () => { if (selJob) { selJob = null; $('jobClear').classList.add('hidden'); } renderJobList(); };
+$('jobQ').onfocus = renderJobList;
+$('jobClear').onclick = clearJob;
+document.addEventListener('click', e => { if (!e.target.closest('#jobList, #jobQ')) $('jobList').classList.add('hidden'); });
+for (let y = year + 1; y >= year - 2; y--) $('yearSel').add(new Option(y, y, false, y === year));
+$('yearSel').onchange = () => { year = +$('yearSel').value; loadRows(); };
+// คนอื่นออกเลขระหว่างเปิดหน้าค้าง → ดึงใหม่ทุก 30 วิ (เฉพาะตอนหน้าจอเปิดอยู่และไม่มีหน้าต่างค้าง)
+setInterval(() => { if (ready && PIN !== null && !$('pin') && !document.querySelector('.modal-bg') && document.visibilityState === 'visible') loadRows(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready && !$('pin')) loadRows(); });
+renderMe();
+addRow();
+loadRows();
+</script>
+</body>
+</html>
